@@ -1,0 +1,20 @@
+[submodule "submodules/calyx-servicios/account-analytic"]
+	path = submodules/calyx-servicios/account-analytic
+	url = https://github.com/calyx-servicios/account-analytic.git
+	branch = 15.0_staging
+[submodule "submodules/CybroOdoo/CybroAddons"]
+	path = submodules/CybroOdoo/CybroAddons
+	url = https://github.com/CybroOdoo/CybroAddons.git
+	branch = 15.0
+[submodule "submodules/ingadhoc/odoo-argentina-ee"]
+	path = submodules/ingadhoc/odoo-argentina-ee
+	url = https://github.com/ingadhoc/odoo-argentina-ee.git
+	branch = 15.0
+[submodule "submodules/ingadhoc/odoo-argentina"]
+	path = submodules/ingadhoc/odoo-argentina
+	url = https://github.com/ingadhoc/odoo-argentina.git
+	branch = 15.0
+[submodule "submodules/ingadhoc/account-payment"]
+	path = submodules/ingadhoc/account-payment
+	url = https://github.com/ingadhoc/account-payment.git
+	branch = 15.0
