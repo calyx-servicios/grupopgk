@@ -18,3 +18,39 @@
 	path = submodules/calyx-servicios/account-analytic
 	url = https://github.com/calyx-servicios/account-analytic.git
 	branch = 15.0_test
+[submodule "submodules/OCA/partner-contact"]
+	path = submodules/OCA/partner-contact
+	url = https://github.com/OCA/partner-contact.git
+	branch = 15.0
+[submodule "submodules/ingadhoc/account-financial-tools"]
+	path = submodules/ingadhoc/account-financial-tools
+	url = https://github.com/ingadhoc/account-financial-tools.git
+	branch = 15.0
+[submodule "submodules/ingadhoc/project"]
+	path = submodules/ingadhoc/project
+	url = https://github.com/ingadhoc/project.git
+	branch = 15.0
+[submodule "submodules/ingadhoc/sale"]
+	path = submodules/ingadhoc/sale
+	url = https://github.com/ingadhoc/sale.git
+	branch = 15.0
+[submodule "submodules/ingadhoc/partner"]
+	path = submodules/ingadhoc/partner
+	url = https://github.com/ingadhoc/partner.git
+	branch = 15.0
+[submodule "submodules/ingadhoc/product"]
+	path = submodules/ingadhoc/product
+	url = https://github.com/ingadhoc/product.git
+	branch = 15.0
+[submodule "submodules/ingadhoc/odoo-argentina-ce"]
+	path = submodules/ingadhoc/odoo-argentina-ce
+	url = https://github.com/ingadhoc/odoo-argentina-ce.git
+	branch = 15.0
+[submodule "submodules/ingadhoc/multi-company"]
+	path = submodules/ingadhoc/multi-company
+	url = https://github.com/ingadhoc/multi-company.git
+	branch = 15.0
+[submodule "submodules/aeroo/aeroo_reports"]
+	path = submodules/aeroo/aeroo_reports
+	url = https://github.com/aeroo/aeroo_reports.git
+	branch = 15.0
