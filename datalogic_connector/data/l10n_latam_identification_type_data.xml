@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+<data noupdate="1">
+    <record model='res.partner.id_category' id='uy_ruc'>
+        <field name='code'>RUC</field>
+        <field name='name'>Registro Único Tributario</field>
+        <field name='afip_code'>0</field>
+        <field name='active' eval="True"/>
+    </record>
+    <record model='res.partner.id_category' id='uy_nie'>
+        <field name='code'>NIE</field>
+        <field name='name'>Número de identificación fiscal</field>
+        <field name='afip_code'>0</field>
+        <field name='active' eval="True"/>
+    </record>
+    <record model='res.partner.id_category' id='uy_other'>
+        <field name='code'>Otros</field>
+        <field name='name'>Otros</field>
+        <field name='afip_code'>0</field>
+        <field name='active' eval="True"/>
+    </record>
+    <record model='res.partner.id_category' id='uy_nife'>
+        <field name='code'>NIFE</field>
+        <field name='name'>Número de identificación fiscal extranjero</field>
+        <field name='afip_code'>0</field>
+        <field name='active' eval="True"/>
+    </record>
+</data>
+</odoo>

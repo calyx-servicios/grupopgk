@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_form_report_concepts" model="ir.ui.view">
+        <field name="name">account.invoice.form</field>
+        <field name="model">account.invoice</field>
+        <field name="inherit_id" ref="account.invoice_form"/>
+        <field name="arch" type="xml">
+            <!-- <xpath expr="//button[@name='action_invoice_open']" position="attributes">
+                <attribute name="attrs">{'invisible': ['|',('state', '!=', 'draft'),('l10n_latam_country_code', '=', 'UY')]}</attribute>
+            </xpath> -->
+            <xpath expr="//button[@name='action_invoice_open']" position='after'>
+                <button name="send_dgi" string="Send DGI" class="oe_highlight" type="object" attrs="{'invisible': ['|',  '|', ('state', '!=', 'draft'), ('type', 'not in', ('out_invoice', 'out_refund')), ('descargar','!=',False)]}"/>
+            </xpath>
+            <xpath expr="//page[@name='other_info']" position='after'>
+                <page id="dgi_info" string="DGI" name="DGI">
+                <group>
+                    <group>
+                        <field name="origin_ref"/>
+                        <field name="origin_date"/>
+                        <field name="error_dgi" attrs="{'invisible':[('error_dgi','=','1')]}"/>
+                        <field name="tpo_cfe" class="oe_inline"/>
+                        <field name="serie_cfe" />
+                        <field name="nrocae" string="CAE" attrs="{'invisible':[('error_dgi','!=','1')]}"/>
+                        <field name="hashcfe" string="Hashcode"/>
+                        <field name="txt_send" string="XML enviado" invisible="1"/>
+                    </group>
+                    <group>
+                        <field name="FchVenc" string="Fecha de vencimiento de la Autorización" attrs="{'invisible':[('error_dgi','!=','1')]}"/>
+                        <field name="description_dgi" attrs="{'invisible':[('error_dgi','=','1')]}"/>
+                        <field name="comprobantecfe" string="Comprobante"/>
+                        <field name="estado" invisible="1"/>
+                        <field name="show_estado" string="Resultado" attrs="{'invisible':[('error_dgi','!=','1')]}"/>
+                        <field name="file_name" invisible="1"/>
+                        <field name="descargar" string="Descargar Factura" filename="file_name"/>
+                        <field name="txt_rquest" string="XML resibido" invisible="1"/>
+                    </group>
+                </group>
+                <button name="update_invoice_status" string="Actualizar" class="oe_highlight" type="object"/>            
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
