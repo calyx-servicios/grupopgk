@@ -1,0 +1,197 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+#	* datalogic_connector
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 11.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-10-12 15:55+0000\n"
+"PO-Revision-Date: 2022-10-12 15:55+0000\n"
+"Last-Translator: <>\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: datalogic_connector
+#: model:ir.ui.view,arch_db:datalogic_connector.view_account_form_report_concepts
+msgid "Actualizar"
+msgstr "Actualizar"
+
+#. module: datalogic_connector
+#: model:ir.ui.view,arch_db:datalogic_connector.view_account_form_report_concepts
+msgid "CAE"
+msgstr "CAE"
+
+#. module: datalogic_connector
+#: model:ir.ui.view,arch_db:datalogic_connector.view_company_form
+msgid "Certificados Digitales DGI"
+msgstr "Certificados Digitales DGI"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_res_company_empcod
+msgid "Codigo"
+msgstr "Codigo"
+
+#. module: datalogic_connector
+#: model:ir.model,name:datalogic_connector.model_res_company
+msgid "Companies"
+msgstr "Compañías"
+
+#. module: datalogic_connector
+#: model:ir.ui.view,arch_db:datalogic_connector.view_account_form_report_concepts
+msgid "Comprobante"
+msgstr "Comprobante"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_comprobantecfe
+msgid "Comprobantecfe"
+msgstr "Comprobantecfe"
+
+#. module: datalogic_connector
+#: model:ir.ui.view,arch_db:datalogic_connector.view_account_form_report_concepts
+msgid "DGI"
+msgstr "DGI"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_descargar
+msgid "Descargar"
+msgstr "Descargar"
+
+#. module: datalogic_connector
+#: model:ir.ui.view,arch_db:datalogic_connector.view_account_form_report_concepts
+msgid "Descargar Factura"
+msgstr "Descargar Factura"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_description_dgi
+msgid "Description Dgi"
+msgstr "Description Dgi"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_error_dgi
+msgid "Error Dgi"
+msgstr "Error Dgi"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_estado
+msgid "Estado"
+msgstr "Estado"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_FchVenc
+msgid "Fchvenc"
+msgstr "Fchvenc"
+
+#. module: datalogic_connector
+#: model:ir.ui.view,arch_db:datalogic_connector.view_account_form_report_concepts
+msgid "Fecha de vencimiento de la Autorización"
+msgstr "Fecha de vencimiento de la Autorización"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_file_name
+msgid "File Name"
+msgstr "Nombre del archivo"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_hashcfe
+msgid "Hashcfe"
+msgstr "Hashcfe"
+
+#. module: datalogic_connector
+#: model:ir.ui.view,arch_db:datalogic_connector.view_account_form_report_concepts
+msgid "Hashcode"
+msgstr "Hashcode"
+
+#. module: datalogic_connector
+#: model:ir.model,name:datalogic_connector.model_account_invoice
+msgid "Invoice"
+msgstr "Factura"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_nrocae
+msgid "Nrocae"
+msgstr "Nrocae"
+
+#. module: datalogic_connector
+#: model:res.partner.id_category,name:datalogic_connector.uy_nie
+msgid "Número de identificación fiscal"
+msgstr "Número de identificación fiscal"
+
+#. module: datalogic_connector
+#: model:res.partner.id_category,name:datalogic_connector.uy_nife
+msgid "Número de identificación fiscal extranjero"
+msgstr "Número de identificación fiscal extranjero"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_origin_date
+msgid "Origin Date"
+msgstr "Origin Date"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_origin_ref
+msgid "Origin Ref"
+msgstr "Origin Ref"
+
+#. module: datalogic_connector
+#: model:res.partner.id_category,name:datalogic_connector.uy_other
+msgid "Otros"
+msgstr "Otros"
+
+#. module: datalogic_connector
+#: model:res.partner.id_category,name:datalogic_connector.uy_ruc
+msgid "Registro Único Tributario"
+msgstr "Registro Único Tributario"
+
+#. module: datalogic_connector
+#: model:ir.ui.view,arch_db:datalogic_connector.view_account_form_report_concepts
+msgid "Resultado"
+msgstr "Resultado"
+
+#. module: datalogic_connector
+#: model:ir.ui.view,arch_db:datalogic_connector.view_account_form_report_concepts
+msgid "Send DGI"
+msgstr "Enviar y Publicar DGI"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_serie_cfe
+msgid "Serie Cfe"
+msgstr "Serie Cfe"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_show_estado
+msgid "Show Estado"
+msgstr "Show Estado"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_tpo_cfe
+msgid "Tpo Cfe"
+msgstr "Tpo Cfe"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_txt_rquest
+msgid "Txt Rquest"
+msgstr "Txt Rquest"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_account_invoice_txt_send
+msgid "Txt Send"
+msgstr "Txt Send"
+
+#. module: datalogic_connector
+#: model:ir.model.fields,field_description:datalogic_connector.field_res_company_url_key
+msgid "Url Privada"
+msgstr "Url Privada"
+
+#. module: datalogic_connector
+#: model:ir.ui.view,arch_db:datalogic_connector.view_account_form_report_concepts
+msgid "XML enviado"
+msgstr "XML enviado"
+
+#. module: datalogic_connector
+#: model:ir.ui.view,arch_db:datalogic_connector.view_account_form_report_concepts
+msgid "XML resibido"
+msgstr "XML resibido"
+
