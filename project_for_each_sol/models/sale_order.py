@@ -8,9 +8,7 @@ class SaleOrder(models.Model):
 
     def action_confirm(self):
         for rec in self:
-
             for line in rec.order_line:
-
                 line._create_project_for_each()
                 line._set_next_number()
         return super(SaleOrder, self).action_confirm()
