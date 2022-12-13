@@ -8,9 +8,13 @@ class SaleOrder(models.Model):
 
     def action_confirm(self):
         for rec in self:
-            for line in rec.order_line:
-                line._create_project_for_each()
-                line._set_next_number()
+            if not rec.project_id:
+                for line in rec.order_line:
+                    if len(self.company_id) == 1:
+                        line._create_project_for_each(line, rec.company_id)
+                    else:
+                        line._create_project_for_each(line, line.line.company_id)
+                    line._set_next_number()
         return super(SaleOrder, self).action_confirm()
 
 class SaleOrderLine(models.Model):
@@ -21,24 +25,28 @@ class SaleOrderLine(models.Model):
         res = super(SaleOrderLine, self).create(values)
         for line in res:
             if line.state == 'sale' and line.is_service:
-                line._create_project_for_each(line.company_id)
+                if len(self.company_id) == 1:
+                    self._create_project_for_each(line, res.company_id)
+                else:
+                    self._create_project_for_each(line, line.company_id)
+                line._set_next_number()
         return res
 
-    def _create_project_for_each(line):
+    def _create_project_for_each(self, line, id_company):
         try:
             if line.product_id.service_tracking == 'task_in_project' and line.is_service:
                 if not line.project_id:
-                    project = line.sudo()._timesheet_create_project()
+                    project = line.sudo().with_company(id_company)._timesheet_create_project()
                     project.write(
                         {
                         'name': line._get_sequence_name(project.partner_id.id),
                         }
                     )
                     if not line.task_id:
-                        line.sudo()._timesheet_create_task(project)
+                        line.sudo().with_company(id_company)._timesheet_create_task(project)
             elif line.product_id.service_tracking == 'project_only' and line.is_service:
                 if not line.project_id:
-                    project = line.sudo()._timesheet_create_project()
+                    project = line.sudo().with_company(id_company)._timesheet_create_project()
         except Exception as e:
             raise Exception(_('Failed to create project (ERROR: {})').format(e))
 
