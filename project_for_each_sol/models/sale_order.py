@@ -10,10 +10,10 @@ class SaleOrder(models.Model):
         for rec in self:
             if not rec.project_id:
                 for line in rec.order_line:
-                    if len(self.company_id) == 1:
+                    if len(rec.company_id) == 1:
                         line._create_project_for_each(line, rec.company_id)
                     else:
-                        line._create_project_for_each(line, line.line.company_id)
+                        line._create_project_for_each(line, line.company_id)
                     line._set_next_number()
         return super(SaleOrder, self).action_confirm()
 
@@ -25,8 +25,8 @@ class SaleOrderLine(models.Model):
         res = super(SaleOrderLine, self).create(values)
         for line in res:
             if line.state == 'sale' and line.is_service:
-                if len(self.company_id) == 1:
-                    self._create_project_for_each(line, res.company_id)
+                if len(line.order_id.company_id) == 1:
+                    self._create_project_for_each(line, line.order_id.company_id)
                 else:
                     self._create_project_for_each(line, line.company_id)
                 line._set_next_number()
