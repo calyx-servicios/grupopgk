@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="0">
+    <!-- Sequence for sale project -->
+    <record id="seq_project" model="ir.sequence">
+        <field name="name">Project</field>
+        <field name="code">sale_project</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False" />
+    </record>
+</odoo>
