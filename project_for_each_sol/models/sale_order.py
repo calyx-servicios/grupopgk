@@ -32,27 +32,42 @@ class SaleOrderLine(models.Model):
                 line._set_next_number()
         return res
 
+    def _timesheet_create_project_prepare_values(self):
+        res = super(SaleOrderLine, self)._timesheet_create_project_prepare_values()
+        if not self.project_id:
+            res['name'] = self._get_sequence_name()
+
+        res['analytic_account_id'] = self.order_id._create_analytic_account(prefix=None)
+        return res
+    
+    def _timesheet_create_task_prepare_values(self, project):
+        res = super(SaleOrderLine, self)._timesheet_create_task_prepare_values(project)
+        if project.analytic_account_id:
+            res['analytic_account_id'] = project.analytic_account_id.id
+        return res
+
     def _create_project_for_each(self, line, id_company):
         try:
+            project = None
             if line.product_id.service_tracking == 'task_in_project' and line.is_service:
                 if not line.project_id:
                     project = line.sudo().with_company(id_company)._timesheet_create_project()
-                    project.write(
-                        {
-                        'name': line._get_sequence_name(project.partner_id.id),
-                        }
-                    )
                     if not line.task_id:
                         line.sudo().with_company(id_company)._timesheet_create_task(project)
             elif line.product_id.service_tracking == 'project_only' and line.is_service:
                 if not line.project_id:
                     project = line.sudo().with_company(id_company)._timesheet_create_project()
+
+            if not self.analytic_account_id:
+                line.write({
+                    'analytic_account_id': project.analytic_account_id.id,
+                })
         except Exception as e:
             raise Exception(_('Failed to create project (ERROR: {})').format(e))
 
-    def _get_sequence_name(self, id_partner):
+    def _get_sequence_name(self):
         seq_obj = self.env.ref('project_for_each_sol.seq_project')
-        seq_name = '{}-{}-{}'.format(datetime.now().year, id_partner, seq_obj.get_next_char(seq_obj.number_next))
+        seq_name = '{}-{}-{}'.format(datetime.now().year, self.order_id.partner_id.id, seq_obj.get_next_char(seq_obj.number_next))
         return seq_name
 
     def _set_next_number(self):

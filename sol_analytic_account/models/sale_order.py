@@ -1,5 +1,16 @@
 from odoo import api, fields, models
 
+class SaleOrder(models.Model):
+    _inherit = "sale.order"
+
+    def _prepare_analytic_account_data(self, prefix=None):
+        res =  super(SaleOrder, self)._prepare_analytic_account_data(prefix=None)
+
+        if len(self.order_line) > 1:
+            for line in self.order_line:
+                res['name'] = '{}'.format(line._get_sequence_name())
+        return res
+
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
 
