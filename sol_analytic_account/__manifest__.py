@@ -15,6 +15,7 @@
     "depends": [
         "sale_management",
         "project",
+        "sale_project",
     ],
     "data": [
         "views/sale_order.xml",
