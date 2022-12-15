@@ -38,7 +38,6 @@ class SaleOrderLine(models.Model):
             res['name'] = self._get_sequence_name()
 
         res['analytic_account_id'] = self.order_id._create_analytic_account(prefix=None)
-        _logger.info(f'DATA RES: {res}')
         return res
     
     def _timesheet_create_task_prepare_values(self, project):
