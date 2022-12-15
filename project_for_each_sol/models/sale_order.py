@@ -62,6 +62,10 @@ class SaleOrderLine(models.Model):
                 line.write({
                     'analytic_account_id': project.analytic_account_id.id,
                 })
+            else:
+                project.analytic_account_id.write({
+                    'parent_id': self.analytic_account_id.id,
+                })
         except Exception as e:
             raise Exception(_('Failed to create project (ERROR: {})').format(e))
 

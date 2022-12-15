@@ -17,10 +17,10 @@
         "project",
         "sale_project",
         "sol_analytic_account",
+        "account_analytic_parent",
     ],
     "data": [
         "views/sale_order.xml",
         "data/ir_sequence.xml",
     ],
-
 }
