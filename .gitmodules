@@ -18,6 +18,10 @@
 	path = submodules/calyx-servicios/account-analytic
 	url = https://github.com/calyx-servicios/account-analytic.git
 	branch = 15.0_test
+[submodule "submodules/calyx-servicios/third-party-paid"]
+	path = submodules/calyx-servicios/third-party-paid
+	url = https://github.com/calyx-servicios/third-party-paid.git
+	branch = 15.0
 [submodule "submodules/OCA/partner-contact"]
 	path = submodules/OCA/partner-contact
 	url = https://github.com/OCA/partner-contact.git
