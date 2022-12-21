@@ -2,6 +2,10 @@
 	path = submodules/calyx-servicios/account-analytic
 	url = https://github.com/calyx-servicios/account-analytic.git
 	branch = 15.0_staging
+[submodule "submodules/calyx-servicios/third-party-paid"]
+	path = submodules/calyx-servicios/third-party-paid
+	url = https://github.com/calyx-servicios/third-party-paid.git
+	branch = 15.0
 [submodule "submodules/CybroOdoo/CybroAddons"]
 	path = submodules/CybroOdoo/CybroAddons
 	url = https://github.com/CybroOdoo/CybroAddons.git
