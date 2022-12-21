@@ -8,8 +8,8 @@ import re
 from odoo.exceptions import Warning, UserError
 import base64, os
 
-class AccountInvice(models.Model):
-    _inherit = "account.invoice"
+class AccountMove(models.Model):
+    _inherit = "account.move"
 
     serie_cfe = fields.Char(copy=False)
     descargar = fields.Binary(copy=False)
