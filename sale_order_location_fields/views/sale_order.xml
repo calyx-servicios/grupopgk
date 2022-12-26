@@ -6,17 +6,13 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//page[@name='other_information']//field[@name='company_id']" position="replace"/>
-            <xpath expr="//page[@name='other_information']//field[@name='analytic_account_id']" position="replace"/>
-            <xpath expr="//page[@name='other_information']//field[@name='project_id']" position="replace"/>
             <xpath expr="//field[@name='partner_shipping_id']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
             <xpath expr="//field[@name='partner_invoice_id']" position="after">
-                <field name="company_id" options="{'no_create': True}" groups="base.group_multi_company"/>
-                <field name="analytic_account_id" context="{'default_partner_id':partner_invoice_id, 'default_name':name}" attrs="{'readonly': [('invoice_count','!=',0),('state','=','sale')]}" groups="analytic.group_analytic_accounting" force_save="1"/>
-                <field name="project_id" options="{'no_create': True}" attrs="{'invisible': [('visible_project', '=', False)]}"/>
-                <field name="partner_shipping_id" groups="sale.group_delivery_invoice_address" context="{'default_type':'delivery'}" options="{&quot;always_reload&quot;: True}" attrs="{'invisible': True}"/>
+                <xpath expr="//page[@name='other_information']//field[@name='company_id']" position="move"/>
+                <xpath expr="//page[@name='other_information']//field[@name='analytic_account_id']" position="move"/>
+                <xpath expr="//page[@name='other_information']//field[@name='project_id']" position="move"/>
             </xpath>
         </field>
     </record>
