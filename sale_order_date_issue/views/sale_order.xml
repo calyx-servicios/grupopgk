@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_sale_order_inherit_date_issue" model="ir.ui.view">
+        <field name="name">Sale Order date of issue inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='date_order']" position="after">
+                <field name="date_of_issue" />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_sale_order_tree_inherit_date_issue" model="ir.ui.view">
+        <field name="name">Sale Order date of issue inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='date_order']" position="after">
+                <field name="date_of_issue" />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_sale_order_quotation_tree_inherit_date_issue" model="ir.ui.view">
+        <field name="name">Sale Order date of issue inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_quotation_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='create_date']" position="after">
+                <field name="date_of_issue" />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_search_sale_order_quotation_date_issue" model="ir.ui.view">
+        <field name="name">search_sale_order_quotation_date_issue</field>
+        <field name="model">sale.order</field>
+        <field name="type">search</field>
+        <field name="inherit_id" ref="sale.sale_order_view_search_inherit_quotation"/>
+        <field name="arch" type="xml">
+            <filter name="filter_create_date" position="after">
+                <filter string="Date of issue" name="filter_date_issue" date="date_of_issue"/>
+            </filter>
+            <filter name="order_month" position="after">
+                <filter string="Order of issue" name="group_date_issue" domain="[]" context="{'group_by': 'date_of_issue'}"/>
+            </filter>
+        </field>
+    </record>
+
+        <record id="view_search_sale_order_date_issue" model="ir.ui.view">
+        <field name="name">search_sale_order_date_issue</field>
+        <field name="model">sale.order</field>
+        <field name="type">search</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <filter name="my_sale_orders_filter" position="after">
+                <filter string="Date of issue" name="filter_date_issue" date="date_of_issue"/>
+            </filter>
+            <filter name="order_month" position="after">
+                <filter string="Order of issue" name="group_date_issue" domain="[]" context="{'group_by': 'date_of_issue'}"/>
+            </filter>
+        </field>
+    </record>
+
+</odoo>
