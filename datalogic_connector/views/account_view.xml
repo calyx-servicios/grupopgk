@@ -9,7 +9,7 @@
                 <attribute name="attrs">{'invisible': ['|',('state', '!=', 'draft'),('l10n_latam_country_code', '=', 'UY')]}</attribute>
             </xpath> -->
             <xpath expr="//button[@name='action_invoice_sent']" position='after'>
-                <button name="send_dgi" string="Send DGI" class="oe_highlight" type="object" attrs="{'invisible': ['|',  '|', ('state', '!=', 'draft'), ('type', 'not in', ('out_invoice', 'out_refund')), ('descargar','!=',False)]}"/>
+                <button name="send_dgi" string="Send DGI" class="oe_highlight" type="object" attrs="{'invisible': ['|',  '|', ('state', '!=', 'draft'), ('move_type', 'not in', ('out_invoice', 'out_refund')), ('descargar','!=',False)]}"/>
             </xpath>
             <xpath expr="//page[@name='other_info']" position='after'>
                 <page id="dgi_info" string="DGI" name="DGI">
