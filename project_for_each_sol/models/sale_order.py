@@ -54,20 +54,22 @@ class SaleOrderLine(models.Model):
                     project = line.sudo().with_company(id_company)._timesheet_create_project()
                     if not line.task_id:
                         line.sudo().with_company(id_company)._timesheet_create_task(project)
+                    if project:
+                        self.update_analytic_account_project(project)
             elif line.product_id.service_tracking == 'project_only' and line.is_service:
                 if not line.project_id:
                     project = line.sudo().with_company(id_company)._timesheet_create_project()
-
-            if not self.analytic_account_id:
-                line.write({
-                    'analytic_account_id': project.analytic_account_id.id,
-                })
-            else:
-                project.analytic_account_id.write({
-                    'parent_id': self.analytic_account_id.id,
-                })
+                    if project:
+                        self.update_analytic_account_project(project)
         except Exception as e:
             raise Exception(_('Failed to create project (ERROR: {})').format(e))
+    
+    def update_analytic_account_project(self, obj):
+        if self.analytic_account_id:
+            obj.analytic_account_id.write({
+                'parent_id': self.analytic_account_id.id,
+                'group_id': self.analytic_account_id.group_id,
+            })
 
     def _get_sequence_name(self):
         seq_obj = self.env.ref('project_for_each_sol.seq_project')
