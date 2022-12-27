@@ -1,21 +1,11 @@
 from odoo import api, fields, models
 
-class SaleOrder(models.Model):
-    _inherit = "sale.order"
-
-    def _prepare_analytic_account_data(self, prefix=None):
-        res =  super(SaleOrder, self)._prepare_analytic_account_data(prefix=None)
-
-        if len(self.order_line) > 1:
-            for line in self.order_line:
-                res['name'] = '{}'.format(line._get_sequence_name())
-        return res
 
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
 
     analytic_account_id = fields.Many2one('account.analytic.account', string='Analytic Account',
-        index=True, store=True, compute='_compute_analytic_account_id', readonly=False, check_company=True, copy=True, required=True)
+        index=True, store=True, compute='_compute_analytic_account_id', readonly=False, check_company=False, copy=True, required=True)
 
     @api.depends('product_id', 'order_id.date_order', 'order_id.partner_id')
     def _compute_analytic_account_id(self):
