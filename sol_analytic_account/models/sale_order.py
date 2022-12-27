@@ -15,7 +15,7 @@ class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
 
     analytic_account_id = fields.Many2one('account.analytic.account', string='Analytic Account',
-        index=True, store=True, compute='_compute_analytic_account_id', readonly=False, check_company=True, copy=True, required=True)
+        index=True, store=True, compute='_compute_analytic_account_id', readonly=False, check_company=False, copy=True, required=True)
 
     @api.depends('product_id', 'order_id.date_order', 'order_id.partner_id')
     def _compute_analytic_account_id(self):
@@ -26,7 +26,7 @@ class SaleOrderLine(models.Model):
                     partner_id=line.order_id.partner_id.id,
                     user_id=self.env.uid,
                     date=line.order_id.date_order,
-                    company_id=line.company_id.id,
+                    company_id=line.company_id.ids,
                 )
                 line.analytic_account_id = default_analytic_account.analytic_id
 
