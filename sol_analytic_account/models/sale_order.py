@@ -26,7 +26,7 @@ class SaleOrderLine(models.Model):
                     partner_id=line.order_id.partner_id.id,
                     user_id=self.env.uid,
                     date=line.order_id.date_order,
-                    company_id=line.company_id.ids,
+                    company_id=line.company_id.id,
                 )
                 line.analytic_account_id = default_analytic_account.analytic_id
 
