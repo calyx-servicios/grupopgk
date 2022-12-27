@@ -12,7 +12,7 @@
     "application": False,
     "installable": True,
     "depends": [
-        'account','base'
+        'account','base','l10n_latam_base'
     ],
     "data": [
         "views/account_view.xml",
