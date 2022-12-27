@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
 <data noupdate="1">
-    <record model='l10n_latam.identification.type' id='uy_ruc'>
+    <record model='l10n_latam_base.identification.type' id='uy_ruc'>
         <field name='name'>RUC</field>
         <field name='description'>Registro Único Tributario</field>
         <field name='active' eval="True"/>
     </record>
-    <record model='l10n_latam.identification.type' id='uy_nie'>
+    <record model='l10n_latam_base.identification.type' id='uy_nie'>
         <field name='name'>NIE</field>
         <field name='description'>Número de identificación fiscal</field>
         <field name='active' eval="True"/>
     </record>
-    <record model='l10n_latam.identification.type' id='uy_other'>
+    <record model='l10n_latam_base.identification.type' id='uy_other'>
         <field name='name'>Otros</field>
         <field name='description'>Otros</field>
         <field name='active' eval="True"/>
     </record>
-    <record model='l10n_latam.identification.type' id='uy_nife'>
+    <record model='l10n_latam_base.identification.type' id='uy_nife'>
         <field name='name'>NIFE</field>
         <field name='description'>Número de identificación fiscal extranjero</field>
         <field name='active' eval="True"/>
