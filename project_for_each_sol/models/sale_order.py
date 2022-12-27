@@ -11,9 +11,9 @@ class SaleOrder(models.Model):
             if not rec.project_id:
                 for line in rec.order_line:
                     if len(rec.company_id) == 1:
-                        line.sudo().with_company(self.company_id)._create_project_for_each(line)
-                    else:
                         line.sudo().with_company(rec.company_id)._create_project_for_each(line)
+                    else:
+                        line.sudo().with_company(line.company_id)._create_project_for_each(line)
                     line._set_next_number()
         return super(SaleOrder, self).action_confirm()
 
@@ -117,7 +117,6 @@ class SaleOrderLine(models.Model):
                 if not line.order_id.project_id:
                     project = line.sudo().create_project()
                     self.update_analytic_account_project(project)
-
 
         except Exception as e:
             raise Exception(_('Failed to create project (ERROR: {})').format(e))
