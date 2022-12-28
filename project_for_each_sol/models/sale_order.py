@@ -32,12 +32,14 @@ class SaleOrderLine(models.Model):
                 line._set_next_number()
         return res
 
-    def analytic_values(self):
+    def analytic_values(self):            
         return {
             'name': '{}'.format(self._get_sequence_name()),
             'code': self.order_id.client_order_ref,
-            'company_id': [(4, self.company_id.id)],
+            'company_id': [(6, 0, self.analytic_account_id.company_id.ids)],
             'partner_id': self.order_id.partner_id.id,
+            'parent_id': self.analytic_account_id.id,
+            'group_id': self.analytic_account_id.group_id.id,
         }
 
     def _project_values(self):
@@ -51,7 +53,7 @@ class SaleOrderLine(models.Model):
             'partner_id': self.order_id.partner_id.id,
             'sale_line_id': self.id,
             'active': True,
-            'company_id': self.company_id.id,
+            'company_id': self.env.company.id,
         }
 
     def create_project(self):
@@ -110,23 +112,18 @@ class SaleOrderLine(models.Model):
             if line.product_id.service_tracking == 'task_in_project' and line.is_service:
                 if not line.order_id.project_id:
                     project = line.sudo().create_project()
+                    if project.analytic_account_id:
+                        self.analytic_account_id = project.analytic_account_id.id
                     if not line.task_id:
                         line.sudo()._create_task(project)
-                    self.update_analytic_account_project(project)
             elif line.product_id.service_tracking == 'project_only' and line.is_service:
                 if not line.order_id.project_id:
                     project = line.sudo().create_project()
-                    self.update_analytic_account_project(project)
+                    if project.analytic_account_id:
+                        self.analytic_account_id = project.analytic_account_id.id
 
         except Exception as e:
             raise Exception(_('Failed to create project (ERROR: {})').format(e))
-
-    def update_analytic_account_project(self, obj):
-        if self.analytic_account_id:
-            obj.analytic_account_id.write({
-                'parent_id': self.analytic_account_id.id,
-                'group_id': self.analytic_account_id.group_id,
-            })
 
     def _get_sequence_name(self):
         seq_obj = self.env.ref('project_for_each_sol.seq_project')
