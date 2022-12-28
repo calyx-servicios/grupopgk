@@ -362,7 +362,7 @@ class AccountMove(models.Model):
         cfe_type = "111"
         if self.l10n_latam_document_type_id.code in ["111","112","113","121","122","123"]:
             cfe_type = self.l10n_latam_document_type_id.document_type_id.code
-        dni_name = self.partner_id.main_id_category_id.code
+        dni_name = self.partner_id.l10n_latam_identification_type_id.name
         document_dic = {"NIE":"1","RUC":"2","CIe":"3","Otros":"4","Pasaporte":"5","DNI":"6","NIFE":"7"}
         rec_doc = document_dic.get(dni_name,"4")
         BanTpoCFE = doc.createElement("BanTpoCFE")
