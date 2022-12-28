@@ -411,7 +411,7 @@ class AccountMove(models.Model):
         Bandeja.appendChild(BanFchVen)
 # <!-- RUC Emisior [String(12)] -->
         BanRucEmi = doc.createElement("BanRucEmi")
-        text_node = doc.createTextNode(str(self.company_id.main_id_number))
+        text_node = doc.createTextNode(str(self.company_id.l10n_latam_identification_type_id))
         BanRucEmi.appendChild(text_node)
         Bandeja.appendChild(BanRucEmi)
 # <!-- Nombre Emisor [String(150)] -->
@@ -453,7 +453,7 @@ class AccountMove(models.Model):
 # <!-- Código Tipo Documento Receptor. Valores: 2: RUC (Uruguay) 3: C.I. (Uruguay) 4: Otros
 # 5: Pasaporte (todoslos países) 6: DNI (documento de identidad de Argentina, Brasil, Chile o Paraguay)
 # 7: NIFE [Integer] -->
-        if self.partner_id.main_id_number:
+        if self.partner_id.l10n_latam_identification_type_id:
                 BanCodTpoDocRec = doc.createElement("BanCodTpoDocRec")
                 text_node = doc.createTextNode(rec_doc)
                 BanCodTpoDocRec.appendChild(text_node)
@@ -465,15 +465,15 @@ class AccountMove(models.Model):
                 BanCodPaisRec.appendChild(text_node)
                 Bandeja.appendChild(BanCodPaisRec)
 # <!-- Nº Documento Receptor [String(12)] -->
-        if self.partner_id.main_id_number:
+        if self.partner_id.l10n_latam_identification_type_id:
                 if rec_doc in ["1","2","3"]:
                         BanNumDocRec = doc.createElement("BanNumDocRec")
-                        text_node = doc.createTextNode(str(self.partner_id.main_id_number))
+                        text_node = doc.createTextNode(str(self.partner_id.l10n_latam_identification_type_id))
                         BanNumDocRec.appendChild(text_node)
                         Bandeja.appendChild(BanNumDocRec)
                 else:
                         BanNumDocRecExt = doc.createElement("BanNumDocRecExt")
-                        text_node = doc.createTextNode(str(self.partner_id.main_id_number))
+                        text_node = doc.createTextNode(str(self.partner_id.l10n_latam_identification_type_id))
                         BanNumDocRecExt.appendChild(text_node)
                         Bandeja.appendChild(BanNumDocRecExt)   
 # <!-- Nombre del receptor [String(150)] -->
