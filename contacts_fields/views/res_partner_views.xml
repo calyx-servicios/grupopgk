@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="form_add_fields" model="ir.ui.view">
+        <field name="name">res.partner.simplified.form</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <!-- Hide the Odoo Base Res Partner `parent_id` view declaration. -->
+            <!-- The original `parent_id` field has the following attribute: attrs="{'invisible': [('is_company','=', True)]}"
+            And in this case we want to let the user, set a company as a parent even if the current res.partner record is a company -->
+            <field name="parent_id" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <!-- Add custom `parent_id` view declaration -->
+            <xpath expr="//span[@name='address_name']" position="before">
+                <field name="parent_id" string="Parent company"/>
+            </xpath>
+            <!-- Add custom wizard to add children from the parent company -->
+            <xpath expr="//field[@name='child_ids']" position="before">
+                <button name="%(action_add_child_company_wizard)d" type="action" string="Add children company" class="btn btn-secondary oe_edit_only" icon="fa-building" attrs="{'invisible': [('is_company','=', False)]}"/>
+                <separator/>
+                <separator string="Children contacts &amp; companies"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
