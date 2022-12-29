@@ -658,7 +658,7 @@ class AccountMove(models.Model):
            BanTpoCam.appendChild(text_node)
            Bandeja.appendChild(BanTpoCam)
 # <!-- monto sin iva -->
-        if self.l10n_latam_document_type_id.document_type_id.code in ["111","112","113"]:
+        if self.l10n_latam_document_type_id.name in ["111","112","113"]:
                 BanTMonNoGra = doc.createElement("BanTMonNoGra")
                 text_node = doc.createTextNode(str(monto_no_grabado))
                 BanTMonNoGra.appendChild(text_node)
