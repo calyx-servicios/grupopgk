@@ -360,8 +360,8 @@ class AccountMove(models.Model):
         # 122  Nota de Crédito de e-Factura Exportación
         # 123  Nota de Débito de e-Factura Exportación
         cfe_type = "111"
-        if self.l10n_latam_document_type_id.code in ["111","112","113","121","122","123"]:
-            cfe_type = self.l10n_latam_document_type_id.document_type_id.code
+        if self.l10n_latam_document_type_id.name in ["111","112","113","121","122","123"]:
+            cfe_type = self.l10n_latam_document_type_id.name
         dni_name = self.partner_id.l10n_latam_identification_type_id.name
         document_dic = {"NIE":"1","RUC":"2","CIe":"3","Otros":"4","Pasaporte":"5","DNI":"6","NIFE":"7"}
         rec_doc = document_dic.get(dni_name,"4")
@@ -523,7 +523,7 @@ class AccountMove(models.Model):
         BanTasaIVABas.appendChild(text_node)
         Bandeja.appendChild(BanTasaIVABas)
 #<!-- Cláusula de venta (Incoterms: FOB, CIF, etc) [String(3)] -->
-        if self.l10n_latam_document_type_id.document_type_id.code in ["121","122","123"]:
+        if self.l10n_latam_document_type_id.name in ["121","122","123"]:
                 BanClaVen = doc.createElement("BanClaVen")
                 text_node = doc.createTextNode("N/A")
                 BanClaVen.appendChild(text_node)
