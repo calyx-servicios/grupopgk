@@ -58,3 +58,19 @@
 	path = submodules/aeroo/aeroo_reports
 	url = https://github.com/aeroo/aeroo_reports.git
 	branch = 15.0
+[submodule "submodules/OCA/account-analytic"]
+	path = submodules/OCA/account-analytic
+	url = https://github.com/OCA/account-analytic.git
+	branch = 15.0
+[submodule "submodules/OCA/reporting-engine"]
+	path = submodules/OCA/reporting-engine
+	url = https://github.com/OCA/reporting-engine.git
+	branch = 15.0
+[submodule "submodules/OCA/server-ux"]
+	path = submodules/OCA/server-ux
+	url = https://github.com/OCA/server-ux.git
+	branch = 15.0
+[submodule "submodules/OCA/web"]
+	path = submodules/OCA/web
+	url = https://github.com/OCA/web.git
+	branch = 15.0
