@@ -411,7 +411,7 @@ class AccountMove(models.Model):
         Bandeja.appendChild(BanFchVen)
 # <!-- RUC Emisior [String(12)] -->
         BanRucEmi = doc.createElement("BanRucEmi")
-        text_node = doc.createTextNode(str(self.company_id.l10n_latam_identification_type_id))
+        text_node = doc.createTextNode(str(self.company_id.vat))
         BanRucEmi.appendChild(text_node)
         Bandeja.appendChild(BanRucEmi)
 # <!-- Nombre Emisor [String(150)] -->
@@ -492,7 +492,7 @@ class AccountMove(models.Model):
         if self.partner_id.country_id.code:
                 if self.partner_id.country_id.code == "MX":
                         BanCiuRec = doc.createElement("BanCiuRec")
-                        text_node = doc.createTextNode(str(self.partner_id.city_id.name))
+                        text_node = doc.createTextNode(str(self.partner_id.city.name))
                         BanCiuRec.appendChild(text_node)
                         Bandeja.appendChild(BanCiuRec)
                 else:
@@ -560,19 +560,20 @@ class AccountMove(models.Model):
 # 9: Solo para resguardos: Ítem a ajustar en resguardos. En área dereferencia se debe indicar el N° de resguardo que ajusta
 # 10: Exportación y asimiladas 11: Impuesto percibido 12:IVA en suspenso [Integer] VALORES PLIS-->
             ind_fact = "1"
-            if line.invoice_line_tax_ids.name == "IVA Ventas (22%)":
-                ind_fact = "3"
-                monto_iva_base += line.price_subtotal
-                price_unit = line.price_unit * 1.22
-            if line.invoice_line_tax_ids.name == "IVA Ventas (10%)":
-                ind_fact = "2"
-                monto_iva_min += line.price_subtotal
-                price_unit = line.price_unit * 1.10
-            if ind_fact == "1":
-                price_unit = line.price_unit
-                monto_no_grabado += line.price_subtotal
-                if self.l10n_latam_document_type_id.document_type_id.code not in ["111","112","113"]:
-                        ind_fact = "10"
+            for tax in line.tax_ids:
+                if tax.name == "IVA Ventas (22%)":
+                    ind_fact = "3"
+                    monto_iva_base += line.price_subtotal
+                    price_unit = line.price_unit * 1.22
+                if tax.name == "IVA Ventas (10%)":
+                    ind_fact = "2"
+                    monto_iva_min += line.price_subtotal
+                    price_unit = line.price_unit * 1.10
+                if ind_fact == "1":
+                    price_unit = line.price_unit
+                    monto_no_grabado += line.price_subtotal
+                    if self.l10n_latam_document_type_id.name not in ["111","112","113"]:
+                            ind_fact = "10"
 
             IndFac = doc.createElement("IndFac")
             text_node = doc.createTextNode(ind_fact)
@@ -729,7 +730,7 @@ class AccountMove(models.Model):
                 BanInfRefItem = doc.createElement("BanInfRefItem")
                 BanInfRef.appendChild(BanInfRefItem)
                 if self.origin:
-                        invoices = self.env['account.invoice'].search([('display_name','=',self.origin)])
+                        invoices = self.env['account.move'].search([('display_name','=',self.origin)])
                         ref_count = 1
                         for invoice in invoices:
                                 InfRefNum = doc.createElement("InfRefNum")
