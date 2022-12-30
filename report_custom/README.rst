@@ -1,10 +1,10 @@
-==============
-Partner fields
-==============
+==================
+Report Sale Custom 
+==================
 
 .. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !! This module adds the partner field in          !! 
-   !! different views.                               !!
+   !! This file is intended to be in every module    !!
+   !! to explain why and how it works.               !!
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -21,20 +21,8 @@ Partner fields
 
 |badge1| |badge2| |badge3|
 
-    This module adds the partner field in different views.
 
-Install
-=======
-
-* Go to applications
-
-* Find module "res_users_partner_fields" > Press Install
-
-* Go to Users> and enable the users with the new field to filter in other views.
-* Go to Sale Order > and see the new field and filters.
-* Go to Project> and see the new field and filters.
-* Go to Employee > and see the new field and filters.
-
+    This file is intended to be in every module to explain why and how it works.
 
 Known issues / Roadmap
 ======================
@@ -44,7 +32,7 @@ Known issues / Roadmap
 Bug Tracker
 ===========
 
-* Contact to the development team
+* Help Contact
 
 Credits
 =======
@@ -57,10 +45,11 @@ Authors
 Contributors
 ~~~~~~~~~~~~
 
-* `Calyx Servicios S.A. <https://odoo.calyx-cloud.com.ar/>`_
-
-  * Zamora, Javier
+* `Calyx Servicios S.A. <http://www.calyxservicios.com.ar/>`_
   
+  * Andres Andrade
+  * Georgina Guzman
+
 Maintainers
 ~~~~~~~~~~~
 
