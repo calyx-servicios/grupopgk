@@ -32,11 +32,15 @@ class SaleOrderLine(models.Model):
                 line._set_next_number()
         return res
 
-    def analytic_values(self):            
+    def analytic_values(self): 
+        if len(self.analytic_account_id.company_id) > 1:
+            company_val = [(6, 0, self.analytic_account_id.company_id.ids)]         
+        else:
+            company_val = self.analytic_account_id.company_id.id
         return {
             'name': '{}'.format(self._get_sequence_name()),
             'code': self.order_id.client_order_ref,
-            'company_id': [(6, 0, self.analytic_account_id.company_id.ids)],
+            'company_id': company_val,
             'partner_id': self.order_id.partner_id.id,
             'parent_id': self.analytic_account_id.id,
             'group_id': self.analytic_account_id.group_id.id,
