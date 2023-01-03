@@ -1,4 +1,4 @@
-from odoo import fields, api, models
+from odoo import models
 import base64
 
 
