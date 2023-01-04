@@ -23,5 +23,5 @@ class SaleOrderLine(models.Model):
     def _prepare_invoice_line(self, **optional_values):
         res = super(SaleOrderLine, self)._prepare_invoice_line(**optional_values)
         if self.analytic_account_id:
-            res['analytic_account_id'] = self.analytic_account_id
+            res['analytic_account_id'] = self.analytic_account_id.id
         return res
