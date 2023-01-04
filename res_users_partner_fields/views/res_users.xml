@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="ir.ui.view" id="view_res_users_is_partner">
+        <field name="name">Res User Is Partner</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <xpath expr="//div/group" position="after">
+                <group col="4">
+                    <field name="is_partner"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
