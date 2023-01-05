@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="add_child_company_wizard" model="ir.ui.view">
+        <field name="name">Add Child Company Wizard</field>
+        <field name="model">add.child.company.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Add Child Company">
+                <group>
+                    <field name="company_id" string="Child company"/>
+                </group>
+                <footer>
+                    <button name="confirm_child_company" type="object" string="Confirm" class="oe_highlight"/>
+                    <button special="cancel" string="Exit"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <act_window id="action_add_child_company_wizard" name="Add child company" 
+    	res_model="add.child.company.wizard" view_mode="form" target="new"/>
+</odoo> 

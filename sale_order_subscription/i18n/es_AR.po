@@ -1,0 +1,82 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* sale_order_subscription
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-12-26 05:41+0000\n"
+"PO-Revision-Date: 2022-12-26 05:41+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: sale_order_subscription
+#: model_terms:ir.ui.view,arch_db:sale_order_subscription.view_sale_order_project_inherit_button_subscription
+msgid ""
+"<span class=\"o_stat_text\">\n"
+"                            Subscriptions\n"
+"                        </span>"
+msgstr ""
+"<span class=\"o_stat_text\">\n"
+"                            Suscripciones\n"
+"                        </span>"
+
+#. module: sale_order_subscription
+#: model:ir.model.fields,field_description:sale_order_subscription.field_subscription_package_product_line__analytic_account_id
+msgid "Analytic Account"
+msgstr "Cuenta Analítica"
+
+#. module: sale_order_subscription
+#: code:addons/sale_order_subscription/models/sale_order.py:0
+#, python-format
+msgid ""
+"Created with the product: (%s) a new subscription <a href=# data-oe-"
+"model=subscription.package data-oe-id=%d>%s</a>"
+msgstr ""
+"Creado con el producto: (%s) una nueva suscripción <a href=# data-oe-"
+"model=subscription.package data-oe-id=%d>%s</a>"
+
+#. module: sale_order_subscription
+#: code:addons/sale_order_subscription/models/sale_order.py:0
+#, python-format
+msgid ""
+"New line Product (%s): <a href=# data-oe-model=subscription.package data-oe-"
+"id=%d>%s</a>"
+msgstr ""
+"Nueva linea con el producto (%s): <a href=# data-oe-model=subscription.package data-oe-"
+"id=%d>%s</a>"
+
+#. module: sale_order_subscription
+#: model:ir.model,name:sale_order_subscription.model_sale_order
+msgid "Sales Order"
+msgstr "Pedido de venta"
+
+#. module: sale_order_subscription
+#: model:ir.model,name:sale_order_subscription.model_sale_order_line
+msgid "Sales Order Line"
+msgstr "Línea de pedido de venta"
+
+#. module: sale_order_subscription
+#: code:addons/sale_order_subscription/models/sale_order.py:0
+#, python-format
+msgid ""
+"Subscription Created (%s): <a href=# data-oe-model=subscription.package "
+"data-oe-id=%d>%s</a>"
+msgstr ""
+"Suscripción creada (%s): <a href=# data-oe-model=subscription.package "
+"data-oe-id=%d>%s</a>"
+
+#. module: sale_order_subscription
+#: model:ir.model,name:sale_order_subscription.model_subscription_package_product_line
+msgid "Subscription Product Lines"
+msgstr "Líneas de productos de suscripción"
+
+#. module: sale_order_subscription
+#: model:ir.model.fields,field_description:sale_order_subscription.field_sale_order__subscription_count
+msgid "Subscriptions"
+msgstr "Suscripciones"

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_order_inherit_acc_analytic" model="ir.ui.view">
+        <field name="name">Sale order inherti view acc analytic</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='analytic_tag_ids']" position="before">
+                <field name="analytic_account_id" domain="['|', ('company_id', '=', False), ('company_id', '=', parent.company_id)]" groups="analytic.group_analytic_accounting" optional="show" />
+            </xpath>
+        </field>
+    </record>
+</odoo>
