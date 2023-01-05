@@ -1,0 +1,42 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* project_for_each_sol
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-12-07 20:42+0000\n"
+"PO-Revision-Date: 2022-12-07 20:42+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: project_for_each_sol
+#: code:addons/project_for_each_sol/models/sale_order.py:0
+#, python-format
+msgid "Failed to create project (ERROR: {})"
+msgstr "No se pudo crear el proyecto (ERROR: {})"
+
+#. module: project_for_each_sol
+#: model:ir.model.fields,field_description:project_for_each_sol.field_sale_order__project_ids
+msgid "Projects"
+msgstr "Proyectos"
+
+#. module: project_for_each_sol
+#: model:ir.model.fields,help:project_for_each_sol.field_sale_order__project_ids
+msgid "Projects used in this sales order."
+msgstr "Proyectos empleados en este pedido de venta."
+
+#. module: project_for_each_sol
+#: model:ir.model,name:project_for_each_sol.model_sale_order
+msgid "Sales Order"
+msgstr "Pedido de venta"
+
+#. module: project_for_each_sol
+#: model:ir.model,name:project_for_each_sol.model_sale_order_line
+msgid "Sales Order Line"
+msgstr "Línea de pedido de venta"
