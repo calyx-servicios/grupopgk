@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_account_form_report_concepts" model="ir.ui.view">
-        <field name="name">account.invoice.form</field>
-        <field name="model">account.invoice</field>
-        <field name="inherit_id" ref="account.invoice_form"/>
+        <field name="name">account.move.form</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
             <!-- <xpath expr="//button[@name='action_invoice_open']" position="attributes">
                 <attribute name="attrs">{'invisible': ['|',('state', '!=', 'draft'),('l10n_latam_country_code', '=', 'UY')]}</attribute>
             </xpath> -->
-            <xpath expr="//button[@name='action_invoice_open']" position='after'>
-                <button name="send_dgi" string="Send DGI" class="oe_highlight" type="object" attrs="{'invisible': ['|',  '|', ('state', '!=', 'draft'), ('type', 'not in', ('out_invoice', 'out_refund')), ('descargar','!=',False)]}"/>
+            <xpath expr="//button[@name='action_invoice_sent']" position='after'>
+                <button name="send_dgi" string="Send DGI" class="oe_highlight" type="object" attrs="{'invisible': ['|',  '|', ('state', '!=', 'draft'), ('move_type', 'not in', ('out_invoice', 'out_refund')), ('descargar','!=',False)]}"/>
             </xpath>
             <xpath expr="//page[@name='other_info']" position='after'>
                 <page id="dgi_info" string="DGI" name="DGI">

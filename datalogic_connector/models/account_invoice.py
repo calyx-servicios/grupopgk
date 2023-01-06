@@ -8,8 +8,8 @@ import re
 from odoo.exceptions import Warning, UserError
 import base64, os
 
-class AccountInvice(models.Model):
-    _inherit = "account.invoice"
+class AccountMove(models.Model):
+    _inherit = "account.move"
 
     serie_cfe = fields.Char(copy=False)
     descargar = fields.Binary(copy=False)
@@ -360,9 +360,9 @@ class AccountInvice(models.Model):
         # 122  Nota de Crédito de e-Factura Exportación
         # 123  Nota de Débito de e-Factura Exportación
         cfe_type = "111"
-        if self.journal_document_type_id.document_type_id.code in ["111","112","113","121","122","123"]:
-            cfe_type = self.journal_document_type_id.document_type_id.code
-        dni_name = self.partner_id.main_id_category_id.code
+        if self.l10n_latam_document_type_id.name in ["111","112","113","121","122","123"]:
+            cfe_type = self.l10n_latam_document_type_id.name
+        dni_name = self.partner_id.l10n_latam_identification_type_id.name
         document_dic = {"NIE":"1","RUC":"2","CIe":"3","Otros":"4","Pasaporte":"5","DNI":"6","NIFE":"7"}
         rec_doc = document_dic.get(dni_name,"4")
         BanTpoCFE = doc.createElement("BanTpoCFE")
@@ -411,7 +411,7 @@ class AccountInvice(models.Model):
         Bandeja.appendChild(BanFchVen)
 # <!-- RUC Emisior [String(12)] -->
         BanRucEmi = doc.createElement("BanRucEmi")
-        text_node = doc.createTextNode(str(self.company_id.main_id_number))
+        text_node = doc.createTextNode(str(self.company_id.vat))
         BanRucEmi.appendChild(text_node)
         Bandeja.appendChild(BanRucEmi)
 # <!-- Nombre Emisor [String(150)] -->
@@ -453,7 +453,7 @@ class AccountInvice(models.Model):
 # <!-- Código Tipo Documento Receptor. Valores: 2: RUC (Uruguay) 3: C.I. (Uruguay) 4: Otros
 # 5: Pasaporte (todoslos países) 6: DNI (documento de identidad de Argentina, Brasil, Chile o Paraguay)
 # 7: NIFE [Integer] -->
-        if self.partner_id.main_id_number:
+        if self.partner_id.l10n_latam_identification_type_id:
                 BanCodTpoDocRec = doc.createElement("BanCodTpoDocRec")
                 text_node = doc.createTextNode(rec_doc)
                 BanCodTpoDocRec.appendChild(text_node)
@@ -465,15 +465,15 @@ class AccountInvice(models.Model):
                 BanCodPaisRec.appendChild(text_node)
                 Bandeja.appendChild(BanCodPaisRec)
 # <!-- Nº Documento Receptor [String(12)] -->
-        if self.partner_id.main_id_number:
+        if self.partner_id.l10n_latam_identification_type_id:
                 if rec_doc in ["1","2","3"]:
                         BanNumDocRec = doc.createElement("BanNumDocRec")
-                        text_node = doc.createTextNode(str(self.partner_id.main_id_number))
+                        text_node = doc.createTextNode(str(self.partner_id.l10n_latam_identification_type_id))
                         BanNumDocRec.appendChild(text_node)
                         Bandeja.appendChild(BanNumDocRec)
                 else:
                         BanNumDocRecExt = doc.createElement("BanNumDocRecExt")
-                        text_node = doc.createTextNode(str(self.partner_id.main_id_number))
+                        text_node = doc.createTextNode(str(self.partner_id.l10n_latam_identification_type_id))
                         BanNumDocRecExt.appendChild(text_node)
                         Bandeja.appendChild(BanNumDocRecExt)   
 # <!-- Nombre del receptor [String(150)] -->
@@ -492,7 +492,7 @@ class AccountInvice(models.Model):
         if self.partner_id.country_id.code:
                 if self.partner_id.country_id.code == "MX":
                         BanCiuRec = doc.createElement("BanCiuRec")
-                        text_node = doc.createTextNode(str(self.partner_id.city_id.name))
+                        text_node = doc.createTextNode(str(self.partner_id.city.name))
                         BanCiuRec.appendChild(text_node)
                         Bandeja.appendChild(BanCiuRec)
                 else:
@@ -523,7 +523,7 @@ class AccountInvice(models.Model):
         BanTasaIVABas.appendChild(text_node)
         Bandeja.appendChild(BanTasaIVABas)
 #<!-- Cláusula de venta (Incoterms: FOB, CIF, etc) [String(3)] -->
-        if self.journal_document_type_id.document_type_id.code in ["121","122","123"]:
+        if self.l10n_latam_document_type_id.name in ["121","122","123"]:
                 BanClaVen = doc.createElement("BanClaVen")
                 text_node = doc.createTextNode("N/A")
                 BanClaVen.appendChild(text_node)
@@ -560,19 +560,20 @@ class AccountInvice(models.Model):
 # 9: Solo para resguardos: Ítem a ajustar en resguardos. En área dereferencia se debe indicar el N° de resguardo que ajusta
 # 10: Exportación y asimiladas 11: Impuesto percibido 12:IVA en suspenso [Integer] VALORES PLIS-->
             ind_fact = "1"
-            if line.invoice_line_tax_ids.name == "IVA Ventas (22%)":
-                ind_fact = "3"
-                monto_iva_base += line.price_subtotal
-                price_unit = line.price_unit * 1.22
-            if line.invoice_line_tax_ids.name == "IVA Ventas (10%)":
-                ind_fact = "2"
-                monto_iva_min += line.price_subtotal
-                price_unit = line.price_unit * 1.10
-            if ind_fact == "1":
-                price_unit = line.price_unit
-                monto_no_grabado += line.price_subtotal
-                if self.journal_document_type_id.document_type_id.code not in ["111","112","113"]:
-                        ind_fact = "10"
+            for tax in line.tax_ids:
+                if tax.name == "IVA Ventas (22%)":
+                    ind_fact = "3"
+                    monto_iva_base += line.price_subtotal
+                    price_unit = line.price_unit * 1.22
+                if tax.name == "IVA Ventas (10%)":
+                    ind_fact = "2"
+                    monto_iva_min += line.price_subtotal
+                    price_unit = line.price_unit * 1.10
+                if ind_fact == "1":
+                    price_unit = line.price_unit
+                    monto_no_grabado += line.price_subtotal
+                    if self.l10n_latam_document_type_id.name not in ["111","112","113"]:
+                            ind_fact = "10"
 
             IndFac = doc.createElement("IndFac")
             text_node = doc.createTextNode(ind_fact)
@@ -657,7 +658,7 @@ class AccountInvice(models.Model):
            BanTpoCam.appendChild(text_node)
            Bandeja.appendChild(BanTpoCam)
 # <!-- monto sin iva -->
-        if self.journal_document_type_id.document_type_id.code in ["111","112","113"]:
+        if self.l10n_latam_document_type_id.name in ["111","112","113"]:
                 BanTMonNoGra = doc.createElement("BanTMonNoGra")
                 text_node = doc.createTextNode(str(monto_no_grabado))
                 BanTMonNoGra.appendChild(text_node)
@@ -729,7 +730,7 @@ class AccountInvice(models.Model):
                 BanInfRefItem = doc.createElement("BanInfRefItem")
                 BanInfRef.appendChild(BanInfRefItem)
                 if self.origin:
-                        invoices = self.env['account.invoice'].search([('display_name','=',self.origin)])
+                        invoices = self.env['account.move'].search([('display_name','=',self.origin)])
                         ref_count = 1
                         for invoice in invoices:
                                 InfRefNum = doc.createElement("InfRefNum")
