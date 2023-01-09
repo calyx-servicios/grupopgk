@@ -360,8 +360,8 @@ class AccountMove(models.Model):
         # 122  Nota de Crédito de e-Factura Exportación
         # 123  Nota de Débito de e-Factura Exportación
         cfe_type = "111"
-        if self.l10n_latam_document_type_id.name in ["111","112","113","121","122","123"]:
-            cfe_type = self.l10n_latam_document_type_id.name
+        if self.l10n_latam_document_type_id.code in ["111","112","113","121","122","123"]:
+            cfe_type = self.l10n_latam_document_type_id.code
         dni_name = self.partner_id.l10n_latam_identification_type_id.name
         document_dic = {"NIE":"1","RUC":"2","CIe":"3","Otros":"4","Pasaporte":"5","DNI":"6","NIFE":"7"}
         rec_doc = document_dic.get(dni_name,"4")
@@ -453,11 +453,10 @@ class AccountMove(models.Model):
 # <!-- Código Tipo Documento Receptor. Valores: 2: RUC (Uruguay) 3: C.I. (Uruguay) 4: Otros
 # 5: Pasaporte (todoslos países) 6: DNI (documento de identidad de Argentina, Brasil, Chile o Paraguay)
 # 7: NIFE [Integer] -->
-        if self.partner_id.l10n_latam_identification_type_id:
-                BanCodTpoDocRec = doc.createElement("BanCodTpoDocRec")
-                text_node = doc.createTextNode(rec_doc)
-                BanCodTpoDocRec.appendChild(text_node)
-                Bandeja.appendChild(BanCodTpoDocRec)
+        BanCodTpoDocRec = doc.createElement("BanCodTpoDocRec")
+        text_node = doc.createTextNode(rec_doc)
+        BanCodTpoDocRec.appendChild(text_node)
+        Bandeja.appendChild(BanCodTpoDocRec)
 # <!--Codigo pais del receptor [String(50)] -->
         if self.partner_id.country_id.code:
                 BanCodPaisRec = doc.createElement("BanCodPaisRec")
@@ -465,17 +464,16 @@ class AccountMove(models.Model):
                 BanCodPaisRec.appendChild(text_node)
                 Bandeja.appendChild(BanCodPaisRec)
 # <!-- Nº Documento Receptor [String(12)] -->
-        if self.partner_id.l10n_latam_identification_type_id:
-                if rec_doc in ["1","2","3"]:
-                        BanNumDocRec = doc.createElement("BanNumDocRec")
-                        text_node = doc.createTextNode(str(self.partner_id.l10n_latam_identification_type_id))
-                        BanNumDocRec.appendChild(text_node)
-                        Bandeja.appendChild(BanNumDocRec)
-                else:
-                        BanNumDocRecExt = doc.createElement("BanNumDocRecExt")
-                        text_node = doc.createTextNode(str(self.partner_id.l10n_latam_identification_type_id))
-                        BanNumDocRecExt.appendChild(text_node)
-                        Bandeja.appendChild(BanNumDocRecExt)   
+        if rec_doc in ["1","2","3"]:
+                BanNumDocRec = doc.createElement("BanNumDocRec")
+                text_node = doc.createTextNode(str(self.partner_id.vat))
+                BanNumDocRec.appendChild(text_node)
+                Bandeja.appendChild(BanNumDocRec)
+        else:
+                BanNumDocRecExt = doc.createElement("BanNumDocRecExt")
+                text_node = doc.createTextNode(str(self.partner_id.vat))
+                BanNumDocRecExt.appendChild(text_node)
+                Bandeja.appendChild(BanNumDocRecExt)   
 # <!-- Nombre del receptor [String(150)] -->
         if self.partner_id.name:
                 BanNomRec = doc.createElement("BanNomRec")
