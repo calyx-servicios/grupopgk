@@ -5,6 +5,7 @@ Timesheet Odoo
 .. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !! This module creates a timesheet                !!
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   
 .. User https://shields.io for badge creation.
 .. |badge1| image:: https://img.shields.io/badge/maturity-Stable-brightgreen
     :target: https://odoo-community.org/page/development-status
@@ -17,7 +18,6 @@ Timesheet Odoo
     :alt: calyx-servicios/grupopgk.git
 
 |badge1| |badge2| |badge3|
-
 
 
 Install
@@ -40,6 +40,8 @@ Contributors
 * `Calyx Servicios S.A. <https://odoo.calyx-cloud.com.ar/>`_
 
   * Carla Miquetan
+  
+  * Perez Gabriela
 
 Maintainers
 ~~~~~~~~~~~

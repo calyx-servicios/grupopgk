@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-01-08 20:39+0000\n"
-"PO-Revision-Date: 2023-01-08 20:39+0000\n"
+"POT-Creation-Date: 2023-01-09 20:39+0000\n"
+"PO-Revision-Date: 2023-01-09 20:39+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -16,15 +16,21 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. module: timesheet_odoo
+#: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
+msgid "%<br/>"
+msgstr ""
+
+#. module: timesheet_odoo
 #: model:ir.model,name:timesheet_odoo.model_account_analytic_line
 msgid "Analytic Line"
-msgstr "Línea Analítica"
+msgstr "Línea analítica"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,help:timesheet_odoo.field_timesheet_sige__working_day
 msgid ""
 "Average hours per day a resource is supposed to work with this calendar."
 msgstr ""
+"Promedio de horas por día que se supone que un recurso debe trabajar con este calendario."
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__chargeability
@@ -32,9 +38,9 @@ msgid "Chargeability"
 msgstr "Cargabilidad"
 
 #. module: timesheet_odoo
-#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__company
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__company_id
 msgid "Company"
-msgstr "Compañía"
+msgstr "Compañia"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__create_uid
@@ -48,7 +54,7 @@ msgstr "Creado en"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__days_to_register
-msgid "Days To Register"
+msgid "Days to register"
 msgstr "Días a registrar"
 
 #. module: timesheet_odoo
@@ -57,14 +63,14 @@ msgid "Display Name"
 msgstr "Nombre para mostrar"
 
 #. module: timesheet_odoo
-#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__employee
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__employee_id
 msgid "Employee"
 msgstr "Empleado"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__end_of_period
 msgid "End of Period"
-msgstr "Fin del periodo"
+msgstr "Fin"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__holidays
@@ -74,57 +80,67 @@ msgstr "Feriados"
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__id
 msgid "ID"
-msgstr ""
+msgstr "ID"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige____last_update
 msgid "Last Modified on"
-msgstr ""
+msgstr "Última modificación el"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__write_uid
 msgid "Last Updated by"
-msgstr ""
+msgstr "Última actualización por"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__write_date
 msgid "Last Updated on"
-msgstr ""
+msgstr "Última actualización el"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__name
+msgid "Name"
+msgstr "Nombre"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__pending_hours
 msgid "Pending Hours"
-msgstr "Horas pendientes"
+msgstr "HS Pendientes"
+
+#. module: timesheet_odoo
+#: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
+msgid "Period - Employee"
+msgstr "Periodo - Empleado"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__register_hours
+msgid "Register Hours"
+msgstr "HS Registradas"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__required_hours
 msgid "Required Hours"
-msgstr "Horas requeridas"
+msgstr "HS Requeridas"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__start_of_period
 msgid "Start of Period"
-msgstr "Inicio del periodo"
+msgstr "Inicio"
 
 #. module: timesheet_odoo
-#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__timesheet
+#: model:ir.model.fields,field_description:timesheet_odoo.field_account_analytic_line__timesheet_id
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__timesheet_ids
 msgid "Timesheet"
 msgstr "Parte de horas"
 
 #. module: timesheet_odoo
-#: model:ir.model.fields,field_description:timesheet_odoo.field_account_analytic_line__timesheet_id
-msgid "Timesheet Id"
-msgstr "Parte de horas id"
-
-#. module: timesheet_odoo
-#: model:ir.actions.act_window,name:timesheet_odoo.timessheet_odoo_action_window
 #: model:ir.model,name:timesheet_odoo.model_timesheet_sige
 msgid "Timesheet Odoo"
-msgstr "Parte de horas Odoo"
+msgstr "Parte de horas"
 
 #. module: timesheet_odoo
+#: model:ir.actions.act_window,name:timesheet_odoo.timessheet_sige_action_window
 #: model:ir.ui.menu,name:timesheet_odoo.timesheet_sige
-#: model:ir.ui.menu,name:timesheet_odoo.timesheet_sige_odoo
 msgid "Timesheet Sige"
 msgstr "Parte de horas Sige"
 
