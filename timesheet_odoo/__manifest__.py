@@ -4,17 +4,17 @@
        This module creates a timesheet
     """,
     "author": "Calyx Servicios S.A.",
-    "maintainers": ["carlamiquetan"],
+    "maintainers": ["carlamiquetan", "PerezGabriela"],
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
-    "category": "Technical Settings",
-    "version": "15.0.1.0.0",
+    "category": "Timesheet",
+    "version": "15.0.2.0.1",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
-    "depends": ['base', 'hr', 'project', 'hr_timesheet'],
+    "depends": ['base', 'hr_timesheet'],
     "data": [
         "security/ir.model.access.csv",
-        "views/timesheet_sige.xml",
+        "views/timesheet_sige_views.xml",
     ],
 }
