@@ -7,7 +7,7 @@
         <field name="type">form</field>
         <field name="arch" type="xml">
             <xpath expr="//sheet/group/group[2]/field[@name='user_id']" position="after">
-                <field name="partner"/>
+                <field name="partner" required="1"/>
             </xpath>
         </field>
     </record>
