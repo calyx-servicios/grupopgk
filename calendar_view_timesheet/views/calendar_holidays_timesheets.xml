@@ -18,7 +18,7 @@
     </record>
 
     <record id="view_calendar_holidays_timesheets_search" model="ir.ui.view">
-        <field name="name">view_calendar_holidays_timesheets.search</field>
+        <field name="name">calendar.holidays.timesheets.search</field>
         <field name="model">calendar.holidays.timesheets</field>
         <field name="arch" type="xml">
             <search string="Search Holidays">
@@ -40,14 +40,14 @@
     </record>
 
     <record id="view_calendar_holidays_timesheets_form" model="ir.ui.view">
-        <field name="name">view_calendar_holidays_timesheets.form</field>
+        <field name="name">calendar.holidays.timesheets.form</field>
         <field name="model">calendar.holidays.timesheets</field>
         <field name="arch" type="xml">
             <form string="Form Holidays">
                 <sheet>
                     <group>
                         <group>
-                            <field name="name" />
+                            <field name="name" required="1"/>
                             <field name="partners_ids" domain="[('is_company', '!=', False)]" widget="many2many_tags" options="{'color_field': 'color', 'no_create': True}" />
                             <field name="user_id" readonly="1"/>
                             <field name="allday" invisible="1"/>
@@ -70,7 +70,7 @@
     </record>
 
     <record id="view_calendar_holidays_timesheets_calendar" model="ir.ui.view">
-        <field name="name">view_calendar_holidays_timesheets.calendar</field>
+        <field name="name">calendar.holidays.timesheets.calendar</field>
         <field name="model">calendar.holidays.timesheets</field>
         <field name="arch" type="xml">
             <calendar string="Holidays Calendar" mode="year" date_start="start_date" date_stop="end_date" date_delay="duration"  color="user_id">

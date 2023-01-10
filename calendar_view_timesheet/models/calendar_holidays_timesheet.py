@@ -7,7 +7,7 @@ class CalendarHolidaysTimesheets(models.Model):
     _order = "start_date desc"
     
 
-    name = fields.Char('Subject', required=True)
+    name = fields.Char('Subject')
     description = fields.Html('Description')
     user_id = fields.Many2one('res.users', 'Created by', default=lambda self: self.env.user)
     allday = fields.Boolean('All Day', default=False)
