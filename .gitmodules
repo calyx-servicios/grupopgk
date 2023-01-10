@@ -78,3 +78,7 @@
 	path = submodules/OCA/account-financial-tools
 	url = https://github.com/OCA/account-financial-tools.git
 	branch = 15.0
+[submodule "submodule/OCA/project"]
+	path = submodules/OCA/project
+	url = https://github.com/OCA/project.git
+	branch = 15.0
