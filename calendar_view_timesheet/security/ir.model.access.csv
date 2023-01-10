@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_calendar_holidays_timesheets_user,calendar.holidays.timesheets.user,model_calendar_holidays_timesheets,account.group_account_user,1,0,0,0
+access_calendar_holidays_timesheets_manager,calendar.holidays.timesheets.manager,model_calendar_holidays_timesheets,account.group_account_manager,1,1,1,1
