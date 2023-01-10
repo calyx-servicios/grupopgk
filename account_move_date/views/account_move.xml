@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_move_inherit_date" model="ir.ui.view">
+        <field name="name">account.move.inherit_date</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@id='header_right_group']/field[@name='date']" position="attributes">
+                <attribute name="attrs">{'invisible': [('move_type', 'in', ('in_receipt', 'out_receipt'))]}</attribute>
+            </xpath>
+            <xpath expr="//page[@name='other_info']/group/group[@name='accounting_info_group']/field[@name='to_check']" position="after">
+                <xpath expr="//group[@id='header_right_group']/field[@name='date']" position="move"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="ir.ui.view" id="view_hr_employee_is_partner">
+        <field name="name">Hr employee Is Partner</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group/group[2]" position="inside">
+                <field name="partner"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_search_hr_employee_is_partner" model="ir.ui.view">
+        <field name="name">search_hr_employee_is_partner</field>
+        <field name="model">hr.employee</field>
+        <field name="type">search</field>
+        <field name="inherit_id" ref="hr.view_employee_filter"/>
+        <field name="arch" type="xml">
+            <filter name="message_needaction" position="after">
+                <filter string="Has a partner" name="filter_is_partner" domain="[('partner', '!=', None)]"/>
+            </filter>
+            <filter name="group_job" position="after">
+                <filter string="Partner" name="group_partners" domain="[]" context="{'group_by': 'partner'}"/>
+            </filter>
+        </field>
+    </record>
+</odoo>

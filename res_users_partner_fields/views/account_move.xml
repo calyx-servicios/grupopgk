@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="ir.ui.view" id="view_account_move_is_partner">
+        <field name="name">Account Move Is Partner</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group/group/field[@name='payment_reference']" position="after">
+                <field name="partner" required="1"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_search_account_move_is_partner" model="ir.ui.view">
+        <field name="name">search_account_move_is_partner</field>
+        <field name="model">account.move</field>
+        <field name="type">search</field>
+        <field name="inherit_id" ref="account.view_account_invoice_filter"/>
+        <field name="arch" type="xml">
+            <filter name="activities_upcoming_all" position="after">
+                <filter string="Has a partner" name="filter_is_partner" domain="[('partner', '!=', None)]"/>
+            </filter>
+            <filter name="duedate" position="after">
+                <filter string="Partner" name="group_partners" domain="[]" context="{'group_by': 'partner'}"/>
+            </filter>
+        </field>
+    </record>
+</odoo>
