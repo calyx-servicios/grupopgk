@@ -2,9 +2,6 @@ from odoo import fields, models, api
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
-import logging
-_logger = logging.getLogger(__name__)
-
 
 class TimesheetSige(models.Model):
     _name = "timesheet.sige"
