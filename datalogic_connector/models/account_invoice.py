@@ -1,38 +1,46 @@
 # -*- coding: utf-8 -*-
-from requests.models import Response
 from odoo import fields, models, api, _
 import requests
 from xml.dom import minidom
-from xml.sax.saxutils import escape
-import re
-from odoo.exceptions import Warning, UserError
-import base64, os
+from odoo.tools.misc import get_lang
 
 class AccountMove(models.Model):
     _inherit = "account.move"
 
-    serie_cfe = fields.Char(copy=False)
-    descargar = fields.Binary(copy=False)
-    error_dgi = fields.Char(copy=False)
-    tpo_cfe = fields.Char(copy=False)
-    description_dgi = fields.Char(copy=False)
-    hashcfe = fields.Char(copy=False)
-    FchVenc = fields.Char(copy=False)
-    nrocae = fields.Char(copy=False)
-    comprobantecfe = fields.Char(copy=False)
-    show_estado = fields.Char(copy=False)
-    estado = fields.Char(copy=False)
-    txt_send = fields.Text(copy=False)
-    txt_rquest = fields.Text(copy=False)
-    display_name = fields.Char(
-        compute='_compute_display_name',
-        string='Document Reference',
-        store=True
-    )
-    origin_ref = fields.Char(copy=False)
-    origin_date = fields.Date(copy=False)
-    file_name = fields.Char("File Name", compute="_compute_name_file")
-    
+    def action_ur_invoice_sent(self):
+        self.ensure_one()
+        template = self.env.ref('dgi_conector.email_template_ur_invoice', raise_if_not_found=False)
+        lang = get_lang(self.env)
+        if template and template.lang:
+            lang = template._render_template(template.lang, 'account.move', self.id)
+        else:
+            lang = lang.code
+        compose_form = self.env.ref('account.account_invoice_send_wizard_form', raise_if_not_found=False)
+        ctx = dict(
+            default_model='account.move',
+            default_res_id=self.id,
+            default_res_model='account.move',
+            default_use_template=bool(template),
+            default_template_id=template and template.id or False,
+            default_composition_mode='comment',
+            mark_invoice_as_sent=True,
+            custom_layout="mail.mail_notification_paynow",
+            model_description=self.with_context(lang=lang).type_name,
+            force_email=True,
+            default_attachment_ids = self.attachment_ids.ids
+        )
+        return {
+            'name': _('Send Invoice'),
+            'type': 'ir.actions.act_window',
+            'view_type': 'form',
+            'view_mode': 'form',
+            'res_model': 'account.invoice.send',
+            'views': [(compose_form.id, 'form')],
+            'view_id': compose_form.id,
+            'target': 'new',
+            'context': ctx,
+        }
+
     def _compute_name_file(self):
         for rec in self:
             if rec.id:
@@ -307,11 +315,51 @@ class AccountMove(models.Model):
     def update_invoice_status(self):
         self.compute_defff()
         self.compute_estado()
+        if self.descargar:
+                name = 'Factura_%s' % self.name
+                att_obj = self.env['ir.attachment']
+                if not att_obj.search([('name','=',name),('res_id','=',self.id),('res_model','=',self._name)]):
+                        attachment = {
+                                'name': name,
+                                'description': name,
+                                'res_id' : self.id,
+                                'res_model': self._name,
+                                'datas': self.descargar,
+                                'type': 'binary',
+                                'mimetype': 'application/pdf',
+                        }
+                        att_obj.create(attachment)
+
+    serie_cfe = fields.Char(copy=False)
+    descargar = fields.Binary(copy=False)
+    error_dgi = fields.Char(copy=False)
+    tpo_cfe = fields.Char(copy=False)
+    description_dgi = fields.Char(copy=False)
+    hashcfe = fields.Char(copy=False)
+    FchVenc = fields.Char(copy=False)
+    nrocae = fields.Char(copy=False)
+    comprobantecfe = fields.Char(copy=False)
+    show_estado = fields.Char(copy=False)
+    estado = fields.Char(copy=False)
+    txt_send = fields.Text(copy=False)
+    txt_rquest = fields.Text(copy=False)
+    display_name = fields.Char(
+        compute='_compute_display_name',
+        string='Document Reference',
+        store=True
+    )
+    origin_ref = fields.Char(copy=False)
+    origin_date = fields.Date(copy=False)
+    file_name = fields.Char("File Name", compute="_compute_name_file")
+    txt_compute_estado = fields.Text(copy=False)
+    txt_compute_defff = fields.Text(copy=False)
 
     def send_dgi_with_invoice(self):
         self.create_dgi_document(True)
     
     def send_dgi(self):
+        if self.state not in 'posted': 
+            self.action_post()
         self.create_dgi_document(False)
 
     def create_dgi_document(self,with_invoice):
@@ -380,16 +428,6 @@ class AccountMove(models.Model):
         text_node = doc.createTextNode(str(self.date))
         BanFchCFE.appendChild(text_node)
         Bandeja.appendChild(BanFchCFE)
-# # <!-- Período desde [Date] -->
-#         BanPerDesde = doc.createElement("BanPerDesde")
-#         text_node = doc.createTextNode("")
-#         BanPerDesde.appendChild(text_node)
-#         Bandeja.appendChild(BanPerDesde)
-# # <!-- Período hasta [Date] -->
-#         BanPerHasta = doc.createElement("BanPerHasta")
-#         text_node = doc.createTextNode("")
-#         BanPerHasta.appendChild(text_node)
-#         Bandeja.appendChild(BanPerHasta)
 # <!-- Indica si los importes son iva incluido. Valores:
 # 1: Líneas de detalle se expresan con IVA incluido,
 # 2:Líneas de detalle se expresan con IMEBA y adicionales incluidos,
@@ -424,12 +462,6 @@ class AccountMove(models.Model):
         text_node = doc.createTextNode(str(self.company_id.company_registry))
         BanNomComEmi.appendChild(text_node)
         Bandeja.appendChild(BanNomComEmi)
-        
-# <!-- Codigo Sucursal Principal Emisor [String(6)] nos lo dan ellos en algun momento-->
-        # BanSucCodPriEmi = doc.createElement("BanSucCodPriEmi")
-        # text_node = doc.createTextNode("")
-        # BanSucCodPriEmi.appendChild(text_node)
-        # Bandeja.appendChild(BanSucCodPriEmi)
 # <!-- Indica Nombre Sucursal Principal Emisor [String(20)] -->
         BanSucNomPriEmi = doc.createElement("BanSucNomPriEmi")
         text_node = doc.createTextNode(str(self.company_id.partner_id.name))
@@ -578,40 +610,6 @@ class AccountMove(models.Model):
             IndFac.appendChild(text_node)
             BanLinItem.appendChild(IndFac)
 # <!-- Nombre del producto o servicio [String(80)] -->
-        #     dict_servicios = {
-        #         "Honorarios profesionales por gestión de recupero": "Professional fees for legal recovery",
-        #         "Honorarios profesionales": "Professional Fees",
-        #         "Honorarios profesionales por asesoramiento": "Professional fees for consultancy",
-        #         "Gastos Administrativos varios": "Administrative costs",
-        #         "Costos bancarios": "Banking Costs",
-        #         "Gastos de terceros": "Third Parties Expenses",
-        #         "Retenciones": "Withholdings",
-        #         "Honorarios profesionales por seminario": "Professional fees for seminar",
-        #         "Honorarios profesionales por ahorro de contribución por avería gruesa": "Professional fees over claimed general average contribution savings / reduction",
-        #         "Honorarios profesionales por ahorro de contribución por salvamento": "Professional fees over claimed salvage contribution savings / reduction",
-        #         "Honorarios profesionales por ahorro de contribución por avería gruesa y salvamento": "Professional fees over claimed general average & salvage contributions savings / reductions",
-        #         "Honorarios profesionales por asesoramiento en tema de garantías por avería gruesa": "Legal consultancy fees on general average bonds & guarantees issuance / cargo release",
-        #         "Honorarios profesionales por asesoramiento en tema de garantías por salvamento": "Legal consultancy fees on salvage guarantees issuance / cargo release",
-        #         "Honorarios profesionales por asesoramiento en tema de garantías por avería gruesa y salvamento": "Legal consultancy fees on general average / salvage bonds & guarantees issuance / cargo release",
-        #         "Costo de garantías por avería gruesa": "General average guarantees issuance fee",
-        #         "Costo de garantías por salvamento": "Salvage guarantee issuance fee",
-        #         "Costo de garantías por avería gruesa y salvamento": "General average & salvage guarantee issuance fee",
-        #         "Honorarios profesionales por venta de rezago": "Professional fees over salvage sale",
-        #         "Honorarios profesionales por ajuste / liquidación de siniestro": "Professional fees for adjustment / casualty settlement",
-        #         "Honorarios profesionales por gestión de siniestro (con acuerdo)": "Professional fees for liability (with agreement)",
-        #         "Honorarios profesionales por gestión de siniestro (sin acuerdo)": "Professional fees for liability (without agreement)",
-        #         "Container": "Container",               
-        #         }
-        #     if self.partner_id.lang == "en_US":
-        #         ItemNom = doc.createElement("ItemNom")
-        #         text_node = doc.createTextNode(str(dict_servicios.get(line.product_id.name,line.product_id.name)))
-        #         ItemNom.appendChild(text_node)
-        #         BanLinItem.appendChild(ItemNom)
-        #     else:
-        #         ItemNom = doc.createElement("ItemNom")
-        #         text_node = doc.createTextNode(str(line.product_id.name))
-        #         ItemNom.appendChild(text_node)
-        #         BanLinItem.appendChild(ItemNom)
             ItemNom = doc.createElement("ItemNom")
             text_node = doc.createTextNode(str(line.product_id.name))
             ItemNom.appendChild(text_node)
@@ -696,22 +694,6 @@ class AccountMove(models.Model):
         text_node = doc.createTextNode(str(line_cont - 1))
         BanCanLin.appendChild(text_node)
         Bandeja.appendChild(BanCanLin)        
-# <!-- Adenda [Text] -->
-        # reference = self.ref.replace(" ","")
-        # reference = reference[len(self.Our_reference):len(reference)]
-        # if reference != "N/A":
-        #         reference = reference.replace("/","", 1)
-        # o_ref = "O/Ref.:                                                                                                  "
-        # for leter in self.Our_reference:
-        #         o_ref = o_ref.replace(" ", leter,1)        
-        # y_ref = "Y/Ref.:                                                                                                       {}".format(reference)
-        # for leter in self.Y_reference:
-        #         y_ref = y_ref.replace(" ", leter,1)
-        # adenda = o_ref + y_ref 
-        # BanAdenda = doc.createElement("BanAdenda")
-        # text_node = doc.createTextNode(adenda)
-        # BanAdenda.appendChild(text_node)
-        # Bandeja.appendChild(BanAdenda)
 # <!-- Monto Total a Pagar [Currency(15,2)] -->
         BanMonTotPag = doc.createElement("BanMonTotPag")
         text_node = doc.createTextNode(str(monto_no_grabado + monto_iva_min*1.10 + monto_iva_base*1.22))
@@ -793,17 +775,6 @@ class AccountMove(models.Model):
                         text_node = doc.createTextNode(str(self.origin_date))
                         InfRefFchRef.appendChild(text_node)
                         BanInfRefItem.appendChild(InfRefFchRef)                        
-        # if with_invoice:
-        # # <!-- Envia documento por mail a cliente S o N [String(1)] -->
-        #         BanEnvFactMail = doc.createElement("BanEnvFactMail")
-        #         text_node = doc.createTextNode("S")
-        #         BanEnvFactMail.appendChild(text_node)
-        #         Bandeja.appendChild(BanEnvFactMail) 
-        # # <!-- Lista de mails a los que se le envia el documento (separados por ;) [String(400)] -->
-        #         BanMailsFact = doc.createElement("BanMailsFact")
-        #         text_node = doc.createTextNode(str(self.partner_id.email))
-        #         BanMailsFact.appendChild(text_node)
-        #         Bandeja.appendChild(BanMailsFact) 
 
         xmldata = Bandeja.toprettyxml("   ")
         Data = doc.createCDATASection(xmldata)
@@ -840,7 +811,6 @@ class AccountMove(models.Model):
                         self.FchVenc = FchVenc
                         self.nrocae = nrocae
                         self.comprobantecfe = comprobantecfe
-                        self.action_invoice_open()
                 else:
                         self.error_dgi = error
                         self.description_dgi = details
