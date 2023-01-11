@@ -553,7 +553,7 @@ class AccountMove(models.Model):
         BanTasaIVABas.appendChild(text_node)
         Bandeja.appendChild(BanTasaIVABas)
 #<!-- Cláusula de venta (Incoterms: FOB, CIF, etc) [String(3)] -->
-        if self.l10n_latam_document_type_id.name in ["121","122","123"]:
+        if self.l10n_latam_document_type_id.code in ["121","122","123"]:
                 BanClaVen = doc.createElement("BanClaVen")
                 text_node = doc.createTextNode("N/A")
                 BanClaVen.appendChild(text_node)
