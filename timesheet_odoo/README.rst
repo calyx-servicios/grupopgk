@@ -43,6 +43,8 @@ Contributors
   
   * Perez Gabriela
 
+  * Zamora, Javier
+
 Maintainers
 ~~~~~~~~~~~
 
