@@ -9,23 +9,23 @@
                 <button name="action_ur_invoice_sent" 
                         type="object" 
                         string="Send &amp; Print" 
-                        attrs="{'invisible':['|', '|', '|', ('state', '!=', 'posted'), ('move_type', 'not in', ('out_invoice', 'out_refund'))]}" 
+                        attrs="{'invisible':['|', ('state', '!=', 'posted'), ('move_type', 'not in', ('out_invoice', 'out_refund'))]}" 
                         class="oe_highlight" />
 
                 <button name="action_ur_invoice_sent" 
                         type="object" 
                         string="Send &amp; Print" 
-                        attrs="{'invisible':['|', '|', '|', ('state', '!=', 'posted'), ('move_type', 'not in', ('out_invoice', 'out_refund', 'in_invoice', 'in_refund'))]}" />
+                        attrs="{'invisible':['|', ('state', '!=', 'posted'), ('move_type', 'not in', ('out_invoice', 'out_refund', 'in_invoice', 'in_refund'))]}" />
 
             </xpath>
             <xpath expr="//button[@name='action_post']" position='after'>
-                <button name="send_dgi" string="Post DGI" class="oe_highlight" type="object" attrs="{'invisible': ['|','|',('move_type', 'not in', ('out_invoice', 'out_refund')),('descargar','!=',False)]}"/>
+                <button name="send_dgi" string="Post DGI" class="oe_highlight" type="object" attrs="{'invisible': ['|',('move_type', 'not in', ('out_invoice', 'out_refund')),('descargar','!=',False)]}"/>
             </xpath>
             <xpath expr="//button[@name='action_invoice_sent'][1]" position='attributes'>
-                <attribute name="attrs">{'invisible':['|', '|','|',  ('state', '!=', 'posted'), ('move_type', 'not in', ('out_invoice', 'out_refund'))]}</attribute>
+                <attribute name="attrs">{'invisible':['|', ('state', '!=', 'posted'), ('move_type', 'not in', ('out_invoice', 'out_refund'))]}</attribute>
             </xpath>
             <xpath expr="//button[@name='action_invoice_sent'][2]" position='attributes'>
-                <attribute name="attrs">{'invisible':['|', '|','|',  ('state', '!=', 'posted'), ('move_type', 'not in', ('out_invoice', 'out_refund', 'in_invoice', 'in_refund'))]}</attribute>
+                <attribute name="attrs">{'invisible':['|',('state', '!=', 'posted'), ('move_type', 'not in', ('out_invoice', 'out_refund', 'in_invoice', 'in_refund'))]}</attribute>
             </xpath>
             <xpath expr="//page[@id='other_tab']" position='after'>
                 <page id="dgi_info" string="DGI" name="DGI" attrs="{'invisible': ['|',('move_type', 'not in', ('out_invoice', 'out_refund'))]}">
@@ -48,7 +48,7 @@
                         <field name="txt_rquest" string="XML resibido" invisible="1"/>
                     </group>
                 </group>
-                <button name="update_invoice_status" string="Actualizar" class="oe_highlight" type="object" attrs="{'invisible': ['|','|',('move_type', 'not in', ('out_invoice', 'out_refund')),('state','!=','posted')]}"/>            
+                <button name="update_invoice_status" string="Actualizar" class="oe_highlight" type="object" attrs="{'invisible': ['|',('move_type', 'not in', ('out_invoice', 'out_refund')),('state','!=','posted')]}"/>            
                 </page>
             </xpath>
         </field>
