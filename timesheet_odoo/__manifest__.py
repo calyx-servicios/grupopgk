@@ -12,7 +12,7 @@
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
-    "depends": ['base', 'hr_timesheet'],
+    "depends": ['base', 'hr_timesheet', 'calendar_view_timesheet'],
     "data": [
         "security/ir.model.access.csv",
         "data/ir_cron.xml",
