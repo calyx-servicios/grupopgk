@@ -12,7 +12,6 @@
     "development_status": "Production/Stable",
     "depends": ['account','l10n_ar','sale_ux','l10n_latam_invoice_document'],
     "data": [
-        "views/inv_with_details.xml",
         "views/template.xml",
     ],
 }
