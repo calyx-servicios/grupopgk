@@ -98,3 +98,7 @@
 	path = submodules/OCA/sale-workflow
 	url = https://github.com/OCA/sale-workflow.git
 	branch = 15.0
+[submodule "submodules/calyx-servicios/account-invoicing"]
+	path = submodules/calyx-servicios/account-invoicing
+	url = https://github.com/calyx-servicios/account-invoicing.git
+	branch = 15.0_test
