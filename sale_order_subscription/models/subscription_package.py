@@ -4,6 +4,8 @@ from odoo import _, api, models, fields, SUPERUSER_ID
 class SubscriptionPackageProductLine(models.Model):
     _inherit = 'subscription.package.product.line'
 
+    unit_price = fields.Float(string='Unit Price', store=True, readonly=False, related="")
+
     analytic_account_id = fields.Many2one('account.analytic.account', string='Analytic Account',
     index=True, store=True, compute='_compute_analytic_account_id', readonly=False, check_company=True, copy=True)
 
