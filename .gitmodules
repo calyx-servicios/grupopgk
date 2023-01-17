@@ -22,6 +22,10 @@
 	path = submodules/calyx-servicios/third-party-paid
 	url = https://github.com/calyx-servicios/third-party-paid.git
 	branch = 15.0
+[submodule "submodules/calyx-servicios/enterprise"]
+	path = submodules/calyx-servicios/enterprise
+	url = https://github.com/calyx-servicios/enterprise.git
+	branch = 15.0
 [submodule "submodules/OCA/partner-contact"]
 	path = submodules/OCA/partner-contact
 	url = https://github.com/OCA/partner-contact.git
@@ -37,6 +41,10 @@
 [submodule "submodules/ingadhoc/sale"]
 	path = submodules/ingadhoc/sale
 	url = https://github.com/ingadhoc/sale.git
+	branch = 15.0
+[submodule "submodules/ingadhoc/stock"]
+	path = submodules/ingadhoc/stock
+	url = https://github.com/ingadhoc/stock.git
 	branch = 15.0
 [submodule "submodules/ingadhoc/partner"]
 	path = submodules/ingadhoc/partner
@@ -78,7 +86,15 @@
 	path = submodules/OCA/account-financial-tools
 	url = https://github.com/OCA/account-financial-tools.git
 	branch = 15.0
+[submodule "submodules/OCA/account-financial-reporting"]
+	path = submodules/OCA/account-financial-reporting
+	url = https://github.com/OCA/account-financial-reporting.git
+	branch = 15.0
 [submodule "submodule/OCA/project"]
 	path = submodules/OCA/project
 	url = https://github.com/OCA/project.git
+	branch = 15.0
+[submodule "submodule/OCA/sale-workflow"]
+	path = submodules/OCA/sale-workflow
+	url = https://github.com/OCA/sale-workflow.git
 	branch = 15.0
