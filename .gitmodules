@@ -98,3 +98,7 @@
 	path = submodules/calyx-servicios/enterprise
 	url = https://github.com/calyx-servicios/enterprise.git
 	branch = 15.0
+[submodule "submodules/calyx-servicios/account-invoicing"]
+	path = submodules/calyx-servicios/account-invoicing
+	url = https://github.com/calyx-servicios/account-invoicing.git
+	branch = 15.0_staging
