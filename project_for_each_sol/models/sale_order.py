@@ -11,9 +11,9 @@ class SaleOrder(models.Model):
             if not rec.project_id:
                 for line in rec.order_line:
                     if len(rec.company_id) == 1:
-                        line._create_project_for_each(line)
+                        line.with_company(rec.company_id)._create_project_for_each(line)
                     else:
-                        line._create_project_for_each(line)
+                        line.with_company(line.company_id)._create_project_for_each(line)
                     line._set_next_number()
         return super(SaleOrder, self).action_confirm()
 
@@ -26,9 +26,9 @@ class SaleOrderLine(models.Model):
         for line in res:
             if line.state == 'sale' and line.is_service:
                 if len(line.order_id.company_id) == 1:
-                    self.sudo().with_company(line.order_id.company_id)._create_project_for_each(line)
+                    self.with_company(line.order_id.company_id)._create_project_for_each(line)
                 else:
-                    self.sudo().with_company(line.company_id)._create_project_for_each(line)
+                    self.with_company(line.company_id)._create_project_for_each(line)
                 line._set_next_number()
         return res
 
@@ -104,7 +104,7 @@ class SaleOrderLine(models.Model):
 
     def _create_task(self, project):
         values = self._prepare_task_values(project)
-        task = self.env['project.task'].sudo().create(values)
+        task = self.env['project.task'].create(values)
         self.write({
             'task_id': task.id,
         })
@@ -115,14 +115,14 @@ class SaleOrderLine(models.Model):
             project = None
             if line.product_id.service_tracking == 'task_in_project' and line.is_service:
                 if not line.order_id.project_id:
-                    project = line.sudo().create_project()
+                    project = line.create_project()
                     if project.analytic_account_id:
                         self.analytic_account_id = project.analytic_account_id.id
                     if not line.task_id:
-                        line.sudo()._create_task(project)
+                        line._create_task(project)
             elif line.product_id.service_tracking == 'project_only' and line.is_service:
                 if not line.order_id.project_id:
-                    project = line.sudo().create_project()
+                    project = line.create_project()
                     if project.analytic_account_id:
                         self.analytic_account_id = project.analytic_account_id.id
 
