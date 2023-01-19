@@ -14,7 +14,7 @@ class SaleOrder(models.Model):
                         line.with_company(rec.company_id)._create_project_for_each(line)
                     else:
                         line.with_company(line.company_id)._create_project_for_each(line)
-                    line._set_next_number()
+                    line.sudo()._set_next_number()
         return super(SaleOrder, self).action_confirm()
 
 class SaleOrderLine(models.Model):
@@ -29,7 +29,7 @@ class SaleOrderLine(models.Model):
                     self.with_company(line.order_id.company_id)._create_project_for_each(line)
                 else:
                     self.with_company(line.company_id)._create_project_for_each(line)
-                line._set_next_number()
+                line.sudo()._set_next_number()
         return res
 
     def analytic_values(self): 
