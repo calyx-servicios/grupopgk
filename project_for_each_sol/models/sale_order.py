@@ -11,9 +11,9 @@ class SaleOrder(models.Model):
             if not rec.project_id:
                 for line in rec.order_line:
                     if len(rec.company_id) == 1:
-                        line.sudo().with_company(rec.company_id)._create_project_for_each(line)
+                        line._create_project_for_each(line)
                     else:
-                        line.sudo().with_company(line.company_id)._create_project_for_each(line)
+                        line._create_project_for_each(line)
                     line._set_next_number()
         return super(SaleOrder, self).action_confirm()
 
