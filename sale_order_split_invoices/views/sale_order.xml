@@ -18,7 +18,7 @@
                     </div>
                 </button>
             </div>
-            <xpath expr="//header/button[@name='302'][1]" position="attributes">
+            <xpath expr="//header/button[@name='%(sale.action_view_sale_advance_payment_inv)d'][1]" position="attributes">
                 <attribute name="attrs">{'invisible': ['|',('invoice_status', '!=', 'to invoice'), ('split_invoices_count','!=', 0)]}</attribute>
             </xpath>
             <xpath expr="//sheet/group/group[2]/field[@name='payment_term_id']" position="after">
