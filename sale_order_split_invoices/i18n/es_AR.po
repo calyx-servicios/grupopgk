@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-01-20 11:31+0000\n"
-"PO-Revision-Date: 2023-01-20 11:31+0000\n"
+"POT-Creation-Date: 2023-01-20 17:56+0000\n"
+"PO-Revision-Date: 2023-01-20 17:56+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -16,9 +16,20 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. module: sale_order_split_invoices
+#: model_terms:ir.ui.view,arch_db:sale_order_split_invoices.view_sale_order_inherit_split_tab
+msgid ""
+"<span class=\"o_stat_text\">\n"
+"                            Splitted Invoices\n"
+"                        </span>"
+msgstr ""
+"<span class=\"o_stat_text\">\n"
+"                            Facturas Divididas\n"
+"                        </span>"
+
+#. module: sale_order_split_invoices
 #: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__analytic_account_id
 msgid "Analytic Account"
-msgstr "Analytic Account"
+msgstr "Cuenta analiticas"
 
 #. module: sale_order_split_invoices
 #: code:addons/sale_order_split_invoices/models/sale_order.py:0
@@ -162,15 +173,26 @@ msgid "Split type"
 msgstr "Tipo de división"
 
 #. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__splitted_invoice_ids
+msgid "Splitted Invoices"
+msgstr "Facturas Divididas"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__split_invoices_count
+msgid "Subscriptions"
+msgstr "Suscripciónes"
+
+#. module: sale_order_split_invoices
 #: code:addons/sale_order_split_invoices/models/sale_order.py:0
 #, python-format
 msgid "The total amount must be equal to the required amount on Split lines"
-msgstr "El monto total debe ser igual al monto requerido en las líneas de división"
+msgstr ""
+"El monto total debe ser igual al monto requerido en las líneas de división"
 
 #. module: sale_order_split_invoices
 #: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__total_split
 msgid "Total"
-msgstr "Total"
+msgstr ""
 
 #. module: sale_order_split_invoices
 #: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__total_required

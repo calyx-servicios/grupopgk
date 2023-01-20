@@ -11,7 +11,23 @@ class SaleOrder(models.Model):
     total_split = fields.Float(string='Total', compute='_compute_total_split')
     res_partner_ids = fields.Many2many('res.partner')
     split_line_ids = fields.One2many('split.line', 'order_id')
+    
+    split_invoices_count = fields.Integer(string='Subscriptions', compute='_compute_split_invoices_count')
+    splitted_invoice_ids = fields.Many2many('account.move', string='Splitted Invoices')
 
+    @api.depends('split_invoices_count', 'splitted_invoice_ids')
+    def _compute_split_invoices_count(self):
+        self.split_invoices_count = len(self.splitted_invoice_ids)
+
+    def smart_button_split(self):
+        return {
+            'name': 'Splitted Invoices',
+            'domain': [('id', 'in', self.splitted_invoice_ids.ids)],
+            'view_type': 'form',
+            'res_model': 'account.move',
+            'view_mode': 'tree,form',
+            'type': 'ir.actions.act_window',
+        }
 
     def _prepare_subscription(self, plan, split_line):
         self.ensure_one()
@@ -75,7 +91,6 @@ class SaleOrder(models.Model):
                     split_line = rec.split_line_ids.filtered(lambda l: l.partner_id == partner)
                     sub = rec._create_subscription(split_line)
                     subscription.append(sub)
-                len(subscription)
         return super(SaleOrder, self).action_confirm()
 
     def set_amount(self, split_amount):
@@ -127,7 +142,6 @@ class SaleOrder(models.Model):
            self.total_required = self.amount_untaxed
 
     def _create_invoices(self, grouped=False, final=False, date=None):
-        res = super(SaleOrder, self)._create_invoices(grouped, final, date)
         for rec in self:
             if rec.split_invoice:
                 for partner in rec.res_partner_ids:
@@ -135,9 +149,12 @@ class SaleOrder(models.Model):
                     values = rec._prepare_invoice()
                     values['partner_id'] = partner
                     values['invoice_line_ids'] = rec._invoice_values_line(split_line)
-                    move = self.env['account.move'].sudo().with_context(default_move_type='out_invoice').create(values)
-                    rec.invoice_ids = (4, move.id)
-        return res
+                    moves = self.env['account.move'].sudo().with_context(default_move_type='out_invoice').create(values)
+                    rec.splitted_invoice_ids = [(4,moves.id)]
+            else: 
+                moves = super(SaleOrder, self)._create_invoices(grouped, final, date)
+
+        return moves
     
     def _invoice_values_line(self, split_line):
         lines = []
