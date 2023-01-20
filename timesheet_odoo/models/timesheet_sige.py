@@ -1,6 +1,8 @@
-from odoo import fields, models, api
-from datetime import date
+from odoo import fields, models, api, _
+from odoo.exceptions import ValidationError
+from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
+import calendar
 
 
 class TimesheetSige(models.Model):
@@ -12,8 +14,8 @@ class TimesheetSige(models.Model):
         return self.env["hr.employee"].search([("user_id", "=", user_id)])
     
     def set_last_day(self):
-        return date.today()  + relativedelta(day=31)
-    
+        start_of_period = self.start_of_period or date.today().replace(day=1)
+        return start_of_period  + relativedelta(day=31)
 
     name = fields.Char("Name", required=True, readonly=True, copy=False, compute="set_name")
     employee_id = fields.Many2one("hr.employee", "Employee", default=set_employee)
@@ -26,14 +28,20 @@ class TimesheetSige(models.Model):
     register_hours = fields.Float("Register Hours", compute="_compute_register_hour")
     pending_hours = fields.Float("Pending Hours", compute="_compute_pending_hours")
     chargeability = fields.Float("Chargeability", compute="_compute_chargeability")
-    company_id = fields.Many2one("res.company", "Company", default=lambda self: self.env.company)
+    company_id = fields.Many2one("res.company", "Company", related="employee_id.company_id")
+    period_id = fields.Many2one("period.sige", "Period")
     timesheet_ids = fields.One2many("account.analytic.line", "timesheet_id", string="Timesheet")
+    state = fields.Selection([
+        ("open","Open"),
+        ("sent","Sent"),
+        ("close","Close")
+    ], "State", index=True, default="open")
 
-    @api.depends("employee_id", "start_of_period")
+    @api.depends("start_of_period")
     def set_name(self):
         for rec in self:
-            if rec.employee_id and rec.start_of_period:
-                rec.name = str(rec.start_of_period.year) + str(rec.start_of_period.month).zfill(2) + ' - ' + rec.employee_id.name
+            if rec.start_of_period:
+                rec.name = str(rec.start_of_period.year) + str(rec.start_of_period.month).zfill(2)
             else:
                 rec.name = '/'
 
@@ -82,7 +90,6 @@ class TimesheetSige(models.Model):
 
         return total_days
 
-
     @api.depends("days_to_register")
     def _compute_holidays(self):
         holidays = self.env['calendar.holidays.timesheets'].search([
@@ -90,19 +97,36 @@ class TimesheetSige(models.Model):
             ('company_id', '=', self.company_id.id)
         ])
         #TODO filter by employee_id and type of holidays
-
         self.holidays = len(holidays)
     
-    def _cron_monthly_record_sige(self):
+    def send_period(self):
+        self.write({
+            'state': 'sent'
+        })
+    
+    def recovery_period(self):
+        if date.today() <= self.period_id.end_of_period:
+            self.write({
+                'state': 'open'
+            })
+        else:
+            raise ValidationError(_("Deadline for period reached!"))
+    
+    def create_period_sige(self, period):
         employees = self.env['hr.employee'].search([
             ('active', '=', True)
         ])
+        end_of_period = period.end_of_period + relativedelta(day=31)
         for employee in employees:
             already_exist = self.search([
-                "&", ('start_of_period', '=', date.today().replace(day=1)),('end_of_period','=', date.today()+ relativedelta(day=31)),
-                ('employee_id', "=", employee.id)
+                ('start_of_period', '=', period.start_of_period),('end_of_period','=', end_of_period),
+                ('employee_id', "=", employee.id), ('period_id','=',period.id)
             ])
             if not already_exist:
                 self.create({
                     'employee_id': employee.id,
+                    'period_id': period.id,
+                    'start_of_period': period.start_of_period,
+                    'end_of_period': end_of_period
                 })
+
