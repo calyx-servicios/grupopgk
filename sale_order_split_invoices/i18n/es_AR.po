@@ -1,0 +1,210 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* sale_order_split_invoices
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-01-20 17:56+0000\n"
+"PO-Revision-Date: 2023-01-20 17:56+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: sale_order_split_invoices
+#: model_terms:ir.ui.view,arch_db:sale_order_split_invoices.view_sale_order_inherit_split_tab
+msgid ""
+"<span class=\"o_stat_text\">\n"
+"                            Splitted Invoices\n"
+"                        </span>"
+msgstr ""
+"<span class=\"o_stat_text\">\n"
+"                            Facturas Divididas\n"
+"                        </span>"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__analytic_account_id
+msgid "Analytic Account"
+msgstr "Cuenta analiticas"
+
+#. module: sale_order_split_invoices
+#: code:addons/sale_order_split_invoices/models/sale_order.py:0
+#, python-format
+msgid "Cannot exceed Total Required"
+msgstr "No puede exceder el total requerido"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__partner_id
+msgid "Child Company"
+msgstr "Empresa infantil"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__create_uid
+msgid "Created by"
+msgstr "Creado por"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__create_date
+msgid "Created on"
+msgstr "Creado en"
+
+#. module: sale_order_split_invoices
+#: code:addons/sale_order_split_invoices/models/sale_order.py:0
+#, python-format
+msgid ""
+"Created with the product: (%s) a new subscription <a href=# data-oe-"
+"model=subscription.package data-oe-id=%d>%s</a>"
+msgstr ""
+"Creado con el producto: (%s) una nueva suscripción <a href=# data-oe-"
+"model=subscription.package data-oe-id=%d>%s</a>"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__price_subtotal
+msgid "Current Subtotal"
+msgstr "Subtotal actual"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__name
+msgid "Description"
+msgstr "Descripción"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__display_name
+msgid "Display Name"
+msgstr "Nombre para mostrar"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__id
+msgid "ID"
+msgstr ""
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line____last_update
+msgid "Last Modified on"
+msgstr "Última modificación el"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__write_uid
+msgid "Last Updated by"
+msgstr "Última actualización por"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__write_date
+msgid "Last Updated on"
+msgstr "Ultima actualización en"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__amount
+msgid "New subtotal"
+msgstr "Nuevo subtotal"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__order_id
+msgid "Order"
+msgstr "Orden"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__order_line_id
+msgid "Order Line"
+msgstr "Line de orden"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__product_id
+msgid "Product"
+msgstr "Producto"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__quantity
+msgid "Quantity"
+msgstr "Cantidad"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields.selection,name:sale_order_split_invoices.selection__sale_order__split_type__manual
+msgid "Quantity manual"
+msgstr "Cantidad Manual"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields.selection,name:sale_order_split_invoices.selection__sale_order__split_type__quantity_per
+msgid "Quantity on Percentage"
+msgstr "Cantidad por Porcentaje"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__res_partner_ids
+msgid "Res Partner"
+msgstr "Contacto"
+
+#. module: sale_order_split_invoices
+#: model:ir.model,name:sale_order_split_invoices.model_sale_order
+msgid "Sales Order"
+msgstr "Pedido de venta"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__split_invoice
+msgid "Split Invoice?"
+msgstr "¿Factura dividida?"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__split_line_ids
+msgid "Split Line"
+msgstr "Linea de división"
+
+#. module: sale_order_split_invoices
+#: model_terms:ir.ui.view,arch_db:sale_order_split_invoices.view_sale_order_inherit_split_tab
+msgid "Split Options"
+msgstr "Opciones de división"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__split_type
+msgid "Split Type"
+msgstr "Tipo de división"
+
+#. module: sale_order_split_invoices
+#: model_terms:ir.ui.view,arch_db:sale_order_split_invoices.view_sale_order_inherit_split_tab
+msgid "Split in"
+msgstr "Dividir en"
+
+#. module: sale_order_split_invoices
+#: model_terms:ir.ui.view,arch_db:sale_order_split_invoices.view_sale_order_inherit_split_tab
+msgid "Split type"
+msgstr "Tipo de división"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__splitted_invoice_ids
+msgid "Splitted Invoices"
+msgstr "Facturas Divididas"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__split_invoices_count
+msgid "Subscriptions"
+msgstr "Suscripciónes"
+
+#. module: sale_order_split_invoices
+#: code:addons/sale_order_split_invoices/models/sale_order.py:0
+#, python-format
+msgid "The total amount must be equal to the required amount on Split lines"
+msgstr ""
+"El monto total debe ser igual al monto requerido en las líneas de división"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__total_split
+msgid "Total"
+msgstr ""
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__total_required
+msgid "Total Required"
+msgstr "Total Requerido"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__uom_id
+msgid "Uom"
+msgstr "Unidades"
+
+#. module: sale_order_split_invoices
+#: model:ir.model,name:sale_order_split_invoices.model_split_line
+msgid "split.line"
+msgstr ""
