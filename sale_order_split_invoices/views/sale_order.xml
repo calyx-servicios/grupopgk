@@ -23,7 +23,7 @@
                                 <field name="partner_id" readonly="1"/>
                                 <field name="product_id" readonly="1" />
                                 <field name="name" readonly="1" />
-                                <field name="analytic_account_id" />
+                                <field name="analytic_account_id" readonly="1"/>
                                 <field name="quantity" readonly="1" />
                                 <field name="uom_id" readonly="1" />
                                 <field name="price_subtotal" widget="monetary" readonly="1" />
