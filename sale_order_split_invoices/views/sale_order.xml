@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="ir.ui.view" id="view_sale_order_inherit_split_tab">
+        <field name="name">view.sale.order.inherit.split.tab</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group/group[2]/field[@name='payment_term_id']" position="after">
+                <field name="split_invoice" widget="boolean_toggle" />
+            </xpath>
+            <xpath expr="//page[@name='other_information']" position="after">
+                <page name="split_invoice" string="Split Options" attrs="{'invisible': [('split_invoice', '=', False)]}">
+                    <group name="split_config" string="Split Options">
+                        <group>
+                            <field name="split_type" string="Split type" attrs="{'invisible': [('split_invoice', '=', False)], 'required': [('split_invoice', '!=', False)]}" />
+                        </group>
+                        <group>
+                            <field name="res_partner_ids" string="Split in" widget="many2many_tags" attrs="{'invisible': [('split_invoice', '=', False)], 'required': [('split_invoice', '!=', False)]}" domain="[('parent_id','=', partner_id)]" />
+                        </group>
+                        <field name="split_line_ids">
+                            <tree editable="bottom">
+                                <field name="partner_id" readonly="1"/>
+                                <field name="product_id" readonly="1" />
+                                <field name="name" readonly="1" />
+                                <field name="analytic_account_id" />
+                                <field name="quantity" readonly="1" />
+                                <field name="uom_id" readonly="1" />
+                                <field name="price_subtotal" widget="monetary" readonly="1" />
+                                <field name="amount" widget="monetary" readonly="0"/>
+                            </tree>
+                        </field>
+                        <group class="oe_subtotal_footer oe_right">
+                            <field name="total_split" />
+                            <field name="total_required" />
+                        </group>
+                        <div class="oe_clear"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
