@@ -7,7 +7,7 @@
         <field name="type">form</field>
         <field name="arch" type="xml">
             <xpath expr="//sheet/group/group/field[@name='payment_reference']" position="after">
-                <field name="partner" required="1"/>
+                <field name="partner" attrs="{'invisible': [('move_type', '=', 'entry')], 'required': [('move_type', 'in', ['out_invoice', 'out_refund'])]}"/>
             </xpath>
         </field>
     </record>
