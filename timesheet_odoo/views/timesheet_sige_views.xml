@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+	<record id="view_timessheet_sige_form" model="ir.ui.view">
+		<field name="name">timessheet.sige.form</field>
+        <field name="model">timesheet.sige</field>
+        <field name="arch" type="xml">
+        	<form>
+        		<header>
+        			<button name="send_period" string="Send Period" class="oe_highlight" type="object"
+        				attrs="{'invisible': ['|',('pending_hours','!=',0.00),('state','!=','open')]}"/>
+        			<button name="recovery_period" string="Recovery Period" class="oe_highlight" type="object"
+        				attrs="{'invisible': [('state', '!=', 'sent')]}"/>
+        			<field name="state" widget="statusbar"/>
+        		</header>
+        		<sheet>
+        			<widget name="web_ribbon" title="Close" bg_color="bg-danger" attrs="{'invisible': [('state', '!=', 'close')]}"/>
+	        		<div class="oe_title">
+	                    <h1 class="mt0" attrs="{'invisible':[('name', '=', '/')]}">
+	                        <field name="name" readonly="1" placeholder="Period"/>
+	                    </h1>
+	                </div>
+			        <field name="employee_id" invisible="1"/>
+			        <field name="company_id" invisible="1"/>
+			        <field name="period_id" invisible="1"/>
+			        <br/>
+	        		<div class="row">
+		                <div class="col" style="text-align: center;">
+		                	<i class="fa fa-flag-o" style="font-size:x-large;"/><br/>
+		                	<field name="start_of_period" readonly="1"/><br/>
+		                	<label for="start_of_period"/>
+		                </div>
+		                <div class="col" style="text-align: center;">
+		                	<i class="fa fa-flag" style="font-size:x-large;"/><br/>
+		                	<field name="end_of_period" readonly="1"/><br/>
+		                	<label for="end_of_period"/>
+		                </div>
+		                <div class="col" style="text-align: center;">
+			                <i class="fa fa-calendar-minus-o" style="font-size:x-large;"/><br/>
+			                <field name="holidays" readonly="1"/><br/>
+			                <label for="holidays"/>
+		                </div>
+		                <div class="col" style="text-align: center;">
+		                	<i class="fa fa-calendar" style="font-size:x-large;"/><br/>
+			                <field name="working_day" widget='float_time' readonly="1"/><br/>
+			                <label for="working_day"/>
+		                </div>
+		                <div class="col" style="text-align: center;">
+		                	<i class="fa fa-calendar-plus-o" style="font-size:x-large;"/><br/>
+		                	<field name="days_to_register" readonly="1"/><br/>
+		                	<label for="days_to_register"/>
+		                </div>
+	        		</div>
+	        		<br/>
+	        		<div class="row">
+		            	<div class="col" style="text-align: center;">
+			            	<i class="fa fa-hourglass-o" style="font-size:x-large;"/><br/>
+			                <field name="required_hours" readonly="1"/><br/>
+			                <label for="required_hours"/>
+		            	</div>
+		            	<div class="col" style="text-align: center;">
+			            	<i class="fa fa-calendar-check-o" style="font-size:x-large; color:green"/><br/>
+			                <field name="register_hours" readonly="1"/><br/>
+			                <label for="register_hours"/>
+		            	</div>
+		            	<div class="col" style="text-align: center;">
+		            		<i class="fa fa-calendar-times-o" style="font-size:x-large; color:red"/><br/>
+			                <field name="pending_hours" readonly="1"/><br/>
+			                <label for="pending_hours"/>
+		            	</div>
+		            	<div class="col" style="text-align: center;">
+		            		<i class="fa fa-pie-chart" style="font-size:x-large;"/><br/>
+		                	<field name="chargeability" readonly="1"/> %<br/>
+		                	<label for="chargeability"/>
+		            	</div>
+		            </div>
+		            <br/>
+			       	<field name="timesheet_ids" attrs="{'readonly': [('state','in',('sent','close'))]}">
+			       		<tree editable="bottom">
+			       			<field name="project_id"/>
+			       			<field name="name"/>
+			       			<field name="unit_amount"/>
+			       		</tree>
+			       	</field>
+        		</sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_timessheet_sige_tree" model="ir.ui.view">
+    	<field name="name">timessheet.sige.tree</field>
+        <field name="model">timesheet.sige</field>
+        <field name="arch" type="xml">
+            <tree decoration-info="state=='open'" decoration-success="state=='sent'" decoration-danger="state=='close'">
+            	<field name="name"/>
+            	<field name="state" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record model="ir.actions.act_window" id="timessheet_sige_action_window">
+        <field name="name">Timesheet Sige</field>
+        <field name="res_model">timesheet.sige</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    
+    <menuitem name="Timesheet Sige" id="timesheet_sige"
+    	parent="hr_timesheet.menu_hr_time_tracking" action="timessheet_sige_action_window"
+        sequence="7"/>
+    
+    <menuitem id="hr_timesheet.timesheet_menu_activity_mine" active="False"/>
+    
+    <menuitem id="hr_timesheet.timesheet_menu_activity_user" active="False"/>
+    
+    <menuitem id="hr_timesheet.timesheet_menu_activity_all" active="False"/>
+    
+</odoo>
