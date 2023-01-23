@@ -33,7 +33,7 @@
                         <group>
                             <field name="res_partner_ids" string="Split in" widget="many2many_tags" attrs="{'invisible': [('split_invoice', '=', False)], 'required': [('split_invoice', '!=', False)]}" domain="[('parent_id','=', partner_id)]" />
                         </group>
-                        <field name="split_line_ids">
+                        <field name="split_line_ids" attrs="{'readonly': ['|',('state', 'in', ['sale', 'done']),('split_invoices_count', '!=', 0)]}">
                             <tree editable="bottom">
                                 <field name="partner_id" readonly="1"/>
                                 <field name="product_id" readonly="1" />
@@ -41,7 +41,9 @@
                                 <field name="analytic_account_id" readonly="1"/>
                                 <field name="quantity" readonly="1" />
                                 <field name="uom_id" readonly="1" />
+                                <field name="tax_id" readonly="1" widget="many2many_tags" />
                                 <field name="price_subtotal" widget="monetary" readonly="1" />
+                                <field name="type_id" />
                                 <field name="amount" widget="monetary" readonly="0"/>
                             </tree>
                         </field>

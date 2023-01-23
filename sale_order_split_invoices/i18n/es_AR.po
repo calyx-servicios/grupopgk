@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-01-20 17:56+0000\n"
-"PO-Revision-Date: 2023-01-20 17:56+0000\n"
+"POT-Creation-Date: 2023-01-23 13:01+0000\n"
+"PO-Revision-Date: 2023-01-23 13:01+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -81,6 +81,11 @@ msgstr "Nombre para mostrar"
 #: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__id
 msgid "ID"
 msgstr ""
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__split_invoices_count
+msgid "Invoice Counter"
+msgstr "Contador de Facturas"
 
 #. module: sale_order_split_invoices
 #: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line____last_update
@@ -178,9 +183,9 @@ msgid "Splitted Invoices"
 msgstr "Facturas Divididas"
 
 #. module: sale_order_split_invoices
-#: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__split_invoices_count
-msgid "Subscriptions"
-msgstr "Suscripciónes"
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__tax_id
+msgid "Taxes"
+msgstr "Impuestos"
 
 #. module: sale_order_split_invoices
 #: code:addons/sale_order_split_invoices/models/sale_order.py:0
@@ -198,6 +203,11 @@ msgstr ""
 #: model:ir.model.fields,field_description:sale_order_split_invoices.field_sale_order__total_required
 msgid "Total Required"
 msgstr "Total Requerido"
+
+#. module: sale_order_split_invoices
+#: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__type_id
+msgid "Type"
+msgstr "Tipo"
 
 #. module: sale_order_split_invoices
 #: model:ir.model.fields,field_description:sale_order_split_invoices.field_split_line__uom_id
