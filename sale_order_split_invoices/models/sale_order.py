@@ -11,9 +11,9 @@ class SaleOrder(models.Model):
     total_split = fields.Float(string='Total', compute='_compute_total_split')
     res_partner_ids = fields.Many2many('res.partner')
     split_line_ids = fields.One2many('split.line', 'order_id')
-    
-    split_invoices_count = fields.Integer(string='Subscriptions', compute='_compute_split_invoices_count')
+    split_invoices_count = fields.Integer(string='Invoice Counter', compute='_compute_split_invoices_count')
     splitted_invoice_ids = fields.Many2many('account.move', string='Splitted Invoices')
+
 
     @api.depends('split_invoices_count', 'splitted_invoice_ids')
     def _compute_split_invoices_count(self):
@@ -119,10 +119,12 @@ class SaleOrder(models.Model):
                         'order_line_id': line.id,
                         'quantity': line.product_uom_qty,
                         'uom_id': line.product_uom.id,
+                        'tax_id': [(6,0,line.tax_id.ids)],
                         'price_subtotal': line.price_subtotal,
                         'amount': 0.0,
                     }
                     self.split_line_ids.create(vals)
+
 
     @api.depends('split_line_ids.amount')
     def _compute_total_split(self):
@@ -131,7 +133,6 @@ class SaleOrder(models.Model):
             total += line.amount
             if total > self.total_required:
                 raise UserError(_('Cannot exceed Total Required'))
-
         self.total_split = total
 
     @api.depends('split_type')
@@ -148,14 +149,18 @@ class SaleOrder(models.Model):
                     split_line = rec.split_line_ids.filtered(lambda l: l.partner_id == partner)
                     values = rec._prepare_invoice()
                     values['partner_id'] = partner
+                    if split_line[0].type_id:
+                        values['sale_type_id'] = split_line[0].type_id.id
+                        values['journal_id'] = split_line[0].type_id.journal_id.id
+                        if split_line[0].type_id.company_id:
+                            values['company_id'] = split_line[0].type_id.company_id.id
                     values['invoice_line_ids'] = rec._invoice_values_line(split_line)
                     moves = self.env['account.move'].sudo().with_context(default_move_type='out_invoice').create(values)
                     rec.splitted_invoice_ids = [(4,moves.id)]
             else: 
                 moves = super(SaleOrder, self)._create_invoices(grouped, final, date)
-
         return moves
-    
+
     def _invoice_values_line(self, split_line):
         lines = []
         for line in split_line:
@@ -169,9 +174,8 @@ class SaleOrder(models.Model):
                 'discount': line.order_line_id.discount,
                 'analytic_account_id': line.analytic_account_id.id,
                 'price_unit': line.order_id.set_amount(line.amount),
-                'tax_ids': [(6,0,line.order_line_id.tax_id.ids)],
+                'tax_ids': [(6,0,line.tax_id.ids)],
                 'sale_line_ids': line.order_line_id.id,
             }
             lines.append((0,0, vals))
         return lines
-
