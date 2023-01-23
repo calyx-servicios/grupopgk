@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <record id="email_template_charge_sige" model="mail.template">
+            <field name="name">Reminder to charge Sige</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="subject">Reminder to charge Sige</field>
+            <field name="partner_to">{{ object.user_partner_id.id }}</field>
+            <field name="body_html" type="html">
+				<div style="margin: 0px; padding: 0px;">
+				    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+				        Hello,
+				        <br/><br/>
+				        This email was sent in order to remind you that you have not uploaded your work hours yet.
+				        <t t-if="ctx.get('url_timesheet')">
+				          	<t t-set="url" t-value="ctx.get('url_timesheet')"/>
+				            You can do it by entering this <a t-attf-href="#{url}">link</a>
+				        </t>
+				        <br/><br/>
+				        Do not hesitate to contact us if you have any questions.
+				        <br/>
+				    </p>
+				</div>
+            </field>
+            <field name="lang">{{ object.user_partner_id.lang }}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+    </data>
+</odoo>
