@@ -28,9 +28,9 @@ class SaleOrderLine(models.Model):
     def _compute_is_project(self):
         for rec in self:
             if rec.product_id.detailed_type == 'service' and rec.product_id.service_tracking in ['project_only', 'task_in_project']:
-                rec.sudo().is_project = True
+                rec.is_project = True
             else:
-                rec.sudo().is_project = False
+                rec.is_project = False
 
     @api.model_create_multi
     def create(self, values):
