@@ -20,6 +20,18 @@ class SaleOrder(models.Model):
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
 
+    project_name = fields.Char(string='Project name')
+    is_project = fields.Boolean('is project?', default=False, compute='_compute_is_project')
+
+
+    @api.depends('product_id')
+    def _compute_is_project(self):
+        for rec in self:
+            if rec.product_id.detailed_type == 'service' and rec.product_id.service_tracking in ['project_only', 'task_in_project']:
+                rec.sudo().is_project = True
+            else:
+                rec.sudo().is_project = False
+
     @api.model_create_multi
     def create(self, values):
         res = super(SaleOrderLine, self).create(values)
@@ -51,6 +63,7 @@ class SaleOrderLine(models.Model):
         if not account:
             acc_vals = self.analytic_values()
             account = self.env['account.analytic.account'].create(acc_vals)
+
         return {
             'name': self._get_sequence_name(),
             'analytic_account_id': account.id,
@@ -129,10 +142,13 @@ class SaleOrderLine(models.Model):
         except Exception as e:
             raise Exception(_('Failed to create project (ERROR: {})').format(e))
 
+    def _prepare_sequence_name(self, obj):
+        name = '{}-{}-{} | {} - {}'.format(datetime.now().year, self.order_id.partner_id.id, obj.get_next_char(obj.number_next), self.project_name, self.order_id.partner_id.name)
+        return name
+
     def _get_sequence_name(self):
         seq_obj = self.env.ref('project_for_each_sol.seq_project')
-        seq_name = '{}-{}-{}'.format(datetime.now().year, self.order_id.partner_id.id, seq_obj.get_next_char(seq_obj.number_next))
-        return seq_name
+        return self._prepare_sequence_name(seq_obj)
 
     def _set_next_number(self):
         seq_obj = self.env.ref('project_for_each_sol.seq_project')
