@@ -75,6 +75,8 @@ class SaleOrderLine(models.Model):
 
     def create_project(self):
         vals = self._project_values()
+        if self.product_id.service_policy == 'delivered_timesheet':
+            vals['allow_billable'] = True
         if self.product_id.project_template_id:
             vals['name'] = "%s - %s" % (vals['name'], self.product_id.project_template_id.name)
             project = self.product_id.project_template_id.copy(vals)
