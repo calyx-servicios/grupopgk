@@ -3,6 +3,7 @@ from odoo import models, api, fields, _
 
 class SplitLine(models.Model):
     _name = 'split.line'
+    _description = 'Split Line'
 
     quantity = fields.Float(string="Quantity")
     product_id = fields.Many2one('product.product')

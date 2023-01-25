@@ -86,6 +86,8 @@ class SaleOrder(models.Model):
         res = super(SaleOrder, self).action_confirm()
         for rec in self:
             if rec.split_invoice:
+                if not rec.split_line_ids:
+                    raise UserError(_('The lines to split have not been obtained, please enter them or disable the split invoice check to continue.'))
                 self.env['subscription.package'].search([('sale_order', '=', rec.id), ('partner_id', '=', rec.partner_id.id)]).unlink()
                 self._check_amount_required(rec.total_required, rec.total_split)
                 subscription = []
@@ -93,7 +95,6 @@ class SaleOrder(models.Model):
                     split_line = rec.split_line_ids.filtered(lambda l: l.partner_id == partner)
                     sub = rec._create_subscription(split_line)
                     subscription.append(sub)
-            
         return res
 
     def set_amount(self, split_amount):
@@ -149,7 +150,7 @@ class SaleOrder(models.Model):
 
     def _create_invoices(self, grouped=False, final=False, date=None):
         for rec in self:
-            if rec.split_invoice:
+            if rec.split_invoice and len(rec.split_line_ids) != 0:
                 for partner in rec.res_partner_ids:
                     split_line = rec.split_line_ids.filtered(lambda l: l.partner_id == partner)
                     values = rec._prepare_invoice()
