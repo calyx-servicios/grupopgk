@@ -92,7 +92,7 @@ class SaleOrder(models.Model):
                     split_line = rec.split_line_ids.filtered(lambda l: l.partner_id == partner)
                     sub = rec._create_subscription(split_line)
                     subscription.append(sub)
-            self.env['subscription.package'].search([('sale_order', '=', rec.id), ('partner_id', '=', rec.partner_id.id)]).unlink()
+                self.env['subscription.package'].search([('sale_order', '=', rec.id), ('partner_id', '=', rec.partner_id.id)]).unlink()
             
         return res
 
