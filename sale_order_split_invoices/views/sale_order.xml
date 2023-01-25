@@ -31,10 +31,10 @@
                             <field name="split_type" string="Split type" attrs="{'invisible': [('split_invoice', '=', False)], 'required': [('split_invoice', '!=', False)]}" />
                         </group>
                         <group>
-                            <field name="res_partner_ids" string="Split in" widget="many2many_tags" attrs="{'invisible': [('split_invoice', '=', False)], 'required': [('split_invoice', '!=', False)]}" domain="[('parent_id','=', partner_id)]" />
+                            <field name="res_partner_ids" string="Split in" widget="many2many_tags" attrs="{'invisible': [('split_invoice', '=', False)], 'required': ['&amp;',('split_invoice', '!=', False), ('split_line_ids', '=', False)]}" domain="[('parent_id','=', partner_id)]" />
                         </group>
                         <field name="split_line_ids" attrs="{'readonly': ['|',('state', 'in', ['sale', 'done']),('split_invoices_count', '!=', 0)]}">
-                            <tree editable="bottom">
+                            <tree editable="bottom" create="0">
                                 <field name="partner_id" readonly="1"/>
                                 <field name="product_id" readonly="1" />
                                 <field name="name" readonly="1" />
