@@ -11,14 +11,26 @@ class SaleOrder(models.Model):
             if not rec.project_id:
                 for line in rec.order_line:
                     if len(rec.company_id) == 1:
-                        line.sudo().with_company(rec.company_id)._create_project_for_each(line)
+                        line.with_company(rec.company_id)._create_project_for_each(line)
                     else:
-                        line.sudo().with_company(line.company_id)._create_project_for_each(line)
+                        line.with_company(line.company_id)._create_project_for_each(line)
                     line.sudo()._set_next_number()
         return super(SaleOrder, self).action_confirm()
 
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
+
+    project_name = fields.Char(string='Project name')
+    is_project = fields.Boolean('is project?', default=False, compute='_compute_is_project')
+
+
+    @api.depends('product_id')
+    def _compute_is_project(self):
+        for rec in self:
+            if rec.product_id.detailed_type == 'service' and rec.product_id.service_tracking in ['project_only', 'task_in_project']:
+                rec.is_project = True
+            else:
+                rec.is_project = False
 
     @api.model_create_multi
     def create(self, values):
@@ -26,9 +38,9 @@ class SaleOrderLine(models.Model):
         for line in res:
             if line.state == 'sale' and line.is_service:
                 if len(line.order_id.company_id) == 1:
-                    self.sudo().with_company(line.order_id.company_id)._create_project_for_each(line)
+                    self.with_company(line.order_id.company_id)._create_project_for_each(line)
                 else:
-                    self.sudo().with_company(line.company_id)._create_project_for_each(line)
+                    self.with_company(line.company_id)._create_project_for_each(line)
                 line.sudo()._set_next_number()
         return res
 
@@ -51,6 +63,7 @@ class SaleOrderLine(models.Model):
         if not account:
             acc_vals = self.analytic_values()
             account = self.env['account.analytic.account'].create(acc_vals)
+
         return {
             'name': self._get_sequence_name(),
             'analytic_account_id': account.id,
@@ -104,7 +117,7 @@ class SaleOrderLine(models.Model):
 
     def _create_task(self, project):
         values = self._prepare_task_values(project)
-        task = self.env['project.task'].sudo().create(values)
+        task = self.env['project.task'].create(values)
         self.write({
             'task_id': task.id,
         })
@@ -115,24 +128,27 @@ class SaleOrderLine(models.Model):
             project = None
             if line.product_id.service_tracking == 'task_in_project' and line.is_service:
                 if not line.order_id.project_id:
-                    project = line.sudo().create_project()
+                    project = line.create_project()
                     if project.analytic_account_id:
                         self.analytic_account_id = project.analytic_account_id.id
                     if not line.task_id:
-                        line.sudo()._create_task(project)
+                        line._create_task(project)
             elif line.product_id.service_tracking == 'project_only' and line.is_service:
                 if not line.order_id.project_id:
-                    project = line.sudo().create_project()
+                    project = line.create_project()
                     if project.analytic_account_id:
                         self.analytic_account_id = project.analytic_account_id.id
 
         except Exception as e:
             raise Exception(_('Failed to create project (ERROR: {})').format(e))
 
+    def _prepare_sequence_name(self, obj):
+        name = '{}-{}-{} | {} - {}'.format(datetime.now().year, self.order_id.partner_id.id, obj.get_next_char(obj.number_next), self.project_name, self.order_id.partner_id.name)
+        return name
+
     def _get_sequence_name(self):
         seq_obj = self.env.ref('project_for_each_sol.seq_project')
-        seq_name = '{}-{}-{}'.format(datetime.now().year, self.order_id.partner_id.id, seq_obj.get_next_char(seq_obj.number_next))
-        return seq_name
+        return self._prepare_sequence_name(seq_obj)
 
     def _set_next_number(self):
         seq_obj = self.env.ref('project_for_each_sol.seq_project')

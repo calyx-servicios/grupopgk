@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 15.0\n"
+"Project-Id-Version: Odoo Server 15.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-12-07 20:42+0000\n"
-"PO-Revision-Date: 2022-12-07 20:42+0000\n"
+"POT-Creation-Date: 2023-01-24 10:58+0000\n"
+"PO-Revision-Date: 2023-01-24 10:58+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -20,6 +20,11 @@ msgstr ""
 #, python-format
 msgid "Failed to create project (ERROR: {})"
 msgstr "No se pudo crear el proyecto (ERROR: {})"
+
+#. module: project_for_each_sol
+#: model:ir.model.fields,field_description:project_for_each_sol.field_sale_order_line__project_name
+msgid "Project name"
+msgstr "Nombre del proyecto"
 
 #. module: project_for_each_sol
 #: model:ir.model.fields,field_description:project_for_each_sol.field_sale_order__project_ids
@@ -40,3 +45,8 @@ msgstr "Pedido de venta"
 #: model:ir.model,name:project_for_each_sol.model_sale_order_line
 msgid "Sales Order Line"
 msgstr "Línea de pedido de venta"
+
+#. module: project_for_each_sol
+#: model:ir.model.fields,field_description:project_for_each_sol.field_sale_order_line__is_project
+msgid "is project?"
+msgstr "¿es un proyecto?"
