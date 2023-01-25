@@ -86,13 +86,13 @@ class SaleOrder(models.Model):
         res = super(SaleOrder, self).action_confirm()
         for rec in self:
             if rec.split_invoice:
+                self.env['subscription.package'].search([('sale_order', '=', rec.id), ('partner_id', '=', rec.partner_id.id)]).unlink()
                 self._check_amount_required(rec.total_required, rec.total_split)
                 subscription = []
                 for partner in rec.res_partner_ids:
                     split_line = rec.split_line_ids.filtered(lambda l: l.partner_id == partner)
                     sub = rec._create_subscription(split_line)
                     subscription.append(sub)
-                self.env['subscription.package'].search([('sale_order', '=', rec.id), ('partner_id', '=', rec.partner_id.id)]).unlink()
             
         return res
 
