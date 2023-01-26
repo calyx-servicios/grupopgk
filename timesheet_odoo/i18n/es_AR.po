@@ -261,8 +261,13 @@ msgstr "Enviar Periódo"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__sent_periods
+msgid "Sent"
+msgstr "ENVIADOS"
+
+#. module: timesheet_odoo
 #: model:ir.model.fields.selection,name:timesheet_odoo.selection__timesheet_sige__state__sent
 msgid "Sent"
+msgstr "Enviado"
 msgstr "ENVIADOS"
 
 #. module: timesheet_odoo
