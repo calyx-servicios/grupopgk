@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-01-20 21:37+0000\n"
-"PO-Revision-Date: 2023-01-20 21:37+0000\n"
+"POT-Creation-Date: 2023-01-26 15:40+0000\n"
+"PO-Revision-Date: 2023-01-26 15:40+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -18,7 +18,7 @@ msgstr ""
 #. module: timesheet_odoo
 #: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
 msgid "%<br/>"
-msgstr "%<br/>"
+msgstr ""
 
 #. module: timesheet_odoo
 #: model:mail.template,body_html:timesheet_odoo.email_template_charge_sige
@@ -26,15 +26,15 @@ msgid ""
 "<div style=\"margin: 0px; padding: 0px;\">\n"
 "\t\t\t\t    <p style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
 "\t\t\t\t        Hello,\n"
-"\t\t\t\t        <br><br>\n"
+"\t\t\t\t        <br/><br/>\n"
 "\t\t\t\t        This email was sent in order to remind you that you have not uploaded your work hours yet.\n"
-"\t\t\t\t        <t t-if=\"ctx.get('url_timesheet')\" data-oe-t-group=\"0\" data-oe-t-group-active=\"true\" data-oe-t-inline=\"true\">\n"
-"\t\t\t\t          \t<t t-set=\"url\" t-value=\"ctx.get('url_timesheet')\" data-oe-t-inline=\"true\"></t>\n"
+"\t\t\t\t        <t t-if=\"ctx.get('url_timesheet')\">\n"
+"\t\t\t\t          \t<t t-set=\"url\" t-value=\"ctx.get('url_timesheet')\"/>\n"
 "\t\t\t\t            You can do it by entering this <a t-attf-href=\"#{url}\">link</a>\n"
 "\t\t\t\t        </t>\n"
-"\t\t\t\t        <br><br>\n"
+"\t\t\t\t        <br/><br/>\n"
 "\t\t\t\t        Do not hesitate to contact us if you have any questions.\n"
-"\t\t\t\t        <br>\n"
+"\t\t\t\t        <br/>\n"
 "\t\t\t\t    </p>\n"
 "\t\t\t\t</div>\n"
 "            "
@@ -159,14 +159,16 @@ msgid "End of Period"
 msgstr "Fin"
 
 #. module: timesheet_odoo
-#: model:ir.module.category,description:timesheet_odoo.module_category_timesheet_employees
-msgid "Helps you manage your timesheets."
-msgstr "Le ayuda a administrar sus hojas de tiempo."
-
-#. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__holidays
 msgid "Holidays"
 msgstr "Feriados"
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/period_sige.py:0
+#: model:project.project,name:timesheet_odoo.hours_to_allocate
+#, python-format
+msgid "Hours to allocate"
+msgstr "Horas a imputar"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__id
@@ -259,13 +261,9 @@ msgstr "Enviar Periódo"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__sent_periods
-msgid "Sent"
-msgstr "ENVIADOS"
-
-#. module: timesheet_odoo
 #: model:ir.model.fields.selection,name:timesheet_odoo.selection__timesheet_sige__state__sent
 msgid "Sent"
-msgstr "Enviado"
+msgstr "ENVIADOS"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__start_of_period
@@ -278,6 +276,11 @@ msgstr "Inicio"
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__state
 msgid "State"
 msgstr "Estado"
+
+#. module: timesheet_odoo
+#: model:project.project,label_tasks:timesheet_odoo.hours_to_allocate
+msgid "Tasks"
+msgstr "Tareas"
 
 #. module: timesheet_odoo
 #: model:res.groups,comment:timesheet_odoo.group_timesheet_sige_manager
