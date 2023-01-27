@@ -3,8 +3,9 @@ Multi Subscription Templates
 ============================
 
 .. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !! This module adds multiple templates on         !! 
-   !! product.                                       !!
+   !! This module adds multiple templates in the     !! 
+   !! product and manages the subscription by sales  !!
+   !! lines.                                         !!
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -22,7 +23,7 @@ Multi Subscription Templates
 |badge1| |badge2| |badge3|
 
 
-    This module adds multiple templates on product.
+    This module adds multiple templates in the product and manages the subscription by sales lines.
 
 Install
 =======
@@ -33,8 +34,9 @@ Install
 
 * Go to Sale Order > Products > Products 
 
-* Enable "Is subscription" and see the modification on the field. 
+* Enable "Is subscription" and see the modification on the field.
 
+* Return to Sales Order and create new orders. 
 
 Known issues / Roadmap
 ======================
