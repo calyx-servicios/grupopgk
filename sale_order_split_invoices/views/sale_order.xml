@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="ir.ui.view" id="view_sale_order_inherit_split_tab">
+        <field name="name">view.sale.order.inherit.split.tab</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button name="smart_button_split" class="oe_stat_button" icon="fa-bars" type="object" attrs="{'invisible': [('split_invoices_count', '=', 0)]}">
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value">
+                            <field name="split_invoices_count"/>
+                        </span>
+                        <span class="o_stat_text">
+                            Splitted Invoices
+                        </span>
+                    </div>
+                </button>
+            </div>
+            <xpath expr="//header/button[@name='%(sale.action_view_sale_advance_payment_inv)d'][1]" position="attributes">
+                <attribute name="attrs">{'invisible': ['|',('invoice_status', '!=', 'to invoice'), ('split_invoices_count','!=', 0)]}</attribute>
+            </xpath>
+            <xpath expr="//sheet/group/group[2]/field[@name='payment_term_id']" position="after">
+                <field name="split_invoice" widget="boolean_toggle" />
+            </xpath>
+            <xpath expr="//page[@name='other_information']" position="after">
+                <page name="split_invoice" string="Split Options" attrs="{'invisible': [('split_invoice', '=', False)]}">
+                    <group name="split_config" string="Split Options">
+                        <group>
+                            <field name="split_type" string="Split type" attrs="{'invisible': [('split_invoice', '=', False)], 'required': [('split_invoice', '!=', False)]}" />
+                        </group>
+                        <group>
+                            <field name="res_partner_ids" string="Split in" widget="many2many_tags" attrs="{'invisible': [('split_invoice', '=', False)], 'required': ['&amp;',('split_invoice', '!=', False), ('split_line_ids', '=', False)]}" domain="[('parent_id','=', partner_id)]" />
+                        </group>
+                        <field name="split_line_ids" attrs="{'readonly': ['|',('state', 'in', ['sale', 'done']),('split_invoices_count', '!=', 0)]}">
+                            <tree editable="bottom" create="0">
+                                <field name="partner_id" readonly="1"/>
+                                <field name="product_id" readonly="1" />
+                                <field name="name" readonly="1" />
+                                <field name="analytic_account_id" readonly="1"/>
+                                <field name="quantity" readonly="1" />
+                                <field name="uom_id" readonly="1" />
+                                <field name="tax_id" readonly="1" widget="many2many_tags" />
+                                <field name="price_subtotal" widget="monetary" readonly="1" />
+                                <field name="type_id" />
+                                <field name="amount" widget="monetary" readonly="0"/>
+                            </tree>
+                        </field>
+                        <group class="oe_subtotal_footer oe_right">
+                            <field name="total_split" />
+                            <field name="total_required" />
+                        </group>
+                        <div class="oe_clear"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
