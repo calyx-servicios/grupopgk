@@ -7,7 +7,6 @@ Button Create Sale Order
    !! to create sales order.                         !!
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
 .. User https://shields.io for badge creation.
 .. |badge1| image:: https://img.shields.io/badge/maturity-Stable-brightgreen
     :target: https://odoo-community.org/page/development-status
@@ -17,7 +16,7 @@ Button Create Sale Order
     :alt: License: AGPL-3
 .. |badge3| image:: https://img.shields.io/badge/github-calyx--servicios%2Fgrupopgk-lightgray.png?logo=github
     :target: https://github.com/calyx-servicios/grupopgk
-    :alt: calyx-servicios/calyx.git
+    :alt: calyx-servicios/grupopgk.git
 
 |badge1| |badge2| |badge3|
 
@@ -28,9 +27,9 @@ Install
 
 * Go to applications
 
-* Find module "sol_analytic_account" > Press Install
+* Find module "subscriptions_button" > Press Install
 
-* Go to Sale >  and see the modifications on the Sale order lines.
+* Go to Subscriptions >  and see the modifications.
 
 Known issues / Roadmap
 ======================
@@ -69,4 +68,4 @@ This module is maintained by the Calyx Servicios S.A.
 CALYX SERVICIOS S.A. is part of the PGK Consultores economic group, member of an important global network, a world organization.
 The PGK Consultores group is one of the 20 largest consultant-studios in Argentina with nearly 300 professionals.
 
-This module is part of the `Grupo PGK <https://github.com/calyx-servicios/calyx.git>`_ project on GitHub.
+This module is part of the `Grupo PGK <https://github.com/calyx-servicios/grupopgk.git>`_ project on GitHub.
