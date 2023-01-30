@@ -1,0 +1,348 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* timesheet_odoo
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-01-30 14:03+0000\n"
+"PO-Revision-Date: 2023-01-30 14:03+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: timesheet_odoo
+#: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
+msgid "%<br/>"
+msgstr "%<br/>"
+
+#. module: timesheet_odoo
+#: model:mail.template,body_html:timesheet_odoo.email_template_charge_sige
+msgid ""
+"<div style=\"margin: 0px; padding: 0px;\">\n"
+"\t\t\t\t    <p style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
+"\t\t\t\t        Hello,\n"
+"\t\t\t\t        <br/><br/>\n"
+"\t\t\t\t        This email was sent in order to remind you that you have not uploaded your work hours yet.\n"
+"\t\t\t\t        <t t-if=\"ctx.get('url_timesheet')\">\n"
+"\t\t\t\t          \t<t t-set=\"url\" t-value=\"ctx.get('url_timesheet')\"/>\n"
+"\t\t\t\t            You can do it by entering this <a t-attf-href=\"#{url}\">link</a>\n"
+"\t\t\t\t        </t>\n"
+"\t\t\t\t        <br/><br/>\n"
+"\t\t\t\t        Do not hesitate to contact us if you have any questions.\n"
+"\t\t\t\t        <br/>\n"
+"\t\t\t\t    </p>\n"
+"\t\t\t\t</div>\n"
+"            "
+msgstr ""
+"<div style=\"margin: 0px; padding: 0px;\">\n"
+"\t\t\t\t    <p style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
+"\t\t\t\t        Hola,\n"
+"\t\t\t\t        <br><br>\n"
+"\t\t\t\t        Este correo electrónico se envió para recordarle que aún no ha cargado sus horas de trabajo.\n"
+"\t\t\t\t        <t t-if=\"ctx.get('url_timesheet')\" data-oe-t-group=\"0\" data-oe-t-group-active=\"true\" data-oe-t-inline=\"true\">\n"
+"\t\t\t\t          \t<t t-set=\"url\" t-value=\"ctx.get('url_timesheet')\" data-oe-t-inline=\"true\"></t>\n"
+"\t\t\t\t            Puedes hacerlo ingresando a este <a t-attf-href=\"#{url}\">link</a>\n"
+"\t\t\t\t        </t>\n"
+"\t\t\t\t        <br><br>\n"
+"\t\t\t\t        No dude en ponerse en contacto con nosotros si tiene alguna pregunta.\n"
+"\t\t\t\t        <br>\n"
+"\t\t\t\t    </p>\n"
+"\t\t\t\t</div>\n"
+"            "
+
+#. module: timesheet_odoo
+#: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_period_sige_form
+msgid ""
+"<i class=\"fa fa-times\" style=\"font-size:x-large; color:red\"/><br/>\n"
+"\t\t\t            \t<span>PENDIENTES DE AVANCE</span><br/>\n"
+"\t\t\t            \t<i class=\"fa fa-info-circle\" style=\"color:blue\"/>"
+msgstr ""
+
+#. module: timesheet_odoo
+#: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_period_sige_form
+msgid ""
+"<i class=\"fa fa-times\" style=\"font-size:x-large; color:red\"/><br/>\n"
+"\t\t            \t\t<span>PENDIENTES DE JUSTIFICAR</span><br/>\n"
+"\t\t            \t\t<i class=\"fa fa-info-circle\" style=\"color:blue\"/>"
+msgstr ""
+
+#. module: timesheet_odoo
+#: model:ir.model,name:timesheet_odoo.model_account_analytic_line
+msgid "Analytic Line"
+msgstr "Línea analítica"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,help:timesheet_odoo.field_timesheet_sige__working_day
+msgid ""
+"Average hours per day a resource is supposed to work with this calendar."
+msgstr ""
+"Promedio de horas por día que se supone que un recurso debe trabajar con "
+"este calendario."
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__chargeability
+msgid "Chargeability"
+msgstr "Cargabilidad"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields.selection,name:timesheet_odoo.selection__period_sige__state__close
+#: model:ir.model.fields.selection,name:timesheet_odoo.selection__timesheet_sige__state__close
+#: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_period_sige_form
+#: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
+msgid "Close"
+msgstr "Cerrado"
+
+#. module: timesheet_odoo
+#: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_period_sige_form
+msgid "Close Period"
+msgstr "Cerrar Periodo"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__company_id
+msgid "Company"
+msgstr "Compañia"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__create_uid
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__create_uid
+msgid "Created by"
+msgstr "Creado por"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__create_date
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__create_date
+msgid "Created on"
+msgstr "Creado en"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__days_to_register
+msgid "Days to register"
+msgstr "Días a registrar"
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/timesheet_sige.py:0
+#, python-format
+msgid "Deadline for period reached!"
+msgstr "Fecha límite para el período alcanzado!"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__display_name
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__display_name
+msgid "Display Name"
+msgstr "Nombre para mostrar"
+
+#. module: timesheet_odoo
+#: model:ir.model,name:timesheet_odoo.model_hr_employee
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__employee_id
+msgid "Employee"
+msgstr "Empleado"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__employee_ids
+msgid "Employees pending"
+msgstr "Empleados pendientes"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__count_employees
+msgid "Enabled users"
+msgstr "USUARIOS HABILITADOS"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__end_of_period
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__end_of_period
+msgid "End of Period"
+msgstr "Fin"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__holidays
+msgid "Holidays"
+msgstr "Feriados"
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/period_sige.py:0
+#: model:project.project,name:timesheet_odoo.hours_to_allocate
+#, python-format
+msgid "Hours to allocate"
+msgstr "Horas a imputar"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__id
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__id
+msgid "ID"
+msgstr ""
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige____last_update
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige____last_update
+msgid "Last Modified on"
+msgstr "Última modificación el"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__write_uid
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__write_uid
+msgid "Last Updated by"
+msgstr "Última actualización por"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__write_date
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__write_date
+msgid "Last Updated on"
+msgstr "Última actualización el"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__name
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__name
+msgid "Name"
+msgstr "Periódo"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields.selection,name:timesheet_odoo.selection__period_sige__state__open
+#: model:ir.model.fields.selection,name:timesheet_odoo.selection__timesheet_sige__state__open
+msgid "Open"
+msgstr "Abierto"
+
+#. module: timesheet_odoo
+#: model:res.groups,name:timesheet_odoo.group_timesheet_sige_manager
+msgid "Partner"
+msgstr "Socio"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__pending_hours
+msgid "Pending Hours"
+msgstr "HS Pendientes"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__period_id
+#: model:ir.ui.menu,name:timesheet_odoo.period_sige
+#: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
+msgid "Period"
+msgstr "Periódo"
+
+#. module: timesheet_odoo
+#: model:ir.actions.act_window,name:timesheet_odoo.period_sige_action_window
+msgid "Period Sige"
+msgstr "Periodo Sige"
+
+#. module: timesheet_odoo
+#: model:ir.model,name:timesheet_odoo.model_period_sige
+msgid "Periods"
+msgstr "Periodos"
+
+#. module: timesheet_odoo
+#: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
+msgid "Recovery Period"
+msgstr "Recuperar periódo"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__register_hours
+msgid "Register Hours"
+msgstr "HS Registradas"
+
+#. module: timesheet_odoo
+#: model:mail.template,name:timesheet_odoo.email_template_charge_sige
+#: model:mail.template,subject:timesheet_odoo.email_template_charge_sige
+msgid "Reminder to charge Sige"
+msgstr "Recordatorio para cargar Sige"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__required_hours
+msgid "Required Hours"
+msgstr "HS Requeridas"
+
+#. module: timesheet_odoo
+#: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
+msgid "Send Period"
+msgstr "Enviar Periódo"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__sent_periods
+msgid "Sent"
+msgstr "ENVIADOS"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields.selection,name:timesheet_odoo.selection__timesheet_sige__state__sent
+msgid "Sent"
+msgstr "Enviado"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__start_of_period
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__start_of_period
+msgid "Start of Period"
+msgstr "Inicio"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__state
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__state
+msgid "State"
+msgstr "Estado"
+
+#. module: timesheet_odoo
+#: model:project.project,label_tasks:timesheet_odoo.hours_to_allocate
+msgid "Tasks"
+msgstr "Tareas"
+
+#. module: timesheet_odoo
+#: model:res.groups,comment:timesheet_odoo.group_timesheet_sige_manager
+msgid "The user will have access to the all timesheets."
+msgstr "El usuario tendrá acceso a todos los parte de horas."
+
+#. module: timesheet_odoo
+#: model:res.groups,comment:timesheet_odoo.group_timesheet_sige_user
+msgid "The user will have access to the own timesheets."
+msgstr "El usuario tendrá acceso al parte de horas propias."
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/period_sige.py:0
+#, python-format
+msgid "There can only be one open period at a time!"
+msgstr "Solo puede haber un período abierto a la vez!"
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/hr_employee.py:0
+#, python-format
+msgid "There is no active period!"
+msgstr "No existe un período activo!"
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/hr_employee.py:0
+#, python-format
+msgid "There is no timesheet for this period and employee!"
+msgstr "No existe un parte de horas para este período y empleado!"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_account_analytic_line__timesheet_id
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__timesheet_ids
+msgid "Timesheet"
+msgstr "Parte de horas"
+
+#. module: timesheet_odoo
+#: model:ir.model,name:timesheet_odoo.model_timesheet_sige
+msgid "Timesheet Odoo"
+msgstr "Parte de horas"
+
+#. module: timesheet_odoo
+#: model:ir.actions.act_window,name:timesheet_odoo.timessheet_sige_action_window
+#: model:ir.module.category,name:timesheet_odoo.module_category_timesheet_employees
+#: model:ir.ui.menu,name:timesheet_odoo.timesheet_sige
+msgid "Timesheet Sige"
+msgstr "Parte de horas Sige"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__pending_periods
+msgid "To do"
+msgstr "PENDIENTES"
+
+#. module: timesheet_odoo
+#: model:res.groups,name:timesheet_odoo.group_timesheet_sige_user
+msgid "User"
+msgstr "Usuario"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__working_day
+msgid "Working Day"
+msgstr "Jornada"
