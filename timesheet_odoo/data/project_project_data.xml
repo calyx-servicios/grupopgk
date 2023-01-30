@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+	<data noupdate="1">
+	    <record model='account.analytic.account' id='timesheet_odoo.account_analytic_hours_to_allocate'>
+	    	<field name='name'>Account analytic - Hours to allocate</field>
+	    </record>
+	    
+	    <record model='project.project' id='timesheet_odoo.hours_to_allocate'>
+	        <field name='name'>Hours to allocate</field>
+	        <field name='active' eval="True"/>
+	        <field name='company_id'>1</field>
+	        <field name='analytic_account_id' ref='timesheet_odoo.account_analytic_hours_to_allocate'/>
+	    </record>
+	</data>
+</odoo>
