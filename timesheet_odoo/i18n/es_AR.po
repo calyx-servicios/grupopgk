@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-01-26 15:40+0000\n"
-"PO-Revision-Date: 2023-01-26 15:40+0000\n"
+"POT-Creation-Date: 2023-01-30 14:03+0000\n"
+"PO-Revision-Date: 2023-01-30 14:03+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -18,7 +18,7 @@ msgstr ""
 #. module: timesheet_odoo
 #: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
 msgid "%<br/>"
-msgstr "%<br/>"
+msgstr ""
 
 #. module: timesheet_odoo
 #: model:mail.template,body_html:timesheet_odoo.email_template_charge_sige
@@ -261,13 +261,9 @@ msgstr "Enviar Periódo"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__sent_periods
-msgid "Sent"
-msgstr "ENVIADOS"
-
-#. module: timesheet_odoo
 #: model:ir.model.fields.selection,name:timesheet_odoo.selection__timesheet_sige__state__sent
 msgid "Sent"
-msgstr "Enviado"
+msgstr "ENVIADOS"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__start_of_period
@@ -301,6 +297,18 @@ msgstr "El usuario tendrá acceso al parte de horas propias."
 #, python-format
 msgid "There can only be one open period at a time!"
 msgstr "Solo puede haber un período abierto a la vez!"
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/hr_employee.py:0
+#, python-format
+msgid "There is no active period!"
+msgstr "No existe un período activo!"
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/hr_employee.py:0
+#, python-format
+msgid "There is no timesheet for this period and employee!"
+msgstr "No existe un parte de horas para este período y empleado!"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_account_analytic_line__timesheet_id
