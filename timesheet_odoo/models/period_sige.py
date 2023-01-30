@@ -70,11 +70,23 @@ class PeriodSige(models.Model):
             raise ValidationError(_("There can only be one open period at a time!"))
     
     def close_period(self):
+        line_obj = self.env["account.analytic.line"]
         ts_obj = self.env["timesheet.sige"]
+        hours_to_allocate = self.env.ref("timesheet_odoo.hours_to_allocate")
+        for employee in self.employee_ids:
+            ts_employee = ts_obj.search([('period_id','=',self.id),("employee_id","=", employee.id)])
+            if ts_employee.pending_hours != 0:
+                values = {
+                    "project_id": hours_to_allocate.id,
+                    "name": _("Hours to allocate"),
+                    "unit_amount": ts_employee.pending_hours,
+                    "company_id": hours_to_allocate.analytic_account_id.company_id.ids or [hours_to_allocate.company_id.id],
+                    "timesheet_id": ts_employee.id
+                }
+                line_obj.create(values)
+
         timesheet = ts_obj.search([('period_id','=',self.id)])
         timesheet.write({'state':'close'})
-        # for employee in self.employee_ids:
-        #     pass #TODO: REIMPUTAR HORAS
         self.write({'state':'close'})
         date_new_period = self.start_of_period + relativedelta(months=1)
         vals = {
