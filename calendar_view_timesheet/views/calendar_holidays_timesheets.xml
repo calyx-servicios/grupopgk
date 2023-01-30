@@ -49,6 +49,9 @@
                         <group>
                             <field name="name" required="1"/>
                             <field name="partners_ids" domain="[('is_company', '!=', False)]" widget="many2many_tags" options="{'color_field': 'color', 'no_create': True}" />
+                            <field name="type" required="1" />
+                            <field name="is_holiday" attrs="{'invisible': [('type', '!=', 'non_working_day')]}" />
+                            <field name="jobs_ids" string="Apply on following jobs:" widget="many2many_tags" attrs="{'invisible': [('type', '!=', 'special_holiday')]}" options="{'no_create': True}" />
                             <field name="user_id" readonly="1"/>
                             <field name="allday" invisible="1"/>
                         </group>
