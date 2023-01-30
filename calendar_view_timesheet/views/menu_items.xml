@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem
+        id="hr_timesheet.hr_timesheet_menu_configuration"
+        name="Configuration" 
+        action=""
+        parent="hr_timesheet.timesheet_menu_root"
+        groups="base.group_user" 
+        sequence="100"/>
+
+    <menuitem
+        id="hr_timesheet_menu_settings"
+        name="Settings"
+        action="hr_timesheet.hr_timesheet_config_settings_action"
+        groups="base.group_system"
+        parent="hr_timesheet.hr_timesheet_menu_configuration"
+        sequence="99"/>
+    
+    <menuitem
+        id="calendar_holidays_timesheets_menu"
+        name="Holidays calendar"
+        action="calendar_holidays_timesheets_action_window"
+        groups="base.group_user" 
+        parent="hr_timesheet.hr_timesheet_menu_configuration"
+        sequence="10"
+    />
+
+</odoo>

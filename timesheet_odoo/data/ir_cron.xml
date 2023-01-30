@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="timesheet_odoo_cron" model="ir.cron">
+            <field name="name">Monthly Creation Record Sige</field>
+            <field name="model_id" ref="timesheet_odoo.model_timesheet_sige"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="numbercall">-1</field>
+            <field name="state">code</field>
+            <field name="code">model._cron_monthly_record_sige()</field>
+            <field name="nextcall" eval="(DateTime.now().replace(day=1, hour=5, minute=0, second=0) + relativedelta(months=1)).strftime('%Y-%m-%d %H:%M:%S')" />
+        </record>
+    </data>
+</odoo>
