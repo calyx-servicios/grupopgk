@@ -18,7 +18,7 @@ msgstr ""
 #. module: timesheet_odoo
 #: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
 msgid "%<br/>"
-msgstr ""
+msgstr "%<br/>"
 
 #. module: timesheet_odoo
 #: model:mail.template,body_html:timesheet_odoo.email_template_charge_sige
@@ -261,9 +261,13 @@ msgstr "Enviar Periódo"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__sent_periods
-#: model:ir.model.fields.selection,name:timesheet_odoo.selection__timesheet_sige__state__sent
 msgid "Sent"
 msgstr "ENVIADOS"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields.selection,name:timesheet_odoo.selection__timesheet_sige__state__sent
+msgid "Sent"
+msgstr "Enviado"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__start_of_period
