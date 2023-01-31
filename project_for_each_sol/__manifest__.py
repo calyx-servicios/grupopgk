@@ -20,7 +20,7 @@
         "account_analytic_parent",
     ],
     "data": [
-        "security/project_for_each_sol_security.xml"
+        "security/project_for_each_sol_security.xml",
         "views/sale_order.xml",
         "data/ir_sequence.xml",
     ],
