@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_sale_order_inherit_subscription_templates" model="ir.ui.view">
+        <field name="name">Sale Order projects inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='analytic_tag_ids']" position="after">
+                <field name="subscription_plan_id" attrs="{'required': [('is_subscription', '=', True)], 'invisible': [('is_subscription', '=', False)]}" />
+                <field name="is_subscription" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
