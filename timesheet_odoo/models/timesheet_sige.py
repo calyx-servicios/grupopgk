@@ -51,7 +51,7 @@ class TimesheetSige(models.Model):
 
     @api.depends("start_of_period", "end_of_period")
     def _compute_days_to_register(self):
-        self.days_to_register = self._get_total_days(self.start_of_period.day, self.end_of_period.day, True)
+        self.days_to_register = self._get_total_days(True)
 
     @api.depends("timesheet_ids", "required_hours")
     def _compute_pending_hours(self):
@@ -78,10 +78,10 @@ class TimesheetSige(models.Model):
         else:
             self.chargeability = (factured / self.register_hours) * 100
 
-    def _get_total_days(self, start, end, holidays):
-        total_days = 0  
-        for i in range(start, end + 1):
-            this_date = date(date.today().year, date.today().month, i)
+    def _get_total_days(self, holidays):
+        total_days = 0
+        for i in range(self.start_of_period.day, self.end_of_period.day + 1):
+            this_date = date(self.start_of_period.year, self.start_of_period.month, i)
             if this_date.weekday() < 5:
                 total_days += 1
 
