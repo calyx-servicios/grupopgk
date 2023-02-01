@@ -17,6 +17,14 @@ class CalendarHolidaysTimesheets(models.Model):
     partners_ids = fields.Many2many("res.partner", string="Partners")
     analytic_account_ids = fields.Many2many('account.analytic.account', string='Analytics Accounts')
     company_id = fields.Many2one("res.company", "Company", default=lambda self: self.env.company)
+    type = fields.Selection([
+        ('holiday', 'Holiday'),
+        ('special_holiday', 'Special holiday'),
+        ('non_working_day', 'Non-working day'),
+        ('other', 'Other'),
+    ], string='Type', default='holiday')
+    is_holiday = fields.Boolean('Count as holiday?')
+    jobs_ids = fields.Many2many('hr.job', string='Jobs')
 
     @api.depends('start_date', 'end_date')
     def _compute_duration(self):
