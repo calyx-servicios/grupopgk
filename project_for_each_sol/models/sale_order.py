@@ -6,6 +6,13 @@ class SaleOrder(models.Model):
 
     project_ids = fields.Many2many('project.project', compute="_compute_project_ids", string='Projects', copy=False, groups="project.group_project_manager", help="Projects used in this sales order.")
 
+    @api.onchange('project_id')
+    def _onchange_project_id(self):
+        for record in self:
+            for line in record.order_line:
+                line.project_name = record.project_id.display_name
+                line.analytic_account_id = record.project_id.analytic_account_id
+    
     def action_confirm(self):
         for rec in self:
             if not rec.project_id:
@@ -22,7 +29,6 @@ class SaleOrderLine(models.Model):
 
     project_name = fields.Char(string='Project name')
     is_project = fields.Boolean('is project?', default=False, compute='_compute_is_project')
-
 
     @api.depends('product_id')
     def _compute_is_project(self):
