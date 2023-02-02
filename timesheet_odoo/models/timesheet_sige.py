@@ -96,8 +96,19 @@ class TimesheetSige(models.Model):
             "&", ('start_date', '<=', self.end_of_period),('start_date','>=', self.start_of_period),
             ('company_id', '=', self.company_id.id)
         ])
-        #TODO filter by employee_id and type of holidays
-        self.holidays = len(holidays)
+        total_holidays = 0
+        holiday = holidays.filtered(lambda h: h.type == 'holiday')
+        if holiday:
+            total_holidays = len(holiday)
+        non_working_day = holidays.filtered(lambda h: h.type == 'non_work_day' and h.is_holiday == True)
+        if non_working_day:
+            total_holidays = total_holidays + len(non_working_day)
+        special_holidays = holidays.filtered(lambda h: h.type == 'special_holiday')
+
+        for special_holiday in special_holidays:
+            if self.employee_id.job_id in special_holiday.jobs_ids:
+                total_holidays += 1
+        self.holidays = total_holidays
     
     def send_period(self):
         self.write({
