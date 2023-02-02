@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 15.0\n"
+"Project-Id-Version: Odoo Server 15.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-01-10 11:00+0000\n"
-"PO-Revision-Date: 2023-01-10 11:00+0000\n"
+"POT-Creation-Date: 2023-01-30 17:41+0000\n"
+"PO-Revision-Date: 2023-01-30 17:41+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -31,6 +31,11 @@ msgid "Analytics Accounts"
 msgstr "Cuentas analíticas"
 
 #. module: calendar_view_timesheet
+#: model_terms:ir.ui.view,arch_db:calendar_view_timesheet.view_calendar_holidays_timesheets_form
+msgid "Apply on following jobs:"
+msgstr "Aplicar en lo siguientes puestos:"
+
+#. module: calendar_view_timesheet
 #: model:ir.model,name:calendar_view_timesheet.model_calendar_holidays_timesheets
 msgid "Calendar Holidays Timesheets"
 msgstr "Calendario de Feriados Partes de horas"
@@ -49,6 +54,11 @@ msgstr "color"
 #: model:ir.model.fields,field_description:calendar_view_timesheet.field_calendar_holidays_timesheets__company_id
 msgid "Company"
 msgstr "Compañía"
+
+#. module: calendar_view_timesheet
+#: model:ir.model.fields,field_description:calendar_view_timesheet.field_calendar_holidays_timesheets__is_holiday
+msgid "Count as holiday?"
+msgstr "¿Contar como feriado?"
 
 #. module: calendar_view_timesheet
 #: model:ir.model.fields,field_description:calendar_view_timesheet.field_calendar_holidays_timesheets__create_uid
@@ -103,7 +113,12 @@ msgid "Group By"
 msgstr "Agrupar por"
 
 #. module: calendar_view_timesheet
-#: model:ir.model.fields,field_description:calendar_view_timesheet.field_account_analytic_account__holidays_id
+#: model:ir.model.fields.selection,name:calendar_view_timesheet.selection__calendar_holidays_timesheets__type__holiday
+msgid "Holiday"
+msgstr "Feriado"
+
+#. module: calendar_view_timesheet
+#: model:ir.model.fields,field_description:calendar_view_timesheet.field_account_analytic_account__calendar_id
 #: model_terms:ir.ui.view,arch_db:calendar_view_timesheet.view_calendar_holidays_timesheets_tree
 msgid "Holidays"
 msgstr "Feriados"
@@ -124,6 +139,11 @@ msgid "ID"
 msgstr ""
 
 #. module: calendar_view_timesheet
+#: model:ir.model.fields,field_description:calendar_view_timesheet.field_calendar_holidays_timesheets__jobs_ids
+msgid "Jobs"
+msgstr "Puestos de Trabajos"
+
+#. module: calendar_view_timesheet
 #: model:ir.model.fields,field_description:calendar_view_timesheet.field_calendar_holidays_timesheets____last_update
 msgid "Last Modified on"
 msgstr "Última modificación el"
@@ -139,9 +159,24 @@ msgid "Last Updated on"
 msgstr "Ultima actualización en"
 
 #. module: calendar_view_timesheet
+#: model:ir.model.fields.selection,name:calendar_view_timesheet.selection__calendar_holidays_timesheets__type__non_working_day
+msgid "Non-working day"
+msgstr "Día no laboral"
+
+#. module: calendar_view_timesheet
+#: model:ir.model.fields.selection,name:calendar_view_timesheet.selection__calendar_holidays_timesheets__type__other
+msgid "Other"
+msgstr "Otro"
+
+#. module: calendar_view_timesheet
 #: model_terms:ir.ui.view,arch_db:calendar_view_timesheet.view_calendar_holidays_timesheets_form
 msgid "Other Info"
 msgstr "Otra información"
+
+#. module: calendar_view_timesheet
+#: model:ir.model.fields,field_description:calendar_view_timesheet.field_calendar_holidays_timesheets__partners_ids
+msgid "Partners"
+msgstr "Contactos"
 
 #. module: calendar_view_timesheet
 #: model_terms:ir.ui.view,arch_db:calendar_view_timesheet.view_calendar_holidays_timesheets_search
@@ -154,6 +189,11 @@ msgid "Settings"
 msgstr "Ajustes"
 
 #. module: calendar_view_timesheet
+#: model:ir.model.fields.selection,name:calendar_view_timesheet.selection__calendar_holidays_timesheets__type__special_holiday
+msgid "Special holiday"
+msgstr "Feriado especial"
+
+#. module: calendar_view_timesheet
 #: model:ir.model.fields,field_description:calendar_view_timesheet.field_calendar_holidays_timesheets__start_date
 msgid "Start date"
 msgstr "Fecha de inicio"
@@ -162,3 +202,8 @@ msgstr "Fecha de inicio"
 #: model:ir.model.fields,field_description:calendar_view_timesheet.field_calendar_holidays_timesheets__name
 msgid "Subject"
 msgstr "Asunto"
+
+#. module: calendar_view_timesheet
+#: model:ir.model.fields,field_description:calendar_view_timesheet.field_calendar_holidays_timesheets__type
+msgid "Type"
+msgstr "Tipo"
