@@ -8,9 +8,6 @@
             <xpath expr="//group[@id='header_right_group']/field[@name='date']" position="attributes">
                 <attribute name="attrs">{'invisible': [('move_type', 'in', ('in_receipt', 'out_receipt'))]}</attribute>
             </xpath>
-            <xpath expr="//page[@name='other_info']/group/group[@name='accounting_info_group']/field[@name='to_check']" position="after">
-                <xpath expr="//group[@id='header_right_group']/field[@name='date']" position="move"/>
-            </xpath>
         </field>
     </record>
 </odoo>
