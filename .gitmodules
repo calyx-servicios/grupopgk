@@ -102,3 +102,7 @@
 	path = submodules/calyx-servicios/account-invoicing
 	url = https://github.com/calyx-servicios/account-invoicing.git
 	branch = 15.0_test
+[submodule "submodules/OCA/account-reconcile"]
+	path = submodules/OCA/account-reconcile
+	url = https://github.com/OCA/account-reconcile.git
+	branch = 15.0
