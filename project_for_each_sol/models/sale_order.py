@@ -27,8 +27,16 @@ class SaleOrder(models.Model):
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
 
+
     project_name = fields.Char(string='Project name')
     is_project = fields.Boolean('is project?', default=False, compute='_compute_is_project')
+
+    @api.onchange('product_id')
+    def _onchange_product_id_values(self):
+        for rec in self:
+            if rec.order_id.project_id:
+                rec.project_name = rec.order_id.project_id.display_name
+                rec.analytic_account_id = rec.order_id.project_id.analytic_account_id.id
 
     @api.depends('product_id')
     def _compute_is_project(self):
