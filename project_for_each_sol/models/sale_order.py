@@ -32,7 +32,7 @@ class SaleOrderLine(models.Model):
     is_project = fields.Boolean('is project?', default=False, compute='_compute_is_project')
 
     @api.onchange('product_id')
-    def _onchange_product_id(self):
+    def _onchange_product_id_values(self):
         for rec in self:
             if rec.order_id.project_id:
                 rec.project_name = rec.order_id.project_id.display_name
