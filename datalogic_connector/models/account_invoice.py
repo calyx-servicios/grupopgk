@@ -519,17 +519,10 @@ class AccountMove(models.Model):
                 BanDirRec.appendChild(text_node)
                 Bandeja.appendChild(BanDirRec)
 # <!-- Ciudad de receptor [String(30)] -->
-        if self.partner_id.country_id.code:
-                if self.partner_id.country_id.code == "MX":
-                        BanCiuRec = doc.createElement("BanCiuRec")
-                        text_node = doc.createTextNode(str(self.partner_id.city.name))
-                        BanCiuRec.appendChild(text_node)
-                        Bandeja.appendChild(BanCiuRec)
-                else:
-                        BanCiuRec = doc.createElement("BanCiuRec")
-                        text_node = doc.createTextNode(str(self.partner_id.city))
-                        BanCiuRec.appendChild(text_node)
-                        Bandeja.appendChild(BanCiuRec)
+        BanCiuRec = doc.createElement("BanCiuRec")
+        text_node = doc.createTextNode(str(self.partner_id.city))
+        BanCiuRec.appendChild(text_node)
+        Bandeja.appendChild(BanCiuRec)
 # <!-- Departamento, Provincia o Estado del receptor [String(30)] -->
         if self.partner_id.state_id.name:
                 BanDepRec = doc.createElement("BanDepRec")
