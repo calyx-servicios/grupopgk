@@ -1,7 +1,5 @@
 from odoo import api, models, fields, _
 
-import logging
-_logger = logging.getLogger(__name__)
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
@@ -70,7 +68,6 @@ class SaleOrder(models.Model):
                     line.product_uom_qty = line.subscription_plan_id.limit_count
                     line.price_unit =  line.price_unit / line.subscription_plan_id.limit_count
                     subscriptions = self.env['subscription.package'].search([('sale_order', '=', rec.id)])
-                    _logger.info(f'SUBSCRIPTIONS: {subscriptions}')
                     for subs in subscriptions:
                         if not subs.product_line_ids:
                             subs.unlink()
