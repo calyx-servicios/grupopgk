@@ -19,16 +19,15 @@ class SaleOrder(models.Model):
     def _prepare_subscription_lines(self, split_line):
         values = []
         for lines in split_line:
-            price = lines.order_id.set_amount(lines.amount)
-            if lines.order_line_id.subscription_plan_id.limit_choice == 'custom':
-                    price = price / lines.order_line_id.subscription_plan_id.limit_count
-            values.append(((0, False, {
-                'product_id': lines.product_id.id,
-                'analytic_account_id': lines.analytic_account_id.id,
-                'product_qty': lines.quantity,
-                'product_uom_id': lines.uom_id.id,
-                'unit_price': price,
-            })))
+            if lines.order_line_id.subscription_plan_id.limit_choice != 'custom':
+                price = lines.order_id.set_amount(lines.amount)
+                values.append(((0, False, {
+                    'product_id': lines.product_id.id,
+                    'analytic_account_id': lines.analytic_account_id.id,
+                    'product_qty': lines.quantity,
+                    'product_uom_id': lines.uom_id.id,
+                    'unit_price': price,
+                })))
         return values
 
 
@@ -46,17 +45,32 @@ class SaleOrder(models.Model):
         for plan in plans:
             key = list(filter(lambda k: plans[k] == plans[plan], plans))[0]
             values = self._prepare_subscription(key, plans[plan])
-            values['product_line_ids'] = self._prepare_subscription_lines(plans[plan])
-            subscription = self.env['subscription.package'].sudo().create(values)
-            if key.short_code and subscription.reference_code:
-                subscription.write({
-                    'name': key.short_code + '/' + subscription.reference_code + '-' + plans[plan].partner_id.name,
-                })
-            subscription.button_start_date()
-            res.append(subscription)
-            self.write({'subscription_id': subscription.id})
-            msg_body = _("Created with the product: (%s) a new subscription <a href=# data-oe-model=subscription.package data-oe-id=%d>%s</a>") % (', '.join([product.product_id.name for product in subscription.product_line_ids]) , self.subscription_id.id, self.subscription_id.name)
-            self.message_post(body=msg_body)
+            lines = self._prepare_subscription_lines(plans[plan])
+            if lines:
+                values['product_line_ids'] = lines
+                subscription = self.env['subscription.package'].sudo().create(values)
+                if key.short_code and subscription.reference_code:
+                    subscription.write({
+                        'name': key.short_code + '/' + subscription.reference_code + '-' + plans[plan].partner_id.name,
+                    })
+                subscription.button_start_date()
+                res.append(subscription)
+                self.write({'subscription_id': subscription.id})
+                msg_body = _("Created with the product: (%s) a new subscription <a href=# data-oe-model=subscription.package data-oe-id=%d>%s</a>") % (', '.join([product.product_id.name for product in subscription.product_line_ids]) , self.subscription_id.id, self.subscription_id.name)
+                self.message_post(body=msg_body)
+        return res
+    
+    def action_confirm(self):
+        res = super(SaleOrder, self).action_confirm()
+        for rec in self:
+            for line in rec.order_line:
+                if line.subscription_plan_id.limit_choice == 'custom':
+                    line.product_uom_qty = line.subscription_plan_id.limit_count
+                    line.price_unit =  line.price_unit / line.subscription_plan_id.limit_count
+                    subscriptions = self.env['subscription.package'].search([('sale_order', '=', rec.id)])
+                    for subs in subscriptions:
+                        if not subs.product_line_ids:
+                            subs.unlink()
         return res
 
 class SaleOrderLine(models.Model):
@@ -81,14 +95,13 @@ class SaleOrderLine(models.Model):
     def _prepare_values_product(self):
         values = []
         for line in self:
-            price = line.price_unit
-            if line.subscription_plan_id.limit_choice == 'custom':
-                price = price / line.subscription_plan_id.limit_count 
-            values.append((0, False, {
-                'product_id': line.product_id.id,
-                'analytic_account_id': line.analytic_account_id.id,
-                'product_qty': line.product_uom_qty,
-                'product_uom_id': line.product_uom.id,
-                'unit_price': price,
-            }))
+            if line.subscription_plan_id.limit_choice != 'custom':
+                price = line.price_unit
+                values.append((0, False, {
+                    'product_id': line.product_id.id,
+                    'analytic_account_id': line.analytic_account_id.id,
+                    'product_qty': line.product_uom_qty,
+                    'product_uom_id': line.product_uom.id,
+                    'unit_price': price,
+                }))
         return values
