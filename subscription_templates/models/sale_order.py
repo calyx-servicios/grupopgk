@@ -20,7 +20,7 @@ class SaleOrder(models.Model):
         values = []
         for lines in split_line:
             if lines.order_line_id.subscription_plan_id.limit_choice != 'custom':
-                price = lines.order_id.set_amount(lines.amount)
+                price = lines.order_id.set_amount(lines)
                 values.append(((0, False, {
                     'product_id': lines.product_id.id,
                     'analytic_account_id': lines.analytic_account_id.id,
