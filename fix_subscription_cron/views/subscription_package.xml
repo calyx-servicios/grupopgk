@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="inherit_view_subscription_package_button_cron" model="ir.ui.view">
+        <field name="name">subscription.package.button.cron</field>
+        <field name="model">subscription.package</field>
+        <field name="inherit_id" ref="subscription_package.subscription_package_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_renew']" position="after">
+                <button name="close_limit_cron" string="Run cron" type="object" class="btn-primary oe_read_only" attrs="{'invisible': [('so_count', '=', 0)]}"/>
+            </xpath>
+            <xpath expr="//field[@name='next_invoice_date']" position="after">
+                <field name="close_date"></field>
+            </xpath>
+        </field>
+    </record>
+</odoo>
