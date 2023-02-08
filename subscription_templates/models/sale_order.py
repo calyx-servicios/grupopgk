@@ -19,17 +19,18 @@ class SaleOrder(models.Model):
     def _prepare_subscription_lines(self, split_line):
         values = []
         for lines in split_line:
-            if lines.order_line_id.subscription_plan_id.limit_choice != 'custom':
+            if lines.subscription_plan_id.limit_choice == 'custom' and lines.product_id.is_dues_ok:
+                price = (lines.order_id.set_amount(lines)) / lines.subscription_plan_id.limit_count 
+            else:
                 price = lines.order_id.set_amount(lines)
-                values.append(((0, False, {
-                    'product_id': lines.product_id.id,
-                    'analytic_account_id': lines.analytic_account_id.id,
-                    'product_qty': lines.quantity,
-                    'product_uom_id': lines.uom_id.id,
-                    'unit_price': price,
-                })))
+            values.append(((0, False, {
+                'product_id': lines.product_id.id,
+                'analytic_account_id': lines.analytic_account_id.id,
+                'product_qty': lines.quantity,
+                'product_uom_id': lines.uom_id.id,
+                'unit_price': price,
+            })))
         return values
-
 
     def _prepare_plans_split(self, split_lines):
         res = {}
@@ -59,12 +60,12 @@ class SaleOrder(models.Model):
                 msg_body = _("Created with the product: (%s) a new subscription <a href=# data-oe-model=subscription.package data-oe-id=%d>%s</a>") % (', '.join([product.product_id.name for product in subscription.product_line_ids]) , self.subscription_id.id, self.subscription_id.name)
                 self.message_post(body=msg_body)
         return res
-    
+
     def action_confirm(self):
         res = super(SaleOrder, self).action_confirm()
         for rec in self:
             for line in rec.order_line:
-                if line.subscription_plan_id.limit_choice == 'custom':
+                if line.subscription_plan_id.limit_choice == 'custom' and line.product_id.is_dues_ok:
                     line.product_uom_qty = line.subscription_plan_id.limit_count
                     line.price_unit =  line.price_unit / line.subscription_plan_id.limit_count
                     subscriptions = self.env['subscription.package'].search([('sale_order', '=', rec.id)])
@@ -95,13 +96,15 @@ class SaleOrderLine(models.Model):
     def _prepare_values_product(self):
         values = []
         for line in self:
-            if line.subscription_plan_id.limit_choice != 'custom':
+            if line.subscription_plan_id.limit_choice == 'custom' and line.product_id.is_dues_ok:
+                price = line.price_unit / line.subscription_plan_id.limit_count 
+            else:
                 price = line.price_unit
-                values.append((0, False, {
-                    'product_id': line.product_id.id,
-                    'analytic_account_id': line.analytic_account_id.id,
-                    'product_qty': line.product_uom_qty,
-                    'product_uom_id': line.product_uom.id,
-                    'unit_price': price,
-                }))
+            values.append((0, False, {
+                'product_id': line.product_id.id,
+                'analytic_account_id': line.analytic_account_id.id,
+                'product_qty': line.product_uom_qty,
+                'product_uom_id': line.product_uom.id,
+                'unit_price': price,
+            }))
         return values
