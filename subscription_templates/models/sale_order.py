@@ -19,17 +19,15 @@ class SaleOrder(models.Model):
     def _prepare_subscription_lines(self, split_line):
         values = []
         for lines in split_line:
-            if lines.subscription_plan_id.limit_choice == 'custom' and lines.product_id.is_dues_ok:
-                price = (lines.order_id.set_amount(lines)) / lines.subscription_plan_id.limit_count 
-            else:
+            if  not lines.order_line_id.subscription_plan_id.limit_choice == 'custom' and not lines.product_id.is_dues_ok:
                 price = lines.order_id.set_amount(lines)
-            values.append(((0, False, {
-                'product_id': lines.product_id.id,
-                'analytic_account_id': lines.analytic_account_id.id,
-                'product_qty': lines.quantity,
-                'product_uom_id': lines.uom_id.id,
-                'unit_price': price,
-            })))
+                values.append(((0, False, {
+                    'product_id': lines.product_id.id,
+                    'analytic_account_id': lines.analytic_account_id.id,
+                    'product_qty': lines.quantity,
+                    'product_uom_id': lines.uom_id.id,
+                    'unit_price': price,
+                })))
         return values
 
     def _prepare_plans_split(self, split_lines):
@@ -96,15 +94,13 @@ class SaleOrderLine(models.Model):
     def _prepare_values_product(self):
         values = []
         for line in self:
-            if line.subscription_plan_id.limit_choice == 'custom' and line.product_id.is_dues_ok:
-                price = line.price_unit / line.subscription_plan_id.limit_count 
-            else:
+            if not line.subscription_plan_id.limit_choice == 'custom' and not line.product_id.is_dues_ok:
                 price = line.price_unit
-            values.append((0, False, {
-                'product_id': line.product_id.id,
-                'analytic_account_id': line.analytic_account_id.id,
-                'product_qty': line.product_uom_qty,
-                'product_uom_id': line.product_uom.id,
-                'unit_price': price,
-            }))
+                values.append((0, False, {
+                    'product_id': line.product_id.id,
+                    'analytic_account_id': line.analytic_account_id.id,
+                    'product_qty': line.product_uom_qty,
+                    'product_uom_id': line.product_uom.id,
+                    'unit_price': price,
+                }))
         return values
