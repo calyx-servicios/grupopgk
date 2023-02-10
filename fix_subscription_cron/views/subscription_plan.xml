@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_subscription_plan_form_inherit" model="ir.ui.view">
+        <field name="name">subscription.package.plan.form.inherit</field>
+        <field name="model">subscription.package.plan</field>
+        <field name="inherit_id" ref="subscription_package.subscription_plan_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='days_to_end']" position="attributes">
+                <attribute name="invisible">0</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
