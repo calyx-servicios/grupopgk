@@ -6,10 +6,11 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='analytic_account_id']" position="after">
-                <field name="project_ids" widget="many2many_tags" options="{'no_create_edit': True}" />
+                <field name="project_ids" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': True}" />
             </xpath>
             <xpath expr="//form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='name']" position="after">
                 <field name="is_project" invisible="1" />
+                <field name="project_id" string="Project" />
                 <field name="project_name" attrs= "{'required': [('is_project', '=', True)], 'readonly': [('state','=','sale')] }" />
             </xpath>
         </field>
