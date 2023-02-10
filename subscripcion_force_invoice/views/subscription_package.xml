@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="inherit_view_subscription_package_force_invoice" model="ir.ui.view">
+        <field name="name">subscription.package.button.cron</field>
+        <field name="model">subscription.package</field>
+        <field name="inherit_id" ref="subscription_package.subscription_package_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='close_date']" position="after">
+                <button name="force_invoice" string="Force next invoice" type="object" class="btn-primary oe_read_only" attrs="{'invisible': [('so_count', '=', 0)]}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,37 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* subscripcion_force_invoice
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-02-10 03:26+0000\n"
+"PO-Revision-Date: 2023-02-10 03:26+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: subscripcion_force_invoice
+#: model_terms:ir.ui.view,arch_db:subscripcion_force_invoice.inherit_view_subscription_package_force_invoice
+msgid "Force next invoice"
+msgstr "Forzar siguiente factura"
+
+#. module: subscripcion_force_invoice
+#: model:ir.model,name:subscripcion_force_invoice.model_subscription_package
+msgid "Subscription Package"
+msgstr "Paquete de suscripción"
+
+#. module: subscripcion_force_invoice
+#: code:addons/subscripcion_force_invoice/models/subscription_package.py:0
+#: code:addons/subscripcion_force_invoice/models/subscription_package.py:0
+#, python-format
+msgid ""
+"The number of invoices cannot exceed the number of times to renew the "
+"subscription."
+msgstr ""
+"El número de facturas no puede exceder el número de veces para renovar la"
+"suscripción."
