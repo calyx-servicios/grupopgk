@@ -3,11 +3,9 @@ from dateutil.relativedelta import relativedelta
 import datetime
 
 
-
 class SubscriptionPackage(models.Model):
     _inherit = 'subscription.package'
     
-
     def close_limit_cron(self):
         """ It Checks renew date, close date. It will send mail when renew date """
         pending_subscriptions = self.env['subscription.package'].search(
@@ -56,3 +54,53 @@ class SubscriptionPackage(models.Model):
             if today_date == close_subscription.close_date:
                 close_subscription.set_close()
         return dict(pending=pending_subscription, closed=close_subscription)
+
+    def next_invoice_or_close(self):
+        subscriptions = self.env['subscription.package'].search([('stage_category', '=', 'progress')])
+        today_date = fields.Date.today()
+        for pending_subscription in subscriptions.filtered(lambda s: s.to_renew == False):
+            if pending_subscription.next_invoice_date == today_date:
+                invoice_count = self.env['account.move'].search_count([('subscription_id', '=', pending_subscription.id)])
+                if pending_subscription.plan_id.limit_choice == 'custom' and invoice_count >= pending_subscription.plan_id.limit_count:
+                    pending_subscription.set_close()
+                elif pending_subscription.plan_id.limit_choice == 'ones' and invoice_count >= 1:
+                    pending_subscription.set_close()
+                else:
+                    pending_subscription.create_invoice_forced()
+                
+        for close_subscription in subscriptions.filtered(lambda s: s.to_renew == True):
+            if close_subscription.close_date == today_date:
+                close_subscription.set_close()
+
+    def button_sale_order(self):
+        """Button to create sale order"""
+        this_products_line = []
+        for rec in self.product_line_ids:
+            rec_list = [0, 0, {'product_id': rec.product_id.id,
+                               'product_uom_qty': rec.product_qty,
+                               'price_unit': rec.unit_price,
+                               'analytic_account_id': rec.analytic_account_id.id}]
+            this_products_line.append(rec_list)
+        orders = self.env['sale.order'].search([('subscription_id', '=', self.id), ('invoice_status', '=', 'no')])
+        if orders:
+            for order in orders:
+                order.action_confirm()
+        so_id = self.env['sale.order'].create({
+            'partner_id': self.partner_id.id,
+            'partner_invoice_id': self.partner_id.id,
+            'partner_shipping_id': self.partner_id.id,
+            'is_subscription': True,
+            'subscription_id': self.id,
+            'date_of_issue': datetime.date.today(),
+            'analytic_account_id': self.analytic_account_id.id,
+            'order_line': this_products_line
+        })
+        self.sale_order = so_id
+        return {
+            'name': _('Sales Orders'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.order',
+            'domain': [('id', '=', so_id.id)],
+            'view_mode': 'tree,form'
+        }
+
