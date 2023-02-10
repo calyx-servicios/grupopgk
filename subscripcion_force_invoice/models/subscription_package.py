@@ -7,9 +7,10 @@ class SubscriptionPackage(models.Model):
     _inherit = 'subscription.package'
     
     def force_invoice(self):
-        if self.plan_id.limit_choice == 'custom' and self.invoice_count >= self.plan_id.limit_count:
+        invoice_count = self.env['account.move'].search_count([('subscription_id', '=', self.id)])        
+        if self.plan_id.limit_choice == 'custom' and invoice_count >= self.plan_id.limit_count:
             raise UserError(_('The number of invoices cannot exceed the number of times to renew the subscription.'))
-        elif self.plan_id.limit_choice == 'ones' and self.invoice_count >= 1:
+        elif self.plan_id.limit_choice == 'ones' and invoice_count >= 1:
             raise UserError(_('The number of invoices cannot exceed the number of times to renew the subscription.'))
         move = self.create_invoice_forced()
         return {
