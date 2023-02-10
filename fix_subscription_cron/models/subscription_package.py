@@ -33,7 +33,7 @@ class SubscriptionPackage(models.Model):
                         rec_list = [0, 0, {'product_id': rec.product_id.id,
                                            'quantity': rec.product_qty,
                                            'price_unit': rec.unit_price,
-                                           'analytic_acccount_id': rec.analytic_account_id.id}]
+                                           'analytic_account_id': rec.analytic_account_id.id}]
                         this_products_line.append(rec_list)
                         self.env['account.move'].create(
                             {
