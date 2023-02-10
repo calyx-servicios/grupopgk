@@ -5,7 +5,8 @@
         <field name="model">subscription.package</field>
         <field name="inherit_id" ref="subscription_package.subscription_package_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='close_date']" position="after">
+        	<xpath expr="//field[@name='next_invoice_date']" position="after">
+                <field name="close_date"/>
                 <button name="force_invoice" string="Force next invoice" type="object" class="btn-primary oe_read_only" attrs="{'invisible': [('so_count', '=', 0)]}"/>
             </xpath>
         </field>
