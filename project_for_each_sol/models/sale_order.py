@@ -6,13 +6,6 @@ class SaleOrder(models.Model):
 
     project_ids = fields.Many2many('project.project', compute="_compute_project_ids", string='Projects', copy=False, groups="project.group_project_manager", help="Projects used in this sales order.")
 
-    @api.onchange('project_id')
-    def _onchange_project_id(self):
-        for record in self:
-            for line in record.order_line:
-                line.project_name = record.project_id.display_name
-                line.analytic_account_id = record.project_id.analytic_account_id
-    
     def action_confirm(self):
         for rec in self:
             if not rec.project_id:
@@ -37,6 +30,13 @@ class SaleOrderLine(models.Model):
             if rec.order_id.project_id:
                 rec.project_name = rec.order_id.project_id.display_name
                 rec.analytic_account_id = rec.order_id.project_id.analytic_account_id.id
+
+
+    @api.onchange('project_id')
+    def _onchange_project_id(self):
+        for record in self:
+            record.project_name = record.project_id.display_name
+            record.analytic_account_id = record.project_id.analytic_account_id
 
     @api.depends('product_id')
     def _compute_is_project(self):
@@ -143,7 +143,7 @@ class SaleOrderLine(models.Model):
         try:
             project = None
             if line.product_id.service_tracking == 'task_in_project' and line.is_service:
-                if not line.order_id.project_id:
+                if not line.project_id:
                     project = line.create_project()
                     if project.analytic_account_id:
                         self.analytic_account_id = project.analytic_account_id.id
