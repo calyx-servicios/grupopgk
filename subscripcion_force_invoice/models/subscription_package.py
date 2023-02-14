@@ -40,6 +40,8 @@ class SubscriptionPackage(models.Model):
                 'currency_id': self.partner_invoice_id.currency_id.id,
                 'invoice_line_ids': this_products_line,
                 'subscription_id': self.id,
+                'company_id': self.company_id.id,
+                'partner': self.sale_order.partner.id
             })
         if move:
             today_date = fields.Date.today()
