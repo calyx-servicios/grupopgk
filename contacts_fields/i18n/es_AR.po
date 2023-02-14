@@ -81,6 +81,16 @@ msgid "ID"
 msgstr "ID"
 
 #. module: contacts_fields
+#: model:ir.model.fields,field_description:contacts_fields.field_res_partner__vat
+msgid "Identification Number"
+msgstr "VAT"
+
+#. module: contacts_fields
+#: model:ir.model.fields,help:contacts_fields.field_res_partner__vat
+msgid "The Tax Identification Number. Complete it if the contact is subjected to government taxes. Used in some legal statements."
+msgstr "El número de identificación de impuesto. Complételo si el contacto esta sujeto a los impuestos del gobierno. Utilizado en algunas declaraciones legales."
+
+#. module: contacts_fields
 #: model:ir.model.fields,field_description:contacts_fields.field_add_child_company_wizard____last_update
 msgid "Last Modified on"
 msgstr "Última modificación el"
