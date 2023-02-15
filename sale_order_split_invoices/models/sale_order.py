@@ -58,7 +58,7 @@ class SaleOrder(models.Model):
                 'analytic_account_id': line.analytic_account_id.id,
                 'product_qty': line.quantity,
                 'product_uom_id': line.uom_id.id,
-                'unit_price': line.order_id.set_amount(line.amount),
+                'unit_price': line.order_id.set_amount(line),
             }))
 
         return plans, values
@@ -97,11 +97,11 @@ class SaleOrder(models.Model):
                     subscription.append(sub)
         return res
 
-    def set_amount(self, split_amount):
+    def set_amount(self, line):
         if self.split_type == 'quantity_per':
-            amount = (self.amount_untaxed * split_amount) / 100
+            amount = ((line.price_subtotal * line.amount) / 100) / line.quantity
         else:
-            amount = split_amount
+            amount = (line.amount) / line.quantity
         return amount
 
     def _check_amount_required(self, total_required, total_split):
@@ -125,7 +125,7 @@ class SaleOrder(models.Model):
                             'quantity': line.product_uom_qty,
                             'uom_id': line.product_uom.id,
                             'tax_id': [(6,0,line.tax_id.ids)],
-                            'price_subtotal': line.price_subtotal,
+                            'unit_price': line.price_unit,
                             'amount': 0.0,
                         }
                         if not vals['order_line_id']:
@@ -136,17 +136,20 @@ class SaleOrder(models.Model):
     def _compute_total_split(self):
         total = 0
         for line in self.split_line_ids:
-            total += line.amount
-            if total > self.total_required:
-                raise UserError(_('Cannot exceed Total Required'))
+            if self.split_type == 'quantity_per':
+                subtotal = (line.price_subtotal * line.amount) / 100
+                total += subtotal
+                if total > self.total_required:
+                    raise UserError(_('Cannot exceed Total Required'))
+            else:
+                total += line.amount
+                if total > self.total_required:
+                    raise UserError(_('Cannot exceed Total Required'))
         self.total_split = total
 
     @api.depends('split_type')
     def _compute_total_required(self):
-        if self.split_type == 'quantity_per':
-            self.total_required = 100
-        else:
-           self.total_required = self.amount_untaxed
+        self.total_required = self.amount_untaxed
 
     def _create_invoices(self, grouped=False, final=False, date=None):
         for rec in self:
@@ -179,7 +182,7 @@ class SaleOrder(models.Model):
                 'quantity': line.quantity,
                 'discount': line.order_line_id.discount,
                 'analytic_account_id': line.analytic_account_id.id,
-                'price_unit': line.order_id.set_amount(line.amount),
+                'price_unit': line.order_id.set_amount(line),
                 'tax_ids': [(6,0,line.tax_id.ids)],
                 'sale_line_ids': [(4, line.order_line_id.id)],
             }
