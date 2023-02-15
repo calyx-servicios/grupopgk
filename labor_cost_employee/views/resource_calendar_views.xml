@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+	<record id="view_resource_calendar_form_labor_cost" model="ir.ui.view">
+		<field name="name">resource.calendar.form.labor.cost</field>
+        <field name="model">resource.calendar</field>
+        <field name="inherit_id" ref="resource.resource_calendar_form"/>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='tz']" position="after">
+                <field name="days_to_months" string="Days to months"/>
+            </xpath>
+        </field>
+    </record>    
+</odoo>

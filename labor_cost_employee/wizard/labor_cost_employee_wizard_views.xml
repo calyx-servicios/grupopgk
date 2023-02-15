@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="labor_cost_employee_wizard" model="ir.ui.view">
+        <field name="name">Labor Cost Wizard</field>
+        <field name="model">labor.cost.employee.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Calculate labor cost">
+                <field name="name" style="font-weight: bold; font-size: 24px;"/>
+                <group>
+	                <group>
+	                	<field name="month"/>
+	                </group>
+	                <group>
+	                	<field name="year"/>
+	                </group>
+                </group>
+                <group>
+                    <field name="file_cost" string="Attach" attrs="{'required': True}"/>
+                    <field name="invoice_ids" string="Add Invoices">
+                    	<tree>
+                    		<field name="name"/>
+                    		<field name="partner_id" readonly="1"/>
+                    		<field name="invoice_date" readonly="1"/>
+                    		<field name="amount_total"/>
+                    	</tree>
+                    </field>
+                </group>
+                <footer>
+                    <button name="calculate_labor_cost" type="object" string="Calculate" class="oe_highlight"/>
+                    <button special="cancel" string="Exit"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <act_window id="action_labor_cost_employee_wizard" name="Calculate labor cost" 
+    	res_model="labor.cost.employee.wizard" view_mode="form" view_id="labor_cost_employee_wizard" target="new"/>
+</odoo>
