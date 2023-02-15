@@ -6,3 +6,4 @@ class SubscriptionProduct(models.Model):
 
     subscription_plan_id = fields.Many2many('subscription.package.plan',
                                            string='Subscription Plan')
+    is_dues_ok = fields.Boolean('Is Dues?', default=False)
