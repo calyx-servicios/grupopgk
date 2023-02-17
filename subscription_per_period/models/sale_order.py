@@ -23,22 +23,6 @@ class SaleOrder(models.Model):
                 })))
         return values
 
-    # def _create_invoices(self, grouped=False, final=False, date=None):
-    #     for rec in self:
-            
-    #     moves = super(SaleOrder, self)._create_invoices(grouped, final, date)
-    #     for move in moves:
-    #         for line in move.invoice_line_ids:
-    #             if not line.sale_line_ids.order_id.split_invoice:
-    #                 if line.sale_line_ids.subscription_plan_id.limit_choice == 'custom' and not line.product_id.is_dues_ok:
-    #                     new_price = line.price_unit / line.sale_line_ids.subscription_plan_id.limit_count
-    #                     line.write({
-    #                         'price_unit': new_price,
-    #                     })
-    #     wdb.set_trace()
-    #     return moves
-
-
     def _invoice_values_line(self, split_line):
         lines = []
         for line in split_line:
