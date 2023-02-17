@@ -43,6 +43,8 @@ Contributors
 * `Calyx Servicios S.A. <https://odoo.calyx-cloud.com.ar/>`_
   
   * Zamora, Javier
+  
+  * Perez, Gabriela
 
 Maintainers
 ~~~~~~~~~~~
