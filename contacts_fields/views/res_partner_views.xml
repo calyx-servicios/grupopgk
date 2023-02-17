@@ -15,6 +15,7 @@
             <!-- Add custom `parent_id` view declaration -->
             <xpath expr="//span[@name='address_name']" position="before">
                 <field name="parent_id" string="Parent company"/>
+                <field name="is_parent"/>
             </xpath>
             <!-- Add custom wizard to add children from the parent company -->
             <xpath expr="//field[@name='child_ids']" position="before">
@@ -23,16 +24,16 @@
                 <separator string="Children contacts &amp; companies"/>
             </xpath>
             <xpath expr="//field[@name='email']" position="attributes">
-            	<attribute name="required">1</attribute>
+            	<attribute name="attrs">{'required': ['|',('user_ids','!=', []),('is_parent', '=', False)]}</attribute>
             </xpath>
             <xpath expr="//field[@name='city']" position="attributes">
-            	<attribute name="required">1</attribute>
+            	<attribute name="attrs">{'readonly': [('type', '=', 'contact'),('parent_id', '!=', False)], 'required': [('is_parent', '=', False)]}</attribute>
             </xpath>
             <xpath expr="//field[@name='state_id']" position="attributes">
-            	<attribute name="required">1</attribute>
+            	<attribute name="attrs">{'readonly': [('type', '=', 'contact'),('parent_id', '!=', False)], 'required': [('is_parent', '=', False)]}</attribute>
             </xpath>
             <xpath expr="//field[@name='country_id']" position="attributes">
-            	<attribute name="required">1</attribute>
+            	<attribute name="attrs">{'readonly': [('type', '=', 'contact'),('parent_id', '!=', False)], 'required': [('is_parent', '=', False)]}</attribute>
             </xpath>
         </field>
     </record>
