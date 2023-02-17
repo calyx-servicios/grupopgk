@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_sale_order_inherit_acc_analytic" model="ir.ui.view">
-        <field name="name">Sale order inherti view acc analytic</field>
+    <record id="view_sale_order_inherit_show_analytic_account" model="ir.ui.view">
+        <field name="name">sale.order.inherit.view.show.analytic.account</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
