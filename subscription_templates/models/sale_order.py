@@ -1,4 +1,5 @@
 from odoo import api, models, fields, _
+from odoo.exceptions import UserError
 
 
 class SaleOrder(models.Model):
@@ -64,8 +65,10 @@ class SaleOrder(models.Model):
         for rec in self:
             for line in rec.order_line:
                 if line.subscription_plan_id.limit_choice == 'custom' and line.product_id.is_dues_ok:
-                    line.product_uom_qty = line.subscription_plan_id.limit_count
-                    line.price_unit =  line.price_unit / line.subscription_plan_id.limit_count
+                    if not line.product_id.uom_id.category_id.name == 'Working Time':
+                        price = line.price_subtotal
+                        line.product_uom_qty = line.subscription_plan_id.limit_count 
+                        line.price_unit =  price / line.subscription_plan_id.limit_count
                     subscriptions = self.env['subscription.package'].search([('sale_order', '=', rec.id)])
                     for subs in subscriptions:
                         if not subs.product_line_ids:
