@@ -17,7 +17,7 @@ Show Analytical Accounts
     :alt: License: AGPL-3
 .. |badge3| image:: https://img.shields.io/badge/github-calyx--servicios%2Fgrupopgk-lightgray.png?logo=github
     :target: https://github.com/calyx-servicios/grupopgk
-    :alt: calyx-servicios/calyx.git
+    :alt: calyx-servicios/grupopgk.git
 
 |badge1| |badge2| |badge3|
 
@@ -69,4 +69,4 @@ This module is maintained by the Calyx Servicios S.A.
 CALYX SERVICIOS S.A. is part of the PGK Consultores economic group, member of an important global network, a world organization.
 The PGK Consultores group is one of the 20 largest consultant-studios in Argentina with nearly 300 professionals.
 
-This module is part of the `Grupo PGK <https://github.com/calyx-servicios/calyx.git>`_ project on GitHub.
+This module is part of the `Grupo PGK <https://github.com/calyx-servicios/grupopgk.git>`_ project on GitHub.
