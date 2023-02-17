@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="inherit_view_show_analytic_account_check" model="ir.ui.view">
+        <field name="name">inherit.view.show.analytic.account.check.form</field>
+        <field name="model">account.analytic.account</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_account_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='code']" position="after">
+                <field name="show_on_sale_order" />
+            </xpath>
+        </field>
+    </record>
+</odoo>
