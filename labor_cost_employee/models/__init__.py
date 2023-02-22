@@ -1,2 +1,2 @@
 from . import labor_cost_employee
-from . import resource_calendar
+from . import account_move

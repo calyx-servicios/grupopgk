@@ -11,11 +11,24 @@
             </tree>
         </field>
     </record>
+    
+    <record model="ir.ui.view" id="view_labor_cost_employee_search">
+        <field name="name">labor.cost.employee.search</field>
+        <field name="model">labor.cost.employee</field>
+        <field name="arch" type="xml">
+            <search>
+            	<field name="name"/>
+                <field name="employee_id"/>
+                <filter name="period" string="Period" context="{'group_by':'name'}"/>
+            </search>
+        </field>
+    </record>
 
     <record model="ir.actions.act_window" id="action_window_labor_cost">
         <field name="name">Labor Cost</field>
         <field name="res_model">labor.cost.employee</field>
         <field name="view_mode">tree</field>
+        <field name="context">{'search_default_period': 1}</field>
     </record>
     
     <menuitem name="Labor Cost" id="menuitem_labor_cost"
