@@ -106,3 +106,7 @@
 	path = submodules/OCA/account-reconcile
 	url = https://github.com/OCA/account-reconcile.git
 	branch = 15.0
+[submodule "submodules/OCA/mis-builder"]
+	path = submodules/OCA/mis-builder
+	url = https://github.com/OCA/mis-builder.git
+	branch = 15.0
