@@ -1,6 +1,7 @@
 from odoo import api, fields, models, _
 from datetime import datetime
 
+
 class SaleOrder(models.Model):
     _inherit = "sale.order"
 
@@ -85,6 +86,7 @@ class SaleOrderLine(models.Model):
             'sale_line_id': self.id,
             'active': True,
             'company_id': self.env.company.id,
+            'allow_billable': True
         }
 
     def create_project(self):
