@@ -5,11 +5,8 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='analytic_account_id']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='analytic_tag_ids']" position="before">
-                <field name="analytic_account_id" attrs= "{'required': [('product_id', '!=', False)], 'readonly': [('state','=','sale')] }" domain="['|', ('company_id', '=', False), ('company_id', '=', parent.company_id), ('show_on_sale_order','=', True)]" groups="analytic.group_analytic_accounting" optional="show" />
+            <xpath expr="//form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='analytic_account_id']" position="attributes">
+                <attribute name="domain">['|', ('company_id', '=', False), ('company_id', '=', parent.company_id), ('show_on_sale_order','=', True)]</attribute>
             </xpath>
         </field>
     </record>
