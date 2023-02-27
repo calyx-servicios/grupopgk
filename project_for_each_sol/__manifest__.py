@@ -4,11 +4,11 @@
         This module adds the functionality of creating a project for each sales order line based on the type of product.
     """,
     "author": "Calyx Servicios S.A.",
-    "maintainers": ["Zamora Javier","CristianParadiso"],
+    "maintainers": ["Zamora Javier","CristianParadiso", "PerezGabriela"],
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.5.0.0",
+    "version": "15.0.6.0.0",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
