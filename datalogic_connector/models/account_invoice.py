@@ -4,6 +4,17 @@ import requests
 from xml.dom import minidom
 from odoo.tools.misc import get_lang
 
+
+class AccountPayment(models.Model):
+
+    _inherit = 'account.payment'
+
+    @api.constrains('check_number', 'journal_id')
+    def _constrains_check_number(self):
+        payment_checks = self.filtered('check_number')
+        if not payment_checks:
+            return
+
 class AccountMove(models.Model):
     _inherit = "account.move"
 
@@ -111,7 +122,7 @@ class AccountMove(models.Model):
                 XMLDocumento.appendChild(CfeNum)
 
                 CfeImpTot = doc.createElement("CfeImpTot")
-                text_node = doc.createTextNode(str(self.amount_residual))
+                text_node = doc.createTextNode(str(self.residual))
                 CfeImpTot.appendChild(text_node)
                 XMLDocumento.appendChild(CfeImpTot)
 
@@ -546,7 +557,7 @@ class AccountMove(models.Model):
         BanTasaIVABas.appendChild(text_node)
         Bandeja.appendChild(BanTasaIVABas)
 #<!-- Cláusula de venta (Incoterms: FOB, CIF, etc) [String(3)] -->
-        if self.l10n_latam_document_type_id.code in ["121","122","123"]:
+        if self.l10n_latam_document_type_id.name in ["121","122","123"]:
                 BanClaVen = doc.createElement("BanClaVen")
                 text_node = doc.createTextNode("N/A")
                 BanClaVen.appendChild(text_node)
