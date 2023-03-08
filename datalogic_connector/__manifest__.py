@@ -12,7 +12,7 @@
     "application": False,
     "installable": True,
     "depends": [
-        'account','base','l10n_latam_base', 'l10n_latam_invoice_document'
+        'account','base','l10n_latam_base', 'l10n_latam_invoice_document','account_check_printing'
     ],
     "data": [
         "views/account_view.xml",

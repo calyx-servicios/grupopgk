@@ -4,6 +4,17 @@ import requests
 from xml.dom import minidom
 from odoo.tools.misc import get_lang
 
+
+class AccountPayment(models.Model):
+
+    _inherit = 'account.payment'
+
+    @api.constrains('check_number', 'journal_id')
+    def _constrains_check_number(self):
+        payment_checks = self.filtered('check_number')
+        if not payment_checks:
+            return
+
 class AccountMove(models.Model):
     _inherit = "account.move"
 
