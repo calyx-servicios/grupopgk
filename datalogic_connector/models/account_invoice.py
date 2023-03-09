@@ -25,7 +25,7 @@ class AccountMove(models.Model):
 
     @api.onchange('l10n_latam_document_type_id')
     def _onchange_document_type(self):
-        if self.company_id.id == 2:
+        if self.company_id.id == 2 and self.l10n_latam_document_type_id:
             self.l10n_latam_document_number = self.env['ir.sequence'].search([('code','=',self.l10n_latam_document_type_id.code)]).number_next_actual
 
     def action_ur_invoice_sent(self):
