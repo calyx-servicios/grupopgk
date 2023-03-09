@@ -20,13 +20,13 @@ class AccountMove(models.Model):
 
     def action_post(self):
         res = super().action_post()
-        self.env['ir.sequence'].next_by_code(self.l10n_latam_document_type_id.code)
+        self.env['ir.sequence'].next_by_code(self.l10n_latam_document_type_id.code + self.journal_id.name)
         return res
 
     @api.onchange('l10n_latam_document_type_id')
     def _onchange_document_type(self):
         if self.company_id.id == 2 and self.l10n_latam_document_type_id and self.l10n_latam_document_type_id.code:
-            self.l10n_latam_document_number = self.env['ir.sequence'].search([('code','=',self.l10n_latam_document_type_id.code)],limit=1).number_next_actual
+            self.l10n_latam_document_number = self.env['ir.sequence'].search([('code','=',self.l10n_latam_document_type_id.code + self.journal_id.name)],limit=1).number_next_actual
 
     def action_ur_invoice_sent(self):
         self.ensure_one()
