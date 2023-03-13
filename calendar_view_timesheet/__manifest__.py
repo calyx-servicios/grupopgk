@@ -11,7 +11,7 @@
     "version": "15.0.2.0.0",
     "application": False,
     "installable": True,
-    "depends": ["hr_timesheet", "hr", "analytic"],
+    "depends": ["hr_timesheet"],
     "data": [
         "security/ir.model.access.csv",
         "views/calendar_holidays_timesheets.xml",

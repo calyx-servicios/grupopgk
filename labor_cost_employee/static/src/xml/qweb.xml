@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<template xml:spacer="preserve">
+	<t t-extend="ListView.buttons">
+		<t t-jquery="button.o_list_button_add" t-operation="after">
+			<t t-if="widget.modelName == 'labor.cost.employee'">
+	        	<button class="btn btn-secondary o_list_button_labor" type="button">Calculate Labor Cost</button>
+	        </t>
+		</t> 
+	</t>
+</template>
