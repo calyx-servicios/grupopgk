@@ -18,6 +18,18 @@ class AccountPayment(models.Model):
 class AccountMove(models.Model):
     _inherit = "account.move"
 
+    def action_post(self):
+        res = super().action_post()
+        if self.l10n_latam_document_type_id and self.l10n_latam_document_type_id.code:
+            self.env['ir.sequence'].next_by_code(self.l10n_latam_document_type_id.code + self.journal_id.name)
+        return res
+
+    @api.onchange('l10n_latam_document_type_id')
+    def _onchange_document_type(self):
+        if self.company_id.id == 2 and self.l10n_latam_document_type_id and self.l10n_latam_document_type_id.code:
+            nro = self.env['ir.sequence'].search([('code','=',self.l10n_latam_document_type_id.code + self.journal_id.name)],limit=1).number_next_actual
+            self.l10n_latam_document_number = str(nro).zfill(8)
+
     def action_ur_invoice_sent(self):
         self.ensure_one()
         template = self.env.ref('dgi_conector.email_template_ur_invoice', raise_if_not_found=False)
@@ -76,8 +88,8 @@ class AccountMove(models.Model):
                 string=string.replace(line,cap)
         return string
     @api.model
-    def compute_defff(self):   
-        if self.comprobantecfe and self.hashcfe:    
+    def compute_defff(self):
+        if self.comprobantecfe and self.hashcfe:
                 doc = minidom.Document()
                 Envelope = doc.createElement("xsd:Envelope")
                 doc.appendChild(Envelope)
@@ -173,9 +185,9 @@ class AccountMove(models.Model):
         "13": "Confirmado ERP Registrado en el servidor",
         "14": "Para Revisión",
         "15": "Anulado Interno",
-        "16": "No requiere envío a DGI",               
+        "16": "No requiere envío a DGI",
         }
-        
+
         doc = minidom.Document()
         Envelope = doc.createElement("xsd:Envelope")
         doc.appendChild(Envelope)
@@ -205,99 +217,99 @@ class AccountMove(models.Model):
         XMLParametros.appendChild(Empresa)
 
         RangoEnviados = doc.createElement("RangoEnviados")
-        XMLParametros.appendChild(RangoEnviados)  
+        XMLParametros.appendChild(RangoEnviados)
 
         ComprobanteCFEInicial = doc.createElement("ComprobanteCFEInicial")
         text_node = doc.createTextNode(str(self.comprobantecfe))
-        ComprobanteCFEInicial.appendChild(text_node)        
+        ComprobanteCFEInicial.appendChild(text_node)
         RangoEnviados.appendChild(ComprobanteCFEInicial)
 
         ComprobanteCFEFinal = doc.createElement("ComprobanteCFEFinal")
         text_node = doc.createTextNode(str(self.comprobantecfe))
-        ComprobanteCFEFinal.appendChild(text_node)        
+        ComprobanteCFEFinal.appendChild(text_node)
         RangoEnviados.appendChild(ComprobanteCFEFinal)
 
         Estados = doc.createElement("Estados")
-        RangoEnviados.appendChild(Estados)  
+        RangoEnviados.appendChild(Estados)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("1")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("2")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("3")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("4")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("5")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("6")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("7")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("8")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("9")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("10")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("11")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("12")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("13")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("14")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("15")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         Estado = doc.createElement("Estado")
         text_node = doc.createTextNode("16")
-        Estado.appendChild(text_node)        
+        Estado.appendChild(text_node)
         Estados.appendChild(Estado)
 
         xmldata = XMLParametros.toprettyxml("   ")
@@ -367,9 +379,9 @@ class AccountMove(models.Model):
 
     def send_dgi_with_invoice(self):
         self.create_dgi_document(True)
-    
+
     def send_dgi(self):
-        if self.state not in 'posted': 
+        if self.state not in 'posted':
             self.action_post()
         self.create_dgi_document(False)
 
@@ -516,7 +528,7 @@ class AccountMove(models.Model):
                 BanNumDocRecExt = doc.createElement("BanNumDocRecExt")
                 text_node = doc.createTextNode(str(self.partner_id.vat))
                 BanNumDocRecExt.appendChild(text_node)
-                Bandeja.appendChild(BanNumDocRecExt)   
+                Bandeja.appendChild(BanNumDocRecExt)
 # <!-- Nombre del receptor [String(150)] -->
         if self.partner_id.name:
                 BanNomRec = doc.createElement("BanNomRec")
@@ -697,7 +709,7 @@ class AccountMove(models.Model):
         BanCanLin = doc.createElement("BanCanLin")
         text_node = doc.createTextNode(str(line_cont - 1))
         BanCanLin.appendChild(text_node)
-        Bandeja.appendChild(BanCanLin)        
+        Bandeja.appendChild(BanCanLin)
 # <!-- Monto Total a Pagar [Currency(15,2)] -->
         BanMonTotPag = doc.createElement("BanMonTotPag")
         text_node = doc.createTextNode(str(monto_no_grabado + monto_iva_min*1.10 + monto_iva_base*1.22))
@@ -742,7 +754,7 @@ class AccountMove(models.Model):
                                         BanInfRefItem.appendChild(InfRefRazRef)
                         #    <!-- Fecha CFE de referencia [Date] -->
                                         InfRefFchRef = doc.createElement("InfRefFchRef")
-                                        BanInfRefItem.appendChild(InfRefFchRef)               
+                                        BanInfRefItem.appendChild(InfRefFchRef)
                                 else:
                                         InfRefInd = doc.createElement("InfRefInd")
                                         text_node = doc.createTextNode("1")
@@ -778,7 +790,7 @@ class AccountMove(models.Model):
                         InfRefFchRef = doc.createElement("InfRefFchRef")
                         text_node = doc.createTextNode(str(self.origin_date))
                         InfRefFchRef.appendChild(text_node)
-                        BanInfRefItem.appendChild(InfRefFchRef)                        
+                        BanInfRefItem.appendChild(InfRefFchRef)
 
         xmldata = Bandeja.toprettyxml("   ")
         Data = doc.createCDATASection(xmldata)
@@ -806,7 +818,7 @@ class AccountMove(models.Model):
                         FchVenc = r.text.split("FchVenc")[1].split(";")[1].split("&")[0]
                         nrocae = r.text.split("nrocae")[1].split(";")[1].split("&")[0]
                         comprobantecfe = r.text.split("comprobantecfe")[1].split(";")[1].split("&")[0]
-                        
+
                         self.serie_cfe = serie_cfe
                         self.tpo_cfe = tpo_cfe
                         self.error_dgi = error
@@ -821,4 +833,3 @@ class AccountMove(models.Model):
         else:
                 self.error_dgi = "19"
                 self.description_dgi = "Error de conexión con web service"
- 
