@@ -20,7 +20,8 @@ class AccountMove(models.Model):
 
     def action_post(self):
         res = super().action_post()
-        self.env['ir.sequence'].next_by_code(self.l10n_latam_document_type_id.code + self.journal_id.name)
+        if self.l10n_latam_document_type_id and self.l10n_latam_document_type_id.code:
+            self.env['ir.sequence'].next_by_code(self.l10n_latam_document_type_id.code + self.journal_id.name)
         return res
 
     @api.onchange('l10n_latam_document_type_id')
