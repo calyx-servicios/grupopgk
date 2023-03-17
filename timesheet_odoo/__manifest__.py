@@ -8,11 +8,11 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Timesheet",
-    "version": "15.0.6.2.0",
+    "version": "15.0.6.3.0",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
-    "depends": ['base', 'hr_timesheet', 'calendar_view_timesheet'],
+    "depends": ['base', 'calendar_view_timesheet'],
     "data": [
         "security/timesheet_sige_security.xml",
         "security/ir.model.access.csv",
