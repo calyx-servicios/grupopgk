@@ -134,7 +134,7 @@ class AccountMove(models.Model):
                 XMLDocumento.appendChild(CfeNum)
 
                 CfeImpTot = doc.createElement("CfeImpTot")
-                text_node = doc.createTextNode(str(self.residual))
+                text_node = doc.createTextNode(str(self.amount_total))
                 CfeImpTot.appendChild(text_node)
                 XMLDocumento.appendChild(CfeImpTot)
 
