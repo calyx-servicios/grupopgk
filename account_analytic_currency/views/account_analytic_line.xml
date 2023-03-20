@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="account_analytic_line_currency_inherit_view" model="ir.ui.view">
+        <field name="name">account.analytic.line.currency.inherit.view</field>
+        <field name="model">account.analytic.line</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_line_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_id']" position="attributes">
+                <attribute name="widget">many2many_tags</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
