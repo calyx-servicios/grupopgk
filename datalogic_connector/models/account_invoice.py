@@ -569,7 +569,7 @@ class AccountMove(models.Model):
         BanTasaIVABas.appendChild(text_node)
         Bandeja.appendChild(BanTasaIVABas)
 #<!-- Cláusula de venta (Incoterms: FOB, CIF, etc) [String(3)] -->
-        if self.l10n_latam_document_type_id.name in ["121","122","123"]:
+        if self.l10n_latam_document_type_id.code in ["121","122","123"]:
                 BanClaVen = doc.createElement("BanClaVen")
                 text_node = doc.createTextNode("N/A")
                 BanClaVen.appendChild(text_node)
@@ -618,7 +618,7 @@ class AccountMove(models.Model):
                 if ind_fact == "1":
                     price_unit = line.price_unit
                     monto_no_grabado += line.price_subtotal
-                    if self.l10n_latam_document_type_id.name not in ["111","112","113"]:
+                    if self.l10n_latam_document_type_id.code not in ["111","112","113"]:
                             ind_fact = "10"
 
             IndFac = doc.createElement("IndFac")
@@ -670,7 +670,7 @@ class AccountMove(models.Model):
            BanTpoCam.appendChild(text_node)
            Bandeja.appendChild(BanTpoCam)
 # <!-- monto sin iva -->
-        if self.l10n_latam_document_type_id.name in ["111","112","113"]:
+        if self.l10n_latam_document_type_id.code in ["111","112","113"]:
                 BanTMonNoGra = doc.createElement("BanTMonNoGra")
                 text_node = doc.createTextNode(str(monto_no_grabado))
                 BanTMonNoGra.appendChild(text_node)
