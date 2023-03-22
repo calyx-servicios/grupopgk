@@ -725,8 +725,8 @@ class AccountMove(models.Model):
 
                 BanInfRefItem = doc.createElement("BanInfRefItem")
                 BanInfRef.appendChild(BanInfRefItem)
-                if self.origin:
-                        invoices = self.env['account.move'].search([('display_name','=',self.origin)])
+                if self.reversed_entry_id.name:
+                        invoices = self.env['account.move'].search([('display_name','=',self.reversed_entry_id.name)])
                         ref_count = 1
                         for invoice in invoices:
                                 InfRefNum = doc.createElement("InfRefNum")
