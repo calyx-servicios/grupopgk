@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 15.0\n"
+"Project-Id-Version: Odoo Server 15.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-22 20:59+0000\n"
-"PO-Revision-Date: 2023-02-22 20:59+0000\n"
+"POT-Creation-Date: 2023-03-22 15:23+0000\n"
+"PO-Revision-Date: 2023-03-22 15:23+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -40,7 +40,7 @@ msgstr "Agosto"
 #. module: labor_cost_employee
 #: model:ir.model,name:labor_cost_employee.model_labor_cost_employee_wizard
 msgid "Calcular costo laboral wizard"
-msgstr "Calcular costo laboral wizard"
+msgid "Calcular costo laboral wizard"
 
 #. module: labor_cost_employee
 #: model_terms:ir.ui.view,arch_db:labor_cost_employee.labor_cost_employee_wizard
@@ -67,6 +67,11 @@ msgid "Calculate labor cost wizard"
 msgstr "Calcular costo laboral wizard"
 
 #. module: labor_cost_employee
+#: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee__calculation
+msgid "Calculation"
+msgstr "Cálculo"
+
+#. module: labor_cost_employee
 #: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee__cost
 msgid "Cost"
 msgstr "Costo"
@@ -74,7 +79,7 @@ msgstr "Costo"
 #. module: labor_cost_employee
 #: model:ir.model,name:labor_cost_employee.model_labor_cost_employee
 msgid "Costo laboral por empleado"
-msgstr "Costo laboral por empleado"
+msgid "Costo laboral por empleado"
 
 #. module: labor_cost_employee
 #: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee__create_uid
@@ -118,7 +123,7 @@ msgstr "Febrero"
 #: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee__id
 #: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee_wizard__id
 msgid "ID"
-msgstr "ID"
+msgstr ""
 
 #. module: labor_cost_employee
 #: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee_wizard__invoice_ids
@@ -152,6 +157,7 @@ msgid "Labor Cost"
 msgstr "Costo laboral"
 
 #. module: labor_cost_employee
+#: model_terms:ir.ui.view,arch_db:labor_cost_employee.view_labor_cost_employee_form
 #: model_terms:ir.ui.view,arch_db:labor_cost_employee.view_labor_cost_employee_tree
 msgid "Labor cost per Employee"
 msgstr "Costo laboral por empleado"
