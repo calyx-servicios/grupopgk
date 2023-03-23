@@ -40,7 +40,7 @@ msgstr "Agosto"
 #. module: labor_cost_employee
 #: model:ir.model,name:labor_cost_employee.model_labor_cost_employee_wizard
 msgid "Calcular costo laboral wizard"
-msgid "Calcular costo laboral wizard"
+msgstr "Calcular costo laboral wizard"
 
 #. module: labor_cost_employee
 #: model_terms:ir.ui.view,arch_db:labor_cost_employee.labor_cost_employee_wizard
@@ -79,7 +79,7 @@ msgstr "Costo"
 #. module: labor_cost_employee
 #: model:ir.model,name:labor_cost_employee.model_labor_cost_employee
 msgid "Costo laboral por empleado"
-msgid "Costo laboral por empleado"
+msgstr "Costo laboral por empleado"
 
 #. module: labor_cost_employee
 #: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee__create_uid
