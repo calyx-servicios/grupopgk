@@ -41,7 +41,7 @@
             <search>
             	<field name="name"/>
                 <field name="employee_id"/>
-                <filter name="period" string="Period" context="{'group_by':'name'}"/>
+                <filter name="period" string="Period" context="{'group_by': 'name:month'}"/>
             </search>
         </field>
     </record>

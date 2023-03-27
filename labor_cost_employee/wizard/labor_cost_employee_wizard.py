@@ -15,18 +15,18 @@ class LaborCostEmployeeWizard(models.TransientModel):
         return year_list
 
     month = fields.Selection([
-        ("1", 'January'), 
-        ("2", 'February'), 
-        ("3", 'March'), 
+        ("1", 'January'),
+        ("2", 'February'),
+        ("3", 'March'),
         ("4", 'April'),
-        ("5", 'May'), 
-        ("6", 'June'), 
-        ("7", 'July'), 
-        ("8", 'August'), 
-        ("9", 'September'), 
-        ("10", 'October'), 
-        ("11", 'November'), 
-        ("12", 'December'), 
+        ("5", 'May'),
+        ("6", 'June'),
+        ("7", 'July'),
+        ("8", 'August'),
+        ("9", 'September'),
+        ("10", 'October'),
+        ("11", 'November'),
+        ("12", 'December'),
     ], string='Month', default=str(date.today().month))
     year = fields.Selection(get_years(), string='Year', default=str(date.today().year))
     name = fields.Char("Period", compute="_compute_period")
@@ -63,7 +63,7 @@ class LaborCostEmployeeWizard(models.TransientModel):
                 invoices = self.env['account.move'].search(domain)
                 if invoices:
                     self.invoice_ids = [(6, 0, invoices.ids)]
-    
+
     def calculate_labor_cost(self):
         tm_sige_obj = self.env['timesheet.sige']
         lce_obj = self.env['labor.cost.employee']
@@ -78,10 +78,10 @@ class LaborCostEmployeeWizard(models.TransientModel):
                     if len(exist) != 0:
                         index_obj = cost.index(exist[0])
                         cost[index_obj]['amount'] = cost[index_obj]['amount'] + float(data[1])
-                        cost[index_obj]['calculation'] = cost[index_obj]['calculation'] + _(f'Salary: {str(data[1])}')
+                        cost[index_obj]['calculation'] = cost[index_obj]['calculation'] + (_('Salary: {}'.format(str(data[1]))))
                     else:
-                        cost.append({'employee_id': data[0], 'amount': float(data[1]), 'calculation': _(f'Salary: {str(data[1])}')})
-        
+                        cost.append({'employee_id': data[0], 'amount': float(data[1]), 'calculation': _('Salary: {}'.format(str(data[1])))})
+
         if self.invoice_ids:
             txt_invoice = _('Total amount invoiced: ')
             for invoice in self.invoice_ids:
@@ -92,7 +92,7 @@ class LaborCostEmployeeWizard(models.TransientModel):
                 else:
                     cost.append({'employee_id': invoice.partner_id.vat, 'amount': invoice.amount_total, 'calculation': f'{txt_invoice}+ {invoice.amount_total}'})
 
-        
+
         employees = self.env['hr.employee'].search([]).filtered(lambda emp: emp.user_partner_id != False)
         for employee in employees:
             tm_sige_emp = tm_sige_obj.search([('employee_id', '=', employee.id), ('state','=','close'), ('name', '=', self.period_sige)], limit=1)
@@ -104,12 +104,11 @@ class LaborCostEmployeeWizard(models.TransientModel):
                 cost[index_obj]['cost'] = labor_cost
                 cost[index_obj]['employee_id'] = employee.id
                 cost[index_obj]['name'] = self.name
-                cost[index_obj]['calculation'] += _(f"\n Amount(Salary + Invoice Amount) {amount} / (Register Hours) {tm_sige_emp.register_hours} = Labor cost{labor_cost}")
+                cost[index_obj]['calculation'] += _('\n Amount(Salary + Invoiced Amount) {} / {} (Register Hours) = {} (Labor cost)'.format(amount, tm_sige_emp.register_hours, labor_cost))
                 employee.timesheet_cost = labor_cost
                 tm_sige_emp.timesheet_ids.write({'amount': labor_cost})
 
         lce_obj.create(cost)
-        
+
         action = self.env.ref("labor_cost_employee.action_window_labor_cost").read()[0]
         return action
-
