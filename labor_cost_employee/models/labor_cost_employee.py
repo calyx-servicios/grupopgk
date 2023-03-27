@@ -1,4 +1,4 @@
-from odoo import fields, models, _
+from odoo import fields, models, api, _
 
 class LaborCostEmployee(models.Model):
     _name = "labor.cost.employee"
