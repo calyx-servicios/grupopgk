@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sale_order_analytic_account_form_view" model="ir.ui.view">
+        <field name="name">sale.order.analytic.account.form.view</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sol_analytic_account.view_sale_order_inherit_acc_analytic"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='analytic_account_id']" position="attributes">
+                <attribute name="options">{'no_create_edit': True, 'no_create':True}</attribute>
+            </xpath>            
+        </field>
+    </record>
+</odoo>
