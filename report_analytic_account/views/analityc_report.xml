@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_account_analytic_account_grouped_partner" model="ir.ui.view">
+        <field name="name">account.analytic.grouped</field>
+        <field name="model">account.analytic.line</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name" />
+                <field name="account_mother_id" optional="hide"/>
+                <field name="account_id" />
+                <field name="company_id"/>
+                <field name="group_parent_id" optional="hide"/>
+                <field name="group_id" optional="hide"/>
+                <field name="debit" />
+                <field name="credit" />
+                <field name="amount"/>
+                <field name="balance" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="searcb_account_analytic_account_grouped_partner" model="ir.ui.view">
+        <field name="name">account.analytic.account.grouped.partner</field>
+        <field name="model">account.analytic.line</field>
+        <field name="arch" type="xml">
+            <search string="">
+                <group name="name" string="string">
+                    <filter string="parent" name="parent" domain="[]" context="{'group_by': 'group_parent_id'}"/>
+                    <filter string="Group company" name="company" domain="[]" context="{'group_by': 'group_company_id'}"/>
+                    <filter string="Analytic Mother" name="mother" domain="[]" context="{'group_by': 'account_mother_id'}"/>
+                </group>
+                <searchpanel class="account_root">
+                    <field name="company_id" icon="fa-filter" limit="0"/>
+                </searchpanel>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_report_account_analytic_pgk" model="ir.actions.act_window">
+        <field name="name">Analityc Report</field>
+        <field name="res_model">account.analytic.line</field>
+        <field name="view_mode">tree,form</field>
+       <field name="view_id" ref="view_account_analytic_account_grouped_partner"/>
+       <field name="search_view_id" ref="searcb_account_analytic_account_grouped_partner"/>
+       <field name="context">{ 'tree_view_ref':'view_account_analytic_account_grouped_partner','group_by_no_leaf':0,'group_by':['group_parent_id','company_id','group_id','account_mother_id','account_id']}</field>   
+    </record>
+
+    <menuitem id="menu_action_report_account_analytic_pgk" name="Analytic Report" action="action_report_account_analytic_pgk" parent="account.account_reports_management_menu" />
+
+
+</odoo>
