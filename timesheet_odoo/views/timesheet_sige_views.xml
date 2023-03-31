@@ -7,7 +7,7 @@
         	<form>
         		<header>
         			<button name="send_period" string="Send Period" class="oe_highlight" type="object"
-        				attrs="{'invisible': ['|',('pending_hours','!=',0.00),('state','!=','open')]}"/>
+        				attrs="{'invisible': ['|',('pending_hours','&gt;',0.00),('state','!=','open')]}"/>
         			<button name="recovery_period" string="Recovery Period" class="oe_highlight" type="object"
         				attrs="{'invisible': [('state', '!=', 'sent')]}"/>
         			<field name="state" widget="statusbar"/>
