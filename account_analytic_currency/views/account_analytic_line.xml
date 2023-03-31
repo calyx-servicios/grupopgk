@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="account_analytic_line_currency_inherit_view" model="ir.ui.view">
+        <field name="name">account.analytic.line.currency.inherit.view</field>
+        <field name="model">account.analytic.line</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_line_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_id']" position="attributes">
+                <attribute name="widget">many2many_tags</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record id="account_analytic_currency.update_currency_id_action" model="ir.actions.server">
+        <field name="name">Update Currency ID</field>
+        <field name="model_id" ref="analytic.model_account_analytic_line"/>
+        <field name="binding_model_id" ref="analytic.model_account_analytic_line"/>
+        <field name="state">code</field>
+        <field name="code">action = records.update_currency()</field>
+    </record>
+</odoo>
