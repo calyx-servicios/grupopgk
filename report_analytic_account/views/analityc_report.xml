@@ -42,7 +42,7 @@
         <field name="view_mode">tree,form</field>
        <field name="view_id" ref="view_account_analytic_account_grouped_partner"/>
        <field name="search_view_id" ref="searcb_account_analytic_account_grouped_partner"/>
-       <field name="context">{ 'tree_view_ref':'view_account_analytic_account_grouped_partner','group_by_no_leaf':0,'group_by':['group_parent_id','group_id','company_id','account_mother_id','account_id']}</field>   
+       <field name="context">{ 'tree_view_ref':'view_account_analytic_account_grouped_partner'}</field>   
     </record>
 
     <menuitem id="menu_action_report_account_analytic_pgk" name="Analytic Report" action="action_report_account_analytic_pgk" parent="account.account_reports_management_menu" />
