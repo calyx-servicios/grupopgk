@@ -7,7 +7,6 @@ class AccountAnalyticLine(models.Model):
     _inherit = "account.analytic.line"
 
     group_parent_id = fields.Many2one('account.analytic.group', related='group_id.parent_id', store=True, readonly=True, compute_sudo=True)
-    group_company_id = fields.Many2many(related='group_id.company_id')
     account_mother_id = fields.Many2one('account.analytic.account', related='account_id.parent_id', store=True, readonly=True, compute_sudo=True)
     balance = fields.Monetary(compute='_compute_debit_credit_balance', string='Balance',  groups='account.group_account_readonly')
     debit = fields.Monetary(compute='_compute_debit_credit_balance', string='Debit', groups='account.group_account_readonly')
