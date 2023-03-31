@@ -27,7 +27,6 @@
             <search string="">
                 <group name="name" string="string">
                     <filter string="parent" name="parent" domain="[]" context="{'group_by': 'group_parent_id'}"/>
-                    <filter string="Group company" name="company" domain="[]" context="{'group_by': 'group_company_id'}"/>
                     <filter string="Analytic Mother" name="mother" domain="[]" context="{'group_by': 'account_mother_id'}"/>
                 </group>
                 <searchpanel class="account_root">
