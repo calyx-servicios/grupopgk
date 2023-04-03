@@ -14,6 +14,8 @@
                         <group>
                             <field name="employee_id" readonly="1"/>
                             <field name="calculation" readonly="1"/>
+                            <field name="date" invisible="1"/>
+                            <field name="year" invisible="1"/>
                         </group>
                     </group>
                 </sheet>
@@ -41,7 +43,7 @@
             <search>
             	<field name="name"/>
                 <field name="employee_id"/>
-                <filter name="period" string="Period" context="{'group_by': 'name:month'}"/>
+                <filter name="period" string="Period" context="{'group_by': 'date'}" />
             </search>
         </field>
     </record>
