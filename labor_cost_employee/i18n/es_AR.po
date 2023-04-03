@@ -31,7 +31,9 @@ msgid "Add Invoices"
 msgstr "Agregar facturas"
 
 #. module: labor_cost_employee
+#: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__4
+#, python-format
 msgid "April"
 msgstr "Abril"
 
@@ -42,14 +44,16 @@ msgid "Attach"
 msgstr "Adjuntar"
 
 #. module: labor_cost_employee
+#: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__8
+#, python-format
 msgid "August"
 msgstr "Agosto"
 
 #. module: labor_cost_employee
 #: model:ir.model,name:labor_cost_employee.model_labor_cost_employee_wizard
 msgid "Calcular costo laboral wizard"
-msgstr "Calcular costo laboral wizard"
+msgstr ""
 
 #. module: labor_cost_employee
 #: model_terms:ir.ui.view,arch_db:labor_cost_employee.labor_cost_employee_wizard
@@ -103,7 +107,14 @@ msgid "Created on"
 msgstr "Creado el"
 
 #. module: labor_cost_employee
+#: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee__date
+msgid "Date"
+msgstr "Fecha"
+
+#. module: labor_cost_employee
+#: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__12
+#, python-format
 msgid "December"
 msgstr "Diciembre"
 
@@ -124,7 +135,9 @@ msgid "Exit"
 msgstr "Cerrar"
 
 #. module: labor_cost_employee
+#: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__2
+#, python-format
 msgid "February"
 msgstr "Febrero"
 
@@ -140,7 +153,9 @@ msgid "Invoices"
 msgstr "Facturas"
 
 #. module: labor_cost_employee
+#: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__1
+#, python-format
 msgid "January"
 msgstr "Enero"
 
@@ -150,12 +165,16 @@ msgid "Journal Entry"
 msgstr "Asiento contable"
 
 #. module: labor_cost_employee
+#: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__7
+#, python-format
 msgid "July"
 msgstr "Julio"
 
 #. module: labor_cost_employee
+#: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__6
+#, python-format
 msgid "June"
 msgstr "Junio"
 
@@ -201,12 +220,16 @@ msgid "Last Updated on"
 msgstr "Última actualización el"
 
 #. module: labor_cost_employee
+#: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__3
+#, python-format
 msgid "March"
 msgstr "Marzo"
 
 #. module: labor_cost_employee
+#: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__5
+#, python-format
 msgid "May"
 msgstr "Mayo"
 
@@ -216,12 +239,16 @@ msgid "Month"
 msgstr "Mes"
 
 #. module: labor_cost_employee
+#: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__11
+#, python-format
 msgid "November"
 msgstr "Noviembre"
 
 #. module: labor_cost_employee
+#: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__10
+#, python-format
 msgid "October"
 msgstr "Octubre"
 
@@ -243,7 +270,7 @@ msgstr "Periodo Sige"
 #: model:ir.model.fields,field_description:labor_cost_employee.field_account_payment__salary
 #: model_terms:ir.ui.view,arch_db:labor_cost_employee.view_move_form_salary
 msgid "Salary"
-msgstr "Salario"
+msgstr "Sueldo"
 
 #. module: labor_cost_employee
 #: code:addons/labor_cost_employee/wizard/labor_cost_employee_wizard.py:0
@@ -258,7 +285,9 @@ msgid "See more info"
 msgstr "Mostrar más info"
 
 #. module: labor_cost_employee
+#: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__9
+#, python-format
 msgid "September"
 msgstr "Septiembre"
 
@@ -269,6 +298,7 @@ msgid "Total amount invoiced: "
 msgstr "Monto total facturado: "
 
 #. module: labor_cost_employee
+#: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee__year
 #: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee_wizard__year
 msgid "Year"
 msgstr "Año"
