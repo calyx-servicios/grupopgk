@@ -6,15 +6,16 @@
         <field name="model">account.analytic.line</field>
         <field name="arch" type="xml">
             <tree>
-                <field name="name" />
+                <field name="name"/>
                 <field name="account_mother_id" optional="hide"/>
                 <field name="account_id" />
                 <field name="company_id"/>
                 <field name="group_parent_id" optional="hide"/>
                 <field name="group_id" optional="hide"/>
                 <field name="debit" sum="Total" optional="show"/>
+                <field name="currency_id" invisible="1"/>
                 <field name="credit" sum="Total" optional="show"/>
-                <field name="amount"/>
+                <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                 <field name="balance" sum="Total" optional="show"/>
             </tree>
         </field>
