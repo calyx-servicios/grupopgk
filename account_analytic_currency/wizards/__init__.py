@@ -1,1 +1,1 @@
-from . import update_currency
+from . import manage_currencies

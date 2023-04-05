@@ -9,7 +9,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.1.2.0",
+    "version": "15.0.2.0.0",
     "application": False,
     "installable": True,
     "depends": [
@@ -19,6 +19,6 @@
     "data": [
         "security/ir.model.access.csv",
         "views/account_analytic_line.xml",
-        "wizards/update_currency.xml",
+        "wizards/manage_currencies.xml",
     ],
 }
