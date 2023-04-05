@@ -19,6 +19,6 @@
     "data": [
         "security/ir.model.access.csv",
         "views/account_analytic_line.xml",
-        "wizards/update_currency.xml",
+        "wizards/manage_currencies.xml",
     ],
 }
