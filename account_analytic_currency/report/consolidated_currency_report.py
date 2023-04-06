@@ -1,5 +1,4 @@
 from odoo import models, _
-import wdb
 
 class ConsolidatedCurrencyReportXls(models.AbstractModel):
     _name = "report.account_analytic_currency.consolidated_report_xls"
