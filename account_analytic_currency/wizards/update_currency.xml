@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_update_currency_id_form" model="ir.ui.view">
+            <field name="name">update.currency.id.form</field>
+            <field name="model">update.currency.id</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group>
+                        <field name="analytics_line_ids" widget="many2many_tags"/>
+                    </group>
+                    <footer>
+                        <button name="update_currency_id" class="oe_highlight" type="object" string="Update Currency ID"/>
+                        <button string="Close" class="btn btn-default" special="cancel" />
+                    </footer>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>
