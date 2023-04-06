@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-04 22:03+0000\n"
-"PO-Revision-Date: 2023-04-04 22:03+0000\n"
+"POT-Creation-Date: 2023-04-06 16:17+0000\n"
+"PO-Revision-Date: 2023-04-06 16:17+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -16,9 +16,21 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. module: account_analytic_currency
+#: code:addons/account_analytic_currency/report/consolidated_currency_report.py:0
+#, python-format
+msgid "Account Analytic"
+msgstr "Cuenta Analítica"
+
+#. module: account_analytic_currency
 #: model:ir.model.fields,field_description:account_analytic_currency.field_manage_currencies_ids__analytics_line_ids
 msgid "Account Analytic Line"
 msgstr "Linea de Cuenta Analítica"
+
+#. module: account_analytic_currency
+#: code:addons/account_analytic_currency/report/consolidated_currency_report.py:0
+#, python-format
+msgid "Amount"
+msgstr "Importe"
 
 #. module: account_analytic_currency
 #: model:ir.model.fields,field_description:account_analytic_currency.field_manage_currencies_ids__amount_rate
@@ -36,10 +48,32 @@ msgid "Close"
 msgstr "Cerrar"
 
 #. module: account_analytic_currency
+#: code:addons/account_analytic_currency/report/consolidated_currency_report.py:0
+#, python-format
+msgid "Company"
+msgstr "Empresa"
+
+#. module: account_analytic_currency
 #: model:ir.model.fields.selection,name:account_analytic_currency.selection__manage_currencies_ids__currency_action__consolidated
 #: model_terms:ir.ui.view,arch_db:account_analytic_currency.view_manage_currencies_ids_form
 msgid "Consolidate Currency"
 msgstr "Consolidar Moneda"
+
+#. module: account_analytic_currency
+#: model:ir.actions.report,name:account_analytic_currency.consolidated_report_xls
+msgid "Consolidated Currency Report"
+msgstr "Informe de moneda consolidado"
+
+#. module: account_analytic_currency
+#: model:ir.model,name:account_analytic_currency.model_report_account_analytic_currency_consolidated_report_xls
+msgid "Consolidated Currency Report XLs"
+msgstr "Informe de moneda consolidado XLS"
+
+#. module: account_analytic_currency
+#: code:addons/account_analytic_currency/report/consolidated_currency_report.py:0
+#, python-format
+msgid "Consolidated Report"
+msgstr "Informe Consolidado"
 
 #. module: account_analytic_currency
 #: model:ir.model.fields,field_description:account_analytic_currency.field_manage_currencies_ids__create_uid
@@ -52,7 +86,9 @@ msgid "Created on"
 msgstr "Creado el"
 
 #. module: account_analytic_currency
+#: code:addons/account_analytic_currency/report/consolidated_currency_report.py:0
 #: model:ir.model.fields,field_description:account_analytic_currency.field_account_analytic_line__currency_id
+#, python-format
 msgid "Currency"
 msgstr "Moneda"
 
@@ -60,6 +96,12 @@ msgstr "Moneda"
 #: model:ir.model.fields,field_description:account_analytic_currency.field_manage_currencies_ids__currency_id
 msgid "Currency Origin"
 msgstr "Moneda de origen"
+
+#. module: account_analytic_currency
+#: code:addons/account_analytic_currency/report/consolidated_currency_report.py:0
+#, python-format
+msgid "Descriptions"
+msgstr "Descripciones"
 
 #. module: account_analytic_currency
 #: model:ir.model.fields,field_description:account_analytic_currency.field_manage_currencies_ids__display_name
