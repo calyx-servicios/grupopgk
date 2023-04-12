@@ -1,5 +1,4 @@
-from odoo import models, fields, api, _
-from urllib.parse import urlencode
+from odoo import models, fields
 
 
 class ManageCurrencyId(models.TransientModel):
@@ -63,13 +62,3 @@ class ManageCurrencyId(models.TransientModel):
             'vals': data_list,
         }
         return self.env.ref('account_analytic_currency.consolidated_report_xls').report_action(self, data=data_report)
-
-    # def consolidate_currency(self):
-    #     records = self.analytics_line_ids.filtered(lambda x: x.currency_id.id == self.currency_id.id)
-    #     for record in records:
-    #         amount = record.amount
-    #         record.currency_id = self.new_currency
-    #         record.amount = amount * self.amount_rate
-    #     return {
-    #         'type': 'ir.actions.act_window_close'
-    #     }
