@@ -19,7 +19,7 @@ class SaleOrder(models.Model):
     def _prepare_subscription_lines(self, split_line):
         values = []
         for lines in split_line:
-            if  not lines.order_line_id.subscription_plan_id.limit_choice == 'custom' and not lines.product_id.is_dues_ok:
+            if not lines.product_id.is_dues_ok:
                 price = lines.order_id.set_amount(lines)
                 values.append(((0, False, {
                     'product_id': lines.product_id.id,
@@ -96,7 +96,7 @@ class SaleOrderLine(models.Model):
     def _prepare_values_product(self):
         values = []
         for line in self:
-            if not line.subscription_plan_id.limit_choice == 'custom' and not line.product_id.is_dues_ok:
+            if not line.product_id.is_dues_ok:
                 price = line.price_unit
                 values.append((0, False, {
                     'product_id': line.product_id.id,
