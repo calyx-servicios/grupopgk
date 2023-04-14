@@ -19,7 +19,7 @@ class SaleOrder(models.Model):
     def _prepare_subscription_lines(self, split_line):
         values = []
         for lines in split_line:
-            if  not lines.order_line_id.subscription_plan_id.limit_choice == 'custom' and not lines.product_id.is_dues_ok:
+            if not lines.product_id.is_dues_ok:
                 price = lines.order_id.set_amount(lines)
                 values.append(((0, False, {
                     'product_id': lines.product_id.id,
@@ -64,8 +64,10 @@ class SaleOrder(models.Model):
         for rec in self:
             for line in rec.order_line:
                 if line.subscription_plan_id.limit_choice == 'custom' and line.product_id.is_dues_ok:
-                    line.product_uom_qty = line.subscription_plan_id.limit_count
-                    line.price_unit =  line.price_unit / line.subscription_plan_id.limit_count
+                    if not line.product_id.uom_id.category_id.name == 'Working Time':
+                        price = line.price_subtotal
+                        line.product_uom_qty = line.subscription_plan_id.limit_count 
+                        line.price_unit =  price / line.subscription_plan_id.limit_count
                     subscriptions = self.env['subscription.package'].search([('sale_order', '=', rec.id)])
                     for subs in subscriptions:
                         if not subs.product_line_ids:
@@ -94,7 +96,7 @@ class SaleOrderLine(models.Model):
     def _prepare_values_product(self):
         values = []
         for line in self:
-            if not line.subscription_plan_id.limit_choice == 'custom' and not line.product_id.is_dues_ok:
+            if not line.product_id.is_dues_ok:
                 price = line.price_unit
                 values.append((0, False, {
                     'product_id': line.product_id.id,
