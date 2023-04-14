@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_subscription_package_inherit_custom_fields" model="ir.ui.view">
+        <field name="name">Sale order inherti view acc analytic</field>
+        <field name="model">subscription.package</field>
+        <field name="inherit_id" ref="subscription_package.subscription_package_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/sheet/notebook/page/field[@name='product_line_ids']/tree/field[@name='product_id']" position="after">
+                <field name="name_product"/>
+            </xpath>
+            <xpath expr="//form/sheet/notebook/page/field[@name='product_line_ids']/tree/field[@name='unit_price']" position="after">
+                <field name="tax_id" widget="many2many_tags" options="{'no_create': True}" context="{'search_view_ref': 'account.account_tax_view_search'}" domain="[('type_tax_use','=','sale'), ('company_id','=',parent.company_id)]"/>
+            </xpath>
+            <field name="to_renew" position="after">
+                <field name="payment_term_id" options="{'no_open':True,'no_create': True}"/>
+            </field>
+        </field>
+    </record>
+</odoo>
