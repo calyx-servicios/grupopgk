@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_project_form_profile_manager" model="ir.ui.view">
+        <field name="name">project.form.profile_manager</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field name="has_profile_admin" invisible="1"/>
+                <field name="has_profile_manager" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='partner']" position="attributes">
+                <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='date_start']" position="attributes">
+                <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='date']" position="attributes">
+                <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='analytic_account_id']" position="attributes">
+                <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='privacy_visibility']" position="attributes">
+                <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='allow_subtasks']" position="attributes">
+                <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='allow_task_dependencies']" position="attributes">
+                <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='allow_recurring_tasks']" position="attributes">
+                <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
+            <button name="%(project.act_project_project_2_project_task_all)d" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </button>
+            <button name="%(project.action_project_task_burndown_chart_report)d" position="attributes">
+                <attribute name="groups">project.group_project_manager, custom_access_permissions.group_profile_manager</attribute>
+            </button>
+            <xpath expr="//field[@name='stage_id']" position="attributes">
+                <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

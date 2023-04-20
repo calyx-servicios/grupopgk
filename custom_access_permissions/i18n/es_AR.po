@@ -1,0 +1,86 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* custom_access_permissions
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-04-19 13:56+0000\n"
+"PO-Revision-Date: 2023-04-19 13:56+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: custom_access_permissions
+#: model:res.groups,name:custom_access_permissions.group_profile_administrator
+msgid "Administrator"
+msgstr "Administrador"
+
+#. module: custom_access_permissions
+#: model:ir.model.fields,field_description:custom_access_permissions.field_project_project__has_profile_admin
+#: model:ir.model.fields,field_description:custom_access_permissions.field_sale_order__has_profile_admin
+#: model:ir.model.fields,field_description:custom_access_permissions.field_subscription_package__has_profile_admin
+#: model:ir.model.fields,field_description:custom_access_permissions.field_subscription_package_product_line__has_profile_admin
+msgid "Has administrator profile?"
+msgstr "¿Tiene perfil de administrador?"
+
+#. module: custom_access_permissions
+#: model:ir.model.fields,field_description:custom_access_permissions.field_project_project__has_profile_manager
+#: model:ir.model.fields,field_description:custom_access_permissions.field_sale_order__has_profile_manager
+#: model:ir.model.fields,field_description:custom_access_permissions.field_subscription_package__has_profile_manager
+#: model:ir.model.fields,field_description:custom_access_permissions.field_subscription_package_product_line__has_profile_manager
+msgid "Has manager profile?"
+msgstr "¿Tiene perfil de gerente?"
+
+#. module: custom_access_permissions
+#: model:ir.model,name:custom_access_permissions.model_account_move
+msgid "Journal Entry"
+msgstr "Asiento contable"
+
+#. module: custom_access_permissions
+#: model:ir.module.category,name:custom_access_permissions.group_category_profile_manager
+msgid "PGK Access"
+msgstr "Acceso PGK"
+
+#. module: custom_access_permissions
+#: model:res.groups,name:custom_access_permissions.group_profile_manager
+msgid "Manager Profile"
+msgstr ""
+
+#. module: custom_access_permissions
+#: model:ir.model,name:custom_access_permissions.model_project_project
+msgid "Project"
+msgstr "Proyecto"
+
+#. module: custom_access_permissions
+#: model:ir.model,name:custom_access_permissions.model_sale_order
+msgid "Sales Order"
+msgstr "Pedido de venta"
+
+#. module: custom_access_permissions
+#: model:ir.model,name:custom_access_permissions.model_subscription_package
+msgid "Subscription Package"
+msgstr "Paquete de suscripción"
+
+#. module: custom_access_permissions
+#: model:ir.model,name:custom_access_permissions.model_subscription_package_product_line
+msgid "Subscription Product Lines"
+msgstr "Líneas de productos de suscripción"
+
+#. module: custom_access_permissions
+#: code:addons/custom_access_permissions/models/account_move.py:0
+#, python-format
+msgid "You do not have access to create this type of move."
+msgstr "No tienes acceso para crear este tipo de movimiento."
+
+#. module: custom_access_permissions
+#: code:addons/custom_access_permissions/models/project_project.py:0
+#, python-format
+msgid ""
+"You do not have the necessary permissions, please contact the administrator"
+msgstr ""
+"No tiene los permisos necesarios, por favor contacte al administrador"
