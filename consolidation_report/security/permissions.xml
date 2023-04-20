@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="consolidation_report_category" model="ir.module.category">
+        <field name="name">Consolidation Report Category</field>
+        <field name="description">Category for Consolidation Report module.</field>
+    </record>
+    <record id="group_consolidation_manager" model="res.groups">
+        <field name="name">Consolidation Managers</field>
+        <field name="category_id" ref="consolidation_report.consolidation_report_category"/>
+        <field name="implied_ids" eval="[(4, ref('consolidation_report.group_consolidation_user'))]"/>
+    </record>
+    <record id="group_consolidation_user" model="res.groups">
+        <field name="name">Consolidation Users</field>
+        <field name="category_id" ref="consolidation_report.consolidation_report_category"/>
+    </record>
+</odoo>
