@@ -16,6 +16,22 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. module: subscription_massive_update
+#: code:addons/subscription_massive_update/wizards/subscription_massive_update.py:0
+#, python-format
+msgid ""
+"<table><thead><tr><th>Product</th><th>Original Price</th><th>Current "
+"Price</th></tr></thead><tbody>"
+msgstr ""
+"<table><thead><tr><th>Producto</th><th>Precio Original</th><th>Precio "
+"Actual</th></tr></thead><tbody>"
+
+#. module: subscription_massive_update
+#: code:addons/subscription_massive_update/wizards/subscription_massive_update.py:0
+#, python-format
+msgid "<tr><td>{}</td><td>{}</td><td>{}</td></tr>"
+msgstr ""
+
+#. module: subscription_massive_update
 #: model_terms:ir.ui.view,arch_db:subscription_massive_update.wizard_massive_update_form
 msgid "Close"
 msgstr "Cerrar"
@@ -39,7 +55,7 @@ msgstr "Nombre para mostrar"
 #: code:addons/subscription_massive_update/wizards/subscription_massive_update.py:0
 #, python-format
 msgid ""
-"Error ({}) when is trying to update line with ID({}) in subscription with id({})"
+"Error ({}) when trying to update product line in subscription with ID({})"
 msgstr ""
 "Error ({}) al intentar actualizar la línea con ID ({}) en la suscripción con el ID({})"
 
@@ -65,6 +81,7 @@ msgstr "Última actualización en"
 
 #. module: subscription_massive_update
 #: code:addons/subscription_massive_update/models/subscription_package.py:0
+#: model:ir.actions.server,name:subscription_massive_update.massive_amount_action
 #, python-format
 msgid "Massive Update"
 msgstr "Actualización Masiva"
@@ -80,6 +97,21 @@ msgid "Subscription Package"
 msgstr "Paquete de suscripción"
 
 #. module: subscription_massive_update
+#: code:addons/subscription_massive_update/wizards/subscription_massive_update.py:0
+#, python-format
+msgid ""
+"Subscription prices have been updated by <a href=# data-oe-model=res.users "
+"data-oe-id={}>{}</a> with a {}% increase. The total price of subscription {}"
+" has been changed from {} to {}. The following changes were made to product "
+"lines: {}"
+msgstr ""
+"Los precios de suscripción han sido actualizados por <a href=# data-oe-model=res.users "
+"data-oe-id={}>{}</a> con un {}% de aumento. El precio total de la suscripción {}"
+" se ha cambiado de {} a {}. Se realizaron los siguientes cambios en las lineas de"
+"producto: {}"
+
+
+#. module: subscription_massive_update
 #: model:ir.model.fields,field_description:subscription_massive_update.field_subscription_massive_update__subscriptions_ids
 msgid "Subscriptions"
 msgstr "Suscripciones"
@@ -88,11 +120,6 @@ msgstr "Suscripciones"
 #: model_terms:ir.ui.view,arch_db:subscription_massive_update.wizard_massive_update_form
 msgid "Update"
 msgstr "Actualizar"
-
-#. module: subscription_massive_update
-#: model:ir.actions.server,name:subscription_massive_update.massive_amount_action
-msgid "Massive Update"
-msgstr "Actualización Masiva"
 
 #. module: subscription_massive_update
 #: model:ir.model,name:subscription_massive_update.model_subscription_massive_update
