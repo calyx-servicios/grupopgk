@@ -14,6 +14,7 @@ jobs:
               env:
                   PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
                   PROJECT_PATH: ${{ secrets.PROJECT_PATH_TEST }}
+                  PORT: 5513
               with:
                   host: "${{ secrets.SSH_HOST }}"
                   username: ${{ secrets.SSH_USER }}
