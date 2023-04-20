@@ -1,24 +1,23 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 {
-    "name": "Account Analytic Currency",
+    "name": "Consildation Report",
     "summary": """
-        This module show on analytic line the currency from journal entry.
+        This module generates and stores consolidated monthly reports.
     """,
     "author": "Calyx Servicios S.A.",
     "maintainers": ["Zamora, Javier"],
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.4.0.0",
+    "version": "15.0.1.0.0",
     "application": False,
     "installable": True,
     "depends": [
-        "analytic",
-        "account",
+        "account_analytic_currency",
     ],
     "data": [
+        "security/permissions.xml",
         "security/ir.model.access.csv",
-        "views/account_analytic_line.xml",
-        "wizards/manage_currencies.xml",
+        "views/consolidation_report.xml",
     ],
 }

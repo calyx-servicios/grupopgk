@@ -7,25 +7,10 @@
             <field name="arch" type="xml">
                 <form>
                     <group>
-                        <field name="analytics_line_ids" widget="many2many_tags"/>
-                    </group>
-                    <group>
-                        <field name="currency_action" />
-                    </group>
-                    <group>
-                        <group>
-                            <field name="currency_id" domain="[('id', '!=', new_currency)]" attrs="{'invisible': [('currency_action', '!=', 'consolidated')], 'required': [('currency_action', '=', 'consolidated')]}"/>
-                        </group>
-                        <group>
-                            <field name="new_currency" domain="[('id', '!=', currency_id)]" attrs="{'invisible': [('currency_action', '!=', 'consolidated')], 'required': [('currency_action', '=', 'consolidated')]}"/>
-                        </group>
-                    </group>
-                    <group>
-                        <field name="amount_rate" attrs="{'invisible': [('currency_action', '!=', 'consolidated')], 'required': [('currency_action', '=', 'consolidated')]}"/>
+                        <field name="analytics_line_ids" widget="many2many_tags" readonly="1"/>
                     </group>
                     <footer>
-                        <button name="update_currency_id" class="oe_highlight" type="object" string="Update Currency ID" attrs="{'invisible': [('currency_action', '!=', 'update_currency')]}"/>
-                        <button name="consolidate_currency" class="oe_highlight" type="object" string="Consolidate Currency" attrs="{'invisible': [('currency_action', '!=', 'consolidated')]}"/>
+                        <button name="update_currency_id" class="oe_highlight" type="object" string="Update Currency ID" />
                         <button string="Close" class="btn btn-default" special="cancel" />
                     </footer>
                 </form>
