@@ -22,6 +22,6 @@ class ProjectProject(models.Model):
     
     def write(self, vals):
         profile_admin = self.env.user.has_group('custom_access_permissions.group_profile_administrator')
-        if vals['active'] == False and not profile_admin:
+        if vals.get('active') == False and not profile_admin:
             raise AccessError(_('You do not have the necessary permissions, please contact the administrator'))
         return super().write(vals)
