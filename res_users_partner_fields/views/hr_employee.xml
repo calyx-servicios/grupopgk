@@ -7,7 +7,7 @@
         <field name="type">form</field>
         <field name="arch" type="xml">
             <xpath expr="//sheet/group/group[2]" position="inside">
-                <field name="partner"/>
+                <field name="partner" required="1" options="{'no_create': True, 'no_create_edit':True}"/>
             </xpath>
         </field>
     </record>
