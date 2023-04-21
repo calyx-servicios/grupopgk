@@ -9,14 +9,12 @@ class SubscriptionPackageProductLine(models.Model):
     price_tax = fields.Float(compute='_compute_total_amount', string='Total Tax', store=True)
     price_subtotal = fields.Monetary(compute='_compute_total_amount', string='Subtotal', store=True)
     name_product = fields.Char(string='Description')
-    display_type = fields.Selection([
-        ('line_section', "Section"),
-        ('line_note', "Note")], default=False, help="Technical field for UX purpose.")
+
 
     @api.onchange('product_id')
     def _onchange_product_id(self):
         for record in self:
-            if record.product_id and not record.display_type:
+            if record.product_id:
                 record.name_product = record.product_id.name
             else:
                 record.name_product = '/'
@@ -49,7 +47,7 @@ class SubscriptionPackage(models.Model):
                             'price_unit': rec.unit_price,
                             'analytic_account_id': rec.analytic_account_id.id,
                             'tax_ids': [(6, 0, rec.tax_id.ids)],
-                            'display_type': rec.display_type,
+
                             }]
             this_products_line.append(rec_list)
         move = self.env['account.move'].create(

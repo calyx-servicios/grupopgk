@@ -21,16 +21,6 @@ msgid "Description"
 msgstr "Descripción"
 
 #. module: sale_subscription_custom_fields
-#: model:ir.model.fields,field_description:sale_subscription_custom_fields.field_subscription_package_product_line__display_type
-msgid "Display Type"
-msgstr "Tipo de visualización"
-
-#. module: sale_subscription_custom_fields
-#: model:ir.model.fields.selection,name:sale_subscription_custom_fields.selection__subscription_package_product_line__display_type__line_note
-msgid "Note"
-msgstr "Nota"
-
-#. module: sale_subscription_custom_fields
 #: model:ir.model.fields,field_description:sale_subscription_custom_fields.field_subscription_package__payment_term_id
 msgid "Payment Term"
 msgstr "Plazo de pago"
@@ -44,11 +34,6 @@ msgstr "Pedido de venta"
 #: model:ir.model,name:sale_subscription_custom_fields.model_sale_order_line
 msgid "Sales Order Line"
 msgstr "Línea de pedido de venta"
-
-#. module: sale_subscription_custom_fields
-#: model:ir.model.fields.selection,name:sale_subscription_custom_fields.selection__subscription_package_product_line__display_type__line_section
-msgid "Section"
-msgstr "Sección"
 
 #. module: sale_subscription_custom_fields
 #: model:ir.model,name:sale_subscription_custom_fields.model_subscription_package
@@ -69,11 +54,6 @@ msgstr "Total parcial"
 #: model:ir.model.fields,field_description:sale_subscription_custom_fields.field_subscription_package_product_line__tax_id
 msgid "Taxes"
 msgstr "Impuestos"
-
-#. module: sale_subscription_custom_fields
-#: model:ir.model.fields,help:sale_subscription_custom_fields.field_subscription_package_product_line__display_type
-msgid "Technical field for UX purpose."
-msgstr "Campo técnico para el propósito de UX."
 
 #. module: sale_subscription_custom_fields
 #: model:ir.model.fields,field_description:sale_subscription_custom_fields.field_subscription_package_product_line__price_tax
