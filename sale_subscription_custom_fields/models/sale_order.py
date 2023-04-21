@@ -28,7 +28,6 @@ class SaleOrder(models.Model):
                     'product_uom_id': lines.uom_id.id,
                     'unit_price': price,
                     'tax_id': [(6, 0, lines.tax_id.ids)],
-                    'display_type': lines.display_type,
                 })))
         return values
 
@@ -50,6 +49,5 @@ class SaleOrderLine(models.Model):
                     'product_uom_id': line.product_uom.id,
                     'unit_price': price,
                     'tax_id': [(6, 0, line.tax_id.ids)],
-                    'display_type': line.display_type,
                 }))
         return values
