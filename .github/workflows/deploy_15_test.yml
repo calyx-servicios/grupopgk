@@ -1,0 +1,26 @@
+name: Git Pull 15.0_test and Odoo Restart
+
+on:
+    push:
+        branches:
+            - 15.0_test
+
+jobs:
+    deploy-15-test:
+        runs-on: ubuntu-latest
+        steps:
+            - name: SSH Comamnds
+              uses: appleboy/ssh-action@master
+              env:
+                  PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
+                  PROJECT_PATH: ${{ secrets.PROJECT_PATH_TEST }}
+              with:
+                  host: "${{ secrets.SSH_HOST }}"
+                  username: ${{ secrets.SSH_USER }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY}}
+                  port: ${{ secrets.PORT}}
+                  envs: PROJECT_NAME,PROJECT_PATH
+                  script: |
+                      cd $PROJECT_PATH
+                      git pull
+                      docker restart odoo-$PROJECT_NAME-test
