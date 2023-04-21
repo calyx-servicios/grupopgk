@@ -1,0 +1,22 @@
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="subscription_massive_update.wizard_massive_update_form">
+            <field name="name">Update Massive</field>
+            <field name="model">subscription.massive_update</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group>
+                        <field name="subscriptions_ids" widget="many2many_tags" readonly="1" />
+                        <field name="percentage" />
+                        <br/>
+                    </group>
+                    <footer>
+                        <button string="Close" class="btn btn-default" special="cancel" />
+                        <button name="update" string="Update" type="object" class="oe_highlight" attrs="{ 'readonly': ['|',('subscriptions_ids', '=', []), ('percentage', '=', 0)] }"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>
