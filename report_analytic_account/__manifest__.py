@@ -8,7 +8,7 @@
     "website": "http://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Account",
-    "version": "15.0.1.1.4",
+    "version": "15.0.1.2.4",
     "application": False,
     "installable": True,
     "depends": [ 'account', 'analytic'],
