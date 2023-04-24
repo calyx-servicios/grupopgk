@@ -4,17 +4,16 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 13.0-20220718\n"
+"Project-Id-Version: Odoo Server 15.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-11-08 21:09+0000\n"
-"PO-Revision-Date: 2022-11-08 18:40-0300\n"
+"POT-Creation-Date: 2023-04-24 12:23+0000\n"
+"PO-Revision-Date: 2023-04-24 12:23+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
-"Language: en\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 3.2.1\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -54,7 +53,7 @@ msgstr "<br/><strong>Referencia:</strong>"
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<br/><strong>Source:</strong>"
-msgstr ""
+msgstr "<br/><strong>Fuente:</strong>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -63,8 +62,7 @@ msgid ""
 "                                    <span groups=\"account.group_show_line_subtotals_tax_included\">Total Price</span>"
 msgstr ""
 "<span groups=\"account.group_show_line_subtotals_tax_excluded\">Monto</span>\n"
-"                                    <span groups=\"account.group_show_line_subtotals_tax_included\">Precio Total</"
-"span>"
+"                                    <span groups=\"account.group_show_line_subtotals_tax_included\">Precio Total</span>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -84,7 +82,7 @@ msgstr "<span>Cantidad</span>"
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<span>Source Document</span>"
-msgstr ""
+msgstr "<span>Documento Origin</span>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -129,12 +127,17 @@ msgstr "<strong>subtotal</strong>"
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<strong>Subtotal</strong>"
-msgstr "<strong>Subtotal</strong>"
+msgstr ""
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<strong>Tax Amount (AED)</strong>"
 msgstr "<strong>Importe de impuesto</strong>"
+
+#. module: invoice_without_detail
+#: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
+msgid "<strong>Taxes</strong>"
+msgstr "<strong>Impuestos</strong>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -144,7 +147,7 @@ msgstr "<strong>Total</strong>"
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<strong>Total</strong>"
-msgstr "<strong>Total</strong>"
+msgstr ""
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -158,18 +161,20 @@ msgstr ""
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
-msgid "El total de este comprobante expresado en moneda de curso legal - Pesos Argentinos - asciende a"
+msgid ""
+"El total de este comprobante expresado en moneda de curso legal - Pesos "
+"Argentinos - asciende a"
 msgstr ""
 
 #. module: invoice_without_detail
 #: model:ir.actions.report,name:invoice_without_detail.action_invoce_without_details
 msgid "Invoice without details"
-msgstr "Factura sin detalle"
+msgstr ""Factura sin detalles""
 
 #. module: invoice_without_detail
 #: model:ir.model,name:invoice_without_detail.model_account_move
-msgid "Journal Entries"
-msgstr "Asientos contables"
+msgid "Journal Entry"
+msgstr "Asiento contable"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -180,11 +185,6 @@ msgstr "Pagina: <span class=\"page\"/> / <span class=\"topage\"/>"
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "a un tipo de cambio consignado de"
 msgstr ""
-
-#. module: invoice_without_detail
-#: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
-msgid "on"
-msgstr "de"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
