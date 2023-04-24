@@ -22,7 +22,7 @@ class SaleOrder(models.Model):
                 values.append(((0, False, {
                     'sequence': lines.sequence,
                     'product_id': lines.product_id.id,
-                    'name_product': lines.product_id.name,
+                    'name_product': lines.name,
                     'analytic_account_id': lines.analytic_account_id.id,
                     'product_qty': lines.quantity,
                     'product_uom_id': lines.uom_id.id,
@@ -43,7 +43,7 @@ class SaleOrderLine(models.Model):
                 values.append((0, False, {
                     'sequence': line.sequence,
                     'product_id': line.product_id.id,
-                    'name_product': line.product_id.name,
+                    'name_product': line.name,
                     'analytic_account_id': line.analytic_account_id.id,
                     'product_qty': line.product_uom_qty,
                     'product_uom_id': line.product_uom.id,
