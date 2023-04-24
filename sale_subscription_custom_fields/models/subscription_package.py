@@ -11,14 +11,6 @@ class SubscriptionPackageProductLine(models.Model):
     name_product = fields.Char(string='Description')
 
 
-    @api.onchange('product_id')
-    def _onchange_product_id(self):
-        for record in self:
-            if record.product_id:
-                record.name_product = record.product_id.name
-            else:
-                record.name_product = '/'
-
     @api.depends('product_qty', 'unit_price', 'tax_id')
     def _compute_total_amount(self):
         """
