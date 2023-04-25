@@ -6,6 +6,12 @@ class AccountMove(models.Model):
 
     @api.model
     def create(self, vals):
-        if self.env.user.has_group('custom_access_permissions.group_profile_manager') and vals.get('move_type') not in ('out_refund', 'in_refund'):
+        if not self.env.user.has_group('custom_access_permissions.group_profile_manager') and vals.get('move_type') not in ('out_refund', 'in_refund'):
             raise AccessError(_('You do not have access to create this type of move.'))
         return super().create(vals)
+    
+    def action_post(self):
+        for rec in self:
+            if not self.env.user.has_group('custom_access_permissions.group_profile_administrator'):
+                raise AccessError(_('You do not have access to create this type of move.'))
+        return super(AccountMove, self).action_post()
