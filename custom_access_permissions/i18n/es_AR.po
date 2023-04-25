@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-19 13:56+0000\n"
-"PO-Revision-Date: 2023-04-19 13:56+0000\n"
+"POT-Creation-Date: 2023-04-25 18:19+0000\n"
+"PO-Revision-Date: 2023-04-25 18:19+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -37,19 +37,24 @@ msgid "Has manager profile?"
 msgstr "¿Tiene perfil de gerente?"
 
 #. module: custom_access_permissions
+#: model:ir.module.category,description:custom_access_permissions.group_category_pgk_manager
+msgid "Helps you handle PGK security."
+msgstr "Le ayuda a manejar los permisos de PGK."
+
+#. module: custom_access_permissions
 #: model:ir.model,name:custom_access_permissions.model_account_move
 msgid "Journal Entry"
 msgstr "Asiento contable"
 
 #. module: custom_access_permissions
-#: model:ir.module.category,name:custom_access_permissions.group_category_profile_manager
-msgid "PGK Access"
-msgstr "Acceso PGK"
-
-#. module: custom_access_permissions
 #: model:res.groups,name:custom_access_permissions.group_profile_manager
 msgid "Manager Profile"
-msgstr ""
+msgstr "Perfil Gerente"
+
+#. module: custom_access_permissions
+#: model:ir.module.category,name:custom_access_permissions.group_category_pgk_manager
+msgid "PGK Access"
+msgstr "Permisos PGK"
 
 #. module: custom_access_permissions
 #: model:ir.model,name:custom_access_permissions.model_project_project
@@ -72,6 +77,7 @@ msgid "Subscription Product Lines"
 msgstr "Líneas de productos de suscripción"
 
 #. module: custom_access_permissions
+#: code:addons/custom_access_permissions/models/account_move.py:0
 #: code:addons/custom_access_permissions/models/account_move.py:0
 #, python-format
 msgid "You do not have access to create this type of move."
