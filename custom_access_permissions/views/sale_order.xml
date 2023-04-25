@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="inherit_sale_order_custom_access_permissions" model="ir.ui.view">
+        <field name="name">sale.order.custom.access.permissions</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <field name="sales_order_with_detail" position="after">
+                <field name="has_profile_admin" invisible="1"/>
+                <field name="has_profile_manager" invisible="1"/>
+            </field>
+            <field name="partner_invoice_id" position="attributes">
+                <attribute name="options">{'no_create': True, 'no_create_edit':True}</attribute>
+            </field>
+            <field name="payment_term_id" position="attributes">
+                <attribute name="attrs">{'required': True,}</attribute>
+            </field>
+            <label for="pricelist_id" position="attributes">
+                <attribute name="groups">product.group_product_pricelist, custom_access_permissions.group_profile_manager</attribute>
+            </label>
+            <field name="split_invoice" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_manager</attribute>
+            </field>
+            <field name="user_id" position="attributes">
+                <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
+            </field>
+            <field name="team_id" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </field>
+            <field name="require_signature" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </field>
+            <field name="require_payment" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </field>
+            <field name="client_order_ref" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </field>
+            <field name="tag_ids" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </field>
+            <group name="sale_info" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </group>
+            <group name="sale_shipping" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </group>
+            <group name="sale_reporting" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </group>
+        </field>
+    </record>
+</odoo>
