@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project.menu_main_pm" model="ir.ui.menu">
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_manager'))]"/>
+    </record>
+    <record id="project.menu_project_management" model="ir.ui.menu">
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_manager'))]"/>
+    </record>
+    <record id="sale.sale_menu_root" model="ir.ui.menu">
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_manager'))]"/>
+    </record>
+    <record id="sale.sale_order_menu" model="ir.ui.menu">
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_manager'))]"/>
+    </record>
+    <record id="sale.menu_sale_order" model="ir.ui.menu">
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_manager'))]"/>
+    </record>
+    <record id="sale.menu_sale_report" model="ir.ui.menu">
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_manager'))]"/>
+    </record>
+    <record id="subscription_package.subscription_menu_root" model="ir.ui.menu">
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_manager'))]"/>
+    </record>
+    <record id="subscription_package.subscriptions_menu_subscriptions" model="ir.ui.menu">
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_manager'))]"/>
+    </record>
+    <record id="subscription_package.subscription_menu_subscriptions" model="ir.ui.menu">
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_manager'))]"/>
+    </record>
+</odoo>
