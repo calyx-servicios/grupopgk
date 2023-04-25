@@ -1,0 +1,61 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* sale_subscription_custom_fields
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-04-14 14:48+0000\n"
+"PO-Revision-Date: 2023-04-14 14:48+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: sale_subscription_custom_fields
+#: model:ir.model.fields,field_description:sale_subscription_custom_fields.field_subscription_package_product_line__name_product
+msgid "Description"
+msgstr "Descripción"
+
+#. module: sale_subscription_custom_fields
+#: model:ir.model.fields,field_description:sale_subscription_custom_fields.field_subscription_package__payment_term_id
+msgid "Payment Term"
+msgstr "Plazo de pago"
+
+#. module: sale_subscription_custom_fields
+#: model:ir.model,name:sale_subscription_custom_fields.model_sale_order
+msgid "Sales Order"
+msgstr "Pedido de venta"
+
+#. module: sale_subscription_custom_fields
+#: model:ir.model,name:sale_subscription_custom_fields.model_sale_order_line
+msgid "Sales Order Line"
+msgstr "Línea de pedido de venta"
+
+#. module: sale_subscription_custom_fields
+#: model:ir.model,name:sale_subscription_custom_fields.model_subscription_package
+msgid "Subscription Package"
+msgstr "Paquete de suscripción"
+
+#. module: sale_subscription_custom_fields
+#: model:ir.model,name:sale_subscription_custom_fields.model_subscription_package_product_line
+msgid "Subscription Product Lines"
+msgstr "Líneas de productos de suscripción"
+
+#. module: sale_subscription_custom_fields
+#: model:ir.model.fields,field_description:sale_subscription_custom_fields.field_subscription_package_product_line__price_subtotal
+msgid "Subtotal"
+msgstr "Total parcial"
+
+#. module: sale_subscription_custom_fields
+#: model:ir.model.fields,field_description:sale_subscription_custom_fields.field_subscription_package_product_line__tax_id
+msgid "Taxes"
+msgstr "Impuestos"
+
+#. module: sale_subscription_custom_fields
+#: model:ir.model.fields,field_description:sale_subscription_custom_fields.field_subscription_package_product_line__price_tax
+msgid "Total Tax"
+msgstr "Total impuestos"
