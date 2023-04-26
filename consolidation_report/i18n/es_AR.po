@@ -35,12 +35,7 @@ msgstr "Nombre de la cuenta"
 #: code:addons/consolidation_report/models/consolidation_report.py:0
 #, python-format
 msgid "Amount"
-msgstr "importe"
-
-#. module: consolidation_report
-#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__amount_rate
-msgid "Amount rate"
-msgstr "Tasa de cambio"
+msgstr "Importe"
 
 #. module: consolidation_report
 #: model:ir.module.category,description:consolidation_report.consolidation_report_category
@@ -51,12 +46,28 @@ msgstr "Categoría para el módulo Informe de consolidación."
 #: code:addons/consolidation_report/models/consolidation_report.py:0
 #, python-format
 msgid "Companies"
-msgstr "Compañías"
+msgstr "Compañias"
 
 #. module: consolidation_report
-#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__company_id
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__consolidation_companies
+#: model_terms:ir.ui.view,arch_db:consolidation_report.view_account_consolidation_report_form
+msgid "Companies and currencies"
+msgstr "Compañias y monedas"
+
+#. module: consolidation_report
+#: model:ir.model,name:consolidation_report.model_account_consolidation_company
+msgid "Companies and currencies for consolidation report"
+msgstr "Compañias y monedas para el informe consolidado"
+
+#. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__company_id
 msgid "Company"
 msgstr "Compañía"
+
+#. module: consolidation_report
+#: model:ir.model.constraint,message:consolidation_report.constraint_account_consolidation_company_company_unique
+msgid "Company already exists in consolidation report!"
+msgstr "Esta compañia ya existe para el informe"
 
 #. module: consolidation_report
 #: model_terms:ir.ui.view,arch_db:consolidation_report.view_account_consolidation_report_form
@@ -80,6 +91,7 @@ msgid "Consolidation Managers"
 msgstr "Gerentes de Consolidación"
 
 #. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__account_consolidation_report_id
 #: model:ir.ui.menu,name:consolidation_report.menu_account_consolidation_report
 msgid "Consolidation Report"
 msgstr "Informe de consolidación"
@@ -95,11 +107,19 @@ msgid "Consolidation Users"
 msgstr "Usuarios de consolidación"
 
 #. module: consolidation_report
+#: code:addons/consolidation_report/models/consolidation_report.py:0
+#, python-format
+msgid "Consolidation-%s-%s.xls"
+msgstr "Consolidación-%s-%s.xls"
+
+#. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__create_uid
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__create_uid
 msgid "Created by"
 msgstr "Creado por"
 
 #. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__create_date
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__create_date
 msgid "Created on"
 msgstr "Creado en"
@@ -108,12 +128,14 @@ msgstr "Creado en"
 #: code:addons/consolidation_report/models/consolidation_report.py:0
 #, python-format
 msgid "Currency"
-msgstr "Divisa"
+msgstr "Moneda"
 
 #. module: consolidation_report
-#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__currency_id
+#: code:addons/consolidation_report/models/consolidation_report.py:0
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__currency_id
+#, python-format
 msgid "Currency Origin"
-msgstr "Origen de la moneda"
+msgstr "Moneda Origen"
 
 #. module: consolidation_report
 #: model_terms:ir.ui.view,arch_db:consolidation_report.view_account_consolidation_report_form
@@ -123,16 +145,11 @@ msgstr "Días del periodo"
 #. module: consolidation_report
 #: code:addons/consolidation_report/models/consolidation_report.py:0
 #, python-format
-msgid "Consolidation-%s-%s.xls"
-msgstr "Consolidación-%s-%s.xls"
-
-#. module: consolidation_report
-#: code:addons/consolidation_report/models/consolidation_report.py:0
-#, python-format
 msgid "Description"
 msgstr "Descripción"
 
 #. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__display_name
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__display_name
 msgid "Display Name"
 msgstr "Mostrar nombre"
@@ -155,7 +172,7 @@ msgstr "Exportar informe de consolidación"
 #. module: consolidation_report
 #: model_terms:ir.ui.view,arch_db:consolidation_report.view_account_consolidation_report_form
 msgid "File and data"
-msgstr "archivo y datos"
+msgstr "Archivo y datos"
 
 #. module: consolidation_report
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__export_consolidation_filename
@@ -170,32 +187,31 @@ msgstr "Contenido del archivo"
 #. module: consolidation_report
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__date_from
 msgid "From"
-msgstr "From"
+msgstr "De"
 
 #. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__id
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__id
 msgid "ID"
 msgstr ""
 
 #. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company____last_update
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report____last_update
 msgid "Last Modified on"
 msgstr "Última modificación el"
 
 #. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__write_uid
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__write_uid
 msgid "Last Updated by"
 msgstr "Última actualización por"
 
 #. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__write_date
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__write_date
 msgid "Last Updated on"
 msgstr "Ultima actualización en"
-
-#. module: consolidation_report
-#: model_terms:ir.ui.view,arch_db:consolidation_report.view_account_consolidation_report_form
-msgid "Leave blank for all companies"
-msgstr "Dejar en blanco para todas las empresas"
 
 #. module: consolidation_report
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__month
@@ -208,14 +224,21 @@ msgid "Month of the period"
 msgstr "Mes del periodo"
 
 #. module: consolidation_report
-#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__new_currency
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__new_currency
 msgid "New Currency"
-msgstr "Nueva moneda"
+msgstr "Nueva Moneda"
 
 #. module: consolidation_report
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__period
 msgid "Period"
 msgstr "Período"
+
+#. module: consolidation_report
+#: code:addons/consolidation_report/models/consolidation_report.py:0
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__rate
+#, python-format
+msgid "Rate"
+msgstr "Tasa"
 
 #. module: consolidation_report
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__date_to
