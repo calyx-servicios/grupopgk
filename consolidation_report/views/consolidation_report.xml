@@ -11,10 +11,9 @@
 				<sheet>
 					<group>
 						<group>
-							<field name="company_id" options="{'no_create': True, 'no_create_edit':True}" placeholder="Leave blank for all companies"/>
+							<field name="year"/>
 						</group>
 						<group>
-							<field name="year"/>
 							<field name="month"/>
 						</group>
 					</group>
@@ -23,21 +22,22 @@
 							<field name="date_from"/> <span>-</span> <field name="date_to"/>
 						</span>
 					</group>
-					<group>
-                        <group>
-                            <field name="currency_id" domain="[('id', '!=', new_currency)]"/>
-                        </group>
-                        <group>
-                            <field name="new_currency" domain="[('id', '!=', currency_id)]"/>
-                        </group>
-                    </group>
-                    <group>
-                        <field name="amount_rate"/>
-                    </group>
 					<group string="File and data">
 						<field name="export_consolidation_filename" invisible="1"/>
 						<field name="export_consolidation_file" readonly="1" filename="export_consolidation_filename"/>
 					</group>
+					<notebook>
+						<page name="consolidation_settings" string="Companies and currencies">
+							<field name="consolidation_companies">
+								<tree editable="bottom">
+									<field name="company_id" required="1"/>
+									<field name="currency_id" domain="[('id', '!=', new_currency)]"/>
+									<field name="new_currency" domain="[('id', '!=', currency_id)]"/>
+									<field name="rate"/>
+								</tree>
+							</field>
+						</page>
+					</notebook>
 				</sheet>
 			</form>
 		</field>
@@ -49,7 +49,6 @@
 		<field name="arch" type="xml">
 			<tree>
 				<field name="export_consolidation_filename"/>
-				<field name="company_id"/>
 				<field name="date_from"/>
 				<field name="date_to"/>
 				<field name="period"/>
