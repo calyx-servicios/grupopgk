@@ -93,15 +93,22 @@ class AccountConsolidationReport(models.Model):
                             account_code = ''
 
                         company_names = ', '.join(line.mapped('company_id.name'))
-
+                        if company.historical_rate:
+                            if line.move_id.move_id.l10n_ar_currency_rate:
+                                rate = line.move_id.move_id.l10n_ar_currency_rate
+                            else:
+                                date = line.move_id.date
+                                rate = line.move_id.currency_id.with_context(date=date).rate
+                        else:
+                            rate = company.rate
                         data['vals'].append({
                             'description': line.name or '',
                             'account_id': account_code,
                             'company': company_names,
                             'currency_origin': company.currency_id.symbol or '',
                             'currency': company.new_currency.symbol or '',
-                            'rate': company.rate,
-                            'amount': line.amount * company.rate or 0.0,
+                            'rate': rate,
+                            'amount': line.amount * rate,
                         })
 
                 # Create Excel file

@@ -33,7 +33,9 @@
 									<field name="company_id" required="1"/>
 									<field name="currency_id" domain="[('id', '!=', new_currency)]"/>
 									<field name="new_currency" domain="[('id', '!=', currency_id)]"/>
-									<field name="rate"/>
+									<field name="historical_rate" attrs="{'invisible': [('is_main_currency', '!=', True)]}"/>
+									<field name="is_main_currency"/>
+									<field name="rate" attrs="{'invisible': [('historical_rate', '=', True)]}"/>
 								</tree>
 							</field>
 						</page>
