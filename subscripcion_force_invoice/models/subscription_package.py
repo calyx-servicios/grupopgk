@@ -29,7 +29,7 @@ class SubscriptionPackage(models.Model):
                             'price_unit': rec.unit_price,
                             'analytic_account_id': rec.analytic_account_id.id}]
             this_products_line.append(rec_list)
-        move = self.env['account.move'].create(
+        move = self.env['account.move'].with_company(self.company_id.id).create(
             {
                 'move_type': 'out_invoice',
                 'date': fields.Date.today(),
