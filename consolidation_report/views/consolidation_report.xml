@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<odoo>
+	<record id="view_account_consolidation_report_form" model="ir.ui.view">
+		<field name="name">account.consolidation.report.form</field>
+		<field name="model">account.consolidation.report</field>
+		<field name="arch" type="xml">
+			<form>
+				<header>
+					<button name="compute_consolidation_data" groups="consolidation_report.group_consolidation_manager" string="Consolidate" type="object"/>
+				</header>
+				<sheet>
+					<group>
+						<group>
+							<field name="year"/>
+						</group>
+						<group>
+							<field name="month"/>
+						</group>
+					</group>
+					<group colspan="4">
+						<span> Days of period
+							<field name="date_from"/> <span>-</span> <field name="date_to"/>
+						</span>
+					</group>
+					<group string="File and data">
+						<field name="export_consolidation_filename" invisible="1"/>
+						<field name="export_consolidation_file" readonly="1" filename="export_consolidation_filename"/>
+					</group>
+					<notebook>
+						<page name="consolidation_settings" string="Companies and currencies">
+							<field name="consolidation_companies">
+								<tree editable="bottom">
+									<field name="company_id" required="1"/>
+									<field name="currency_id" domain="[('id', '!=', new_currency)]"/>
+									<field name="new_currency" domain="[('id', '!=', currency_id)]"/>
+									<field name="rate"/>
+								</tree>
+							</field>
+						</page>
+					</notebook>
+				</sheet>
+			</form>
+		</field>
+	</record>
+
+	<record id="view_account_consolidation_report" model="ir.ui.view">
+		<field name="name">account.consolidation.report.tree</field>
+		<field name="model">account.consolidation.report</field>
+		<field name="arch" type="xml">
+			<tree>
+				<field name="export_consolidation_filename"/>
+				<field name="date_from"/>
+				<field name="date_to"/>
+				<field name="period"/>
+			</tree>
+		</field>
+	</record>
+	
+	<record id="action_account_consolidation_report" model="ir.actions.act_window">
+		<field name="name">Export consolidation Report</field>
+		<field name="res_model">account.consolidation.report</field>
+		<field name="view_mode">tree,form</field>
+	</record>
+	
+	<menuitem id="menu_account_consolidation_report"
+		name="Consolidation Report"
+		action="action_account_consolidation_report"
+		groups= "consolidation_report.group_consolidation_user"
+		parent="account.account_reports_management_menu"/>
+</odoo>
