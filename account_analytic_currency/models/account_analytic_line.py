@@ -16,6 +16,10 @@ class AccountAnalyticLine(models.Model):
             else:
                 record.currency_id = record.company_id.currency_id.id
 
+    def update_currency_id(self):
+        if self.move_id and self.currency_id != self.move_id.currency_id:
+            self.currency_id = self.move_id.currency_id.id
+
     def manage_currency(self):
         manage_currency_obj = self.env['manage.currencies.ids']
         active_ids = self.env.context.get('active_ids', [])
