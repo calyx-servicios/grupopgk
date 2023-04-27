@@ -4,7 +4,9 @@ from odoo import models, fields, api, _
 class AccountAnalyticLine(models.Model):
     _inherit = 'account.analytic.line'
 
+
     currency_id = fields.Many2one('res.currency', string="Currency", store=True, readonly=True, compute='_compute_currency_id')
+
 
     @api.depends('move_id.currency_id', 'company_id.currency_id')
     def _compute_currency_id(self):
@@ -13,7 +15,12 @@ class AccountAnalyticLine(models.Model):
                 record.currency_id = record.move_id.currency_id.id
             else:
                 record.currency_id = record.company_id.currency_id.id
-    
-    def update_currency(self):
-        update_currency_id_obj = self.env['update.currency.id']
-        return update_currency_id_obj.update_currency(_('Update Currency ID'), self)
+
+    def update_currency_id(self):
+        if self.move_id and self.currency_id != self.move_id.currency_id:
+            self.currency_id = self.move_id.currency_id.id
+
+    def manage_currency(self):
+        manage_currency_obj = self.env['manage.currencies.ids']
+        active_ids = self.env.context.get('active_ids', [])
+        return manage_currency_obj.update_currency(_('Manage Currencies'), active_ids)
