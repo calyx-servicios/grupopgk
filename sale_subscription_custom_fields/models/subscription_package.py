@@ -42,7 +42,7 @@ class SubscriptionPackage(models.Model):
 
                             }]
             this_products_line.append(rec_list)
-        move = self.env['account.move'].create(
+        move = self.env['account.move'].with_company(self.company_id).create(
             {
                 'move_type': 'out_invoice',
                 'date': fields.Date.today(),
