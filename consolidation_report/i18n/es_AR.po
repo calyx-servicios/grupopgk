@@ -190,6 +190,11 @@ msgid "From"
 msgstr "De"
 
 #. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__historical_rate
+msgid "Historical Rate"
+msgstr "Tasa Historica"
+
+#. module: consolidation_report
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__id
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__id
 msgid "ID"
@@ -254,3 +259,7 @@ msgstr "Año"
 #: model:ir.model.fields,help:consolidation_report.field_account_consolidation_report__year
 msgid "Year of the period"
 msgstr "Año del periodo"
+#. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__is_main_currency
+msgid "is main currency?"
+msgstr "¿Es la moneda principal?"

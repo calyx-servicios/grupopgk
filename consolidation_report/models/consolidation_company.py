@@ -1,4 +1,4 @@
-from odoo import models, fields
+from odoo import models, fields, api
 
 
 class AccountConsolidationCompany(models.Model):
@@ -9,7 +9,18 @@ class AccountConsolidationCompany(models.Model):
     company_id = fields.Many2one('res.company', string='Company')
     currency_id = fields.Many2one('res.currency', string='Currency Origin')
     new_currency = fields.Many2one('res.currency', string='New Currency')
-    rate = fields.Float(String='Rate')
+    rate = fields.Float(string='Rate')
+    historical_rate = fields.Boolean(strin='Use historical price')
+    is_main_currency = fields.Boolean(compute='_compute_is_main_currency', string='is main currency?')
+    
+    @api.depends('company_id', 'new_currency')
+    def _compute_is_main_currency(self):
+        for record in self:
+            if record.new_currency:
+                if record.company_id.currency_id.id == record.new_currency.id:
+                    record.is_main_currency = True
+                else:
+                    record.is_main_currency = False
 
 
     _sql_constraints = [
