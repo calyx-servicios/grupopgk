@@ -4,7 +4,6 @@ import base64, calendar, xlsxwriter
 from io import BytesIO
 
 
-
 class AccountConsolidationReport(models.Model):
     _name = 'account.consolidation.report'
     _description = 'Export consolidation report'
