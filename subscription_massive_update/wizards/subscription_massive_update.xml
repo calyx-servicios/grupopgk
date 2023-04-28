@@ -7,8 +7,13 @@
             <field name="arch" type="xml">
                 <form>
                     <group>
+                        <field name="fields_to_update" />
+                    </group>
+                    <group>
                         <field name="subscriptions_ids" widget="many2many_tags" readonly="1" />
-                        <field name="percentage" />
+                        <field name="subscriptions_plan_id" attrs="{'invisible': [('fields_to_update', 'not in', ['plan','plan_and_date'])]}"/>
+                        <field name="percentage" attrs="{'invisible': [('fields_to_update', '!=', 'price')]}"/>
+                        <field name="date" attrs="{'invisible': [('fields_to_update', 'not in', ['date','plan_and_date'])]}" />
                         <br/>
                     </group>
                     <footer>
