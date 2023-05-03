@@ -9,8 +9,12 @@
                 <field name="has_profile_admin" invisible="1"/>
                 <field name="has_profile_manager" invisible="1"/>
             </field>
+            <page name="optional_products" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </page>
             <field name="partner_invoice_id" position="attributes">
                 <attribute name="options">{'no_create': True, 'no_create_edit':True}</attribute>
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
             </field>
             <field name="payment_term_id" position="attributes">
                 <attribute name="attrs">{'required': True,}</attribute>
@@ -20,6 +24,9 @@
             </label>
             <field name="split_invoice" position="attributes">
                 <attribute name="groups">custom_access_permissions.group_profile_manager</attribute>
+            </field>
+            <field name="validity_date" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
             </field>
             <field name="user_id" position="attributes">
                 <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
@@ -48,6 +55,16 @@
             <group name="sale_reporting" position="attributes">
                 <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
             </group>
+        </field>
+    </record>
+    <record id="inherit_sale_order_sub_custom_access_permissions" model="ir.ui.view">
+        <field name="name">sale.order.sub.custom.access.permissions</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="subscription_package.view_order_form_subscription"/>
+        <field name="arch" type="xml">
+            <field name="is_subscription" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </field>
         </field>
     </record>
 </odoo>
