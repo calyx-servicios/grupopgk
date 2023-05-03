@@ -106,7 +106,7 @@ class SaleOrderLine(models.Model):
                 'sale_order_id': self.order_id,
             })
         else:
-            project = self.env['project.project'].create(vals)
+            project = self.env['project.project'].sudo().create(vals)
 
         self.write({
             'project_id': project.id,
