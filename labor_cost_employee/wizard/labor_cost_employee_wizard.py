@@ -94,8 +94,11 @@ class LaborCostEmployeeWizard(models.TransientModel):
 
 
         employees = self.env['hr.employee'].search([]).filtered(lambda emp: emp.user_partner_id != False)
+        date_act = date.today().replace(month=int(self.month), year=int(self.year))
+        start_of_period = date_act.replace(day=1)
+        end_of_period = date_act + relativedelta(day=31)
         for employee in employees:
-            tm_sige_emp = tm_sige_obj.search([('employee_id', '=', employee.id), ('state','=','close'), ('name', '=', self.period_sige)], limit=1)
+            tm_sige_emp = tm_sige_obj.search([('employee_id', '=', employee.id), ('state','=','close'), ('start_of_period', '=', start_of_period),('end_of_period','=', end_of_period)], limit=1)
             exist_emp = list(filter(lambda e: e['employee_id'] == employee.user_partner_id.vat, cost))
             if len(exist_emp) != 0 and tm_sige_emp:
                 index_obj = cost.index(exist_emp[0])
