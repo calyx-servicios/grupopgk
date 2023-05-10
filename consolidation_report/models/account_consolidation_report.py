@@ -27,7 +27,7 @@ class AccountConsolidationReport(models.Model):
     def _onchange_consolidation_period(self):
         for record in self:
             if record.consolidation_period:
-                record.name =  _('Consolidation Report: ') + record.consolidation_period.date_from - record.consolidation_period.date_to
+                record.name =  _('Consolidation Report: ') + str(record.consolidation_period.date_from) +  ' ' + str(record.consolidation_period.date_to)
             else:
                 record.name = '/'
 
