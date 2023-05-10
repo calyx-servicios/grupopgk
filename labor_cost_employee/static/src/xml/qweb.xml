@@ -5,6 +5,6 @@
 			<t t-if="widget.modelName == 'labor.cost.employee'">
 	        	<button class="btn btn-secondary o_list_button_labor" type="button">Calculate Labor Cost</button>
 	        </t>
-		</t> 
+		</t>
 	</t>
 </template>
