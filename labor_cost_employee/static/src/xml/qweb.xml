@@ -6,6 +6,5 @@
 	        	<button class="btn btn-secondary o_list_button_labor" type="button">Calculate Labor Cost</button>
 	        </t>
 		</t>
-		<t t-jquery="button.o_list_button_add" t-operation="replace"/>
 	</t>
 </template>
