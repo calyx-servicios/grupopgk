@@ -152,8 +152,8 @@ msgstr "Moneda"
 #: code:addons/consolidation_report/models/account_consolidation_report.py:0
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__currency_id
 #, python-format
-msgid "Currency Origin"
-msgstr "Moneda Origen"
+msgid "Target Currency"
+msgstr "Moneda Objetivo"
 
 #. module: consolidation_report
 #: model_terms:ir.ui.view,arch_db:consolidation_report.view_account_consolidation_period_form
@@ -196,7 +196,7 @@ msgstr "Archivo y datos"
 #. module: consolidation_report
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__export_consolidation_filename
 msgid "File consolidation"
-msgstr "consolidación de archivos"
+msgstr "Consolidación de archivos"
 
 #. module: consolidation_report
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__export_consolidation_data

@@ -56,7 +56,17 @@ class AccountConsolidationReport(models.Model):
                     "valign": "vleft",
                     "fg_color": "gray",
                 })
-                headers = [_('Description'), _('Account Name'), _('Companies'), _('Currency Origin'), _('Currency'), _('Rate'), _('Amount'), _('Total')]
+                total_format = workbook.add_format(
+                {
+                    "bold": 1,
+                    "border": 1,
+                    "align": "left",
+                    "valign": "vleft",
+                    "fg_color": "gray",
+                    "num_format": "$#,##0.00",
+                })
+                currency_format = workbook.add_format({'num_format': '$#,##0.00'})
+                headers = [_('Description'), _('Account Name'), _('Companies'), _('Target Currency'), _('Currency'), _('Rate'), _('Amount'), _('Total')]
 
                 worksheet.set_column('A:A', 1)
                 worksheet.set_column('A:A', 50)
@@ -64,8 +74,7 @@ class AccountConsolidationReport(models.Model):
                 worksheet.set_column('B:B', 30)
                 worksheet.set_column('C:C', 1)
                 worksheet.set_column('C:C', 18)
-                worksheet.set_column('D:D', 1)
-                worksheet.set_column('D:D', 18)
+                worksheet.set_column('D:D', None, None, {'hidden': True})
                 worksheet.set_column('E:E', 1)
                 worksheet.set_column('E:E', 18)
                 worksheet.set_column('F:F', 1)
@@ -86,19 +95,19 @@ class AccountConsolidationReport(models.Model):
                                 for company, daughter_accounts in companies.items():
                                     for daughter_account, vals in daughter_accounts.items():
                                         worksheet.merge_range(row, 0, row, 6, grandfather_group, merge_format)
-                                        worksheet.write(row, 7, totals[grandfather_group]['total'], merge_format)
+                                        worksheet.write(row, 7, totals[grandfather_group]['total'], total_format)
                                         row += 1
                                         worksheet.merge_range(row, 0, row, 6, grandfather_group + ' / ' + mother_group, merge_format)
-                                        worksheet.write(row, 7, totals[grandfather_group][mother_group]['total'], merge_format)
+                                        worksheet.write(row, 7, totals[grandfather_group][mother_group]['total'], total_format)
                                         row += 1
                                         worksheet.merge_range(row, 0, row, 6, grandfather_group + ' / ' + mother_group + ' / ' + grandmother_account, merge_format)
-                                        worksheet.write(row, 7, totals[grandfather_group][mother_group][grandmother_account]['total'], merge_format)
+                                        worksheet.write(row, 7, totals[grandfather_group][mother_group][grandmother_account]['total'], total_format)
                                         row += 1
                                         worksheet.merge_range(row, 0, row, 6, grandfather_group + ' / ' + mother_group + ' / ' + grandmother_account + ' / ' + mother_account, merge_format)
-                                        worksheet.write(row, 7, totals[grandfather_group][mother_group][grandmother_account][mother_account]['total'], merge_format)
+                                        worksheet.write(row, 7, totals[grandfather_group][mother_group][grandmother_account][mother_account]['total'], total_format)
                                         row += 1
                                         worksheet.merge_range(row, 0, row, 6, grandfather_group + ' / ' + mother_group + ' / ' + grandmother_account + ' / ' + mother_account + '/' + company, merge_format)
-                                        worksheet.write(row, 7, totals[grandfather_group][mother_group][grandmother_account][mother_account][company]['total'], merge_format)
+                                        worksheet.write(row, 7, totals[grandfather_group][mother_group][grandmother_account][mother_account][company]['total'], total_format)
                                         row += 1
                                         worksheet.merge_range(row, 0, row, 6, grandfather_group + ' / ' + mother_group + ' / ' + grandmother_account + ' / ' + mother_account + '/' + company + '/' + daughter_account, merge_format)
                                         row += 1
@@ -109,7 +118,7 @@ class AccountConsolidationReport(models.Model):
                                             worksheet.write(row, 3, val['currency_origin'])
                                             worksheet.write(row, 4, val['currency'])
                                             worksheet.write(row, 5, val['rate'])
-                                            worksheet.write(row, 6, val['amount'])
+                                            worksheet.write(row, 6, val['amount'], currency_format)
                                             row += 1
 
                 # Save and encode file
