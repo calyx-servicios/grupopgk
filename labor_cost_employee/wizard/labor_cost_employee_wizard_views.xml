@@ -16,12 +16,12 @@
                 </group>
                 <group>
                     <field name="file_cost" string="Attach" attrs="{'required': True}"/>
-                    <field name="invoice_ids" string="Add Invoices" readonly="1" force_save="1">
+                    <field name="invoice_ids" string="Add Invoices" force_save="1">
                     	<tree>
-                    		<field name="name"/>
+                    		<field name="name" readonly="1"/>
                     		<field name="partner_id" readonly="1"/>
                     		<field name="invoice_date" readonly="1"/>
-                    		<field name="amount_total"/>
+                    		<field name="amount_total" readonly="1"/>
                     	</tree>
                     </field>
                 </group>

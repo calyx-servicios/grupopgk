@@ -63,6 +63,8 @@ class LaborCostEmployeeWizard(models.TransientModel):
                 invoices = self.env['account.move'].search(domain)
                 if invoices:
                     self.invoice_ids = [(6, 0, invoices.ids)]
+                
+                return {'domain': {'invoice_ids': domain}}
 
     def calculate_labor_cost(self):
         tm_sige_obj = self.env['timesheet.sige']
