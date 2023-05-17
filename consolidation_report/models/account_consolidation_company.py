@@ -7,7 +7,7 @@ class AccountConsolidationCompany(models.Model):
 
     account_consolidation_report_id = fields.Many2one('account.consolidation.period', string='Consolidation Period')
     company_id = fields.Many2one('res.company', string='Company')
-    currency_id = fields.Many2one('res.currency', string='Currency Origin')
+    currency_id = fields.Many2one('res.currency', string='Target Currency')
     new_currency = fields.Many2one('res.currency', string='New Currency')
     rate = fields.Float(string='Rate')
     historical_rate = fields.Boolean(string='Use historical price')
