@@ -35,8 +35,15 @@
                 <t t-set="custom_footer">
                     <div class="row">
                         <div name="footer_left_column" class="col-8 text-left">
+                            <img t-if="o.afip_qr_code" t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s' % ('QR', o.afip_qr_code, 300,300)" alt="qr"  style="height:100px"/>
                         </div>
                         <div name="footer_right_column" class="col-4 text-right">
+                            <div t-if="o.afip_auth_code">
+                                CAE: <span t-field="o.afip_auth_code"/>
+                            </div>
+                            <div t-if="o.afip_auth_code_due">
+                                CAE Due Date: <span t-field="o.afip_auth_code_due"/>
+                            </div>
                             <div name="pager" t-if="report_type == 'pdf'">
                                 Page: <span class="page"/> / <span class="topage"/>
                             </div>
@@ -176,24 +183,68 @@
                             <br/><strong>CBU for payment: </strong><span t-esc="o.invoice_partner_bank_id.acc_number or '' if o.invoice_partner_bank_id.acc_type == 'cbu' else ''"/>
                         </t>
                     </div>
+
+                    <div class="clearfix">
                         <div id="total" class="row">
                             <div t-attf-class="#{'col-6' if report_type != 'html' else 'col-sm-7 col-md-6'} ml-auto">
                                 <table class="table table-sm" style="page-break-inside: avoid;">
-                                    <tr class="border-black o_subtotal" style="">
-                                        <td><strong>Subtotal</strong></td>
-                                        <td class="text-right">
-                                            <span t-field="o.amount_untaxed"/>
-                                        </td>
-                                    </tr>
+                                    <t t-set="tax_totals" t-value="json.loads(o.tax_totals_json)"/>
+                                    <t t-foreach="tax_totals['subtotals']" t-as="subtotal">
+                                        <tr class="border-black o_subtotal">
+                                            <td>
+                                                <strong t-esc="subtotal['name']"/>
+                                            </td>
+
+                                            <td class="text-right">
+                                                <span
+                                                    t-att-class="oe_subtotal_footer_separator"
+                                                    t-esc="subtotal['amount']"
+                                                    t-options='{"widget": "monetary", "display_currency": o.currency_id}'
+                                                />
+                                            </td>
+                                        </tr>
+
+                                        <t t-set="subtotal_to_show" t-value="subtotal['name']"/>
+                                        <t t-call="account.tax_groups_totals"/>
+                                    </t>
+
+                                    <!--Total amount with all taxes-->
                                     <tr class="border-black o_total">
-                                        <td><strong>Total</strong></td>
+                                        <td>
+                                            <strong>Total</strong>
+                                        </td>
                                         <td class="text-right">
-                                            <span class="text-nowrap" t-field="o.amount_total"/>
+                                            <span t-esc="tax_totals['amount_total']"
+                                                  t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                         </td>
                                     </tr>
+                                    <t t-if="print_with_payments">
+                                        <t t-if="o.payment_state != 'invoicing_legacy'">
+                                            <t t-set="payments_vals" t-value="o.sudo()._get_reconciled_info_JSON_values()"/>
+                                            <t t-foreach="payments_vals" t-as="payment_vals">
+                                                <tr>
+                                                    <td>
+                                                        <i class="oe_form_field text-right oe_payment_label">Paid on <t t-esc="payment_vals['date']" t-options='{"widget": "date"}'/></i>
+                                                    </td>
+                                                    <td class="text-right">
+                                                        <span t-esc="payment_vals['amount']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                            <t t-if="len(payments_vals) > 0">
+                                                <tr class="border-black">
+                                                    <td><strong>Amount Due</strong></td>
+                                                    <td class="text-right">
+                                                        <span t-field="o.amount_residual"/>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                        </t>
+                                    </t>
                                 </table>
                             </div>
                         </div>
+                    </div>
                     </div>
                     <div t-if="o.company_id.country_id.code == 'AE' and o.currency_id != o.company_id.currency_id" id="aed_amounts" class="row clearfix ml-auto my-3 text-nowrap table">
                         <t t-set="aed_rate" t-value="o.env['res.currency']._get_conversion_rate(o.currency_id, o.company_id.currency_id, o.company_id, o.invoice_date or datetime.date.today())"/>
@@ -222,6 +273,9 @@
                     </p>
                     <p t-if="o.narration" name="comment">
                         <span t-field="o.narration"/>
+                        <div t-if="o.journal_id.afip_ws == 'wsbfe'" >
+                            THE PURCHASER ASSUMES THE COMMITMENT, IN THE NATURE OF AN AFFECTED DECLARATION, OF NOT EXPORTING THE PROPERTY DURING THE TERM OF THREE 3 YEARS FROM THE ACQUISITION<br/>
+                        </div>
                     </p>
                     <p t-if="o.invoice_payment_term_id" name="payment_term">
                         <span t-field="o.invoice_payment_term_id.note"/>
