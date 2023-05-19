@@ -9,37 +9,19 @@
 					<button name="compute_consolidation_data" groups="consolidation_report.group_consolidation_manager" string="Consolidate" type="object"/>
 				</header>
 				<sheet>
+					<div class="oe_title">
+						<h1 class="mt0">
+							<field name="name"/>
+						</h1>
+					</div>
 					<group>
-						<group>
-							<field name="year"/>
-						</group>
-						<group>
-							<field name="month"/>
-						</group>
-					</group>
-					<group colspan="4">
-						<span> Days of period
-							<field name="date_from"/> <span>-</span> <field name="date_to"/>
-						</span>
+						<field name="consolidation_period"/>
+						<field name="period"/>
 					</group>
 					<group string="File and data">
 						<field name="export_consolidation_filename" invisible="1"/>
 						<field name="export_consolidation_file" readonly="1" filename="export_consolidation_filename"/>
 					</group>
-					<notebook>
-						<page name="consolidation_settings" string="Companies and currencies">
-							<field name="consolidation_companies">
-								<tree editable="bottom">
-									<field name="company_id" required="1"/>
-									<field name="currency_id" domain="[('id', '!=', new_currency)]"/>
-									<field name="new_currency" domain="[('id', '!=', currency_id)]"/>
-									<field name="historical_rate" attrs="{'invisible': [('is_main_currency', '!=', True)]}"/>
-									<field name="is_main_currency" invisible="1"/>
-									<field name="rate" attrs="{'invisible': [('historical_rate', '=', True)]}"/>
-								</tree>
-							</field>
-						</page>
-					</notebook>
 				</sheet>
 			</form>
 		</field>
@@ -51,8 +33,6 @@
 		<field name="arch" type="xml">
 			<tree>
 				<field name="export_consolidation_filename"/>
-				<field name="date_from"/>
-				<field name="date_to"/>
 				<field name="period"/>
 			</tree>
 		</field>

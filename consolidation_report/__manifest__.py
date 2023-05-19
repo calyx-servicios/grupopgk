@@ -9,7 +9,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.1.3.2",
+    "version": "15.0.2.2.1",
     "application": False,
     "installable": True,
     "depends": [
@@ -19,5 +19,6 @@
         "security/permissions.xml",
         "security/ir.model.access.csv",
         "views/consolidation_report.xml",
+        "views/consolidation_period.xml",
     ],
 }
