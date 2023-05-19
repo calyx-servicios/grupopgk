@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<odoo>
+	<record id="view_account_consolidation_period_form" model="ir.ui.view">
+		<field name="name">account.consolidation.period.form</field>
+		<field name="model">account.consolidation.period</field>
+		<field name="arch" type="xml">
+			<form>
+				<sheet>
+					<div class="oe_title">
+						<h1 class="mt0">
+							<field name="name"/>
+						</h1>
+					</div>
+					<group>
+						<group>
+							<field name="year"/>
+						</group>
+						<group>
+							<field name="month"/>
+						</group>
+					</group>
+					<group colspan="4">
+						<span> Days of period
+							<field name="date_from"/> <span>-</span> <field name="date_to"/>
+						</span>
+					</group>
+					<notebook>
+						<page name="consolidation_settings" string="Configurations">
+							<field name="consolidation_companies">
+								<tree editable="bottom">
+									<field name="company_id" required="1"/>
+									<field name="currency_id" domain="[('id', '!=', new_currency)]"/>
+									<field name="new_currency" domain="[('id', '!=', currency_id)]"/>
+									<field name="historical_rate" attrs="{'invisible': [('is_main_currency', '!=', True)]}"/>
+									<field name="is_main_currency" invisible="1"/>
+									<field name="rate" attrs="{'invisible': [('historical_rate', '=', True)]}"/>
+								</tree>
+							</field>
+						</page>
+					</notebook>
+				</sheet>
+			</form>
+		</field>
+	</record>
+
+	<record id="view_account_consolidation_period" model="ir.ui.view">
+		<field name="name">account.consolidation.period.tree</field>
+		<field name="model">account.consolidation.period</field>
+		<field name="arch" type="xml">
+			<tree>
+				<field name="name"/>
+				<field name="period"/>
+				<field name="date_from"/>
+				<field name="date_to"/>
+			</tree>
+		</field>
+	</record>
+
+	<record id="action_account_consolidation_period" model="ir.actions.act_window">
+		<field name="name">Account consolidation period</field>
+		<field name="res_model">account.consolidation.period</field>
+		<field name="view_mode">tree,form</field>
+	</record>
+
+	<menuitem id="menu_account_consolidation_root"
+		name="Consolidation"
+		groups= "consolidation_report.group_consolidation_user"
+		parent="account.menu_finance_configuration"/>
+
+	<menuitem id="menu_account_consolidation_period"
+		name="Consolidation Period"
+		action="action_account_consolidation_period"
+		groups= "consolidation_report.group_consolidation_user"
+		parent="consolidation_report.menu_account_consolidation_root"/>
+</odoo>
