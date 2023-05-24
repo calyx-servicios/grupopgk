@@ -21,6 +21,11 @@ msgid "Administrator"
 msgstr "Administrador"
 
 #. module: custom_access_permissions
+#: model:ir.ui.menu,name:custom_access_permissions.menu_action_sale_out_refund_type
+msgid "Credit Notes"
+msgstr "Facturas rectificativas"
+
+#. module: custom_access_permissions
 #: model:ir.model.fields,field_description:custom_access_permissions.field_project_project__has_profile_admin
 #: model:ir.model.fields,field_description:custom_access_permissions.field_sale_order__has_profile_admin
 #: model:ir.model.fields,field_description:custom_access_permissions.field_subscription_package__has_profile_admin
