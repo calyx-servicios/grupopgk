@@ -9,13 +9,14 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.2.4.2",
+    "version": "15.0.2.5.3",
     "application": False,
     "installable": True,
     "depends": [
         'res_users_partner_fields',
         'sale_timesheet',
         'hr_timesheet',
+        'purchase',
         'sale_order_split_invoices',
     ],
     "data": [
@@ -23,6 +24,7 @@
         'security/ir.model.access.csv',
         'views/project_view.xml',
         'views/sale_order.xml',
+        'views/purchase_order.xml',
         'views/subscription_package.xml',
         'views/menu_items.xml',
     ],
