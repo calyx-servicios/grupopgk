@@ -55,6 +55,9 @@
             <group name="sale_reporting" position="attributes">
                 <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
             </group>
+            <xpath expr="//form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='product_uom']" position="attributes">
+                <attribute name="options">{'no_create': True, 'no_create_edit':True}</attribute>
+            </xpath>
         </field>
     </record>
     <record id="inherit_sale_order_sub_custom_access_permissions" model="ir.ui.view">
@@ -64,6 +67,9 @@
         <field name="arch" type="xml">
             <field name="is_subscription" position="attributes">
                 <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </field>
+            <field name="subscription_id" position="attributes">
+                <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
             </field>
         </field>
     </record>
