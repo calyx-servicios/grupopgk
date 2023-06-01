@@ -27,10 +27,19 @@
                 <attribute name="attrs">{ 'readonly': [('has_profile_admin', '=', False)] }</attribute>
                 <attribute name="options">{'no_create': True, 'no_create_edit':True}</attribute>
             </field>
+            <field name="plan_id" position="attributes">
+                <attribute name="options">{'no_create': True, 'no_create_edit':True}</attribute>
+            </field>
+            <field name="analytic_account_id" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
             <field name="start_date" position="attributes">
                 <attribute name="attrs">{ 'readonly': [('has_profile_admin', '=', False)] }</attribute>
             </field>
             <field name="close_date" position="attributes">
+                <attribute name="attrs">{ 'readonly': [('has_profile_admin', '=', False)] }</attribute>
+            </field>
+            <field name="next_invoice_date" position="attributes">
                 <attribute name="attrs">{ 'readonly': [('has_profile_admin', '=', False)] }</attribute>
             </field>
             <page name="terms_and_conditions" position="attributes">
