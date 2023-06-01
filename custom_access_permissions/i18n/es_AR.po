@@ -23,7 +23,7 @@ msgstr "Administrador"
 #. module: custom_access_permissions
 #: model:ir.ui.menu,name:custom_access_permissions.menu_action_sale_out_refund_type
 msgid "Credit Notes"
-msgstr "Notas de Creditos"
+msgstr "Facturas rectificativa"
 
 #. module: custom_access_permissions
 #: model:ir.model.fields,field_description:custom_access_permissions.field_project_project__has_profile_admin
