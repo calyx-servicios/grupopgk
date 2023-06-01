@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<record id="inherit_purchase_order_custom_access_permissions" model="ir.ui.view">
+    <field name="name">inherit.purchase.order.custom.acess.permission</field>
+    <field name="model">purchase.order</field>
+    <field name="inherit_id" ref="purchase.purchase_order_form"/>
+    <field name="arch" type="xml">
+        <button name="action_create_invoice" position="attributes">
+            <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+        </button>
+        <field name="company_id" position="after">
+            <field name="has_profile_admin" invisible="1"/>
+            <field name="has_profile_manager" invisible="1"/>
+        </field>
+        <xpath expr="//form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='account_analytic_id']" position="after">
+            <field name="has_profile_admin" invisible="1"/>
+            <field name="has_profile_manager" invisible="1"/>
+        </xpath>
+        <xpath expr="//form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='account_analytic_id']" position="attributes">
+            <attribute name="attrs">{'required': [('has_profile_admin', '=', False)]}</attribute>
+            <attribute name="options">{'no_create': True, 'no_create_edit':True}</attribute>
+            <attribute name="optional">show</attribute>
+        </xpath>
+    </field>
+</record>
+</odoo>
