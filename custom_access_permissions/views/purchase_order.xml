@@ -21,6 +21,12 @@
             <attribute name="options">{'no_create': True, 'no_create_edit':True}</attribute>
             <attribute name="optional">show</attribute>
         </xpath>
+        <xpath expr="//form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='product_uom']" position="attributes">
+            <attribute name="options">{'no_create': True, 'no_create_edit':True}</attribute>
+        </xpath>
+        <xpath expr="//form/sheet/notebook/page/field[@name='order_line']/tree/field[@name='price_unit']" position="attributes">
+            <attribute name="attrs">{'readonly': [('has_profile_admin', '=', False)]}</attribute>
+        </xpath>
     </field>
 </record>
 </odoo>
