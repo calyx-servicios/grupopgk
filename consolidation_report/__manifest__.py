@@ -20,5 +20,6 @@
         "security/ir.model.access.csv",
         "views/consolidation_report.xml",
         "views/consolidation_period.xml",
+        "views/account_consolidation_data.xml",
     ],
 }
