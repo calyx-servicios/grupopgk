@@ -1,0 +1,33 @@
+<odoo>
+    <data>
+        <record id="view_consolidation_data_tree" model="ir.ui.view">
+            <field name="name">account.consolidation.data.tree</field>
+            <field name="model">account.consolidation.data</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="group"/>
+                    <field name="mother_group"/>
+                    <field name="sector_group"/>
+                    <field name="grandma_account" invisible="1"/>
+                    <field name="mother_account"/>
+                    <field name="company"/>
+                    <field name="daughter_account"/>
+                    <field name="description"/>
+                    <field name="account_id"/>
+                    <field name="currency_origin"/>
+                    <field name="currency"/>
+                    <field name="rate"/>
+                    <field name="amount"/>
+                    <button name="open_line_analytic_form" string="Open Line Analytic Form" type="object"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="action_consolidation_data" model="ir.actions.act_window">
+            <field name="name">Consolidation Data</field>
+            <field name="res_model">account.consolidation.data</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="view_consolidation_data_tree"/>
+        </record>
+    </data>
+</odoo>

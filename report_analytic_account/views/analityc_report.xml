@@ -7,6 +7,7 @@
         <field name="arch" type="xml">
             <field name="parent_id" position="after">
                 <field name="parent_prin_group" />
+                <field name="sector_group" />
             </field>
         </field>
     </record>
@@ -19,6 +20,7 @@
                 <field name="account_id" />
                 <field name="company_id"/>
                 <field name="group_parent_id" optional="hide"/>
+                <field name="sector_group_id" optional="hide"/>
                 <field name="grandma_account_id" optional="hide"/>
                 <field name="mother_account_id" optional="hide"/>
                 <field name="grandma_account_id" optional="hide"/>
@@ -38,7 +40,7 @@
         <field name="arch" type="xml">
             <search string="">
                 <group>
-                    <filter string="parent" name="parent" domain="[]" context="{'group_by': 'group_parent_id'}"/>
+                    <filter string="Parent" name="parent" domain="[]" context="{'group_by': 'group_parent_id'}"/>
                     <filter string="Analytic Mother" name="mother" domain="[]" context="{'group_by': 'mother_account_id'}"/>
                 </group>
             </search>

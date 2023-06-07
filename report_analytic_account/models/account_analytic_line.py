@@ -8,15 +8,17 @@ class AccountAnalyticGroup(models.Model):
     _inherit = 'account.analytic.group'
 
     parent_prin_group = fields.Many2one('account.analytic.group', string="Parent prin", ondelete='cascade', domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]")
+    sector_group = fields.Many2one('account.analytic.group', string="Sector", ondelete='cascade', domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]")
 
 class AccountAnalyticLine(models.Model):
     _inherit = "account.analytic.line"
 
     parent_prin_group_id = fields.Many2one('account.analytic.group', related='group_id.parent_prin_group', store=True, readonly=True, compute_sudo=True)
+    sector_group_id = fields.Many2one('account.analytic.group', related='group_id.sector_group', store=True, readonly=True, compute_sudo=True)
     group_parent_id = fields.Many2one('account.analytic.group', related='group_id.parent_id', store=True, readonly=True, compute_sudo=True)
     balance = fields.Monetary(related='account_id.balance', string='Balance',  groups='account.group_account_readonly')
     debit = fields.Monetary(related='account_id.debit', string='Debit', groups='account.group_account_readonly')
-    credit = fields.Monetary(related='account_id.credit', string='Credit', groups='account.group_account_readonly')    
+    credit = fields.Monetary(related='account_id.credit', string='Credit', groups='account.group_account_readonly')
     grandma_account_id = fields.Many2one('account.analytic.account', string='Grandma analytical account', compute='_compute_grandma_account_id', store=True,)
     mother_account_id = fields.Many2one('account.analytic.account', string='Mother analytical account', compute='_compute_mother_account_id', store=True,)
     move_company_id = fields.Many2one('res.company', string='Compañía', related='move_id.company_id', store=True)
