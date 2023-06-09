@@ -7,13 +7,12 @@ class AccountConsolidationData(models.Model):
 
 
     name = fields.Char(string='Name')
-    group = fields.Char(string='Group')
-    mother_group = fields.Char(string='Mother Group')
-    sector_group = fields.Char(string='Sector Group')
-    grandma_account = fields.Char(string='Grandmother Account')
-    mother_account = fields.Char(string='Mother Account')
+    main_group = fields.Many2one('account.analytic.group', string='Main Group')
+    business_group = fields.Many2one('account.analytic.group', string='Business ID')
+    sector_account_group = fields.Many2one('account.analytic.account', string='Sector ID')
+    managment_account_group = fields.Many2one('account.analytic.account', string='Managment ID')
     company = fields.Char(string='Company')
-    daughter_account = fields.Many2one('account.analytic.line', string='Daughter Account')
+    daughter_account = fields.Many2one('account.analytic.line', string='Analytic Account Line')
     description = fields.Char(string='Description')
     account_id = fields.Char(string='Account ID')
     currency_origin = fields.Char(string='Target Currency')

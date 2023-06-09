@@ -141,12 +141,12 @@ class AccountConsolidationReport(models.Model):
         for analytic_line in analytic_lines:
             analytic_line.update_currency_id()
 
-            group_key = analytic_line.account_id.group_id.parent_id.name or 'Undefined'
-            mother_key = analytic_line.account_id.group_id.name or 'Undefined'
-            grandmother_key = analytic_line.account_id.parent_id.parent_id.name or 'Undefined'
-            mother_account_key = analytic_line.account_id.parent_id.name or 'Undefined'
-            daughter_account_key = analytic_line.account_id.name or 'Undefined'
-            company = analytic_line.move_id.company_id.name or 'Undefined'
+            group_key = analytic_line.parent_prin_group_id.name or 'Undefined'
+            mother_key = analytic_line.bussines_group_id.name or 'Undefined'
+            grandmother_key = analytic_line.sector_account_id.name or 'Undefined'
+            mother_account_key = analytic_line.managment_account_id.name or 'Undefined'
+            daughter_account_key = analytic_line.name or 'Undefined'
+            company = analytic_line.move_company_id.name or 'Undefined'
 
             consolidation_period = self.consolidation_period.consolidation_companies.filtered(lambda x: x.company_id == analytic_line.move_id.company_id)
             currency_origin = consolidation_period.currency_id.symbol if consolidation_period else analytic_line.currency_id.symbol
@@ -254,13 +254,6 @@ class AccountConsolidationReport(models.Model):
         for analytic_line in analytic_lines:
             analytic_line.update_currency_id()
 
-            group = analytic_line.account_id.group_id.parent_prin_group.name or 'Undefined'
-            mother = analytic_line.account_id.group_id.parent_id.name or 'Undefined'
-            sector = analytic_line.account_id.group_id.name if analytic_line.account_id.group_id.sector_group.name else 'Undefined'
-            grandma_account = analytic_line.grandma_account_id.name or 'Undefined'
-            mother_account = analytic_line.mother_account_id.name or 'Undefined'
-            company = analytic_line.move_id.company_id.name or 'Undefined'
-
             consolidation_period = self.consolidation_period.consolidation_companies.filtered(lambda x: x.company_id == analytic_line.move_id.company_id)
             currency_origin = consolidation_period.currency_id.symbol if consolidation_period else analytic_line.currency_id.symbol
             new_currency = consolidation_period.new_currency.symbol if consolidation_period else analytic_line.currency_id.symbol
@@ -268,12 +261,11 @@ class AccountConsolidationReport(models.Model):
 
             consolidation_data_vals.append({
                 'name': self.name,
-                'group': group,
-                'mother_group': mother,
-                'sector_group': sector,
-                'grandma_account': grandma_account,
-                'mother_account': mother_account,
-                'company': company,
+                'main_group': analytic_line.parent_prin_group_id.id,
+                'business_group': analytic_line.bussines_group_id.id,
+                'sector_account_group': analytic_line.sector_account_id.id,
+                'managment_account_group': analytic_line.managment_account_id.id,
+                'company': analytic_line.move_company_id.name,
                 'daughter_account': analytic_line.id,
                 'description': analytic_line.name or '',
                 'account_id': analytic_line.general_account_id.code,
@@ -294,9 +286,9 @@ class AccountConsolidationReport(models.Model):
             'view_mode': 'tree,form',
             'res_model': 'account.consolidation.data',
             'views': [(view_id_tree.id, 'tree')],
-            'context': {'tree_view_ref': 'view_consolidation_data_tree', 'group_by_no_leaf': 0,
-                        'group_by': ['group', 'mother_group', 'sector_group', 'mother_account', 'daughter_account',
-                                    'company', 'daughter_account']},
+            'context': {'tree_view_ref': 'view_consolidation_data_tree', 'group_by_no_leaf': 1,
+                        'group_by': ['main_group', 'business_group', 'sector_account_group', 'managment_account_group','company',
+                                    'daughter_account']},
             'target': 'current',
         }
 
