@@ -61,6 +61,11 @@ msgid "Manager Profile"
 msgstr "Perfil Gerente"
 
 #. module: custom_access_permissions
+#: model:ir.model.fields,field_description:custom_access_permissions.field_account_move_line__move_type
+msgid "Move Type"
+msgstr "Tipo de movimiento"
+
+#. module: custom_access_permissions
 #: model:ir.module.category,name:custom_access_permissions.group_category_pgk_manager
 msgid "PGK Access"
 msgstr "Permisos PGK"
