@@ -5,11 +5,10 @@
             <field name="model">account.consolidation.data</field>
             <field name="arch" type="xml">
                 <tree>
-                    <field name="group"/>
-                    <field name="mother_group"/>
-                    <field name="sector_group"/>
-                    <field name="grandma_account" invisible="1"/>
-                    <field name="mother_account"/>
+                    <field name="main_group"/>
+                    <field name="business_group"/>
+                    <field name="sector_account_group"/>
+                    <field name="managment_account_group"/>
                     <field name="company"/>
                     <field name="daughter_account"/>
                     <field name="description"/>
