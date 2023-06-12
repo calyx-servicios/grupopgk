@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="inherit_view_purchase_order_purchase_payment_extension" model="ir.ui.view">
+        <field name="name">purchase.order.payment.method.form</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='currency_id']" position="after">
+                <field name="journal_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                <field name="payment_method_line_id" domain="[('id', 'in', available_payment_method_line_ids)]" options="{'no_create': True, 'no_create_edit': True}"/>
+                <field name="available_payment_method_line_ids" invisible="1" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
