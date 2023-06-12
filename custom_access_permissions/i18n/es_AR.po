@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-25 18:19+0000\n"
-"PO-Revision-Date: 2023-04-25 18:19+0000\n"
+"POT-Creation-Date: 2023-06-01 13:37+0000\n"
+"PO-Revision-Date: 2023-06-01 13:37+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -21,7 +21,14 @@ msgid "Administrator"
 msgstr "Administrador"
 
 #. module: custom_access_permissions
+#: model:ir.ui.menu,name:custom_access_permissions.menu_action_sale_out_refund_type
+msgid "Credit Notes"
+msgstr "Facturas rectificativa"
+
+#. module: custom_access_permissions
 #: model:ir.model.fields,field_description:custom_access_permissions.field_project_project__has_profile_admin
+#: model:ir.model.fields,field_description:custom_access_permissions.field_purchase_order__has_profile_admin
+#: model:ir.model.fields,field_description:custom_access_permissions.field_purchase_order_line__has_profile_admin
 #: model:ir.model.fields,field_description:custom_access_permissions.field_sale_order__has_profile_admin
 #: model:ir.model.fields,field_description:custom_access_permissions.field_subscription_package__has_profile_admin
 #: model:ir.model.fields,field_description:custom_access_permissions.field_subscription_package_product_line__has_profile_admin
@@ -30,6 +37,8 @@ msgstr "¿Tiene perfil de administrador?"
 
 #. module: custom_access_permissions
 #: model:ir.model.fields,field_description:custom_access_permissions.field_project_project__has_profile_manager
+#: model:ir.model.fields,field_description:custom_access_permissions.field_purchase_order__has_profile_manager
+#: model:ir.model.fields,field_description:custom_access_permissions.field_purchase_order_line__has_profile_manager
 #: model:ir.model.fields,field_description:custom_access_permissions.field_sale_order__has_profile_manager
 #: model:ir.model.fields,field_description:custom_access_permissions.field_subscription_package__has_profile_manager
 #: model:ir.model.fields,field_description:custom_access_permissions.field_subscription_package_product_line__has_profile_manager
@@ -52,6 +61,11 @@ msgid "Manager Profile"
 msgstr "Perfil Gerente"
 
 #. module: custom_access_permissions
+#: model:ir.model.fields,field_description:custom_access_permissions.field_account_move_line__move_type
+msgid "Move Type"
+msgstr "Tipo de movimiento"
+
+#. module: custom_access_permissions
 #: model:ir.module.category,name:custom_access_permissions.group_category_pgk_manager
 msgid "PGK Access"
 msgstr "Permisos PGK"
@@ -60,6 +74,16 @@ msgstr "Permisos PGK"
 #: model:ir.model,name:custom_access_permissions.model_project_project
 msgid "Project"
 msgstr "Proyecto"
+
+#. module: custom_access_permissions
+#: model:ir.model,name:custom_access_permissions.model_purchase_order
+msgid "Purchase Order"
+msgstr "Pedido de compra"
+
+#. module: custom_access_permissions
+#: model:ir.model,name:custom_access_permissions.model_purchase_order_line
+msgid "Purchase Order Line"
+msgstr "Línea de pedido de compra"
 
 #. module: custom_access_permissions
 #: model:ir.model,name:custom_access_permissions.model_sale_order
@@ -77,6 +101,12 @@ msgid "Subscription Product Lines"
 msgstr "Líneas de productos de suscripción"
 
 #. module: custom_access_permissions
+#: code:addons/custom_access_permissions/models/purchase_order.py:0
+#, python-format
+msgid "The received quantity cannot exceed the initially demanded quantity."
+msgstr "La cantidad recibida no puede exceder la cantidad demandada inicialmente."
+
+#. module: custom_access_permissions
 #: code:addons/custom_access_permissions/models/account_move.py:0
 #: code:addons/custom_access_permissions/models/account_move.py:0
 #, python-format
@@ -88,5 +118,4 @@ msgstr "No tienes acceso para crear este tipo de movimiento."
 #, python-format
 msgid ""
 "You do not have the necessary permissions, please contact the administrator"
-msgstr ""
-"No tiene los permisos necesarios, por favor contacte al administrador"
+msgstr "No tiene los permisos necesarios, por favor contacte al administrador"
