@@ -47,7 +47,6 @@ class AccountAnalyticLine(models.Model):
                         line.bussines_group_id = False
             else:
                 line.bussines_group_id = False
-                
 
     @api.depends('account_id')
     def _compute_sector_account_id(self):

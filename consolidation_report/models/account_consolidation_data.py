@@ -15,8 +15,8 @@ class AccountConsolidationData(models.Model):
     daughter_account = fields.Many2one('account.analytic.line', string='Analytic Account Line')
     description = fields.Char(string='Description')
     account_id = fields.Char(string='Account ID')
-    currency_origin = fields.Char(string='Target Currency')
-    currency = fields.Char(string='Currency')
+    currency_origin = fields.Many2one('res.currency', string='Target Currency')
+    currency = fields.Many2one('res.currency', string='Currency')
     rate = fields.Float(string='Rate')
     amount = fields.Float(string='Amount')
 
