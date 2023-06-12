@@ -255,8 +255,8 @@ class AccountConsolidationReport(models.Model):
             analytic_line.update_currency_id()
 
             consolidation_period = self.consolidation_period.consolidation_companies.filtered(lambda x: x.company_id == analytic_line.move_id.company_id)
-            currency_origin = consolidation_period.currency_id.symbol if consolidation_period else analytic_line.currency_id.symbol
-            new_currency = consolidation_period.new_currency.symbol if consolidation_period else analytic_line.currency_id.symbol
+            currency_origin = analytic_line.currency_id.id
+            new_currency = consolidation_period.new_currency.id if consolidation_period else analytic_line.currency_id.id
             rate = consolidation_period.rate if consolidation_period and not consolidation_period.historical_rate else 1
 
             consolidation_data_vals.append({
@@ -288,7 +288,7 @@ class AccountConsolidationReport(models.Model):
             'views': [(view_id_tree.id, 'tree')],
             'context': {'tree_view_ref': 'view_consolidation_data_tree', 'group_by_no_leaf': 1,
                         'group_by': ['main_group', 'business_group', 'sector_account_group', 'managment_account_group','company',
-                                    'daughter_account']},
+                                    'currency', 'daughter_account']},
             'target': 'current',
         }
 
