@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="inherit_account_move_purchase_payment_extension" model="ir.ui.view">
+        <field name="name">account.move.view.purchase.payment.extension</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='other_info']/group/group[2]/field[@name='company_id']" position="after">
+                <field name="journal_payment_id" readonly="1" attrs="{'invisible': [('move_type', 'not in', ['in_invoice', 'in_refund'])]}"/>
+                <field name="payment_method_line_id" readonly="1" attrs="{'invisible': [('move_type', 'not in', ['in_invoice', 'in_refund'])]}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
