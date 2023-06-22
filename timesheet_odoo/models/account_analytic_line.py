@@ -7,10 +7,9 @@ class AccountAnalyticLine(models.Model):
 
     timesheet_id = fields.Many2one("timesheet.sige", string="Timesheet", ondelete="cascade")
 
-    @api.constrains('unit_amount')
-    def _check_unit_amount(self):
-        for line in self:
-            if line.unit_amount == 0:
-                raise ValidationError(_("Cannot create/update timesheet line with 0 hours."))
-            if line.unit_amount % 0.5 != 0:
-                raise ValidationError(_("Fraction should be 0.5."))
+    @api.constrains('timesheet_ids')
+    def _check_timesheet_line(self):
+        for timesheet in self:
+            for line in timesheet.timesheet_ids:
+                if line.unit_amount < 0.5:
+                    raise ValidationError(_("Hours should not be less than 0.5."))
