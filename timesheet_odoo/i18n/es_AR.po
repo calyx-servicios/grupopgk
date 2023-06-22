@@ -146,6 +146,12 @@ msgstr "No se puede crear/actualizar la línea del parte de horas con 0 horas."
 #. module: timesheet_odoo
 #: code:addons/timesheet_odoo/models/timesheet_sige.py:0
 #, python-format
+msgid "Duplicate timesheet entry found for the same project and employee!"
+msgstr "¡Se encontró una entrada de hoja de horas duplicada para el mismo proyecto y empleado!"
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/timesheet_sige.py:0
+#, python-format
 msgid "Deadline for period reached!"
 msgstr "Fecha límite para el período alcanzado!"
 
