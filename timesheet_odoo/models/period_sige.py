@@ -18,7 +18,7 @@ class PeriodSige(models.Model):
         ("open","Open"),
         ("close","Close")
     ], "State", index=True, default="open")
-    
+
     @api.depends("start_of_period")
     def set_name(self):
         for rec in self:
@@ -26,7 +26,7 @@ class PeriodSige(models.Model):
                 rec.name = rec.start_of_period.strftime("%B %Y")
             else:
                 rec.name = '/'
-    
+
     @api.depends("start_of_period")
     def _compute_last_day(self):
         this_date = self.start_of_period.replace(day=6)
@@ -35,32 +35,32 @@ class PeriodSige(models.Model):
         elif this_date.weekday() == 7:
             this_date = self.start_of_period.replace(day=7)
         self.end_of_period = this_date
-    
+
     @api.depends("start_of_period")
     def _compute_employee_ids(self):
         timesheet_sige = self.env['timesheet.sige'].search([('period_id','=',self.id),('state','=','open')])
         employees = timesheet_sige.mapped("employee_id")
         self.employee_ids = [(6, 0, employees.ids)]
-    
+
     @api.depends("start_of_period")
     def _compute_count_employees(self):
         employees = self.env['hr.employee'].search([
             ('active', '=', True)
         ])
         self.count_employees = len(employees)
-    
+
     @api.depends("start_of_period")
     def _compute_sent_periods(self):
         timesheet_sige = self.env['timesheet.sige'].search([
             ('period_id','=',self.id),('state','=','sent')
         ])
         self.sent_periods = len(timesheet_sige)
-    
+
     @api.depends("start_of_period")
     def _compute_pending_periods(self):
         timesheet_sige = self.env['timesheet.sige'].search([('period_id','=',self.id),('state','=','open')])
         self.pending_periods = len(timesheet_sige)
-    
+
     @api.model
     def create(self, vals):
         period = self.env["period.sige"].search([("state","=","open")])
@@ -68,7 +68,7 @@ class PeriodSige(models.Model):
             return super(PeriodSige, self).create(vals)
         else:
             raise ValidationError(_("There can only be one open period at a time!"))
-    
+
     def close_period(self):
         line_obj = self.env["account.analytic.line"]
         ts_obj = self.env["timesheet.sige"]

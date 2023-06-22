@@ -8,11 +8,12 @@ import calendar
 class TimesheetSige(models.Model):
     _name = "timesheet.sige"
     _description = "Timesheet Odoo"
+    _order = "start_of_period desc"
 
     def set_employee(self):
         user_id = self.env.user.id
         return self.env["hr.employee"].search([("user_id", "=", user_id)])
-    
+
     def set_last_day(self):
         start_of_period = self.start_of_period or date.today().replace(day=1)
         return start_of_period  + relativedelta(day=31)
@@ -36,6 +37,10 @@ class TimesheetSige(models.Model):
         ("sent","Sent"),
         ("close","Close")
     ], "State", index=True, default="open")
+
+    _sql_constraints = [
+        ('unique_period_employee', 'unique(period_id, employee_id)', _('Only one record allowed per period and employee.')),
+    ]
 
     @api.depends("start_of_period")
     def set_name(self):
@@ -76,7 +81,7 @@ class TimesheetSige(models.Model):
         if factured == 0:
             self.chargeability = 0
         else:
-            self.chargeability = (factured / self.register_hours) * 100
+            self.chargeability = (factured / self.required_hours) * 100
 
     def _get_total_days(self, holidays):
         total_days = 0
@@ -109,12 +114,12 @@ class TimesheetSige(models.Model):
             if self.employee_id.job_id in special_holiday.jobs_ids:
                 total_holidays += 1
         self.holidays = total_holidays
-    
+
     def send_period(self):
         self.write({
             'state': 'sent'
         })
-    
+
     def recovery_period(self):
         if date.today() <= self.period_id.end_of_period:
             self.write({
@@ -122,7 +127,7 @@ class TimesheetSige(models.Model):
             })
         else:
             raise ValidationError(_("Deadline for period reached!"))
-    
+
     def create_period_sige(self, period):
         employees = self.env['hr.employee'].search([
             ('active', '=', True)
