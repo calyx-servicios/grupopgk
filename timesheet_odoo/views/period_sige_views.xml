@@ -4,7 +4,7 @@
 		<field name="name">period.sige.form</field>
         <field name="model">period.sige</field>
         <field name="arch" type="xml">
-        	<form>
+        	<form duplicate="false" delete="false">
         		<header>
         			<field name="state" widget="statusbar"/>
         		</header>
@@ -71,26 +71,26 @@
         	</form>
         </field>
     </record>
-    
+
     <record id="view_period_sige_tree" model="ir.ui.view">
     	<field name="name">period.sige.tree</field>
         <field name="model">period.sige</field>
         <field name="arch" type="xml">
-            <tree decoration-success="state=='open'" decoration-danger="state=='close'">
+            <tree duplicate="false" delete="false" decoration-success="state=='open'" decoration-danger="state=='close'">
             	<field name="name"/>
             	<field name="state"/>
             </tree>
         </field>
     </record>
-    
+
     <record model="ir.actions.act_window" id="period_sige_action_window">
         <field name="name">Period Sige</field>
         <field name="res_model">period.sige</field>
         <field name="view_mode">tree,form</field>
     </record>
-    
+
     <menuitem name="Period" id="period_sige"
     	parent="hr_timesheet.timesheet_menu_root" action="period_sige_action_window"
         sequence="20"/>
-    
+
 </odoo>

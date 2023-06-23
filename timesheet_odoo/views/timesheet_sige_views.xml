@@ -4,7 +4,7 @@
 		<field name="name">timessheet.sige.form</field>
         <field name="model">timesheet.sige</field>
         <field name="arch" type="xml">
-        	<form>
+        	<form create="false" delete="false" duplicate="false">
         		<header>
         			<button name="send_period" string="Send Period" class="oe_highlight" type="object"
         				attrs="{'invisible': ['|',('pending_hours','&gt;',0.00),('state','!=','open')]}"/>
@@ -74,8 +74,8 @@
 		            	</div>
 		            </div>
 		            <br/>
-			       	<field name="timesheet_ids" attrs="{'readonly': [('state','in',('sent','close'))]}">
-			       		<tree editable="bottom">
+			       	<field name="timesheet_ids" attrs="{'readonly': [('state','in',('sent','close'))]}" options="{ 'no_create': True, 'no_create_edit': True, 'no_open': True }">
+			       		<tree editable="bottom" >
 			       			<field name="project_id"/>
 			       			<field name="name"/>
 			       			<field name="unit_amount"/>
@@ -90,7 +90,7 @@
     	<field name="name">timessheet.sige.tree</field>
         <field name="model">timesheet.sige</field>
         <field name="arch" type="xml">
-            <tree decoration-info="state=='open'" decoration-success="state=='sent'" decoration-danger="state=='close'">
+            <tree decoration-info="state=='open'" decoration-success="state=='sent'" decoration-danger="state=='close'" create="false" delete="false" duplicate="false">
             	<field name="name"/>
             	<field name="state" invisible="1"/>
             </tree>
@@ -102,15 +102,15 @@
         <field name="res_model">timesheet.sige</field>
         <field name="view_mode">tree,form</field>
     </record>
-    
+
     <menuitem name="Timesheet Sige" id="timesheet_sige"
     	parent="hr_timesheet.menu_hr_time_tracking" action="timessheet_sige_action_window"
         sequence="7"/>
-    
+
     <menuitem id="hr_timesheet.timesheet_menu_activity_mine" active="False"/>
-    
+
     <menuitem id="hr_timesheet.timesheet_menu_activity_user" active="False"/>
-    
+
     <menuitem id="hr_timesheet.timesheet_menu_activity_all" active="False"/>
-    
+
 </odoo>
