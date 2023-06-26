@@ -1,0 +1,31 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* analytic_account_payment
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-06-26 12:38+0000\n"
+"PO-Revision-Date: 2023-06-26 12:38+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: analytic_account_payment
+#: code:addons/analytic_account_payment/models/account_payment_group.py:0
+#, python-format
+msgid ""
+"Error when assigning the analytical account in the accounting entry.\n"
+" {}"
+msgstr ""
+"Error al asignar la cuenta analítica en el asiento contable.\n"
+" {}"
+
+#. module: analytic_account_payment
+#: model:ir.model,name:analytic_account_payment.model_account_payment_group
+msgid "Payment Group"
+msgstr "Grupo de Pago"
