@@ -27,11 +27,13 @@
     <record id="subscription_package.subscription_menu_subscriptions" model="ir.ui.menu">
         <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_manager'))]"/>
     </record>
-    <record id="account_accountant.menu_accounting" model="ir.ui.menu">
-        <field name="groups_id" eval="[(6, 0, [ref('custom_access_permissions.group_profile_administrator')])]"/>
-    </record>
     <record id="account.menu_finance" model="ir.ui.menu">
         <field name="groups_id" eval="[(6, 0, [ref('custom_access_permissions.group_profile_administrator')])]"/>
     </record>
+    <!-- Menu Item for enterprise
+    <record id="account_accountant.menu_accounting" model="ir.ui.menu">
+        <field name="groups_id" eval="[(6, 0, [ref('custom_access_permissions.group_profile_administrator')])]"/>
+    </record>
+    -->
     <menuitem id="menu_action_sale_out_refund_type" parent="sale.sale_order_menu" action="account.action_move_out_refund_type" sequence="99"/>
 </odoo>
