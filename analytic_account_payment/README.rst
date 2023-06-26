@@ -15,39 +15,23 @@ Analytic Account Payment
 .. |badge2| image:: https://img.shields.io/badge/licence-AGPL--3-blue.png
     :target: http://www.gnu.org/licenses/agpl-3.0-standalone.html
     :alt: License: AGPL-3
-.. |badge3| image:: https://img.shields.io/badge/github-calyx--servicios%2Fcalyx-lightgray.png?logo=github
-    :target: https://https://github.com/calyx-servicios/grupopgk
-    :alt: calyx-servicios/grupopgk
+.. |badge3| image:: https://img.shields.io/badge/github-calyx--servicios%2Fgrupopgk-lightgray.png?logo=github
+    :target: https://github.com/calyx-servicios/grupopgk
+    :alt: calyx-servicios/grupopgk.git
 
 |badge1| |badge2| |badge3|
 
 
 This module calculates the analytical accounts of the payment entries
 
-**Table of contents**
-
-.. contents::
-   :local:
-
-
 Install
 =======
 
-Install the module
+* Go to applications
 
+* Find module "analytic_account_payment" > Press Install
 
-Known issues / Roadmap
-======================
-
-* Bugs or Roadmap
-
-Bug Tracker
-===========
-
-* Contact to the development team
-
-Credits
-=======
+* Go to Customer receipt > and post a new receipt.
 
 Authors
 ~~~~~~~
@@ -64,7 +48,7 @@ Contributors
 Maintainers
 ~~~~~~~~~~~
 
-This module is maintained by Calyx Servicios S.A.
+This module is maintained by the Calyx Servicios S.A.
 
 .. image:: https://ss-static-01.esmsv.com/id/13290/galeriaimagenes/obtenerimagen/?width=120&height=40&id=sitio_logo&ultimaModificacion=2020-05-25+21%3A45%3A05
    :alt: Calyx Servicios S.A.
@@ -73,4 +57,4 @@ This module is maintained by Calyx Servicios S.A.
 CALYX SERVICIOS S.A. is part of the PGK Consultores economic group, member of an important global network, a world organization.
 The PGK Consultores group is one of the 20 largest consultant-studios in Argentina with nearly 300 professionals.
 
-This module is part of the `Halpern-Masteragua <https://https://github.com/calyx-servicios/grupopgk>`_ project on GitHub.
+This module is part of the `Grupo PGK <https://github.com/calyx-servicios/grupopgk.git>`_ project on GitHub.
