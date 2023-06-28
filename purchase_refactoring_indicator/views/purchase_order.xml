@@ -9,7 +9,7 @@
                 <label for="refactoring_indicator" invisible="1" />
                 <div name="refactoring" class="o_row" groups="custom_access_permissions.group_profile_manager">
                     <field name="refactoring_indicator"/>
-                    <span>Refactoring Indicator</span>
+                    <span>100% Refacturing</span>
                 </div>
             </xpath>
         </field>
