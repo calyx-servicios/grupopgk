@@ -9,8 +9,12 @@
                 <label for="refactoring_indicator" invisible="1" />
                 <div name="refactoring" class="o_row" groups="custom_access_permissions.group_profile_manager">
                     <field name="refactoring_indicator"/>
-                    <span>100% Refacturing</span>
+                    <span>It is rebilled according to policy</span>
                 </div>
+                <xpath expr="//page[@name='purchase_delivery_invoice']/group//field[@name='origin']" position="move"/>
+            </xpath>
+            <xpath expr="//field[@name='origin']" position="attributes">
+                <attribute name="attrs">{ 'required': [('refactoring_indicator', '=', True)]}</attribute>
             </xpath>
         </field>
     </record>
