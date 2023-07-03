@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="purchase_refactoring_indicator.purchase_order_form_view_inherit" model="ir.ui.view">
+        <field name="name">purchase.order.inherit.view.form</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group/group[2][last()]" position="inside">
+                <label for="refactoring_indicator" invisible="1" />
+                <div name="refactoring" class="o_row" groups="custom_access_permissions.group_profile_manager">
+                    <field name="refactoring_indicator"/>
+                    <span>It is rebilled according to policy</span>
+                </div>
+                <xpath expr="//page[@name='purchase_delivery_invoice']/group//field[@name='origin']" position="move"/>
+            </xpath>
+            <xpath expr="//field[@name='origin']" position="attributes">
+                <attribute name="attrs">{ 'required': [('refactoring_indicator', '=', True)]}</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
