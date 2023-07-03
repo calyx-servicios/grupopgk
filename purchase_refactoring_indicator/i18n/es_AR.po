@@ -17,8 +17,8 @@ msgstr ""
 
 #. module: purchase_refactoring_indicator
 #: model_terms:ir.ui.view,arch_db:purchase_refactoring_indicator.purchase_order_form_view_inherit
-msgid "<span>100% Refacturing</span>"
-msgstr "<span>Se refactura 100%</span>"
+msgid "<span>It is rebilled according to policy</span>"
+msgstr "<span>Se refactura según política</span>"
 
 #. module: purchase_refactoring_indicator
 #: model:ir.model,name:purchase_refactoring_indicator.model_purchase_order
