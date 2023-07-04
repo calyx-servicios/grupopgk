@@ -7,9 +7,11 @@
         <field name="arch" type="xml">
             <xpath expr="//form/sheet/notebook/page/field[@name='invoice_line_ids']/tree/field[@name='price_unit']" position="before">
                 <field name="move_type" invisible="1"/>
+                <field name="has_profile_admin" invisible="1"/>
+                <field name="has_profile_manager" invisible="1"/>
             </xpath>
             <xpath expr="//form/sheet/notebook/page/field[@name='invoice_line_ids']/tree/field[@name='price_unit']" position="attributes">
-                <attribute name="attrs">{'readonly': [('move_type', 'in', ['in_invoice', 'in_refund'])]}</attribute>
+                <attribute name="attrs">{'readonly': [('move_type', 'in', ['in_invoice', 'in_refund']), ('has_profile_admin', '=', False)]}</attribute>
             </xpath>
         </field>
     </record>
