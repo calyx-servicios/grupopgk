@@ -5,6 +5,12 @@
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_post'][1]" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_post'][last()]" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </xpath>
             <xpath expr="//form/sheet/notebook/page/field[@name='invoice_line_ids']/tree/field[@name='price_unit']" position="before">
                 <field name="move_type" invisible="1"/>
                 <field name="has_profile_admin" invisible="1"/>
@@ -12,6 +18,21 @@
             </xpath>
             <xpath expr="//form/sheet/notebook/page/field[@name='invoice_line_ids']/tree/field[@name='price_unit']" position="attributes">
                 <attribute name="attrs">{'readonly': [('move_type', 'in', ['in_invoice', 'in_refund']), ('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- AFIP validations -  -->
+    <record id="inherit_account_move_afip_custom_access_permissions" model="ir.ui.view">
+        <field name="name">account.move.afip.custom.access.permissions</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="l10n_ar_afipws_fe.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/button[@name='action_post'][2]" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
+            </xpath>
+            <xpath expr="//header/button[@name='action_post'][3]" position="attributes">
+                <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
             </xpath>
         </field>
     </record>
