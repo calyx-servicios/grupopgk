@@ -40,7 +40,7 @@
 		            	</div>
         			</div>
         			<br/>
-        			<div class="row">
+        			<div class="row" invisible="1">
         				<div class="col" style="text-align: center;">
 			            	<i class="fa fa-times" style="font-size:x-large; color:red"/><br/>
 			            	<span>PENDIENTES DE AVANCE</span><br/>
@@ -55,7 +55,7 @@
         			<br/>
         			<div style="text-align: center;">
         				<button name="close_period" string="Close Period" class="oe_highlight" type="object"
-        					attrs="{'invisible': [('state', '!=', 'open')]}" style="width:400px">
+        					attrs="{'invisible': ['|', ('state', '!=', 'open'), ('pending_periods', '>', 0)]}" style="width:400px">
         					<i class="fa fa-lock" style="padding-left: 5px;"/>
         				</button>
         			</div>
