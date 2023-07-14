@@ -9,7 +9,11 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
+<<<<<<< Updated upstream
     "version": "15.0.2.10.4",
+=======
+    "version": "15.0.2.11.4",
+>>>>>>> Stashed changes
     "application": False,
     "installable": True,
     "depends": [
