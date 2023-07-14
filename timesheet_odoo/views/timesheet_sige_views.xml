@@ -4,7 +4,7 @@
 		<field name="name">timessheet.sige.form</field>
         <field name="model">timesheet.sige</field>
         <field name="arch" type="xml">
-        	<form create="false" delete="false" duplicate="false">
+        	<form>
         		<header>
         			<button name="send_period" string="Send Period" class="oe_highlight" type="object"
         				attrs="{'invisible': ['|',('pending_hours','&gt;',0.00),('state','!=','open')]}"/>
@@ -74,9 +74,9 @@
 		            	</div>
 		            </div>
 		            <br/>
-			       	<field name="timesheet_ids" attrs="{'readonly': [('state','in',('sent','close'))]}" options="{ 'no_create': True, 'no_create_edit': True, 'no_open': True }">
+			       	<field name="timesheet_ids" attrs="{'readonly': [('state','in',('sent','close'))]}" >
 			       		<tree editable="bottom" >
-			       			<field name="project_id"/>
+			       			<field name="project_id" options="{ 'no_create': True, 'no_create_edit': True, 'no_open': True }"/>
 			       			<field name="name"/>
 			       			<field name="unit_amount"/>
 			       		</tree>
@@ -92,6 +92,7 @@
         <field name="arch" type="xml">
             <tree decoration-info="state=='open'" decoration-success="state=='sent'" decoration-danger="state=='close'" create="false" delete="false" duplicate="false">
             	<field name="name"/>
+                <field name="employee_id" groups="timesheet_odoo.group_timesheet_sige_manager"/>
             	<field name="state" invisible="1"/>
             </tree>
         </field>
