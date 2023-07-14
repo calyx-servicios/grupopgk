@@ -19,6 +19,8 @@ class PeriodSige(models.Model):
         ("close","Close")
     ], "State", index=True, default="open")
 
+    _sql_constraints = [('unique_name', 'unique(name)', 'Period must be unique!')]
+
     @api.depends("start_of_period")
     def set_name(self):
         for rec in self:
