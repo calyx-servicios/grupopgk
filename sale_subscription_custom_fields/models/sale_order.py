@@ -1,8 +1,11 @@
-from odoo import  models, _
+from odoo import  models,fields, _
 
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
+
+    total_amount_subscription = fields.Float(related='subscription_id.total_recurring_price', string='Total amount of the subscription')
+    next_invoice_date_subscription = fields.Date(related='subscription_id.next_invoice_date', string='Next invoice date')
 
     def _prepare_subscription(self, plan, split_line):
         res = super(SaleOrder, self)._prepare_subscription(plan, split_line)
@@ -33,8 +36,8 @@ class SaleOrder(models.Model):
 
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
-    
-    
+
+
     def _prepare_values_product(self):
         values = []
         for line in self:
