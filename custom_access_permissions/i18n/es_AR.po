@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-06-01 13:37+0000\n"
-"PO-Revision-Date: 2023-06-01 13:37+0000\n"
+"POT-Creation-Date: 2023-07-18 17:00+0000\n"
+"PO-Revision-Date: 2023-07-18 17:00+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -21,11 +21,17 @@ msgid "Administrator"
 msgstr "Administrador"
 
 #. module: custom_access_permissions
+#: model:ir.ui.menu,name:custom_access_permissions.menu_action_sale_in_invoice_type
+msgid "Bills"
+msgstr "Facturas de Proveedores"
+
+#. module: custom_access_permissions
 #: model:ir.ui.menu,name:custom_access_permissions.menu_action_sale_out_refund_type
 msgid "Credit Notes"
 msgstr "Facturas rectificativa"
 
 #. module: custom_access_permissions
+#: model:ir.model.fields,field_description:custom_access_permissions.field_account_move_line__has_profile_admin
 #: model:ir.model.fields,field_description:custom_access_permissions.field_project_project__has_profile_admin
 #: model:ir.model.fields,field_description:custom_access_permissions.field_purchase_order__has_profile_admin
 #: model:ir.model.fields,field_description:custom_access_permissions.field_purchase_order_line__has_profile_admin
@@ -36,6 +42,7 @@ msgid "Has administrator profile?"
 msgstr "¿Tiene perfil de administrador?"
 
 #. module: custom_access_permissions
+#: model:ir.model.fields,field_description:custom_access_permissions.field_account_move_line__has_profile_manager
 #: model:ir.model.fields,field_description:custom_access_permissions.field_project_project__has_profile_manager
 #: model:ir.model.fields,field_description:custom_access_permissions.field_purchase_order__has_profile_manager
 #: model:ir.model.fields,field_description:custom_access_permissions.field_purchase_order_line__has_profile_manager
@@ -54,6 +61,11 @@ msgstr "Le ayuda a manejar los permisos de PGK."
 #: model:ir.model,name:custom_access_permissions.model_account_move
 msgid "Journal Entry"
 msgstr "Asiento contable"
+
+#. module: custom_access_permissions
+#: model:ir.model,name:custom_access_permissions.model_account_move_line
+msgid "Journal Item"
+msgstr "Apunte Contable"
 
 #. module: custom_access_permissions
 #: model:res.groups,name:custom_access_permissions.group_profile_manager
@@ -91,6 +103,11 @@ msgid "Sales Order"
 msgstr "Pedido de venta"
 
 #. module: custom_access_permissions
+#: model:ir.model.fields,field_description:custom_access_permissions.field_account_move_line__source_origin
+msgid "Source Origin"
+msgstr "Documento de origen"
+
+#. module: custom_access_permissions
 #: model:ir.model,name:custom_access_permissions.model_subscription_package
 msgid "Subscription Package"
 msgstr "Paquete de suscripción"
@@ -101,10 +118,16 @@ msgid "Subscription Product Lines"
 msgstr "Líneas de productos de suscripción"
 
 #. module: custom_access_permissions
+#: model:ir.model.fields,help:custom_access_permissions.field_account_move_line__source_origin
+msgid "The document(s) that generated the invoice."
+msgstr "El/Los documentos que generaron la factura."
+
+#. module: custom_access_permissions
 #: code:addons/custom_access_permissions/models/purchase_order.py:0
 #, python-format
 msgid "The received quantity cannot exceed the initially demanded quantity."
-msgstr "La cantidad recibida no puede exceder la cantidad demandada inicialmente."
+msgstr ""
+"La cantidad recibida no puede exceder la cantidad demandada inicialmente."
 
 #. module: custom_access_permissions
 #: code:addons/custom_access_permissions/models/account_move.py:0

@@ -6,7 +6,7 @@ class AccountMove(models.Model):
 
     @api.model
     def create(self, vals):
-        if not self.env.user.has_group('custom_access_permissions.group_profile_manager') and vals.get('move_type') not in ('out_refund', 'in_refund'):
+        if not self.env.user.has_group('custom_access_permissions.group_profile_manager') and vals.get('move_type') not in ('out_refund', 'in_refund', 'in_invoice'):
             raise AccessError(_('You do not have access to create this type of move.'))
         return super().create(vals)
 
@@ -21,6 +21,7 @@ class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'
 
     move_type = fields.Selection(related='move_id.move_type', string='Move Type', readonly=True, store=True)
+    source_origin = fields.Char(related='move_id.invoice_origin', string='Source Origin', readonly=True)
 
     has_profile_admin = fields.Boolean(string="Has administrator profile?", compute="_compute_has_profile_access", store=False, default=False)
     has_profile_manager = fields.Boolean(string="Has manager profile?", compute="_compute_has_profile_access", store=False, default=False)
