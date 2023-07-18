@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-14 11:52+0000\n"
-"PO-Revision-Date: 2023-07-14 11:52+0000\n"
+"POT-Creation-Date: 2023-07-18 14:32+0000\n"
+"PO-Revision-Date: 2023-07-18 14:32+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -125,6 +125,11 @@ msgid "Created on"
 msgstr "Creado en"
 
 #. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__user_id
+msgid "Current User"
+msgstr "Usuario actual"
+
+#. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__days_to_register
 msgid "Days to register"
 msgstr "Días a registrar"
@@ -170,6 +175,11 @@ msgstr "USUARIOS HABILITADOS"
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__end_of_period
 msgid "End of Period"
 msgstr "Fin"
+
+#. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__has_timesheet_sige_admin
+msgid "Has administrator sige?"
+msgstr "¿Tiene administrador sige?"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__holidays
@@ -228,6 +238,7 @@ msgstr "Periódo"
 
 #. module: timesheet_odoo
 #: code:addons/timesheet_odoo/models/timesheet_sige.py:0
+#: model:ir.model.constraint,message:timesheet_odoo.constraint_timesheet_sige_unique_period_employee
 #, python-format
 msgid "Only one record allowed per period and employee."
 msgstr "Solo se permite un registro por período y empleado."
@@ -303,11 +314,6 @@ msgid "Sent"
 msgstr "ENVIADOS"
 
 #. module: timesheet_odoo
-#: model:ir.model.constraint,message:timesheet_odoo.constraint_timesheet_sige_unique_period_employee
-msgid "Solo se permite un registro por período y empleado."
-msgstr ""
-
-#. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__start_of_period
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__start_of_period
 msgid "Start of Period"
@@ -323,6 +329,12 @@ msgstr "Estado"
 #: model:project.project,label_tasks:timesheet_odoo.hours_to_allocate
 msgid "Tasks"
 msgstr "Tareas"
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/period_sige.py:0
+#, python-format
+msgid "The period is already closed"
+msgstr "¡Este período ya está cerrado!"
 
 #. module: timesheet_odoo
 #: model:res.groups,comment:timesheet_odoo.group_timesheet_sige_manager
