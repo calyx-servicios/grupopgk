@@ -4,7 +4,7 @@
 		<field name="name">period.sige.form</field>
         <field name="model">period.sige</field>
         <field name="arch" type="xml">
-        	<form duplicate="false" delete="false">
+        	<form duplicate="false" >
         		<header>
         			<field name="state" widget="statusbar"/>
         		</header>
@@ -53,9 +53,11 @@
 		            	</div>
         			</div>
         			<br/>
+                    <field name="user_id" invisible="1" readonly="1"/>
+                    <field name="has_timesheet_sige_admin" invisible="1" readonly="1"/>
         			<div style="text-align: center;">
         				<button name="close_period" string="Close Period" class="oe_highlight" type="object"
-        					attrs="{'invisible': ['|', ('state', '!=', 'open'), ('pending_periods', '>', 0)]}" style="width:400px">
+        					attrs="{'invisible': ['|', ('state', '!=', 'open'), ('pending_periods', '>', 0), ('has_timesheet_sige_admin', '=', False)]}" style="width:400px">
         					<i class="fa fa-lock" style="padding-left: 5px;"/>
         				</button>
         			</div>
@@ -76,7 +78,7 @@
     	<field name="name">period.sige.tree</field>
         <field name="model">period.sige</field>
         <field name="arch" type="xml">
-            <tree duplicate="false" delete="false" decoration-success="state=='open'" decoration-danger="state=='close'">
+            <tree duplicate="false" decoration-success="state=='open'" decoration-danger="state=='close'">
             	<field name="name"/>
             	<field name="state"/>
             </tree>

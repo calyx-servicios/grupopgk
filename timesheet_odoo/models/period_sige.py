@@ -1,7 +1,7 @@
 from odoo import fields, models, api, _
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 
 class PeriodSige(models.Model):
     _name = "period.sige"
@@ -14,12 +14,27 @@ class PeriodSige(models.Model):
     sent_periods = fields.Integer("Sent", compute="_compute_sent_periods")
     pending_periods = fields.Integer("To do", compute="_compute_pending_periods")
     employee_ids = fields.Many2many("hr.employee", string="Employees pending", compute="_compute_employee_ids")
+    user_id = fields.Many2one('res.users','Current User', default=lambda self: self.env.user)
+    has_timesheet_sige_admin = fields.Boolean(string="Has administrator sige?", compute="_compute_has_timesheet_sige_admin", store=False, default=False)
     state = fields.Selection([
         ("open","Open"),
         ("close","Close")
     ], "State", index=True, default="open")
 
-    _sql_constraints = [('unique_name', 'unique(name)', 'Period must be unique!')]
+    _sql_constraints = [
+        ('unique_name', 'unique(name)', 'Period must be unique!')
+    ]
+
+    @api.depends('user_id')
+    def _compute_has_timesheet_sige_admin(self):
+        for record in self:
+            user = self.env.user
+            group = user.has_group('timesheet_odoo.group_timesheet_sige_admin')
+
+            if group:
+                record.has_timesheet_sige_admin = True
+            else:
+                record.has_timesheet_sige_admin = False
 
     @api.depends("start_of_period")
     def set_name(self):
@@ -74,6 +89,8 @@ class PeriodSige(models.Model):
     def close_period(self):
         line_obj = self.env["account.analytic.line"]
         ts_obj = self.env["timesheet.sige"]
+        if self.state == 'close':
+            raise UserError(_('The period is already closed'))
         hours_to_allocate = self.env.ref("timesheet_odoo.hours_to_allocate")
         for employee in self.employee_ids:
             ts_employee = ts_obj.search([('period_id','=',self.id),("employee_id","=", employee.id)])
