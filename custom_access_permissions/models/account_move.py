@@ -21,6 +21,7 @@ class AccountMoveLine(models.Model):
     _inherit = 'account.move.line'
 
     move_type = fields.Selection(related='move_id.move_type', string='Move Type', readonly=True, store=True)
+    source_origin = fields.Char(related='move_id.invoice_origin', string='Source Origin', readonly=True)
 
     has_profile_admin = fields.Boolean(string="Has administrator profile?", compute="_compute_has_profile_access", store=False, default=False)
     has_profile_manager = fields.Boolean(string="Has manager profile?", compute="_compute_has_profile_access", store=False, default=False)
