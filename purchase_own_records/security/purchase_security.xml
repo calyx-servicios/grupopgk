@@ -29,5 +29,16 @@
             <field name="perm_write" eval="False"/>
             <field name="perm_unlink" eval="False"/>
         </record>
+
+        <record id="purchase_own_records.purchase_all_documents_rule" model="ir.rule">
+            <field name="name">All Purchase documents</field>
+            <field name="model_id" ref="purchase.model_purchase_order"/>
+            <field name="domain_force">[(1,'=',1)]</field>
+            <field name="groups" eval="[(6, 0, [ref('purchase.group_purchase_manager')])]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
     </data>
 </odoo>
