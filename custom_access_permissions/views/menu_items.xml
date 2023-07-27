@@ -36,5 +36,6 @@
     </record>
     -->
     <menuitem id="menu_action_sale_out_refund_type" parent="sale.sale_order_menu" action="account.action_move_out_refund_type" sequence="99"/>
-    <menuitem id="menu_action_sale_in_invoice_type" parent="purchase.menu_procurement_management" action="account.action_move_in_invoice_type" sequence="11"/>
+    <menuitem id="menu_action_sale_in_invoice_type" parent="purchase.menu_procurement_management" action="account.action_move_in_invoice_type" groups="custom_access_permissions.group_profile_administrator"
+    sequence="11"/>
 </odoo>
