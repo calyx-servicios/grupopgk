@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="inherit_account_analytic_line_consolidation_report" model="ir.ui.view">
+        <field name="name">account.analytic.line.consolidation.report.form.inherit</field>
+        <field name="model">account.analytic.line</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_line_form"/>
+        <field name="arch" type="xml">
+            <field name="account_id" position="after">
+                <field name="move_company_id" invisible="1"/>
+                <field name="sector_account_id" invisible="1"/>
+                <field name="bussines_group_id" invisible="1"/>
+                <field name="managment_account_id" invisible="1"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="report_analytic_account.action_report_account_analytic_pgk" model="ir.actions.act_window">
+        <field name="name">Analityc Report</field>
+        <field name="res_model">account.analytic.line</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="report_analytic_account.view_account_analytic_account_grouped_partner"/>
+        <field name="search_view_id" ref="report_analytic_account.searcb_account_analytic_account_grouped_partner"/>
+        <field name="context">{ 'tree_view_ref':'view_account_analytic_account_grouped_partner','group_by_no_leaf':0,'group_by':['parent_prin_group_id','bussines_group_id','sector_account_id', 'managment_account_id', 'move_company_id', 'currency_id','account_id']}</field>   
+    </record>
+</odoo>

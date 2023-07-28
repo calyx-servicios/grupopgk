@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="account_analytic_group_consolidation_report" model="ir.ui.view">
+        <field name="name">account.analytic.group.consolidation.report.form</field>
+        <field name="model">account.analytic.group</field>
+        <field name="inherit_id" ref="analytic.account_analytic_group_form_view"/>
+        <field name="arch" type="xml">
+            <field name="parent_prin_group" position="after">
+                <field name="is_business_group" invisible="1"/>
+            </field>
+        </field>
+    </record>
+</odoo>
