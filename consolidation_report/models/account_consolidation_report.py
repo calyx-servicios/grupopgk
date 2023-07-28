@@ -141,12 +141,12 @@ class AccountConsolidationReport(models.Model):
         for analytic_line in analytic_lines:
             analytic_line.update_currency_id()
 
-            group_key = analytic_line.account_id.group_id.parent_id.name or 'Undefined'
-            mother_key = analytic_line.account_id.group_id.name or 'Undefined'
-            grandmother_key = analytic_line.account_id.parent_id.parent_id.name or 'Undefined'
-            mother_account_key = analytic_line.account_id.parent_id.name or 'Undefined'
-            daughter_account_key = analytic_line.account_id.name or 'Undefined'
-            company = analytic_line.move_id.company_id.name or 'Undefined'
+            group_key = analytic_line.parent_prin_group_id.name or 'Undefined'
+            mother_key = analytic_line.bussines_group_id.name or 'Undefined'
+            grandmother_key = analytic_line.sector_account_id.name or 'Undefined'
+            mother_account_key = analytic_line.managment_account_id.name or 'Undefined'
+            daughter_account_key = analytic_line.name or 'Undefined'
+            company = analytic_line.move_company_id.name or 'Undefined'
 
             consolidation_period = self.consolidation_period.consolidation_companies.filtered(lambda x: x.company_id == analytic_line.move_id.company_id)
             currency_origin = consolidation_period.currency_id.symbol if consolidation_period else analytic_line.currency_id.symbol
@@ -166,8 +166,6 @@ class AccountConsolidationReport(models.Model):
             })
 
         return data
-
-
 
     @api.depends('export_consolidation_data', 'period')
     def _compute_files(self):
@@ -245,3 +243,55 @@ class AccountConsolidationReport(models.Model):
         daughter_account_dict['total'] = daughter_account_total
         return daughter_account_dict
 
+    def generate_consolidation_report_view(self):
+        self.delete_entries()
+        analytic_lines = self.env['account.analytic.line'].search([
+            ('date', '>=', self.consolidation_period.date_from),
+            ('date', '<=', self.consolidation_period.date_to)
+        ])
+
+        consolidation_data_vals = []
+        for analytic_line in analytic_lines:
+            analytic_line.update_currency_id()
+
+            consolidation_period = self.consolidation_period.consolidation_companies.filtered(lambda x: x.company_id == analytic_line.move_id.company_id)
+            currency_origin = analytic_line.currency_id.id
+            new_currency = consolidation_period.new_currency.id if consolidation_period else analytic_line.currency_id.id
+            rate = consolidation_period.rate if consolidation_period and not consolidation_period.historical_rate else 1
+
+            consolidation_data_vals.append({
+                'name': self.name,
+                'main_group': analytic_line.parent_prin_group_id.id,
+                'business_group': analytic_line.bussines_group_id.id,
+                'sector_account_group': analytic_line.sector_account_id.id,
+                'managment_account_group': analytic_line.managment_account_id.id,
+                'company': analytic_line.move_company_id.name,
+                'daughter_account': analytic_line.id,
+                'description': analytic_line.name or '',
+                'account_id': analytic_line.general_account_id.code,
+                'currency_origin': currency_origin if currency_origin else '',
+                'currency': new_currency if new_currency else '',
+                'rate': rate,
+                'amount': analytic_line.amount * rate if not consolidation_period or not consolidation_period.historical_rate else analytic_line.amount,
+            })
+
+        consolidation_data = self.env['account.consolidation.data']
+        consolidation_data.create(consolidation_data_vals)
+
+        view_id_tree = self.env.ref('consolidation_report.view_consolidation_data_tree')
+        return {
+            'name': 'Consolidation Report',
+            'type': 'ir.actions.act_window',
+            'view_type': 'form',
+            'view_mode': 'tree,form',
+            'res_model': 'account.consolidation.data',
+            'views': [(view_id_tree.id, 'tree')],
+            'context': {'tree_view_ref': 'view_consolidation_data_tree', 'group_by_no_leaf': 1,
+                        'group_by': ['main_group', 'business_group', 'sector_account_group', 'managment_account_group','company',
+                                    'currency', 'daughter_account']},
+            'target': 'current',
+        }
+
+    def delete_entries(self):
+        self.env['account.consolidation.data'] \
+            .search([]).unlink()
