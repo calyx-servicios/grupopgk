@@ -66,7 +66,7 @@ class SaleOrder(models.Model):
                 if line.subscription_plan_id.limit_choice == 'custom' and line.product_id.is_dues_ok:
                     if not line.product_id.uom_id.category_id.name == 'Working Time':
                         price = line.price_subtotal
-                        line.product_uom_qty = line.subscription_plan_id.limit_count 
+                        line.product_uom_qty = line.subscription_plan_id.limit_count
                         line.price_unit =  price / line.subscription_plan_id.limit_count
                     subscriptions = self.env['subscription.package'].search([('sale_order', '=', rec.id)])
                     for subs in subscriptions:
@@ -81,9 +81,13 @@ class SaleOrderLine(models.Model):
     @api.onchange('product_id')
     def _onchange_product_id_domain(self):
         for rec in self:
-            if len(rec.product_id.subscription_plan_id.ids) == 1:
-                rec.subscription_plan_id = rec.product_id.subscription_plan_id.id
-            return {'domain': {'subscription_plan_id': [('id', 'in', rec.product_id.subscription_plan_id.ids)]}}
+            if rec.product_id.is_subscription:
+                if len(rec.product_id.subscription_plan_id.ids) == 1:
+                    rec.subscription_plan_id = rec.product_id.subscription_plan_id.id
+                return {'domain': {'subscription_plan_id': [('id', 'in', rec.product_id.subscription_plan_id.ids)]}}
+            else:
+                rec.subscription_plan_id = False
+                return {'domain': {'subscription_plan_id': [('id', 'in', False)]}}
 
     subscription_plan_id = fields.Many2one('subscription.package.plan', string='Subscription Plan')
     is_subscription = fields.Boolean(compute='_compute_total_plans', string='Is subscription?')
@@ -91,7 +95,10 @@ class SaleOrderLine(models.Model):
     @api.depends('product_id')
     def _compute_total_plans(self):
         for rec in self:
-            rec.is_subscription = rec.product_id.is_subscription
+            if rec.product_id.is_subscription:
+                rec.is_subscription = True
+            else:
+                rec.is_subscription = False
 
     def _prepare_values_product(self):
         values = []
