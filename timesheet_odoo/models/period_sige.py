@@ -86,7 +86,7 @@ class PeriodSige(models.Model):
         else:
             timesheet_admin =  self.env.user.has_group('timesheet_odoo.group_timesheet_sige_admin')
             if not timesheet_admin:
-                raise ValidationError(_("Only sige admin can open 2 permissions at a time."))
+                raise ValidationError(_("Only sige admin can open 2 period at a time."))
             return super(PeriodSige, self).create(vals)
 
     def open_period(self):
