@@ -84,7 +84,16 @@ class PeriodSige(models.Model):
         if not period:
             return super(PeriodSige, self).create(vals)
         else:
-            raise ValidationError(_("There can only be one open period at a time!"))
+            timesheet_admin =  self.env.user.has_group('timesheet_odoo.group_timesheet_sige_admin')
+            if not timesheet_admin:
+                raise ValidationError(_("Only sige admin can open 2 period at a time."))
+            return super(PeriodSige, self).create(vals)
+
+    def open_period(self):
+        ts_obj = self.env["timesheet.sige"]
+        timesheet = ts_obj.search([('period_id','=',self.id)])
+        timesheet.sudo().write({'state':'open'})
+        self.sudo().write({'state': 'open'})
 
     def close_period(self):
         line_obj = self.env["account.analytic.line"]
@@ -95,6 +104,7 @@ class PeriodSige(models.Model):
         for employee in self.employee_ids:
             ts_employee = ts_obj.search([('period_id','=',self.id),("employee_id","=", employee.id)])
             if ts_employee.pending_hours != 0:
+                timesheet_id = line_obj.search([('timesheet_id', '=', ts_employee.id)])
                 values = {
                     "project_id": hours_to_allocate.id,
                     "name": _("Hours to allocate"),
@@ -102,7 +112,10 @@ class PeriodSige(models.Model):
                     "company_id": hours_to_allocate.analytic_account_id.company_id.ids or [hours_to_allocate.company_id.id],
                     "timesheet_id": ts_employee.id
                 }
-                line_obj.create(values)
+                if timesheet_id:
+                    timesheet_id.sudo().write(values)
+                else:
+                    line_obj.create(values)
 
         timesheet = ts_obj.search([('period_id','=',self.id)])
         timesheet.write({'state':'close'})

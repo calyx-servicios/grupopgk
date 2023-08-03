@@ -356,8 +356,8 @@ msgstr "El usuario tendrá acceso al parte de horas propias."
 #. module: timesheet_odoo
 #: code:addons/timesheet_odoo/models/period_sige.py:0
 #, python-format
-msgid "There can only be one open period at a time!"
-msgstr "Solo puede haber un período abierto a la vez!"
+msgid "Only sige admin can open 2 period at a time."
+msgstr "Solo el administrador de Sige puede abrir 2 periodos a la vez."
 
 #. module: timesheet_odoo
 #: code:addons/timesheet_odoo/models/hr_employee.py:0
