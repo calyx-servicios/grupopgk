@@ -61,6 +61,13 @@
         					<i class="fa fa-lock" style="padding-left: 5px;"/>
         				</button>
         			</div>
+                    <br/>
+                    <div style="text-align: center;">
+                        <button name="open_period" string="Open Period" class="oe_highlight" type="object"
+                            attrs="{'invisible': ['|', ('state', '!=', 'close'), ('has_timesheet_sige_admin', '=', False)]}" style="width:400px">
+                            <i class="fa fa-unlock" style="padding-left: 5px;"/>
+                        </button>
+        			</div>
         			<br/>
         			<field name="employee_ids" readonly="1">
 			       		<tree editable="bottom">
