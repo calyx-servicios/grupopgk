@@ -50,7 +50,7 @@ class AccountMove(models.Model):
             custom_layout="mail.mail_notification_paynow",
             model_description=self.with_context(lang=lang).type_name,
             force_email=True,
-            default_attachment_ids = self.attachment_ids.ids
+            default_message_main_attachment_id = self.message_main_attachment_id.ids
         )
         return {
             'name': _('Send Invoice'),
