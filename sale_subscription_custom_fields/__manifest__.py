@@ -9,7 +9,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Sign",
-    "version": "15.0.1.3.1",
+    "version": "15.0.2.0.0",
     "application": False,
     "installable": True,
     "depends": [
@@ -20,5 +20,6 @@
     ],
     "data": [
         'views/subscription_package.xml',
+        'views/sale_order.xml',
     ],
 }
