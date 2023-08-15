@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <template id="template_internal_layout" inherit_id="web.internal_layout">
+        <xpath expr="//div[hasclass('header')]/div" position="replace">
+            <div class="row">
+                <div class="col-4">
+                    <!-- <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y')"/> -->
+                </div>
+                <div class="col-4 text-center">
+                    <span t-esc="company.name"/>
+                    <br/>
+                    <span>CUIT <t t-esc="company.partner_id.l10n_ar_formatted_vat"/></span>
+                    <br/>
+                    <t t-esc="', '.join([item for item in [
+                            ' '.join([item for item in [company.partner_id.street, company.partner_id.street2] if item]),
+                            company.partner_id.city if company.partner_id.city != 'N/A' else '',
+                            '(%s)'%company.partner_id.zip if company.partner_id.zip != 'N/A' else '',
+                            company.partner_id.state_id and company.partner_id.state_id.name,] if item])"/>
+                </div>
+                <div class="col-4 text-right">
+                    <ul class="list-inline">
+                        <li class="list-inline-item">
+                            <span class="page"/>
+                        </li>
+                        <li class="list-inline-item">/</li>
+                        <li class="list-inline-item">
+                            <span class="topage"/>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </xpath>
+    </template>
+
+    <template id="personal_report_header_invoicing">
+        <div class="row">
+            <div class="col-3"/>
+            <div class="header-main col-6">
+                <center>
+                    <h1>SUBDIARIO DE FACTURACION</h1>
+                </center>
+                <br/>
+                <div>
+                    <div class="float-left">
+                        <span>System date from: <t t-esc="date_start"/>
+                        </span>
+                    </div>
+                    <div class="float-right text-left">
+                        <span>System date to: <t t-esc="date_end"/>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3"/>
+        </div>
+    </template>
+
+    <template id="personal_report_header_payments">
+        <div class="row">
+            <div class="col-3"/>
+            <div class="header-main col-6">
+                <center>
+                    <h1>SUBDIARIO DE COBRANZAS</h1>
+                </center>
+                <br/>
+                <div>
+                    <div class="float-left">
+                        <span>System date from: <t t-esc="date_start"/>
+                        </span>
+                    </div>
+                    <div class="float-right text-left">
+                        <span>System date to: <t t-esc="date_end"/>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3"/>
+        </div>
+    </template>
+</odoo>

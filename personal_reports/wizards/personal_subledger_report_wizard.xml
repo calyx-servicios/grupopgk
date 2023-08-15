@@ -1,0 +1,40 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <!-- personal.subledger.report.wizard form view -->
+    <record id="personal_subledger_report_wizard_view_form" model="ir.ui.view">
+        <field name="name">personal.subledger.report.wizard.view.form</field>
+        <field name="model">personal.subledger.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Reports by Date">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                        </group>
+                        <group>
+                            <field name="report_type"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_create_invoicing_report" type="object" string="Create Invoicing Report" class="oe_highlight"/>
+                    <button name="action_create_payments_report" type="object" string="Create Payments Report" class="oe_highlight"/>
+                    <button special="cancel" string="Cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_create_subledger_report" model="ir.actions.act_window">
+        <field name="name">Create Subledger Report</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">personal.subledger.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="personal_subledger_report_wizard_view_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- This Menu Item must have a parent and an action -->
+    <menuitem id="subledger_report_menu_act" name="Create Subledger Report" parent="account.menu_finance_receivables" action="action_create_subledger_report" sequence="50"/>
+</odoo>

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="invoicing_subledger_report">
+        <t t-set="company_id" t-value="company_id"/>
+        <t t-call="web.html_container">
+            <t t-call="web.internal_layout">
+                <style>
+                    table {
+                        font-size: 14px;
+                    }
+                    thead {
+                        display: table-row-group;
+                    }
+                    .header-main {
+                        padding-top: 50px;
+                        padding-bottom: 50px;
+                        margin-bottom: 0 !important;
+                    }
+                    thead tr {
+                        background-color:#4c44af;
+                        color: #ffffff;
+                        font-size: 16px;
+                    }
+                </style>
+                <div class="page">
+                    <t t-call="personal_reports.personal_report_header_invoicing" />
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Emision Date</th>
+                                <th>Invoice Type</th>
+                                <th>Letter/Number</th>
+                                <th>Social Reason</th>
+                                <th style="width : 125px;">CUIT/DNI</th>
+                                <th>Own Net Price</th>
+                                <th>Third Party Net Price</th>
+                                <th>Exempt Amount</th>
+                                <th>IVA</th>
+                                <th>Alicuot</th>
+                                <th>Other Taxes</th>
+                                <th>Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="report_lines" t-as="line">
+                                <td>
+                                    <t t-esc="line['date']"/>
+                                </td>
+                                <td>
+                                    <t t-esc="line['invoice_type']" />
+                                </td>
+                                <td>
+                                    <t t-esc="line['name']" />
+                                </td>
+                                <td>
+                                    <t t-esc="line['razon_social']" />
+                                </td>
+                                <td>
+                                    <t t-esc="line['CUIT/DNI']" />
+                                </td>
+                                <td>
+                                    <t t-esc="line['own_net_price']" t-options='{"widget": "monetary", "display_currency": company_id.currency_id}'/>
+                                </td>
+                                <td>
+                                    <t t-esc="line['third_party_net_amount']" t-options='{"widget": "monetary", "display_currency": company_id.currency_id}'/>
+                                </td>
+                                <td>
+                                    <t t-esc="line['exempt_amount']" t-options='{"widget": "monetary", "display_currency": company_id.currency_id}'/>
+                                </td>
+                                <td>
+                                    <t t-esc="line['IVA']" t-options='{"widget": "monetary", "display_currency": company_id.currency_id}'/>
+                                </td>
+                                <td>
+                                    <t t-esc="line['alicuot']" />
+                                </td>
+                                <td>
+                                    <t t-esc="line['other_taxes']" t-options='{"widget": "monetary", "display_currency": company_id.currency_id}'/>
+                                </td>
+                                <td>
+                                    <t t-esc="line['amount_total']" t-options='{"widget": "monetary", "display_currency": company_id.currency_id}'/>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfooter>
+                            <tr>
+                                <td class="text-right" colspan="5">Total:</td>
+                                <td>
+                                    <t t-esc="sum(line['own_net_price'] for line in report_lines)" t-options='{"widget": "monetary", "display_currency": company_id.currency_id}'/>
+                                </td>
+                                <td>
+                                    <t t-esc="sum(line['third_party_net_amount'] for line in report_lines)" t-options='{"widget": "monetary", "display_currency": company_id.currency_id}'/>
+                                </td>
+                                <td>
+                                    <t t-esc="sum(line['exempt_amount'] for line in report_lines)" t-options='{"widget": "monetary", "display_currency": company_id.currency_id}'/>
+                                </td>
+                                <td>
+                                    <t t-esc="sum(line['IVA'] for line in report_lines)" t-options='{"widget": "monetary", "display_currency": company_id.currency_id}'/>
+                                </td>
+                                <td/>
+                                <td>
+                                    <t t-esc="sum(line['other_taxes'] for line in report_lines)" t-options='{"widget": "monetary", "display_currency": company_id.currency_id}'/>
+                                </td>
+                                <td>
+                                    <t t-esc="sum(line['amount_total'] for line in report_lines)" t-options='{"widget": "monetary", "display_currency": company_id.currency_id}'/>
+                                </td>
+                            </tr>
+                        </tfooter>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

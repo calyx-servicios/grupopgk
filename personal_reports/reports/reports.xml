@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+	<report 
+		string="Invoicing subledger PDF" 
+		id="report_invoicing_subledger_report_pdf" 
+		model="personal.subledger.report.wizard" 
+		report_type="qweb-pdf"
+		name="personal_reports.invoicing_subledger_report" 
+		file="personal_reports.invoicing_subledger_report"
+		print_report_name="'Invoicing_subledger_%s'% object.get_report_date()"
+	/>
+    <report 
+		string="Invoicing subledger Text" 
+		id="report_invoicing_subledger_report_txt" 
+		model="personal.subledger.report.wizard" 
+		report_type="qweb-text"
+		name="personal_reports.invoicing_subledger_report_txt" 
+		file="personal_reports.invoicing_subledger_report_txt"
+        print_report_name="'Invoicing_subledger_%s'% object.get_report_date()"
+	/>
+    <report 
+		string="Payment subledger PDF" 
+		id="report_payment_subledger_report_pdf" 
+		model="personal.subledger.report.wizard" 
+		report_type="qweb-pdf"
+		name="personal_reports.payment_subledger_report" 
+		file="personal_reports.payment_subledger_report"
+        print_report_name="'Payments_subledger_%s'% object.get_report_date()"
+	/>
+    <report 
+		string="Payment subledger Text" 
+		id="report_payment_subledger_report_txt" 
+		model="personal.subledger.report.wizard" 
+		report_type="qweb-text"
+		name="personal_reports.payment_subledger_report_txt" 
+		file="personal_reports.payment_subledger_report_txt"
+        print_report_name="'Payments_subledger_%s'% object.get_report_date()"
+	/>
+
+    <record id="paper_format_personal_pay_custom" model="report.paperformat">
+        <field name="name">Report Personal Pay Papper</field>
+        <field name="default" eval="True" />
+        <field name="format">Legal</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">15</field>
+        <field name="margin_bottom">5</field>
+        <field name="margin_left">5</field>
+        <field name="margin_right">5</field>
+        <field name="header_line" eval="False" />
+        <field name="header_spacing">15</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="personal_reports.report_invoicing_subledger_report_pdf" model="ir.actions.report">
+        <field name="paperformat_id" ref="personal_reports.paper_format_personal_pay_custom"/>
+    </record>
+
+	<record id="personal_reports.report_payment_subledger_report_pdf" model="ir.actions.report">
+        <field name="paperformat_id" ref="personal_reports.paper_format_personal_pay_custom"/>
+    </record>
+</odoo>

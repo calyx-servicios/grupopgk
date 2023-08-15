@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <template id="invoicing_subledger_report_txt">Fecha Emision,Tipo de comprobante,Letra/N° comprob,Razón Social,CUIT/DNI,Monto Neto Propio,Monto Neto Terceros,Monto Exento,IVA,Alicuota,Otros Impuestos,Monto Total
+<t t-foreach="report_lines" t-as="line"><t t-esc="line['date']"/>,<t t-esc="line['invoice_type']"/>,<t t-esc="line['name']"/>,<t t-esc="line['razon_social']"/>,<t t-esc="line['CUIT/DNI']"/>,<t t-esc="'%.2f' % line['own_net_price']"/>,<t t-esc="'%.2f' % line['third_party_net_amount']"/>,<t t-esc="'%.2f' % line['exempt_amount']"/>,<t t-esc="'%.2f' % line['IVA']"/>,<t t-esc="line['alicuot']"/>,<t t-esc="'%.2f' % line['other_taxes']"/>,<t t-esc="'%.2f' % line['amount_total']"/>
+</t></template>
+</odoo>
