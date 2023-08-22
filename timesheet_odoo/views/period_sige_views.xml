@@ -4,7 +4,7 @@
 		<field name="name">period.sige.form</field>
         <field name="model">period.sige</field>
         <field name="arch" type="xml">
-        	<form>
+        	<form duplicate="false" >
         		<header>
         			<field name="state" widget="statusbar"/>
         		</header>
@@ -40,7 +40,7 @@
 		            	</div>
         			</div>
         			<br/>
-        			<div class="row">
+        			<div class="row" invisible="1">
         				<div class="col" style="text-align: center;">
 			            	<i class="fa fa-times" style="font-size:x-large; color:red"/><br/>
 			            	<span>PENDIENTES DE AVANCE</span><br/>
@@ -53,11 +53,20 @@
 		            	</div>
         			</div>
         			<br/>
+                    <field name="user_id" invisible="1" readonly="1"/>
+                    <field name="has_timesheet_sige_admin" invisible="1" readonly="1"/>
         			<div style="text-align: center;">
         				<button name="close_period" string="Close Period" class="oe_highlight" type="object"
-        					attrs="{'invisible': [('state', '!=', 'open')]}" style="width:400px">
+        					attrs="{'invisible': ['|', ('state', '!=', 'open'), ('pending_periods', '>', 0), ('has_timesheet_sige_admin', '=', False)]}" style="width:400px">
         					<i class="fa fa-lock" style="padding-left: 5px;"/>
         				</button>
+        			</div>
+                    <br/>
+                    <div style="text-align: center;">
+                        <button name="open_period" string="Open Period" class="oe_highlight" type="object"
+                            attrs="{'invisible': ['|', ('state', '!=', 'close'), ('has_timesheet_sige_admin', '=', False)]}" style="width:400px">
+                            <i class="fa fa-unlock" style="padding-left: 5px;"/>
+                        </button>
         			</div>
         			<br/>
         			<field name="employee_ids" readonly="1">
@@ -71,26 +80,26 @@
         	</form>
         </field>
     </record>
-    
+
     <record id="view_period_sige_tree" model="ir.ui.view">
     	<field name="name">period.sige.tree</field>
         <field name="model">period.sige</field>
         <field name="arch" type="xml">
-            <tree decoration-success="state=='open'" decoration-danger="state=='close'">
+            <tree duplicate="false" decoration-success="state=='open'" decoration-danger="state=='close'">
             	<field name="name"/>
             	<field name="state"/>
             </tree>
         </field>
     </record>
-    
+
     <record model="ir.actions.act_window" id="period_sige_action_window">
         <field name="name">Period Sige</field>
         <field name="res_model">period.sige</field>
         <field name="view_mode">tree,form</field>
     </record>
-    
+
     <menuitem name="Period" id="period_sige"
     	parent="hr_timesheet.timesheet_menu_root" action="period_sige_action_window"
         sequence="20"/>
-    
+
 </odoo>
