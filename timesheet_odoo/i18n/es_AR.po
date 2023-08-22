@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 15.0\n"
+"Project-Id-Version: Odoo Server 15.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-01-30 14:03+0000\n"
-"PO-Revision-Date: 2023-01-30 14:03+0000\n"
+"POT-Creation-Date: 2023-07-18 14:32+0000\n"
+"PO-Revision-Date: 2023-07-18 14:32+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -18,7 +18,7 @@ msgstr ""
 #. module: timesheet_odoo
 #: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
 msgid "%<br/>"
-msgstr "%<br/>"
+msgstr ""
 
 #. module: timesheet_odoo
 #: model:mail.template,body_html:timesheet_odoo.email_template_charge_sige
@@ -72,9 +72,14 @@ msgid ""
 msgstr ""
 
 #. module: timesheet_odoo
+#: model:res.groups,name:timesheet_odoo.group_timesheet_sige_admin
+msgid "Administrator"
+msgstr "Administrador"
+
+#. module: timesheet_odoo
 #: model:ir.model,name:timesheet_odoo.model_account_analytic_line
 msgid "Analytic Line"
-msgstr "Línea analítica"
+msgstr "Línea Analítica"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,help:timesheet_odoo.field_timesheet_sige__working_day
@@ -120,6 +125,11 @@ msgid "Created on"
 msgstr "Creado en"
 
 #. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__user_id
+msgid "Current User"
+msgstr "Usuario actual"
+
+#. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__days_to_register
 msgid "Days to register"
 msgstr "Días a registrar"
@@ -135,6 +145,14 @@ msgstr "Fecha límite para el período alcanzado!"
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__display_name
 msgid "Display Name"
 msgstr "Nombre para mostrar"
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/timesheet_sige.py:0
+#, python-format
+msgid "Duplicate timesheet entry found for the same project and employee!"
+msgstr ""
+"¡Se encontró una entrada de hoja de horas duplicada para el mismo proyecto y"
+" empleado!"
 
 #. module: timesheet_odoo
 #: model:ir.model,name:timesheet_odoo.model_hr_employee
@@ -159,9 +177,20 @@ msgid "End of Period"
 msgstr "Fin"
 
 #. module: timesheet_odoo
+#: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__has_timesheet_sige_admin
+msgid "Has administrator sige?"
+msgstr "¿Tiene administrador sige?"
+
+#. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__holidays
 msgid "Holidays"
 msgstr "Feriados"
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/account_analytic_line.py:0
+#, python-format
+msgid "Hours should be a non-zero multiple of 0.5."
+msgstr "Las horas deben ser un múltiplo de 0,5 y mayor de cero."
 
 #. module: timesheet_odoo
 #: code:addons/timesheet_odoo/models/period_sige.py:0
@@ -195,10 +224,24 @@ msgid "Last Updated on"
 msgstr "Última actualización el"
 
 #. module: timesheet_odoo
+#: model:ir.actions.server,name:timesheet_odoo.timesheet_odoo_cron_ir_actions_server
+#: model:ir.cron,cron_name:timesheet_odoo.timesheet_odoo_cron
+#: model:ir.cron,name:timesheet_odoo.timesheet_odoo_cron
+msgid "Monthly Creation Record Sige"
+msgstr "Registro de creación mensual Sige"
+
+#. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__name
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__name
 msgid "Name"
 msgstr "Periódo"
+
+#. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/timesheet_sige.py:0
+#: model:ir.model.constraint,message:timesheet_odoo.constraint_timesheet_sige_unique_period_employee
+#, python-format
+msgid "Only one record allowed per period and employee."
+msgstr "Solo se permite un registro por período y empleado."
 
 #. module: timesheet_odoo
 #: model:ir.model.fields.selection,name:timesheet_odoo.selection__period_sige__state__open
@@ -214,7 +257,7 @@ msgstr "Socio"
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__pending_hours
 msgid "Pending Hours"
-msgstr "HS Pendientes"
+msgstr "Horas pendientes"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__period_id
@@ -227,6 +270,11 @@ msgstr "Periódo"
 #: model:ir.actions.act_window,name:timesheet_odoo.period_sige_action_window
 msgid "Period Sige"
 msgstr "Periodo Sige"
+
+#. module: timesheet_odoo
+#: model:ir.model.constraint,message:timesheet_odoo.constraint_period_sige_unique_name
+msgid "Period must be unique!"
+msgstr "¡El período debe ser único!"
 
 #. module: timesheet_odoo
 #: model:ir.model,name:timesheet_odoo.model_period_sige
@@ -252,7 +300,7 @@ msgstr "Recordatorio para cargar Sige"
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__required_hours
 msgid "Required Hours"
-msgstr "HS Requeridas"
+msgstr "Horas requeridas"
 
 #. module: timesheet_odoo
 #: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
@@ -261,13 +309,9 @@ msgstr "Enviar Periódo"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__sent_periods
-msgid "Sent"
-msgstr "ENVIADOS"
-
-#. module: timesheet_odoo
 #: model:ir.model.fields.selection,name:timesheet_odoo.selection__timesheet_sige__state__sent
 msgid "Sent"
-msgstr "Enviado"
+msgstr "ENVIADOS"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__start_of_period
@@ -287,7 +331,20 @@ msgid "Tasks"
 msgstr "Tareas"
 
 #. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/period_sige.py:0
+#, python-format
+msgid "The period is already closed"
+msgstr "¡Este período ya está cerrado!"
+
+#. module: timesheet_odoo
 #: model:res.groups,comment:timesheet_odoo.group_timesheet_sige_manager
+msgid ""
+"The user will have access to all timesheets but will not be able to delete "
+"them."
+msgstr "El usuario tendrá acceso a todos los parte de horas."
+
+#. module: timesheet_odoo
+#: model:res.groups,comment:timesheet_odoo.group_timesheet_sige_admin
 msgid "The user will have access to the all timesheets."
 msgstr "El usuario tendrá acceso a todos los parte de horas."
 
@@ -299,8 +356,8 @@ msgstr "El usuario tendrá acceso al parte de horas propias."
 #. module: timesheet_odoo
 #: code:addons/timesheet_odoo/models/period_sige.py:0
 #, python-format
-msgid "There can only be one open period at a time!"
-msgstr "Solo puede haber un período abierto a la vez!"
+msgid "Only sige admin can open 2 period at a time."
+msgstr "Solo el administrador de Sige puede abrir 2 periodos a la vez."
 
 #. module: timesheet_odoo
 #: code:addons/timesheet_odoo/models/hr_employee.py:0
@@ -323,7 +380,7 @@ msgstr "Parte de horas"
 #. module: timesheet_odoo
 #: model:ir.model,name:timesheet_odoo.model_timesheet_sige
 msgid "Timesheet Odoo"
-msgstr "Parte de horas"
+msgstr "Parte de horas Odoo"
 
 #. module: timesheet_odoo
 #: model:ir.actions.act_window,name:timesheet_odoo.timessheet_sige_action_window

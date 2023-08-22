@@ -1,4 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_timesheet_sige_user,timesheet.sige.user,model_timesheet_sige,group_timesheet_sige_user,1,1,0,0
 access_timesheet_sige_manager,timesheet.sige.manager,model_timesheet_sige,group_timesheet_sige_manager,1,1,1,1
-access_period_sige,period.sige.user,model_period_sige,group_timesheet_sige_manager,1,1,1,1
+access_timesheet_sige_manager,timesheet.sige.manager,model_timesheet_sige,group_timesheet_sige_admin,1,1,1,1
+access_period_sige,period.sige.user,model_period_sige,group_timesheet_sige_manager,1,1,1,0
+access_period_sige_admin,period.sige.admin,model_period_sige,group_timesheet_sige_admin,1,1,1,1
