@@ -1,0 +1,141 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* merge_projects
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-08-31 13:58+0000\n"
+"PO-Revision-Date: 2023-08-31 13:58+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__analytic_account_id
+msgid "Account Analytic Mother"
+msgstr "Cuenta analitica madre"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__is_same_partner
+msgid "Are they from the same customer?"
+msgstr "¿Son del mismo cliente?"
+
+#. module: merge_projects
+#: code:addons/merge_projects/wizards/merge_project_wizard.py:0
+#, python-format
+msgid "Cannot merge projects for different clients"
+msgstr "No es posible fusionar projectos de diferentes clientes"
+
+#. module: merge_projects
+#: model_terms:ir.ui.view,arch_db:merge_projects.merge_project_wizard_form
+msgid "Close"
+msgstr "Cerrar"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__company_id
+msgid "Company"
+msgstr "Compañia"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__create_uid
+msgid "Created by"
+msgstr "Creado por"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__create_date
+msgid "Created on"
+msgstr "Creado el"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__partner_id
+msgid "Customer"
+msgstr "Cliente"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__display_name
+msgid "Display Name"
+msgstr "Mostrar nombre"
+
+#. module: merge_projects
+#: code:addons/merge_projects/wizards/merge_project_wizard.py:0
+#, python-format
+msgid "Error on merge values: {}"
+msgstr "Error al fusionar valores: {}"
+
+#. module: merge_projects
+#: code:addons/merge_projects/wizards/merge_project_wizard.py:0
+#, python-format
+msgid "Error: {}"
+msgstr "Error: {}"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__id
+msgid "ID"
+msgstr ""
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard____last_update
+msgid "Last Modified on"
+msgstr "Última modificación el"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__write_uid
+msgid "Last Updated by"
+msgstr "Última actualización por"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__write_date
+msgid "Last Updated on"
+msgstr Última actualización el""
+
+#. module: merge_projects
+#: model_terms:ir.ui.view,arch_db:merge_projects.merge_project_wizard_form
+msgid "Merge"
+msgstr "Unir"
+
+#. module: merge_projects
+#: code:addons/merge_projects/models/project_project.py:0
+#: model:ir.actions.server,name:merge_projects.merge_project_action
+#, python-format
+msgid "Merge Projects"
+msgstr "Fusionar proyectos "
+
+#. module: merge_projects
+#: model:ir.model,name:merge_projects.model_merge_project_wizard
+msgid "Merge Projects Wizard"
+msgstr "Ventana para Fusionar proyectos"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__new_project_name
+msgid "New name for project"
+msgstr "Nuevo nombre para el proyecto"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__partner
+msgid "Partner"
+msgstr "Socio"
+
+#. module: merge_projects
+#: model:ir.model,name:merge_projects.model_project_project
+msgid "Project"
+msgstr "Proyecto"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__project_name
+msgid "Project name"
+msgstr "Nombre del proyecto"
+
+#. module: merge_projects
+#: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__projects_ids
+msgid "Projects"
+msgstr "Proyectos"
+
+#. module: merge_projects
+#: model_terms:ir.ui.view,arch_db:merge_projects.merge_project_wizard_form
+msgid "secondary Data"
+msgstr "Datos secundarios"
