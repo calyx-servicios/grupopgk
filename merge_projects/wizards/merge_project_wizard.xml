@@ -1,0 +1,35 @@
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="merge_projects.merge_project_wizard_form">
+            <field name="name">Update Massive</field>
+            <field name="model">merge.project.wizard</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form>
+                    <group name="main_data" String="Base Data">
+                        <field name="projects_ids" widget="many2many_tags" />
+                        <field name="is_same_partner" readonly="1" />
+                        <field name="partner_id" readonly="1" />
+                    </group>
+                    <group name="new_info" string="secondary Data">
+                        <group>
+                            <field name="partner" domain="[('is_partner', '=', True)]"/>
+                            <field name="company_id"/>
+                        </group>
+                        <group>
+                            <field name="analytic_account_id" domain="[('show_on_sale_order', '=', True)]" required="1"/>
+                            <field name="project_name" required="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="new_project_name" />
+                    </group>
+                    <footer>
+                        <button name="merge" string="Merge" type="object" class="oe_highlight" icon="fa-random" attrs="{ 'readonly': [('projects_ids', '=', [])] }"/>
+                        <button string="Close" class="btn btn-default" special="cancel" />
+                    </footer>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>
