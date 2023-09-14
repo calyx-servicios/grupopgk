@@ -25,16 +25,32 @@ class MergeProjectWizard(models.TransientModel):
     @api.depends('projects_ids')
     def _compute_is_same_partner(self):
         customers = self.projects_ids.mapped('partner_id')
-        if len(customers) > 1 or len(customers) == 0:
-            self.is_same_partner = False
-        else:
+        if len(customers) == 1:
             self.partner_id = customers[0].id
             self.is_same_partner = True
+        else:
+            mother_contacts =  self.get_parent_contact(customers)
+            if len(mother_contacts) == 1:
+                self.partner_id = mother_contacts[0].id
+                self.is_same_partner = True
+            else:   
+                self.is_same_partner = False
+
+    def get_parent_contact(self, contacts):
+        mother_contacts = self.env['res.partner']
+        for contact in contacts:
+            if not contact.parent_id:
+                if not contact.id in mother_contacts.ids:
+                    mother_contacts += contact
+            else:
+                if not contact.parent_id.id in mother_contacts.ids:
+                    mother_contacts += contact.parent_id
+        return mother_contacts
 
     # Button Action Wizard
     def merge(self):
         if not self.is_same_partner:
-            raise UserError(_('Cannot merge projects for different clients'))
+            raise UserError(_('You cannot merge projects for different clients or parent contacts'))
 
         try:
             new_project = self.create_project()
