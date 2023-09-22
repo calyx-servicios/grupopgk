@@ -28,8 +28,8 @@ msgstr "¿Son del mismo cliente?"
 #. module: merge_projects
 #: code:addons/merge_projects/wizards/merge_project_wizard.py:0
 #, python-format
-msgid "Cannot merge projects for different clients"
-msgstr "No es posible fusionar projectos de diferentes clientes"
+msgid "You cannot merge projects for different clients or parent contacts"
+msgstr "No se pueden fusionar proyectos para diferentes clientes o contactos principales"
 
 #. module: merge_projects
 #: model_terms:ir.ui.view,arch_db:merge_projects.merge_project_wizard_form
@@ -91,7 +91,7 @@ msgstr "Última actualización por"
 #. module: merge_projects
 #: model:ir.model.fields,field_description:merge_projects.field_merge_project_wizard__write_date
 msgid "Last Updated on"
-msgstr Última actualización el""
+msgstr "Última actualización el"
 
 #. module: merge_projects
 #: model_terms:ir.ui.view,arch_db:merge_projects.merge_project_wizard_form
@@ -103,7 +103,7 @@ msgstr "Unir"
 #: model:ir.actions.server,name:merge_projects.merge_project_action
 #, python-format
 msgid "Merge Projects"
-msgstr "Fusionar proyectos "
+msgstr "Fusionar proyectos"
 
 #. module: merge_projects
 #: model:ir.model,name:merge_projects.model_merge_project_wizard
