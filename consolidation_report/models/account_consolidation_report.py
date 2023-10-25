@@ -254,6 +254,19 @@ class AccountConsolidationReport(models.Model):
         for analytic_line in analytic_lines:
             analytic_line.update_currency_id()
 
+            current_account = analytic_line.account_id
+            sector_account = None
+
+            while current_account:
+                if current_account.is_sector_group:
+                    sector_account = current_account.id
+                    break
+                current_account = current_account.parent_id
+
+            if sector_account:
+                analytic_line.sector_account_id = sector_account
+            
+
             consolidation_period = self.consolidation_period.consolidation_companies.filtered(lambda x: x.company_id == analytic_line.move_id.company_id)
             currency_origin = analytic_line.currency_id.id
             new_currency = consolidation_period.new_currency.id if consolidation_period else analytic_line.currency_id.id
