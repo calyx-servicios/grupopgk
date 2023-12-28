@@ -21,10 +21,14 @@ class PeriodSige(models.Model):
         ("close","Close")
     ], "State", index=True, default="open")
 
-    _sql_constraints = [
-        ('unique_name', 'unique(name)', 'Period must be unique!')
-    ]
+    @api.constrains("start_of_period")
+    def _unique_period_per_year(self):
+        for record in self:
+            match = self.env["period.sige"].search([("start_of_period", "=", record.start_of_period)])
 
+            if len(match) > 1:
+                raise ValidationError(_("Period must be unique!"))
+            
     @api.depends('user_id')
     def _compute_has_timesheet_sige_admin(self):
         for record in self:
@@ -56,7 +60,11 @@ class PeriodSige(models.Model):
     @api.depends("start_of_period")
     def _compute_employee_ids(self):
         timesheet_sige = self.env['timesheet.sige'].search([('period_id','=',self.id),('state','=','open')])
-        employees = timesheet_sige.mapped("employee_id")
+        employees = []
+        if not timesheet_sige:
+            employees = self.env['hr.employee'].search([('active', '=', True)])
+        else:
+            employees = timesheet_sige.mapped("employee_id")
         self.employee_ids = [(6, 0, employees.ids)]
 
     @api.depends("start_of_period")
@@ -80,13 +88,14 @@ class PeriodSige(models.Model):
 
     @api.model
     def create(self, vals):
-        period = self.env["period.sige"].search([("state","=","open")])
-        if not period:
+        open_periods = self.env["period.sige"].search([("state", "=", "open")])
+
+        if len(open_periods) < 2:
             return super(PeriodSige, self).create(vals)
         else:
-            timesheet_admin =  self.env.user.has_group('timesheet_odoo.group_timesheet_sige_admin')
-            if not timesheet_admin:
-                raise ValidationError(_("Only sige admin can open 2 period at a time."))
+            timesheet_admin = self.env.user.has_group('timesheet_odoo.group_timesheet_sige_admin')
+            if not timesheet_admin or len(open_periods) >= 2:
+                raise ValidationError(_("Only sige admin can open 2 periods at a time."))
             return super(PeriodSige, self).create(vals)
 
     def open_period(self):
@@ -96,10 +105,15 @@ class PeriodSige(models.Model):
         self.sudo().write({'state': 'open'})
 
     def close_period(self):
+
+        # Objects
         line_obj = self.env["account.analytic.line"]
         ts_obj = self.env["timesheet.sige"]
+
+        # Validate if not already close
         if self.state == 'close':
             raise UserError(_('The period is already closed'))
+
         hours_to_allocate = self.env.ref("timesheet_odoo.hours_to_allocate")
         for employee in self.employee_ids:
             ts_employee = ts_obj.search([('period_id','=',self.id),("employee_id","=", employee.id)])
@@ -121,10 +135,13 @@ class PeriodSige(models.Model):
         timesheet.write({'state':'close'})
         self.write({'state':'close'})
         date_new_period = self.start_of_period + relativedelta(months=1)
-        vals = {
-            "start_of_period": date_new_period,
-            "name": date_new_period.strftime("%B %Y")
-        }
-        new_period_id = self.create(vals)
-        ts_obj.create_period_sige(new_period_id)
+        next_perdiod = self.env["period.sige"].search([("start_of_period", "=", date_new_period)])
+
+        if not next_perdiod:
+            vals = {
+                "start_of_period": date_new_period,
+                "name": date_new_period.strftime("%B %Y")
+            }
+            new_period_id = self.create(vals)
+            ts_obj.create_period_sige(new_period_id)
 
