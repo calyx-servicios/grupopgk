@@ -110,3 +110,7 @@
         path = submodules/OCA/mis-builder
         url = https://github.com/OCA/mis-builder.git
         branch = 15.0
+[submodule "submodules/calyx-servicios/l10n-ar"]
+	path = submodules/calyx-servicios/l10n-ar
+	url = git@github.com:calyx-servicios/l10n-ar.git
+	branch = 15.0
