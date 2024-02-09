@@ -110,3 +110,7 @@
 	path = submodules/calyx-servicios/l10n-ar
 	url = git@github.com:calyx-servicios/l10n-ar.git
 	branch = 15.0
+[submodule "submodules/calyx-servicios/account-invoicing"]
+	path = submodules/calyx-servicios/account-invoicing
+	url = git@github.com:calyx-servicios/account-invoicing.git
+	branch = 15.0
