@@ -98,6 +98,15 @@
         <field name="view_mode">tree,form</field>
     </record>
 
+	<record id="action_server_custom_delete" model="ir.actions.server">
+		<field name="name">Custom Delete Action</field>
+		<field name="model_id" ref="timesheet_odoo.model_period_sige"/>
+		<field name="binding_model_id" ref="timesheet_odoo.model_period_sige"/>
+		<field name="binding_view_types">tree,form,list</field>
+		<field name="state">code</field>
+		<field name="code">action = records.custom_delete_records()</field>
+	</record>
+	
     <menuitem name="Period" id="period_sige"
     	parent="hr_timesheet.timesheet_menu_root" action="period_sige_action_window"
         sequence="20"/>

@@ -1,6 +1,7 @@
 from odoo import fields, models, api, _
 from datetime import date
 from dateutil.relativedelta import relativedelta
+from dateutil.parser import parse
 from odoo.exceptions import ValidationError, UserError
 
 class PeriodSige(models.Model):
@@ -88,15 +89,39 @@ class PeriodSige(models.Model):
 
     @api.model
     def create(self, vals):
+        ts_obj = self.env["timesheet.sige"]
         open_periods = self.env["period.sige"].search([("state", "=", "open")])
 
         if len(open_periods) < 2:
-            return super(PeriodSige, self).create(vals)
+            new_period = super(PeriodSige, self).create(vals)
+            start_of_period_str = vals.get('start_of_period')
+            start_of_period = parse(start_of_period_str)
+            date_new_period = start_of_period + relativedelta(months=1)
+            next_period = self.env["period.sige"].search([("start_of_period", "=", date_new_period)])
+
+            if not next_period:
+               ts_obj.create_period_sige(new_period)  # Crear timesheets para el nuevo periodo
+            else:
+                existing_period_name = next_period.name
+                raise ValueError(f"¡Error! El periodo siguiente '{existing_period_name}' ya existe.")
+            return new_period
         else:
             timesheet_admin = self.env.user.has_group('timesheet_odoo.group_timesheet_sige_admin')
             if not timesheet_admin or len(open_periods) >= 2:
                 raise ValidationError(_("Only sige admin can open 2 periods at a time."))
-            return super(PeriodSige, self).create(vals)
+
+            new_period = super(PeriodSige, self).create(vals)
+            start_of_period_str = vals.get('start_of_period')
+            start_of_period = parse(start_of_period_str)
+            date_new_period = start_of_period + relativedelta(months=1)
+            next_period = self.env["period.sige"].search([("start_of_period", "=", date_new_period)])
+
+            if not next_period:
+                ts_obj.create_period_sige(new_period)  # Crear timesheets para el nuevo periodo
+            else:
+                existing_period_name = next_period.name
+                raise ValueError(f"¡Error! El periodo siguiente '{existing_period_name}' ya existe.")
+            return new_period
 
     def open_period(self):
         ts_obj = self.env["timesheet.sige"]
@@ -139,9 +164,24 @@ class PeriodSige(models.Model):
 
         if not next_perdiod:
             vals = {
-                "start_of_period": date_new_period,
+                "start_of_period": date_new_period.strftime('%Y-%m-%d'),
                 "name": date_new_period.strftime("%B %Y")
             }
             new_period_id = self.create(vals)
             ts_obj.create_period_sige(new_period_id)
+
+    @api.model
+    def custom_delete_records(self):
+        selected_periods = self.env['period.sige'].browse(self.ids)
+        for period in selected_periods:
+            if period.state == 'close':
+                # Eliminar los registros relacionados en timesheet.sige
+                timesheets_to_delete = self.env['timesheet.sige'].search([('period_id', '=', period.id)])
+                timesheets_to_delete.unlink()
+
+                # Eliminar el periodo
+                period.unlink()
+            else:
+                # Mostrar un mensaje indicando que no se puede eliminar un periodo abierto
+                raise UserError(_("No se puede eliminar el periodo '%s' porque está abierto.") % (period.name))
 

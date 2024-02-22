@@ -4,11 +4,11 @@
        This module creates a timesheet
     """,
     "author": "Calyx Servicios S.A.",
-    "maintainers": ["carlamiquetan", "PerezGabriela","Zamora, Javier"],
+    "maintainers": ["carlamiquetan", "PerezGabriela","Zamora, Javier", "leandro090685"],
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Timesheet",
-    "version": "15.0.7.0.0",
+    "version": "15.0.8.0.0",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
