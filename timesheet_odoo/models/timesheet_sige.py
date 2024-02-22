@@ -156,3 +156,19 @@ class TimesheetSige(models.Model):
                     'end_of_period': end_of_period
                 })
 
+    def delete_timesheet_sige(self):
+
+        # Recupera los registros seleccionados en la vista tree
+        selected_records= self.env["timesheet.sige"].browse(self.ids)
+
+        # Elimina los registros seleccionados
+        for record in selected_records:
+            record.unlink()
+    
+    @api.model
+    def search(self, args, offset=0, limit=None, order=None, count=False):
+        # Filtra los registros para mostrar solo aquellos que tengan un period.sige asociado y exista en la base de datos
+        if self.env.context.get('filter_by_period', False):
+            period_ids = self.env['period.sige'].search([]).ids
+            args += [('period_id', 'in', period_ids)]
+        return super(TimesheetSige, self).search(args, offset=offset, limit=limit, order=order, count=count)

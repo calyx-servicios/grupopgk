@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 15.0+e\n"
+"Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-12-27 05:35+0000\n"
-"PO-Revision-Date: 2023-12-27 05:35+0000\n"
+"POT-Creation-Date: 2024-02-22 18:50+0000\n"
+"PO-Revision-Date: 2024-02-22 18:50+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -18,7 +18,7 @@ msgstr ""
 #. module: timesheet_odoo
 #: model_terms:ir.ui.view,arch_db:timesheet_odoo.view_timessheet_sige_form
 msgid "%<br/>"
-msgstr "%<br/>"
+msgstr ""
 
 #. module: timesheet_odoo
 #: model:mail.template,body_html:timesheet_odoo.email_template_charge_sige
@@ -130,6 +130,11 @@ msgid "Current User"
 msgstr "Usuario actual"
 
 #. module: timesheet_odoo
+#: model:ir.actions.server,name:timesheet_odoo.action_server_custom_delete
+msgid "Custom Delete Action"
+msgstr "Eliminar Periodo y Parte de Horas"
+
+#. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_timesheet_sige__days_to_register
 msgid "Days to register"
 msgstr "Días a registrar"
@@ -139,6 +144,11 @@ msgstr "Días a registrar"
 #, python-format
 msgid "Deadline for period reached!"
 msgstr "Fecha límite para el período alcanzado!"
+
+#. module: timesheet_odoo
+#: model:ir.actions.server,name:timesheet_odoo.action_delete_timesheet_sige
+msgid "Delete"
+msgstr "Eliminar Parte de horas"
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__display_name
@@ -234,7 +244,14 @@ msgid "Name"
 msgstr "Periódo"
 
 #. module: timesheet_odoo
+#: code:addons/timesheet_odoo/models/period_sige.py:0
+#, python-format
+msgid "No se puede eliminar el periodo '%s' porque está abierto."
+msgstr ""
+
+#. module: timesheet_odoo
 #: code:addons/timesheet_odoo/models/timesheet_sige.py:0
+#: model:ir.model.constraint,message:timesheet_odoo.constraint_timesheet_sige_unique_period_employee
 #, python-format
 msgid "Only one record allowed per period and employee."
 msgstr "Solo se permite un registro por período y empleado."
@@ -320,11 +337,6 @@ msgstr "Enviar Periódo"
 #: model:ir.model.fields.selection,name:timesheet_odoo.selection__timesheet_sige__state__sent
 msgid "Sent"
 msgstr "ENVIADOS"
-
-#. module: timesheet_odoo
-#: model:ir.model.constraint,message:timesheet_odoo.constraint_timesheet_sige_unique_period_employee
-msgid "Solo se permite un registro por período y empleado."
-msgstr ""
 
 #. module: timesheet_odoo
 #: model:ir.model.fields,field_description:timesheet_odoo.field_period_sige__start_of_period
