@@ -108,8 +108,7 @@ class TimesheetSige(models.Model):
     @api.depends("days_to_register")
     def _compute_holidays(self):
         holidays = self.env['calendar.holidays.timesheets'].search([
-            "&", ('start_date', '<=', self.end_of_period),('start_date','>=', self.start_of_period),
-            ('company_id', '=', self.company_id.id)
+            "&", ('start_date', '<=', self.end_of_period),('start_date','>=', self.start_of_period)
         ])
         total_holidays = 0
         holiday = holidays.filtered(lambda h: h.type == 'holiday')
