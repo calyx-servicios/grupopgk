@@ -124,6 +124,8 @@ class PeriodSige(models.Model):
             return new_period
 
     def open_period(self):
+        if self.state == 'close':
+            raise UserError(_('You cannot reopen a closed period'))
         ts_obj = self.env["timesheet.sige"]
         timesheet = ts_obj.search([('period_id','=',self.id)])
         timesheet.sudo().write({'state':'open'})
@@ -140,9 +142,12 @@ class PeriodSige(models.Model):
             raise UserError(_('The period is already closed'))
 
         hours_to_allocate = self.env.ref("timesheet_odoo.hours_to_allocate")
+        message = ["NO SE PUEDE CERRAR PERIODO, FALTA CARGAR HORAS DE:"]
         for employee in self.employee_ids:
             ts_employee = ts_obj.search([('period_id','=',self.id),("employee_id","=", employee.id)])
-            if ts_employee.pending_hours != 0:
+            if ts_employee.pending_hours > 0:
+                message.append(employee.name)
+
                 timesheet_id = line_obj.search([('timesheet_id', '=', ts_employee.id)])
                 values = {
                     "project_id": hours_to_allocate.id,
@@ -155,6 +160,8 @@ class PeriodSige(models.Model):
                     timesheet_id.sudo().write(values)
                 else:
                     line_obj.create(values)
+        if not message == []:
+            raise UserError("\n".join(message))
 
         timesheet = ts_obj.search([('period_id','=',self.id)])
         timesheet.write({'state':'close'})
@@ -174,14 +181,11 @@ class PeriodSige(models.Model):
     def custom_delete_records(self):
         selected_periods = self.env['period.sige'].browse(self.ids)
         for period in selected_periods:
-            if period.state == 'close':
-                # Eliminar los registros relacionados en timesheet.sige
-                timesheets_to_delete = self.env['timesheet.sige'].search([('period_id', '=', period.id)])
-                timesheets_to_delete.unlink()
+            # Eliminar los registros relacionados en timesheet.sige
+            timesheets_to_delete = self.env['timesheet.sige'].search([('period_id', '=', period.id)])
+            timesheets_to_delete.unlink()
 
-                # Eliminar el periodo
-                period.unlink()
-            else:
-                # Mostrar un mensaje indicando que no se puede eliminar un periodo abierto
-                raise UserError(_("No se puede eliminar el periodo '%s' porque está abierto.") % (period.name))
+            # Eliminar el periodo
+            period.unlink()
+            
 

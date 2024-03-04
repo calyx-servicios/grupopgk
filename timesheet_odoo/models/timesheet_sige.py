@@ -130,12 +130,12 @@ class TimesheetSige(models.Model):
         })
 
     def recovery_period(self):
-        if date.today() <= self.period_id.end_of_period:
-            self.write({
-                'state': 'open'
-            })
-        else:
-            raise ValidationError(_("Deadline for period reached!"))
+        #if date.today() <= self.period_id.end_of_period:
+        self.write({
+            'state': 'open'
+        })
+        #else:
+        #    raise ValidationError(_("Deadline for period reached!"))
 
     def create_period_sige(self, period):
         employees = self.env['hr.employee'].search([
