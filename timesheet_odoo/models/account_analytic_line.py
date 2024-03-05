@@ -13,3 +13,7 @@ class AccountAnalyticLine(models.Model):
             if record.timesheet_id:
                 if record.unit_amount <= 0 or record.unit_amount % 0.5 != 0:
                     raise ValidationError(_("Hours should be a non-zero multiple of 0.5."))
+
+    def _domain_project_id(self):
+        domain = [('allow_timesheets', '=', True)]
+        return domain
