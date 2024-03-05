@@ -68,11 +68,6 @@
                             <i class="fa fa-unlock" style="padding-left: 5px;"/>
                         </button>
 						<br/>
-						<br/>
-						<div style="text-align: center;" invisible="1">
-							<span>ELIMINAR: </span>
-							<field name="confirmation"/>
-			  			</div>
         			</div>
         			<br/>
         			<field name="employee_ids" readonly="1">
