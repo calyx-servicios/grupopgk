@@ -22,8 +22,6 @@ class PeriodSige(models.Model):
         ("close","Close")
     ], "State", index=True, default="open")
 
-    confirmation = fields.Boolean(default=False)
-
     @api.constrains("start_of_period")
     def _unique_period_per_year(self):
         for record in self:
@@ -181,7 +179,7 @@ class PeriodSige(models.Model):
 
     @api.model
     def custom_delete_records(self):
-        if self.confirmation:
+        if self.env.user._is_superuser:
             selected_periods = self.env['period.sige'].browse(self.ids)
             for period in selected_periods:
                 # Eliminar los registros relacionados en timesheet.sige
