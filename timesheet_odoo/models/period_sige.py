@@ -124,12 +124,13 @@ class PeriodSige(models.Model):
             return new_period
 
     def open_period(self):
-        if self.state == 'close':
+        if self.env.user._is_superuser:
+            ts_obj = self.env["timesheet.sige"]
+            timesheet = ts_obj.search([('period_id','=',self.id)])
+            timesheet.sudo().write({'state':'open'})
+            self.sudo().write({'state': 'open'})
+        else:
             raise UserError(_('You cannot reopen a closed period'))
-        ts_obj = self.env["timesheet.sige"]
-        timesheet = ts_obj.search([('period_id','=',self.id)])
-        timesheet.sudo().write({'state':'open'})
-        self.sudo().write({'state': 'open'})
 
     def close_period(self):
 
@@ -142,11 +143,11 @@ class PeriodSige(models.Model):
             raise UserError(_('The period is already closed'))
 
         hours_to_allocate = self.env.ref("timesheet_odoo.hours_to_allocate")
-        message = ["NO SE PUEDE CERRAR PERIODO, FALTA CARGAR HORAS DE:"]
+        employee_pending_hours = []
         for employee in self.employee_ids:
             ts_employee = ts_obj.search([('period_id','=',self.id),("employee_id","=", employee.id)])
             if ts_employee.pending_hours > 0:
-                message.append(employee.name)
+                employee_pending_hours.append(employee.name)
 
                 timesheet_id = line_obj.search([('timesheet_id', '=', ts_employee.id)])
                 values = {
@@ -160,8 +161,11 @@ class PeriodSige(models.Model):
                     timesheet_id.sudo().write(values)
                 else:
                     line_obj.create(values)
-        if not message == []:
-            raise UserError("\n".join(message))
+        if employee_pending_hours:
+            error_message = "NO SE PUEDE CERRAR PERIODO, FALTA CARGAR HORAS DE:\n"
+            for name in employee_pending_hours:
+                error_message += f"- {name}\n"
+            raise UserError(error_message)
 
         timesheet = ts_obj.search([('period_id','=',self.id)])
         timesheet.write({'state':'close'})
