@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+    <data>
+        <function name="write" model="ir.model.data">
+            <function name="search" model="ir.model.data">
+                <value eval="[('module', '=', 'hr_timesheet'), ('name', '=', 'timesheet_line_rule_user')]"/>
+            </function>
+            <value eval="{'noupdate': False}" />
+        </function>
+    
+        <record id="hr_timesheet.timesheet_line_rule_user" model="ir.rule">
+            <field name="active">0</field>
+        </record>
+    
+        <!-- reset noupdate -->
+        <function name="write" model="ir.model.data">
+            <function name="search" model="ir.model.data">
+                <value eval="[('module', '=', 'hr_timesheet'), ('name', '=', 'timesheet_line_rule_user')]"/>
+            </function>
+            <value eval="{'noupdate': True}" />
+        </function>
+
+        <function name="write" model="ir.model.data">
+            <function name="search" model="ir.model.data">
+                <value eval="[('module', '=', 'hr_timesheet'), ('name', '=', 'timesheet_line_rule_approver')]"/>
+            </function>
+            <value eval="{'noupdate': False}" />
+        </function>
+
+        <record id="hr_timesheet.timesheet_line_rule_approver" model="ir.rule">
+            <field name="active">False</field>
+        </record>
+
+        <!-- reset noupdate -->
+        <function name="write" model="ir.model.data">
+            <function name="search" model="ir.model.data">
+                <value eval="[('module', '=', 'hr_timesheet'), ('name', '=', 'timesheet_line_rule_approver')]"/>
+            </function>
+            <value eval="{'noupdate': True}" />
+        </function>
+
+        <function name="write" model="ir.model.data">
+            <function name="search" model="ir.model.data">
+                <value eval="[('module', '=', 'account'), ('name', '=', 'account_analytic_line_rule_billing_user')]"/>
+            </function>
+            <value eval="{'noupdate': False}" />
+        </function>
+
+        <record id="account.account_analytic_line_rule_billing_user" model="ir.rule">
+            <field name="active">False</field>
+        </record>
+
+        <!-- reset noupdate -->
+        <function name="write" model="ir.model.data">
+            <function name="search" model="ir.model.data">
+                <value eval="[('module', '=', 'account'), ('name', '=', 'account_analytic_line_rule_billing_user')]"/>
+            </function>
+            <value eval="{'noupdate': True}" />
+        </function>
+    </data>
+</odoo>
