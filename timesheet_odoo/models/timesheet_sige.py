@@ -108,8 +108,7 @@ class TimesheetSige(models.Model):
     @api.depends("days_to_register")
     def _compute_holidays(self):
         holidays = self.env['calendar.holidays.timesheets'].search([
-            "&", ('start_date', '<=', self.end_of_period),('start_date','>=', self.start_of_period),
-            ('company_id', '=', self.company_id.id)
+            "&", ('start_date', '<=', self.end_of_period),('start_date','>=', self.start_of_period)
         ])
         total_holidays = 0
         holiday = holidays.filtered(lambda h: h.type == 'holiday')
@@ -131,12 +130,12 @@ class TimesheetSige(models.Model):
         })
 
     def recovery_period(self):
-        if date.today() <= self.period_id.end_of_period:
-            self.write({
-                'state': 'open'
-            })
-        else:
-            raise ValidationError(_("Deadline for period reached!"))
+        #if date.today() <= self.period_id.end_of_period:
+        self.write({
+            'state': 'open'
+        })
+        #else:
+        #    raise ValidationError(_("Deadline for period reached!"))
 
     def create_period_sige(self, period):
         employees = self.env['hr.employee'].search([
@@ -156,3 +155,19 @@ class TimesheetSige(models.Model):
                     'end_of_period': end_of_period
                 })
 
+    def delete_timesheet_sige(self):
+
+        # Recupera los registros seleccionados en la vista tree
+        selected_records= self.env["timesheet.sige"].browse(self.ids)
+
+        # Elimina los registros seleccionados
+        for record in selected_records:
+            record.unlink()
+    
+    @api.model
+    def search(self, args, offset=0, limit=None, order=None, count=False):
+        # Filtra los registros para mostrar solo aquellos que tengan un period.sige asociado y exista en la base de datos
+        if self.env.context.get('filter_by_period', False):
+            period_ids = self.env['period.sige'].search([]).ids
+            args += [('period_id', 'in', period_ids)]
+        return super(TimesheetSige, self).search(args, offset=offset, limit=limit, order=order, count=count)
