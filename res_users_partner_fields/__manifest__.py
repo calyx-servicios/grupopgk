@@ -5,11 +5,11 @@
         This module adds the partner field in different views.
     """,
     "author": "Calyx Servicios S.A.",
-    "maintainers": ["Zamora, Javier"],
+    "maintainers": ["Zamora, Javier", "leandro090685"],
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Sales",
-    "version": "15.0.1.1.0",
+    "version": "15.0.2.1.0",
     "application": False,
     "installable": True,
     "depends": [
