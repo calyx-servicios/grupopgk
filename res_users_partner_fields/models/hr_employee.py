@@ -5,3 +5,4 @@ class HrEmployee(models.Model):
     
 
     partner = fields.Many2one("res.users", string="Partner", domain="[('is_partner', '=', True)]")
+    is_active = fields.Boolean('Active employee?', default=False, store = True)

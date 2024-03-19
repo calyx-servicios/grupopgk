@@ -12,7 +12,7 @@ class TimesheetSige(models.Model):
 
     def set_employee(self):
         user_id = self.env.user.id
-        return self.env["hr.employee"].search([("user_id", "=", user_id)])
+        return self.env["hr.employee"].search([("user_id", "=", user_id),('is_active', '=', True)])
 
     def set_last_day(self):
         start_of_period = self.start_of_period or date.today().replace(day=1)
@@ -139,7 +139,8 @@ class TimesheetSige(models.Model):
 
     def create_period_sige(self, period):
         employees = self.env['hr.employee'].search([
-            ('active', '=', True)
+            ('active', '=', True),
+            ('is_active', '=', True)
         ])
         end_of_period = period.end_of_period + relativedelta(day=31)
         for employee in employees:

@@ -63,7 +63,7 @@ class PeriodSige(models.Model):
         timesheet_sige = self.env['timesheet.sige'].search([('period_id','=',self.id),('state','=','open')])
         employees = []
         if not timesheet_sige:
-            employees = self.env['hr.employee'].search([('active', '=', True)])
+            employees = self.env['hr.employee'].search([('active', '=', True),('is_active', '=', True)])
         else:
             employees = timesheet_sige.mapped("employee_id")
         self.employee_ids = [(6, 0, employees.ids)]
@@ -71,7 +71,8 @@ class PeriodSige(models.Model):
     @api.depends("start_of_period")
     def _compute_count_employees(self):
         employees = self.env['hr.employee'].search([
-            ('active', '=', True)
+            ('active', '=', True),
+            ('is_active', '=', True)
         ])
         self.count_employees = len(employees)
 
