@@ -8,8 +8,8 @@ class PeriodSige(models.Model):
     _name = "period.sige"
     _description = "Periods"
 
-    name = fields.Char("Name", default = "Febrero 2024")
-    start_of_period = fields.Date("Start of Period", default=lambda self: date(2024, 2, 1))
+    name = fields.Char("Name", readonly=True, copy=False, compute="set_name")
+    start_of_period = fields.Date("Start of Period", default=lambda self: date.today().replace(day=1))
     end_of_period = fields.Date("End of Period", compute="_compute_last_day")
     count_employees = fields.Integer("Enabled users", compute="_compute_count_employees")
     sent_periods = fields.Integer("Sent", compute="_compute_sent_periods")
