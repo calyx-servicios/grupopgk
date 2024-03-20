@@ -15,12 +15,12 @@ class TimesheetSige(models.Model):
         return self.env["hr.employee"].search([("user_id", "=", user_id),('is_active', '=', True)])
 
     def set_last_day(self):
-        start_of_period = self.start_of_period
+        start_of_period = self.start_of_period or date.today().replace(day=1)
         return start_of_period  + relativedelta(day=31)
 
     name = fields.Char("Name", required=True, readonly=True, copy=False, compute="set_name")
     employee_id = fields.Many2one("hr.employee", "Employee", default=set_employee)
-    start_of_period = fields.Date("Start of Period", default=lambda self: date(2024, 2, 1))
+    start_of_period = fields.Date("Start of Period", default=lambda self: date.today().replace(day=1))
     end_of_period = fields.Date("End of Period", default=set_last_day)
     holidays = fields.Integer("Holidays", compute="_compute_holidays")
     working_day = fields.Float("Working Day", related="employee_id.resource_calendar_id.hours_per_day")
