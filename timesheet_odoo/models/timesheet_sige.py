@@ -138,8 +138,10 @@ class TimesheetSige(models.Model):
         #    raise ValidationError(_("Deadline for period reached!"))
 
     def create_period_sige(self, period):
-        all_companies = self.env['res.company'].search([])
-        if len(self.env.companies) != len(all_companies):
+        all_companies = self.env['res.company'].search([('id', '!=', 5)])
+        all_company_ids = set(all_companies.ids)
+        env_company_ids = set(company.id for company in self.env.companies if company.id != 5)
+        if env_company_ids != all_company_ids:
             raise UserError("Debe seleccionar todas las compañías para poder cerrar y crear un nuevo período.")
         else:
             employees = self.env['hr.employee'].search([
