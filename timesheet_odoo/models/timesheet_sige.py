@@ -1,5 +1,5 @@
 from odoo import fields, models, api, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 import calendar
@@ -138,23 +138,29 @@ class TimesheetSige(models.Model):
         #    raise ValidationError(_("Deadline for period reached!"))
 
     def create_period_sige(self, period):
-        employees = self.env['hr.employee'].search([
-            ('active', '=', True),
-            ('is_active', '=', True)
-        ])
-        end_of_period = period.end_of_period + relativedelta(day=31)
-        for employee in employees:
-            already_exist = self.search([
-                ('start_of_period', '=', period.start_of_period),('end_of_period','=', end_of_period),
-                ('employee_id', "=", employee.id), ('period_id','=',period.id)
+        all_companies = self.env['res.company'].search([('id', '!=', 5)])
+        all_company_ids = set(all_companies.ids)
+        env_company_ids = set(company.id for company in self.env.companies if company.id != 5)
+        if env_company_ids != all_company_ids:
+            raise UserError("Debe seleccionar todas las compañías para poder cerrar y crear un nuevo período.")
+        else:
+            employees = self.env['hr.employee'].search([
+                ('active', '=', True),
+                ('is_active', '=', True)
             ])
-            if not already_exist:
-                self.create({
-                    'employee_id': employee.id,
-                    'period_id': period.id,
-                    'start_of_period': period.start_of_period,
-                    'end_of_period': end_of_period
-                })
+            end_of_period = period.end_of_period + relativedelta(day=31)
+            for employee in employees:
+                already_exist = self.search([
+                    ('start_of_period', '=', period.start_of_period),('end_of_period','=', end_of_period),
+                    ('employee_id', "=", employee.id), ('period_id','=',period.id)
+                ])
+                if not already_exist:
+                    self.create({
+                        'employee_id': employee.id,
+                        'period_id': period.id,
+                        'start_of_period': period.start_of_period,
+                        'end_of_period': end_of_period
+                    })
 
     def delete_timesheet_sige(self):
 
