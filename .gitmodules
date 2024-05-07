@@ -114,3 +114,7 @@
 	path = submodules/calyx-servicios/account-invoicing
 	url = git@github.com:calyx-servicios/account-invoicing.git
 	branch = 15.0
+[submodule "submodules/OCA/helpdesk"]
+	path = submodules/OCA/helpdesk
+	url = git@github.com:OCA/helpdesk.git
+	branch = 15.0
