@@ -5,11 +5,11 @@
         This module generates and stores consolidated monthly reports.
     """,
     "author": "Calyx Servicios S.A.",
-    "maintainers": ["Zamora, Javier"],
+    "maintainers": ["Zamora, Javier", "leandro090685"],
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.3.1.0",
+    "version": "15.0.4.1.0",
     "application": False,
     "installable": True,
     "depends": [
