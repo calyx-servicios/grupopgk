@@ -57,3 +57,7 @@ git+https://github.com/ingadhoc/pyafipws@py3k
 git+https://github.com/OCA/openupgradelib/@master
 
 # Custom addons
+
+#oca/timesheet
+freezegun
+
