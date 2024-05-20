@@ -1,7 +1,7 @@
 from odoo import api, fields, models, _
 import base64, xlsxwriter
 from io import BytesIO
-
+from odoo.exceptions import UserError
 
 class AccountConsolidationReport(models.Model):
     _name = 'account.consolidation.report'
@@ -334,11 +334,13 @@ class AccountConsolidationReport(models.Model):
             ('date', '>=', self.consolidation_period.date_from),
             ('date', '<=', self.consolidation_period.date_to),
             ('general_account_id.code', 'like', '4.1%'),  # Filtra los códigos que comienzan con '4.1'
-            ('general_account_id.user_type_id.name', '=', 'Ingreso')  # Filtra por tipo de usuario 'Ingreso'
+            ('general_account_id.user_type_id.name', '=', 'Ingreso'),  # Filtra por tipo de usuario 'Ingreso'
+            ('parent_prin_group_id.id', 'not in', ['31','32','36','44']), # Filtro para no tener en cuenta los grupos Costos Indirectos, Gastos Indirectos, Costos Directos y Tablero 
         ])
 
         # Diccionario para acumular los montos por proyecto
         project_sales = {}
+        missing_lines = {}
 
         # Itera sobre cada línea analítica encontrada
         for line in analytic_lines:
@@ -352,7 +354,6 @@ class AccountConsolidationReport(models.Model):
                     amount = line.currency_id.rate_ids[0]['inverse_company_rate'] * line.amount
                 else:
                     amount = line.amount
-
             if project:
             # Verifica si el proyecto ya está en el diccionario
                 if project.id in project_sales:
@@ -361,7 +362,18 @@ class AccountConsolidationReport(models.Model):
                 else:
                     # Crea una nueva entrada en el diccionario con el monto inicial
                     project_sales[project.id] = amount
-        
+            else:
+                # Almacena el account_id.name en la lista de proyectos faltantes
+                missing_lines[line.id] = line.name
+
+        # Si hay proyectos faltantes, levanta una excepción y devuelve la lista
+        if missing_lines:
+            error_message = "Los siguientes lineas analíticas no tienen una cuenta analitica asociada a un proyecto y han generado ventas:\n"
+            error_message += "  ID       NOMBRE\n"
+            for line_id, name in missing_lines.items():
+                error_message += f"{line_id}: {name}\n"
+
+            raise UserError(error_message)
         return project_sales
 
     def calculate_total_amount_cost(self, indirect_expense_lines):
