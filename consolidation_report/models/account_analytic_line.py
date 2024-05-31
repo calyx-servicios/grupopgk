@@ -8,6 +8,7 @@ class AccountAnalyticLine(models.Model):
     sector_account_id = fields.Many2one('account.analytic.account', string='Sector ID', compute='_compute_sector_account_id', store=True)
     managment_account_id = fields.Many2one('account.analytic.account', string='Managment ID', compute='_compute_managment_account_id', store=True)
     is_sector_group = fields.Boolean(string="Is Sector Group", related='account_id.is_sector_group')
+    line_temp = fields.Boolean(default=False)
     
     @api.depends('account_id')
     def _compute_managment_account_id(self):

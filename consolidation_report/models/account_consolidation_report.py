@@ -280,7 +280,7 @@ class AccountConsolidationReport(models.Model):
             if sector_account:
                 analytic_line.sector_account_id = sector_account
             
-            if analytic_line.sector_account_id.name == 'Gastos Indirectos':
+            if analytic_line.sector_account_id.name == 'Gastos Indirectos': # Se crean lineas analiticas nuevas de Gastos indirectos proporcionales para cada proyecto se crea account.consolidation.data en base a esas lineas y luego se eliminan para no duplicar gaastos
                 continue
               
             consolidation_period = self.consolidation_period.consolidation_companies.filtered(lambda x: x.company_id == analytic_line.move_id.company_id)
@@ -310,6 +310,9 @@ class AccountConsolidationReport(models.Model):
         
         consolidation_data = self.env['account.consolidation.data']
         consolidation_data.create(consolidation_data_vals)
+
+        # Limpia las líneas analíticas temporales, ya fueron creadas en account.consolidation.data
+        self.env['account.analytic.line'].search([('line_temp', '=', True),('date', '=', self.consolidation_period.date_from)]).unlink()
 
         view_id_tree = self.env.ref('consolidation_report.view_consolidation_data_tree')
         return {
@@ -341,13 +344,11 @@ class AccountConsolidationReport(models.Model):
         # Diccionario para acumular los montos por proyecto
         project_sales = {}
         missing_lines = {}
-
+        all_projects = self.env['project.project'].search(['|', ('active', '=', False), ('active', '=', True)])
         # Itera sobre cada línea analítica encontrada
         for line in analytic_lines:
-            # Obtén el proyecto asociado a la cuenta analitica de la linea
-            project = self.env['project.project'].search([
-                ('analytic_account_id', '=', line.account_id.id)
-            ])
+            # Obtengo el proyecto asociado a la cuenta analitica de la linea
+            project = all_projects.filtered(lambda p: p.analytic_account_id.id == line.account_id.id)
             # Verifico que el monto de la linea esta en $ y sino la convierto
             if line.currency_id:
                 if line.currency_id.id != 19 and line.currency_id.name != 'PES':
@@ -396,45 +397,26 @@ class AccountConsolidationReport(models.Model):
 
 
     def cost_to_project(self, percentage_for_project, total_amount_cost):
+        all_projects = self.env['project.project'].search(['|', ('active', '=', False), ('active', '=', True)])
+
         # Itera sobre cada entrada en el diccionario de porcentajes por proyecto
         for project_id, percentage in percentage_for_project.items():
             # Encuentra el proyecto usando el project_id
-            project = self.env['project.project'].browse(project_id)
+            project = all_projects.filtered(lambda p: p.id == project_id)
 
             if project.exists() and project.analytic_account_id:
                 # Calcula el monto a asignar basado en el porcentaje y el costo total
                 amount = (percentage / 100.0) * total_amount_cost
-
-                # Busca si ya existe una línea analítica con el mismo proyecto, nombre, fecha y monto
-                existing_line = self.env['account.analytic.line'].search([
-                    ('name', '=', 'Distribucion de costos indirectos por proyecto'),
-                    ('account_id', '=', project.analytic_account_id.id),
-                    ('date', '=', self.consolidation_period.date_from),
-                    ('amount', '=', amount),
-                ])
-
-                if existing_line:
-                    # Si la línea analítica ya existe, no es necesario hacer nada más
-                    continue
-                else:
-                    # Si no existe, busca y elimina líneas analíticas con el mismo proyecto, nombre y fecha
-                    self.env['account.analytic.line'].search([
-                        ('name', '=', 'Distribucion de costos indirectos por proyecto'),
-                        ('account_id', '=', project.analytic_account_id.id),
-                        ('date', '=', self.consolidation_period.date_from),
-                    ]).unlink()
-
-                    # Crea una nueva línea analítica
-                    new_line = self.env['account.analytic.line'].create({
-                        'name': 'Distribucion de costos indirectos por proyecto',
-                        'account_id': project.analytic_account_id.id,
-                        'date': self.consolidation_period.date_from,
-                        'amount': amount,
-                        'company_id': project.company_id if project.company_id else False,
-                    })
+                # Crea una nueva línea analítica temporal para ser tomada en consolidation_data_vals y antes de mostrar el informe las elimina
+                new_line = self.env['account.analytic.line'].create({
+                    'name': 'Distribucion de costos indirectos por proyecto',
+                    'account_id': project.analytic_account_id.id,
+                    'date': self.consolidation_period.date_from,
+                    'amount': amount,
+                    'company_id': project.company_id if project.company_id else False,
+                    'line_temp': True,
+                })
     
-
-
 
     def analytic_line_indirect_expense(self):
         # inicializo una lista para almacenar las líneas de gastos indirectos
