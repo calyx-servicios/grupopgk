@@ -11,6 +11,7 @@
                     <field name="managment_account_group"/>
                     <field name="company"/>
                     <field name="daughter_account"/>
+                    <field name="project_id" string= 'Proyecto'/>
                     <field name="description"/>
                     <field name="account_id"/>
                     <field name="currency_origin"/>
@@ -27,6 +28,25 @@
             <field name="res_model">account.consolidation.data</field>
             <field name="view_mode">tree,form</field>
             <field name="view_id" ref="view_consolidation_data_tree"/>
+        </record>
+
+        <record id="view_consolidation_data_filter" model="ir.ui.view">
+            <field name="name">consolidation.data.filter.search</field>
+            <field name="model">account.consolidation.data</field>
+            <field name="arch" type="xml">
+                <search string="Search Consolidation data">
+                    <group expand="1" string="Group By">
+                        <filter string="Grupo principal" name="group_by_main_group" domain="[]" context="{'group_by': 'main_group'}"/>
+                        <filter string="ID Negocio" name="group_by_business_group" domain="[]" context="{'group_by': 'business_group'}"/>
+                        <filter string="ID Sector" name="group_by_sector_account_group" domain="[]" context="{'group_by': 'sector_account_group'}"/>
+                        <filter string="ID Gerencia" name="group_by_managment_account_group" domain="[]" context="{'group_by': 'managment_account_group'}"/>
+                        <filter string="Compañía" name="group_by_company" domain="[]" context="{'group_by': 'company'}"/>
+                        <filter string="Moneda" name="group_by_currency" domain="[]" context="{'group_by': 'currency'}"/>
+                        <filter string="Línea de cuenta analítica" name="group_by_daughter_account" domain="[]" context="{'group_by': 'daughter_account'}"/>
+                        <filter string="Projecto" name="group_by_project_id" domain="[]" context="{'group_by': 'project_id'}"/>
+                    </group>
+                </search>
+            </field>
         </record>
     </data>
 </odoo>

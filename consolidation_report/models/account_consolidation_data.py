@@ -19,8 +19,11 @@ class AccountConsolidationData(models.Model):
     currency = fields.Many2one('res.currency', string='Currency')
     rate = fields.Float(string='Rate')
     amount = fields.Float(string='Amount')
+    project_id = fields.Many2one('project.project', string='Project', compute='_compute_project', store=True)
 
-
+    def _compute_project(self):
+        pass
+    
     def open_line_analytic_form(self):
         self.ensure_one()
         line_analytic_id = self.daughter_account
