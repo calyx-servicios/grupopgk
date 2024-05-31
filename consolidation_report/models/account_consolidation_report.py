@@ -1,7 +1,7 @@
 from odoo import api, fields, models, _
 import base64, xlsxwriter
 from io import BytesIO
-
+from odoo.exceptions import UserError
 
 class AccountConsolidationReport(models.Model):
     _name = 'account.consolidation.report'
@@ -244,6 +244,20 @@ class AccountConsolidationReport(models.Model):
         return daughter_account_dict
 
     def generate_consolidation_report_view(self):
+        # Crear diccionario facturacion por proyecto
+        total_sales_for_project = self.sales_by_project()
+
+        indirect_expense_lines = self.analytic_line_indirect_expense()
+
+        # Calculo el monto total de las lineas de 'Gastos Indirectos'
+        total_amount_cost = self.calculate_total_amount_cost(indirect_expense_lines)
+
+        # Calculo el porcentaje de facturacion de cada projecto
+        percentage_for_project = self.calculate_percentage(total_sales_for_project)
+
+        # Aplico el porcentaje de la facturacion a los gastos indirectos y creo las lineas
+        account_analytic_line_cost_for_project = self.cost_to_project(percentage_for_project, total_amount_cost)
+
         self.delete_entries()
         analytic_lines = self.env['account.analytic.line'].search([
             ('date', '>=', self.consolidation_period.date_from),
@@ -266,19 +280,25 @@ class AccountConsolidationReport(models.Model):
             if sector_account:
                 analytic_line.sector_account_id = sector_account
             
-
+            if analytic_line.sector_account_id.name == 'Gastos Indirectos': # Se crean lineas analiticas nuevas de Gastos indirectos proporcionales para cada proyecto se crea account.consolidation.data en base a esas lineas y luego se eliminan para no duplicar gaastos
+                continue
+              
             consolidation_period = self.consolidation_period.consolidation_companies.filtered(lambda x: x.company_id == analytic_line.move_id.company_id)
             currency_origin = analytic_line.currency_id.id
             new_currency = consolidation_period.new_currency.id if consolidation_period else analytic_line.currency_id.id
             rate = consolidation_period.rate if consolidation_period and not consolidation_period.historical_rate else 1
+            # Busca el proyecto para cada linea analitica y permitir la agrupacion
+            project_ids = self.env['project.project'].search([('analytic_account_id', '=', analytic_line.account_id.id)])
+            project_id = False if not project_ids else project_ids[0].id
 
             consolidation_data_vals.append({
                 'name': self.name,
                 'main_group': analytic_line.parent_prin_group_id.id,
+                'project_id': project_id,
                 'business_group': analytic_line.bussines_group_id.id,
                 'sector_account_group': analytic_line.sector_account_id.id,
                 'managment_account_group': analytic_line.managment_account_id.id,
-                'company': analytic_line.move_company_id.name,
+                'company': analytic_line.move_company_id.name or analytic_line.company_id.name,
                 'daughter_account': analytic_line.id,
                 'description': analytic_line.name or '',
                 'account_id': analytic_line.general_account_id.code,
@@ -287,9 +307,12 @@ class AccountConsolidationReport(models.Model):
                 'rate': rate,
                 'amount': analytic_line.amount * rate if not consolidation_period or not consolidation_period.historical_rate else analytic_line.amount,
             })
-
+        
         consolidation_data = self.env['account.consolidation.data']
         consolidation_data.create(consolidation_data_vals)
+
+        # Limpia las líneas analíticas temporales, ya fueron creadas en account.consolidation.data
+        self.env['account.analytic.line'].search([('line_temp', '=', True),('date', '=', self.consolidation_period.date_from)]).unlink()
 
         view_id_tree = self.env.ref('consolidation_report.view_consolidation_data_tree')
         return {
@@ -308,3 +331,104 @@ class AccountConsolidationReport(models.Model):
     def delete_entries(self):
         self.env['account.consolidation.data'] \
             .search([]).unlink()
+
+    def sales_by_project(self):
+        analytic_lines = self.env['account.analytic.line'].search([
+            ('date', '>=', self.consolidation_period.date_from),
+            ('date', '<=', self.consolidation_period.date_to),
+            ('general_account_id.code', 'like', '4.1%'),  # Filtra los códigos que comienzan con '4.1'
+            ('general_account_id.user_type_id.name', '=', 'Ingreso'),  # Filtra por tipo de usuario 'Ingreso'
+            ('parent_prin_group_id.id', 'not in', ['31','32','36','44']), # Filtro para no tener en cuenta los grupos Costos Indirectos, Gastos Indirectos, Costos Directos y Tablero 
+        ])
+
+        # Diccionario para acumular los montos por proyecto
+        project_sales = {}
+        missing_lines = {}
+        all_projects = self.env['project.project'].search(['|', ('active', '=', False), ('active', '=', True)])
+        # Itera sobre cada línea analítica encontrada
+        for line in analytic_lines:
+            # Obtengo el proyecto asociado a la cuenta analitica de la linea
+            project = all_projects.filtered(lambda p: p.analytic_account_id.id == line.account_id.id)
+            # Verifico que el monto de la linea esta en $ y sino la convierto
+            if line.currency_id:
+                if line.currency_id.id != 19 and line.currency_id.name != 'PES':
+                    amount = line.currency_id.rate_ids[0]['inverse_company_rate'] * line.amount
+                else:
+                    amount = line.amount
+            if project:
+            # Verifica si el proyecto ya está en el diccionario
+                if project.id in project_sales:
+                    # Suma al monto existente
+                    project_sales[project.id] += amount
+                else:
+                    # Crea una nueva entrada en el diccionario con el monto inicial
+                    project_sales[project.id] = amount
+            else:
+                # Almacena el account_id.name en la lista de proyectos faltantes
+                missing_lines[line.id] = line.name
+
+        # Si hay proyectos faltantes, levanta una excepción y devuelve la lista
+        #if missing_lines:
+        #    error_message = "Los siguientes lineas analíticas no tienen una cuenta analitica asociada a un proyecto y han generado ventas:\n"
+        #    error_message += "  ID       NOMBRE\n"
+        #    for line_id, name in missing_lines.items():
+        #        error_message += f"{line_id}: {name}\n"
+#
+        #    raise UserError(error_message)
+        return project_sales
+
+    def calculate_total_amount_cost(self, indirect_expense_lines):
+        total_amount_cost = 0.0
+        for line in indirect_expense_lines:
+            if line.currency_id:
+                if line.currency_id.id != 19 and line.currency_id.name != 'PES': # Verifico que el monto de la linea esta en $ y sino la convierto
+                    amount = line.currency_id.rate_ids[0]['inverse_company_rate'] * line.amount
+                else:
+                    amount = line.amount
+                total_amount_cost += amount
+            total_amount_cost += line.amount
+        return total_amount_cost
+
+    def calculate_percentage(self, sales_dict):
+        # Calculo el porcentaje de venta de cada projecto con respecto al total de ventas
+        total_sales = sum(sales_dict.values())
+        percentages = {project: (sales / total_sales) * 100 for project, sales in sales_dict.items()}
+        return percentages
+
+
+    def cost_to_project(self, percentage_for_project, total_amount_cost):
+        all_projects = self.env['project.project'].search(['|', ('active', '=', False), ('active', '=', True)])
+
+        # Itera sobre cada entrada en el diccionario de porcentajes por proyecto
+        for project_id, percentage in percentage_for_project.items():
+            # Encuentra el proyecto usando el project_id
+            project = all_projects.filtered(lambda p: p.id == project_id)
+
+            if project.exists() and project.analytic_account_id:
+                # Calcula el monto a asignar basado en el porcentaje y el costo total
+                amount = (percentage / 100.0) * total_amount_cost
+                # Crea una nueva línea analítica temporal para ser tomada en consolidation_data_vals y antes de mostrar el informe las elimina
+                new_line = self.env['account.analytic.line'].create({
+                    'name': 'Distribucion de costos indirectos por proyecto',
+                    'account_id': project.analytic_account_id.id,
+                    'date': self.consolidation_period.date_from,
+                    'amount': amount,
+                    'company_id': project.company_id if project.company_id else False,
+                    'line_temp': True,
+                })
+    
+
+    def analytic_line_indirect_expense(self):
+        # inicializo una lista para almacenar las líneas de gastos indirectos
+        indirect_expense_lines = []
+
+        analytic_lines = self.env['account.analytic.line'].search([
+            ('date', '>=', self.consolidation_period.date_from),
+            ('date', '<=', self.consolidation_period.date_to)
+        ])
+        
+        for analytic_line in analytic_lines:
+            if analytic_line.sector_account_id.name == 'Gastos Indirectos':
+                indirect_expense_lines.append(analytic_line)
+        
+        return indirect_expense_lines
