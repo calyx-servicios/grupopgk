@@ -109,7 +109,11 @@ class LaborCostEmployeeWizard(models.TransientModel):
                 cost[index_obj]['name'] = self.name
                 cost[index_obj]['calculation'] += _('\n Amount(Salary + Invoiced Amount) {} / {} (Register Hours) = {} (Labor cost)'.format(amount, tm_sige_emp.register_hours, labor_cost))
                 employee.timesheet_cost = labor_cost
-                tm_sige_emp.timesheet_ids.write({'amount': labor_cost})
+                projects = tm_sige_emp.timesheet_ids
+                if projects:
+                    for project in projects:
+                        cost_total_in_project = project.unit_amount * labor_cost
+                        project.write({'amount': cost_total_in_project})
 
         lce_obj.create(cost)
 
