@@ -412,7 +412,7 @@ class AccountConsolidationReport(models.Model):
                     'name': 'Distribucion de costos indirectos por proyecto',
                     'account_id': project.analytic_account_id.id,
                     'date': self.consolidation_period.date_from,
-                    'amount': amount,
+                    'amount': -abs(amount),
                     'company_id': project.company_id if project.company_id else False,
                     'line_temp': True,
                 })
