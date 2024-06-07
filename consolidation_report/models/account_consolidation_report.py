@@ -368,13 +368,13 @@ class AccountConsolidationReport(models.Model):
                 missing_lines[line.id] = line.name
 
         # Si hay proyectos faltantes, levanta una excepción y devuelve la lista
-        #if missing_lines:
-        #    error_message = "Los siguientes lineas analíticas no tienen una cuenta analitica asociada a un proyecto y han generado ventas:\n"
-        #    error_message += "  ID       NOMBRE\n"
-        #    for line_id, name in missing_lines.items():
-        #        error_message += f"{line_id}: {name}\n"
-#
-        #    raise UserError(error_message)
+        if missing_lines:
+            error_message = "Los siguientes lineas analíticas no tienen una cuenta analitica asociada a un proyecto y han generado ventas:\n"
+            error_message += "  ID       NOMBRE\n"
+            for line_id, name in missing_lines.items():
+                error_message += f"{line_id}: {name}\n"
+
+            raise UserError(error_message)
         return project_sales
 
     def calculate_total_amount_cost(self, indirect_expense_lines):
@@ -412,7 +412,7 @@ class AccountConsolidationReport(models.Model):
                     'name': 'Distribucion de costos indirectos por proyecto',
                     'account_id': project.analytic_account_id.id,
                     'date': self.consolidation_period.date_from,
-                    'amount': amount,
+                    'amount': -abs(amount),
                     'company_id': project.company_id if project.company_id else False,
                     'line_temp': True,
                 })
