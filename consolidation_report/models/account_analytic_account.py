@@ -15,3 +15,4 @@ class AccountAnalyticAccount(models.Model):
             else:
                 account.is_management_group = False
     
+ 
