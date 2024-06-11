@@ -9,12 +9,13 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.6.1.0",
+    "version": "15.0.7.1.0",
     "application": False,
     "installable": True,
     "depends": [
         "account_analytic_currency",
         "report_analytic_account",
+        "analytic",
     ],
     "data": [
         "security/permissions.xml",
