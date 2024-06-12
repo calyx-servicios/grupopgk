@@ -423,6 +423,9 @@ class AccountConsolidationReport(models.Model):
         # Elimino si es que existen lineas analiticas de redistribucion de gastos indirectos creadas anteriormente (en caso que el informe se pide mas de una vez) y lineas de account consolidation data por el mismo motivo
         self.delete_entries()
 
+        # Calculo el monto total de las lineas de 'Gastos Indirectos'
+        total_amount_cost = self.calculate_total_amount_cost()
+        
         # Crear diccionario facturacion por proyecto
         total_sales_for_project = self.sales_by_project()
 
@@ -435,7 +438,7 @@ class AccountConsolidationReport(models.Model):
                 ("date", "<=", self.consolidation_period.date_to),
             ]
         )
-        list_indirect_expense = []
+
         consolidation_data_vals = []
         for analytic_line in analytic_lines:
             analytic_line.update_currency_id()
@@ -482,15 +485,7 @@ class AccountConsolidationReport(models.Model):
                     "business_group": analytic_line.bussines_group_id.id,
                     "sector_account_group": analytic_line.sector_account_id.id,
                     "managment_account_group": analytic_line.managment_account_id.id,
-                    "company": (
-                        analytic_line.move_company_id[0].name
-                        if analytic_line.move_company_id
-                        else (
-                            analytic_line.company_id[0].name
-                            if analytic_line.company_id
-                            else None
-                        )
-                    ),
+                    "company": analytic_line.company_id.ids,
                     "daughter_account": analytic_line.id,
                     "description": analytic_line.name or "",
                     "account_id": analytic_line.general_account_id.code,
@@ -506,42 +501,6 @@ class AccountConsolidationReport(models.Model):
                 }
             )
 
-            if analytic_line.sector_account_id.id == 4114:
-                consolidation_data_vals.append(
-                    {
-                        "name": self.name,
-                        "main_group": analytic_line.parent_prin_group_id.id,
-                        "project_id": project_id,
-                        "business_group": analytic_line.bussines_group_id.id,
-                        "sector_account_group": analytic_line.sector_account_id.id,
-                        "managment_account_group": analytic_line.managment_account_id.id,
-                        "company": (
-                            analytic_line.move_company_id[0].name
-                            if analytic_line.move_company_id
-                            else (
-                                analytic_line.company_id[0].name
-                                if analytic_line.company_id
-                                else None
-                            )
-                        ),
-                        "daughter_account": analytic_line.id,
-                        "description": f"{analytic_line.name or ''} - Balance distribución",
-                        "account_id": analytic_line.general_account_id.code,
-                        "currency_origin": currency_origin if currency_origin else "",
-                        "currency": new_currency if new_currency else "",
-                        "rate": -rate,
-                        "amount": (
-                            -analytic_line.amount * rate
-                            if not consolidation_period
-                            or not consolidation_period.historical_rate
-                            else -analytic_line.amount
-                        ),
-                    }
-                )
-                list_indirect_expense.append(analytic_line)
-
-        # Calculo el monto total de las lineas de 'Gastos Indirectos'
-        total_amount_cost = self.calculate_total_amount_cost(list_indirect_expense)
 
         # Aplico el porcentaje de la facturacion a los gastos indirectos y creo las lineas
         consolidation_data_vals_cost = self.cost_to_project(
@@ -579,7 +538,6 @@ class AccountConsolidationReport(models.Model):
 
         lines_to_delete = self.env["account.analytic.line"].search([
             ("consolidation_line", "=", True),
-            ("name", "=", "Distribucion de costos indirectos por proyecto"),
             ("date", "=", self.consolidation_period.date_from)
         ])
         
@@ -613,7 +571,7 @@ class AccountConsolidationReport(models.Model):
 
         # Diccionario para acumular los montos por proyecto
         project_sales = {}
-
+        total_sales = 0.0
         all_projects = self.env["project.project"].search(
             ["|", ("active", "=", False), ("active", "=", True)]
         )
@@ -625,6 +583,7 @@ class AccountConsolidationReport(models.Model):
             )
 
             amount = line.amount
+            total_sales += amount
 
             if project:
                 # Verifica si el proyecto ya está en el diccionario
@@ -635,21 +594,57 @@ class AccountConsolidationReport(models.Model):
                     # Crea una nueva entrada en el diccionario con el monto inicial
                     project_sales[project.id] = amount
 
+        project_sales['total_sales'] = total_sales
+
         return project_sales
 
-    def calculate_total_amount_cost(self, indirect_expense_lines):
+    def calculate_total_amount_cost(self):
         total_amount_cost = 0.0
-        for line in indirect_expense_lines:
-            total_amount_cost += line.amount
+
+        analytic_lines = self.env["account.analytic.line"].search(
+            [
+                ("date", ">=", self.consolidation_period.date_from),
+                ("date", "<=", self.consolidation_period.date_to),
+            ]
+        )
+
+        for analytic_line in analytic_lines:
+            if analytic_line.sector_account_id.name == "Gastos Indirectos":
+                total_amount_cost += analytic_line.amount
+                # Crear una nueva línea analítica con los campos especificados
+                self.env["account.analytic.line"].create({
+                    "name": f"{analytic_line.name} - Linea consolidacion",
+                    "amount": - analytic_line.amount,
+                    "date": analytic_line.date,
+                    "account_id": analytic_line.account_id.id,
+                    "sector_account_id": analytic_line.sector_account_id.id,
+                    "consolidation_line": True,
+                    "general_account_id": False,
+                    "move_id": False,
+                    "company_id": analytic_line.company_id.ids,
+                })
+        
+        total_amount_cost = round(total_amount_cost, 2)
         return total_amount_cost
 
     def calculate_percentage(self, sales_dict):
         # Calculo el porcentaje de venta de cada projecto con respecto al total de ventas
-        total_sales = sum(sales_dict.values())
-        percentages = {
-            project: (sales / total_sales) * 100
-            for project, sales in sales_dict.items()
-        }
+        total_sales = round(sales_dict['total_sales'], 2)
+    
+        percentages = []
+
+        for project, sales in sales_dict.items():
+            if project != 'total_sales':  # Ignorar la clave 'total_sales'
+                sales_rounded = round(sales, 2)
+                percentage = round((sales_rounded / total_sales) * 100, 2)
+                if percentage != 0.00:
+                    percentages.append({
+                        'project_id': project,
+                        'sales': sales_rounded,
+                        'percentage': percentage,
+                        'total_sales': total_sales
+                    })
+
         return percentages
 
     def get_sector_id(self, project):
@@ -668,8 +663,12 @@ class AccountConsolidationReport(models.Model):
         )
         consolidation_data_vals_cost = []
 
-        # Itera sobre cada entrada en el diccionario de porcentajes por proyecto
-        for project_id, percentage in percentage_for_project.items():
+        # Itera sobre cada entrada en la lista de porcentajes por proyecto
+        for project_data in percentage_for_project:
+            project_id = project_data['project_id']
+            percentage = project_data['percentage']
+            sales_project = project_data['sales']
+            total_sales = project_data['total_sales']
             # Encuentra el proyecto usando el project_id
             project = all_projects.filtered(lambda p: p.id == project_id)
 
@@ -690,7 +689,7 @@ class AccountConsolidationReport(models.Model):
                         or "",
                         "project_id": project_id,
                         "company": project.company_id.name or "",
-                        "description": "Distribucion de costos indirectos por proyecto",
+                        "description": f"Porcentaje = (Facturacion proyecto: {sales_project} *100 / Total facturacion: {total_sales}) Total GI = {total_amount_cost}",
                         "amount": -abs(amount),
                     }
                 )
