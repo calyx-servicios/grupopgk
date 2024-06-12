@@ -11,7 +11,7 @@ class AccountConsolidationData(models.Model):
     business_group = fields.Many2one('account.analytic.group', string='Business ID')
     sector_account_group = fields.Many2one('account.analytic.account', string='Sector ID')
     managment_account_group = fields.Many2one('account.analytic.account', string='Managment ID')
-    company = fields.Char(string='Company')
+    company = fields.Many2many('res.company', string='Company')
     daughter_account = fields.Many2one('account.analytic.line', string='Analytic Account Line')
     description = fields.Char(string='Description')
     account_id = fields.Char(string='Account ID')
