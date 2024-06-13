@@ -620,21 +620,17 @@ class AccountConsolidationReport(models.Model):
             if analytic_line.sector_account_id.name == "Gastos Indirectos":
                 total_amount_cost += analytic_line.amount
                 # Crear una nueva línea analítica con los campos especificados
-                self.env["account.analytic.line"].create(
-                    {
-                        "name": f"{analytic_line.name} - Linea consolidacion",
-                        "amount": -analytic_line.amount,
-                        "date": self.consolidation_period.date_from,
-                        "account_id": analytic_line.account_id.id,
-                        "sector_account_id": analytic_line.sector_account_id.id,
-                        "bussines_group_id": analytic_line.bussines_group_id.id,
-                        "managment_account_id": analytic_line.managment_account_id.id,
-                        "consolidation_line": True,
-                        "general_account_id": False,
-                        "move_id": False,
-                        "company_id": analytic_line.company_id.ids,
-                    }
-                )
+                analytic_line.copy(default={
+                    "name": f"{analytic_line.name} - Linea consolidacion",
+                    "amount": -analytic_line.amount,
+                    "debit": -analytic_line.debit,
+                    "credit": -analytic_line.credit,
+                    "date": self.consolidation_period.date_from, 
+                    "general_account_id": False,
+                    "move_id": False,
+                    "consolidation_line": True,
+                    "currency_id": analytic_line.currency_id.id
+                })
 
         total_amount_cost = round(total_amount_cost, 2)
         return total_amount_cost
@@ -660,6 +656,16 @@ class AccountConsolidationReport(models.Model):
                     )
 
         return percentages
+    
+    def get_management_id(self, analytic_line):
+        current_account = analytic_line.account_id
+
+        while current_account:
+            if current_account.is_sector_group:
+                return current_account.id
+            current_account = current_account.parent_id
+
+        return None
 
     def get_sector_id(self, project):
         current_account = project.analytic_account_id
@@ -724,10 +730,9 @@ class AccountConsolidationReport(models.Model):
         analytic_line_cost_projet = self.env["account.analytic.line"]
 
         for analytic_line in consolidation_data_vals_cost:
-            company_name = analytic_line.get("company")
-            company = self.env["res.company"].search(
-                [("name", "=", company_name)], limit=1
-            )
+            company = self.env["res.company"].search([('id','=', analytic_line.get("company")[0])])
+            company_ids = analytic_line.get("company",[])
+
             vals = {
                 "name": analytic_line.get("description"),
                 "account_id": self.get_account_id(analytic_line),
@@ -736,7 +741,7 @@ class AccountConsolidationReport(models.Model):
                 "managment_account_id": analytic_line.get("managment_account_group"),
                 "amount": analytic_line.get("amount"),
                 "date": self.consolidation_period.date_from,
-                "company_id": company if company else False,
+                "company_id": [(6, 0, company_ids)],
                 "currency_id": company.currency_id.id,
                 "consolidation_line": True,
             }
