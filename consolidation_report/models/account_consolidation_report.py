@@ -419,6 +419,11 @@ class AccountConsolidationReport(models.Model):
         daughter_account_dict["total"] = daughter_account_total
         return daughter_account_dict
 
+    ###########
+    # REPORTE #    
+    ###########
+
+    
     def generate_consolidation_report_view(self):
         # Elimino si es que existen lineas analiticas de redistribucion de gastos indirectos creadas anteriormente (en caso que el informe se pide mas de una vez) y lineas de account consolidation data por el mismo motivo
         self.delete_entries()
@@ -524,9 +529,6 @@ class AccountConsolidationReport(models.Model):
         consolidation_data.create(consolidation_data_vals)
         consolidation_data.create(consolidation_data_vals_cost)
         
-        
-
-
 
         view_id_tree = self.env.ref("consolidation_report.view_consolidation_data_tree")
         return {
@@ -560,102 +562,187 @@ class AccountConsolidationReport(models.Model):
         lines_to_delete.unlink()
 
     def sales_by_project(self):
-        analytic_lines = self.env["account.analytic.line"].search(
+        # Filtra las líneas analíticas para Calyx
+        analytic_lines_calyx = self.env["account.analytic.line"].search(
             [
                 ("date", ">=", self.consolidation_period.date_from),
                 ("date", "<=", self.consolidation_period.date_to),
-                (
-                    "general_account_id.code",
-                    "like",
-                    "4.1%",
-                ),  # Filtra los códigos que comienzan con '4.1'
-                (
-                    "general_account_id.user_type_id.name",
-                    "=",
-                    "Ingreso",
-                ),  # Filtra por tipo de usuario 'Ingreso'
+                ("general_account_id.code", "like", "4.1%"),
+                ("general_account_id.user_type_id.name", "=", "Ingreso"),
+                ("bussines_group_id.id", "=", 22) # ID Negocio Consolidacion / Tecnologia
             ]
         )
+
+        # Filtra las líneas analíticas para las demas empresas
+        analytic_lines_otros = self.env["account.analytic.line"].search(
+            [
+                ("date", ">=", self.consolidation_period.date_from),
+                ("date", "<=", self.consolidation_period.date_to),
+                ("general_account_id.code", "like", "4.1%"),
+                ("general_account_id.user_type_id.name", "=", "Ingreso"),
+                ("bussines_group_id.id", "=", 21) # ID Negocio Consolidacion / Servicios Profesionales
+            ]
+        )
+
         # Diccionario para acumular los montos por proyecto
-        project_sales = {}
-        total_sales = 0.0
+        project_sales_calyx = {}
+        project_sales_otros = {}
+        total_sales_calyx = 0.0
+        total_sales_otros = 0.0
+
         all_projects = self.env["project.project"].search(
             ["|", ("active", "=", False), ("active", "=", True)]
         )
-        for line in analytic_lines:
-            line.update_currency_id()
 
-            # Obtengo el proyecto asociado a la cuenta analitica de la linea
+        # Procesa las líneas analíticas para Calyx
+        for line in analytic_lines_calyx:
+            line.update_currency_id()
             project = all_projects.filtered(
                 lambda p: p.analytic_account_id.id == line.account_id.id
             )
-
             amount = line.amount
-            total_sales += amount
-
+            total_sales_calyx += amount
             if project and amount != 0.0:
-                # Verifica si el proyecto ya está en el diccionario
-                if project.id in project_sales:
-                    # Suma al monto existente
-                    project_sales[project.id] += amount
+                if project.id in project_sales_calyx:
+                    project_sales_calyx[project.id] += amount
                 else:
-                    # Crea una nueva entrada en el diccionario con el monto inicial
-                    project_sales[project.id] = amount
+                    project_sales_calyx[project.id] = amount
 
-        project_sales["total_sales"] = total_sales
+        # Procesa las líneas analíticas para otras empresas
+        for line in analytic_lines_otros:
+            line.update_currency_id()
+            project = all_projects.filtered(
+                lambda p: p.analytic_account_id.id == line.account_id.id
+            )
+            amount = line.amount
+            total_sales_otros += amount
+            if project and amount != 0.0:
+                if project.id in project_sales_otros:
+                    project_sales_otros[project.id] += amount
+                else:
+                    project_sales_otros[project.id] = amount
+
+        # Incluye los totales en los diccionarios
+        project_sales_calyx["total_sales_calyx"] = round(total_sales_calyx, 2)
+        project_sales_otros["total_sales_otros"] = round(total_sales_otros, 2)
+
+        # Combina ambos diccionarios en uno solo
+        project_sales = {
+            "calyx": project_sales_calyx,
+            "otros": project_sales_otros
+        }
 
         return project_sales
 
-    def calculate_total_amount_cost(self):
-        total_amount_cost = 0.0
 
-        analytic_lines = self.env["account.analytic.line"].search(
+    def calculate_total_amount_cost(self):
+        # Filtra las líneas analíticas para Calyx
+        analytic_lines_calyx = self.env["account.analytic.line"].search(
             [
                 ("date", ">=", self.consolidation_period.date_from),
                 ("date", "<=", self.consolidation_period.date_to),
+                ("sector_account_id.id", "=", 5331) # ID Sector Gastos Indirectos (Calyx)
             ]
         )
+    
+        # Filtra las líneas analíticas para otras empresas
+        analytic_lines_otros = self.env["account.analytic.line"].search(
+            [
+                ("date", ">=", self.consolidation_period.date_from),
+                ("date", "<=", self.consolidation_period.date_to),
+                ("sector_account_id.id", "=", 4114), # ID Sector Gastos Indirectos otros
+                ("sector_account_id.id", "!=", 5331)  # Asegura que no incluye Calyx
+            ]
+        )
+    
+        # Inicializa los totales
+        total_amount_cost_calyx = 0.0
+        total_amount_cost_otros = 0.0
+    
+        # Procesa las líneas analíticas para Calyx
+        for analytic_line in analytic_lines_calyx:
+            total_amount_cost_calyx += analytic_line.amount
+            # Crear una nueva línea analítica con los campos especificados
+            analytic_line.copy(default={
+                "name": f"{analytic_line.name} - Linea consolidacion",
+                "amount": -analytic_line.amount,
+                "debit": -analytic_line.debit,
+                "credit": -analytic_line.credit,
+                "date": self.consolidation_period.date_from,
+                "general_account_id": False,
+                "move_id": False,
+                "consolidation_line": True,
+                "currency_id": analytic_line.currency_id.id
+            })
+    
+        # Procesa las líneas analíticas para otras empresas
+        for analytic_line in analytic_lines_otros:
+            total_amount_cost_otros += analytic_line.amount
+            # Crear una nueva línea analítica con los campos especificados
+            analytic_line.copy(default={
+                "name": f"{analytic_line.name} - Linea consolidacion",
+                "amount": -analytic_line.amount,
+                "debit": -analytic_line.debit,
+                "credit": -analytic_line.credit,
+                "date": self.consolidation_period.date_from,
+                "general_account_id": False,
+                "move_id": False,
+                "consolidation_line": True,
+                "currency_id": analytic_line.currency_id.id
+            })
+    
+        # Redondea los totales a dos decimales
+        total_amount_cost_calyx = round(total_amount_cost_calyx, 2)
+        total_amount_cost_otros = round(total_amount_cost_otros, 2)
+    
+        # Devuelve un diccionario con los montos totales
+        return {
+            "total_amount_cost_calyx": total_amount_cost_calyx,
+            "total_amount_cost_otros": total_amount_cost_otros
+        }
 
-        for analytic_line in analytic_lines:
-            if analytic_line.sector_account_id.name == "Gastos Indirectos":
-                total_amount_cost += analytic_line.amount
-                # Crear una nueva línea analítica con los campos especificados
-                analytic_line.copy(default={
-                    "name": f"{analytic_line.name} - Linea consolidacion",
-                    "amount": -analytic_line.amount,
-                    "debit": -analytic_line.debit,
-                    "credit": -analytic_line.credit,
-                    "date": self.consolidation_period.date_from, 
-                    "general_account_id": False,
-                    "move_id": False,
-                    "consolidation_line": True,
-                    "currency_id": analytic_line.currency_id.id
-                })
-
-        total_amount_cost = round(total_amount_cost, 2)
-        return total_amount_cost
 
     def calculate_percentage(self, sales_dict):
-        # Calculo el porcentaje de venta de cada projecto con respecto al total de ventas
-        total_sales = round(sales_dict["total_sales"], 2)
+        percentages = {
+            "calyx": [],
+            "otros": []
+        }
 
-        percentages = []
-
-        for project, sales in sales_dict.items():
-            if project != "total_sales":  # Ignorar la clave 'total_sales'
+        # Calcular los porcentajes para Calyx
+        total_sales_calyx = round(sales_dict["calyx"]["total_sales_calyx"], 2)
+        for project, sales in sales_dict["calyx"].items():
+            if project != "total_sales_calyx":  # Ignorar la clave 'total_sales_calyx'
                 sales_rounded = round(sales, 2)
-                percentage = round((sales_rounded / total_sales) * 100, 2)
+                percentage = round((sales_rounded / total_sales_calyx) * 100, 2)
                 if percentage != 0.00:
-                    percentages.append(
+                    percentages["calyx"].append(
                         {
                             "project_id": project,
                             "sales": sales_rounded,
                             "percentage": percentage,
-                            "total_sales": total_sales,
+                            "total_sales": total_sales_calyx
+                        }
+                    )
+
+        # Calcular los porcentajes para Otros
+        total_sales_otros = round(sales_dict["otros"]["total_sales_otros"], 2)
+        for project, sales in sales_dict["otros"].items():
+            if project != "total_sales_otros":  # Ignorar la clave 'total_sales_otros'
+                sales_rounded = round(sales, 2)
+                percentage = round((sales_rounded / total_sales_otros) * 100, 2)
+                if percentage != 0.00:
+                    percentages["otros"].append(
+                        {
+                            "project_id": project,
+                            "sales": sales_rounded,
+                            "percentage": percentage,
+                            "total_sales": total_sales_otros
                         }
                     )
 
         return percentages
+
+
     
     def get_management_id(self, analytic_line):
         current_account = analytic_line.account_id
@@ -683,37 +770,68 @@ class AccountConsolidationReport(models.Model):
         )
         consolidation_data_vals_cost = []
 
-        # Itera sobre cada entrada en la lista de porcentajes por proyecto
-        for project_data in percentage_for_project:
+        # Procesar los datos para Calyx
+        total_amount_cost_calyx = total_amount_cost['total_amount_cost_calyx']
+        for project_data in percentage_for_project['calyx']:
             project_id = project_data["project_id"]
             percentage = project_data["percentage"]
             sales_project = project_data["sales"]
             total_sales = project_data["total_sales"]
+
             # Encuentra el proyecto usando el project_id
             project = all_projects.filtered(lambda p: p.id == project_id)
 
             if project.exists() and project.analytic_account_id:
                 # Calcula el monto a asignar basado en el porcentaje y el costo total
-                amount = (percentage / 100.0) * total_amount_cost
+                amount = (percentage / 100.0) * total_amount_cost_calyx
 
                 # Crea un nuevo elemento consolidation data para ser visto en el informe
                 consolidation_data_vals_cost.append(
                     {
                         "name": self.name,
-                        "main_group": project.analytic_account_id.group_id.parent_prin_group.id
-                        or "",
-                        "business_group": project.analytic_account_id.group_id.parent_id.id
-                        or "",
-                        "sector_account_group": self.get_sector_id(project) or "",
-                        "managment_account_group": project.analytic_account_id.parent_id.id
-                        or "",
+                        "main_group": project.analytic_account_id.group_id.parent_prin_group.id or "",
+                        "business_group": 22,
+                        "sector_account_group": self.get_sector_id(project) or "", 
+                        "managment_account_group": project.analytic_account_id.parent_id.id or "",
                         "project_id": project_id,
                         "company": project.company_id.ids or "",
-                        "description": f"Porcentaje = (Facturacion proyecto: {sales_project} *100 / Total facturacion: {total_sales}) Total GI = {total_amount_cost}",
+                        "description": f"Porcentaje = (Facturacion proyecto: {sales_project} *100 / Total facturacion: {total_sales}) Total GI = {total_amount_cost_calyx}",
                         "amount": -abs(amount),
                     }
                 )
+
+        # Procesar los datos para Otros
+        total_amount_cost_otros = total_amount_cost['total_amount_cost_otros']
+        for project_data in percentage_for_project['otros']:
+            project_id = project_data["project_id"]
+            percentage = project_data["percentage"]
+            sales_project = project_data["sales"]
+            total_sales = project_data["total_sales"]
+
+            # Encuentra el proyecto usando el project_id
+            project = all_projects.filtered(lambda p: p.id == project_id)
+
+            if project.exists() and project.analytic_account_id:
+                # Calcula el monto a asignar basado en el porcentaje y el costo total
+                amount = (percentage / 100.0) * total_amount_cost_otros
+
+                # Crea un nuevo elemento consolidation data para ser visto en el informe
+                consolidation_data_vals_cost.append(
+                    {
+                        "name": self.name,
+                        "main_group": project.analytic_account_id.group_id.parent_prin_group.id or "",
+                        "business_group": project.analytic_account_id.group_id.parent_id.id or "",
+                        "sector_account_group": self.get_sector_id(project) or "",
+                        "managment_account_group": project.analytic_account_id.parent_id.id or "",
+                        "project_id": project_id,
+                        "company": project.company_id.ids or "",
+                        "description": f"Porcentaje = (Facturacion proyecto: {sales_project} *100 / Total facturacion: {total_sales}) Total GI = {total_amount_cost_otros}",
+                        "amount": -abs(amount),
+                    }
+                )
+
         return consolidation_data_vals_cost
+
 
     def get_account_id(self, analytic_line):
         project = analytic_line.get("project_id")
