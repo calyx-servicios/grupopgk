@@ -502,19 +502,7 @@ class AccountConsolidationReport(models.Model):
                     "currency_origin": currency_origin if currency_origin else "",
                     "currency": new_currency if new_currency else "",
                     "rate": rate,
-                    "amount": (
-                        analytic_line.amount
-                        if (
-                            (
-                                analytic_line.sector_account_id.name
-                                == "Gastos Indirectos"
-                                and analytic_line.consolidation_line
-                            )
-                            or not consolidation_period
-                            or not consolidation_period.historical_rate
-                        )
-                        else analytic_line.amount * rate
-                    ),
+                    "amount": analytic_line.amount * rate
                 }
             )
 
@@ -554,8 +542,7 @@ class AccountConsolidationReport(models.Model):
 
         lines_to_delete = self.env["account.analytic.line"].search(
             [
-                ("consolidation_line", "=", True),
-                ("date", "=", self.consolidation_period.date_from),
+                ("consolidation_line", "=", True)
             ]
         )
 
@@ -600,7 +587,7 @@ class AccountConsolidationReport(models.Model):
             project = all_projects.filtered(
                 lambda p: p.analytic_account_id.id == line.account_id.id
             )
-            amount = line.amount
+            amount = self._convert_amount(line)
             total_sales_calyx += amount
             if project and amount != 0.0:
                 if project.id in project_sales_calyx:
@@ -614,7 +601,7 @@ class AccountConsolidationReport(models.Model):
             project = all_projects.filtered(
                 lambda p: p.analytic_account_id.id == line.account_id.id
             )
-            amount = line.amount
+            amount = self._convert_amount(line)
             total_sales_otros += amount
             if project and amount != 0.0:
                 if project.id in project_sales_otros:
@@ -661,34 +648,37 @@ class AccountConsolidationReport(models.Model):
     
         # Procesa las líneas analíticas para Calyx
         for analytic_line in analytic_lines_calyx:
-            total_amount_cost_calyx += analytic_line.amount
+            amount = self._convert_amount(analytic_line)
+            total_amount_cost_calyx += amount
             # Crear una nueva línea analítica con los campos especificados
             analytic_line.copy(default={
                 "name": f"{analytic_line.name} - Linea consolidacion",
                 "amount": -analytic_line.amount,
                 "debit": -analytic_line.debit,
                 "credit": -analytic_line.credit,
-                "date": self.consolidation_period.date_from,
+                "date": analytic_line.date,
                 "general_account_id": False,
-                "move_id": False,
+                "move_id": analytic_line.move_id.id,
                 "consolidation_line": True,
-                "currency_id": analytic_line.currency_id.id
+                "currency_id": analytic_line.currency_id.id,
             })
     
         # Procesa las líneas analíticas para otras empresas
         for analytic_line in analytic_lines_otros:
-            total_amount_cost_otros += analytic_line.amount
+            amount = self._convert_amount(analytic_line)
+            total_amount_cost_otros += amount
             # Crear una nueva línea analítica con los campos especificados
             analytic_line.copy(default={
                 "name": f"{analytic_line.name} - Linea consolidacion",
                 "amount": -analytic_line.amount,
                 "debit": -analytic_line.debit,
                 "credit": -analytic_line.credit,
-                "date": self.consolidation_period.date_from,
+                "date": analytic_line.date,
                 "general_account_id": False,
-                "move_id": False,
+                "move_id": analytic_line.move_id.id,
                 "consolidation_line": True,
-                "currency_id": analytic_line.currency_id.id
+                "currency_id": analytic_line.currency_id.id,
+                "move_company_id": analytic_line.move_company_id.id,
             })
     
         # Redondea los totales a dos decimales
@@ -797,6 +787,8 @@ class AccountConsolidationReport(models.Model):
                         "company": project.company_id.ids or "",
                         "description": f"Porcentaje = (Facturacion proyecto: {sales_project} *100 / Total facturacion: {total_sales}) Total GI = {total_amount_cost_calyx}",
                         "amount": -abs(amount),
+                        "currency": 19,
+                        "rate": 1 
                     }
                 )
 
@@ -827,6 +819,8 @@ class AccountConsolidationReport(models.Model):
                         "company": project.company_id.ids or "",
                         "description": f"Porcentaje = (Facturacion proyecto: {sales_project} *100 / Total facturacion: {total_sales}) Total GI = {total_amount_cost_otros}",
                         "amount": -abs(amount),
+                        "currency": 19,
+                        "rate": 1 
                     }
                 )
 
@@ -860,7 +854,7 @@ class AccountConsolidationReport(models.Model):
                 "amount": analytic_line.get("amount"),
                 "date": self.consolidation_period.date_from,
                 "company_id": [(6, 0, company_ids)],
-                "currency_id": company.currency_id.id,
+                "currency_id": 19,
                 "consolidation_line": True,
             }
 
@@ -871,3 +865,20 @@ class AccountConsolidationReport(models.Model):
             analytic_line["daughter_account"] = created_line.id
 
         return consolidation_data_vals_cost
+
+    def _convert_amount(self, analytic_line):
+        consolidation_period = (
+                self.consolidation_period.consolidation_companies.filtered(
+                    lambda x: x.company_id == analytic_line.move_id.company_id
+                )
+            )
+
+        if consolidation_period and not consolidation_period.historical_rate:
+            rate = consolidation_period.rate
+        
+        else:
+            rate = 1
+        
+        total = analytic_line.amount * rate
+        
+        return total
