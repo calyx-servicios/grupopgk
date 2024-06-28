@@ -428,6 +428,9 @@ class AccountConsolidationReport(models.Model):
         # Elimino si es que existen lineas analiticas de redistribucion de gastos indirectos creadas anteriormente (en caso que el informe se pide mas de una vez) y lineas de account consolidation data por el mismo motivo
         self.delete_entries()
 
+        # Creacion de lineas analiticas que surgen de asientos contables automaticos y no se crearon
+        self.create_missing_analytic_lines()
+
         # Calculo el monto total de las lineas de 'Gastos Indirectos'
         total_amount_cost = self.calculate_total_amount_cost()
 
@@ -882,3 +885,68 @@ class AccountConsolidationReport(models.Model):
         total = analytic_line.amount * rate
         
         return total
+
+    def create_missing_analytic_lines(self):
+        # Lineas analiticas PGK y demas excepto Calyx
+        missing_analytic_lines_pgk = self.env["account.move.line"].search(
+        [
+            ("date", ">=", self.consolidation_period.date_from),
+            ("date", "<=", self.consolidation_period.date_to),
+            "|",
+            ("account_id.code", "=", "4.2.1.01.020"),
+            ("account_id.code", "=", "5.8.1.01.016"),
+            ("analytic_line_ids", "=", False),
+            ("account_id.company_id.id", "!=", 3) # Excluyo Calyx Servicios
+        ]
+        )
+        # Lista para almacenar los diccionarios de valores para las nuevas líneas analíticas
+        vals_list_pgk = []
+
+        # Crear un diccionario de valores para cada línea de movimiento contable
+        for line in missing_analytic_lines_pgk:
+            vals = {
+                'name': line.name or '/',  # Usar el nombre de la línea de movimiento contable o '/' si está vacío
+                'date': line.date,  # Usar la fecha de la línea de movimiento contable
+                'account_id': 812,  # Ingresos Indirectos (PGK) / Diferencia de Cambio Comercial (PGK)
+                'move_id': line.id,  # Usar el ID del movimiento contable
+                'amount': line.amount_currency,  
+                'company_id': line.move_id.company_id.id,
+                'currency_id': line.move_id.currency_id.id,
+                'general_account_id': line.account_id.id,
+                "consolidation_line": True 
+            }
+            vals_list_pgk.append(vals)
+
+        # Crear las nuevas líneas analíticas 
+        self.env["account.analytic.line"].create(vals_list_pgk)
+
+        # Lineas analiticas Calyx
+        missing_analytic_lines_calyx = self.env["account.move.line"].search(
+        [
+            ("date", ">=", self.consolidation_period.date_from),
+            ("date", "<=", self.consolidation_period.date_to),
+            ("account_id.code", "=", "4.2.1.01.020"),
+            ("analytic_line_ids", "=", False),
+            ("account_id.company_id.id", "=", 3) # Solo Calyx Servicios
+        ]
+        )
+        # Lista para almacenar los diccionarios de valores para las nuevas líneas analíticas
+        vals_list_calyx = []
+
+        # Crear un diccionario de valores para cada línea de movimiento contable
+        for line in missing_analytic_lines_calyx:
+            vals = {
+                'name': line.name or '/',  # Usar el nombre de la línea de movimiento contable o '/' si está vacío
+                'date': line.date,  # Usar la fecha de la línea de movimiento contable
+                'account_id': 5487,  # Ingresos Indirectos (Calyx) / Diferencia de Cambio Comercial (Calyx)
+                'move_id': line.id,  # Usar el ID del movimiento contable
+                'amount': line.amount_currency,  
+                'company_id': line.move_id.company_id.id,
+                'currency_id': line.move_id.currency_id.id,
+                'general_account_id': line.account_id.id,
+                "consolidation_line": True, 
+            }
+            vals_list_calyx.append(vals)
+
+        # Crear las nuevas líneas analíticas
+        self.env["account.analytic.line"].create(vals_list_calyx)
