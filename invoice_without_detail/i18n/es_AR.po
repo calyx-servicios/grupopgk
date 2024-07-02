@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 15.0+e\n"
+"Project-Id-Version: Odoo Server 16.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-24 12:23+0000\n"
-"PO-Revision-Date: 2023-04-24 12:23+0000\n"
+"POT-Creation-Date: 2024-04-11 19:13+0000\n"
+"PO-Revision-Date: 2024-04-11 19:13+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -16,29 +16,39 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. module: invoice_without_detail
+#: model:ir.actions.report,print_report_name:invoice_without_detail.action_invoce_without_details
+msgid "'%s' % (object.name or '')"
+msgstr ""
+
+#. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<br/><strong>CBU for payment: </strong>"
-msgstr "<br/><strong>CBU para Pagos: </strong>"
+msgstr "<br/><strong>CBU para pago: </strong>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<br/><strong>Currency: </strong>"
-msgstr "<br/><strong> Moneda </strong>"
+msgstr "<br/><strong>Moneda: </strong>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<br/><strong>Exchange rate: </strong>"
-msgstr "<br/><strong>Tipo de cambio</strong>"
+msgstr "<br/><strong>Tipo de cambio: </strong>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<br/><strong>Incoterm:</strong>"
-msgstr "<br/><strong>Incoterm</strong>"
+msgstr ""
+
+#. module: invoice_without_detail
+#: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
+msgid "<br/><strong>Invoiced period: </strong>"
+msgstr "<br/><strong>Periodo: </strong>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<br/><strong>PO Number:</strong>"
-msgstr "<br/><strong> Numero </strong>"
+msgstr ""
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -48,21 +58,106 @@ msgstr "<br/><strong>Terminos de pago: </strong>"
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<br/><strong>Reference:</strong>"
-msgstr "<br/><strong>Referencia:</strong>"
+msgstr "<br/><strong>Referencia: </strong>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<br/><strong>Source:</strong>"
-msgstr "<br/><strong>Fuente:</strong>"
+msgstr ""
+
+#. module: invoice_without_detail
+#: model:mail.template,body_html:invoice_without_detail.email_template_invoice_without_detail
+msgid ""
+"<div style=\"margin: 0px; padding: 0px;\">\n"
+"    <p style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
+"        Dear\n"
+"        <t t-if=\"object.partner_id.parent_id\">\n"
+"            <t t-out=\"object.partner_id.name or ''\">Brandon Freeman</t> (<t t-out=\"object.partner_id.parent_id.name or ''\">Azure Interior</t>),\n"
+"        </t>\n"
+"        <t t-else=\"\">\n"
+"            <t t-out=\"object.partner_id.name or ''\">Brandon Freeman</t>,\n"
+"        </t>\n"
+"        <br><br>\n"
+"        Here is your\n"
+"        <t t-if=\"object.name\">\n"
+"            invoice <span style=\"font-weight:bold;\" t-out=\"object.name or ''\">INV/2021/05/0005</span>\n"
+"        </t>\n"
+"        <t t-else=\"\">\n"
+"            invoice\n"
+"        </t>\n"
+"        <t t-if=\"object.invoice_origin\">\n"
+"            (with reference: <t t-out=\"object.invoice_origin or ''\">SUB003</t>)\n"
+"        </t>\n"
+"        amounting in <span style=\"font-weight:bold;\" t-out=\"format_amount(object.amount_total, object.currency_id) or ''\">$ 143,750.00</span>\n"
+"        from <t t-out=\"object.company_id.name or ''\">YourCompany</t>.\n"
+"        <t t-if=\"object.payment_state in ('paid', 'in_payment')\">\n"
+"            This invoice is already paid.\n"
+"        </t>\n"
+"        <t t-else=\"\">\n"
+"            Please remit payment at your earliest convenience.\n"
+"            <t t-if=\"object.payment_reference\">\n"
+"                <br><br>\n"
+"                Please use the following communication for your payment: <span style=\"font-weight:bold;\" t-out=\"object.payment_reference or ''\">INV/2021/05/0005</span>.\n"
+"            </t>\n"
+"        </t>\n"
+"        <br><br>\n"
+"        Do not hesitate to contact us if you have any questions.\n"
+"        <t t-if=\"not is_html_empty(object.invoice_user_id.signature)\">\n"
+"            <br><br>\n"
+"            <t t-out=\"object.invoice_user_id.signature or ''\">--<br>Mitchell Admin</t>\n"
+"        </t>\n"
+"    </p>\n"
+"</div>\n"
+"            "
+msgstr ""
+"<div style=\"margin: 0px; padding: 0px;\">\n"
+"    <p style=\"margin: 0px; padding: 0px; font-size: 13px;\">\n"
+"        Estimado/a\n"
+"        <t t-if=\"object.partner_id.parent_id\">\n"
+"            <t t-out=\"object.partner_id.name or ''\">Brandon Freeman</t> (<t t-out=\"object.partner_id.parent_id.name or ''\">Azure Interior</t>),\n"
+"        </t>\n"
+"        <t t-else=\"\">\n"
+"            <t t-out=\"object.partner_id.name or ''\">Brandon Freeman</t>,\n"
+"        </t>\n"
+"        <br><br>\n"
+"        Estas es su\n"
+"        <t t-if=\"object.name\">\n"
+"            factura <span style=\"font-weight:bold;\" t-out=\"object.name or ''\">INV/2021/05/0005</span>\n"
+"        </t>\n"
+"        <t t-else=\"\">\n"
+"            factura\n"
+"        </t>\n"
+"        <t t-if=\"object.invoice_origin\">\n"
+"            (with reference: <t t-out=\"object.invoice_origin or ''\">SUB003</t>)\n"
+"        </t>\n"
+"        monto total <span style=\"font-weight:bold;\" t-out=\"format_amount(object.amount_total, object.currency_id) or ''\">$ 143,750.00</span>\n"
+"        desde <t t-out=\"object.company_id.name or ''\">YourCompany</t>.\n"
+"        <t t-if=\"object.payment_state in ('paid', 'in_payment')\">\n"
+"            Esta factura ya está pagada.\n"
+"        </t>\n"
+"        <t t-else=\"\">\n"
+"            Por favor remita el pago a su más pronta conveniencia.\n"
+"            <t t-if=\"object.payment_reference\">\n"
+"                <br><br>\n"
+"                Por favor utilice la siguiente comunicación para su pago: <span style=\"font-weight:bold;\" t-out=\"object.payment_reference or ''\">INV/2021/05/0005</span>.\n"
+"            </t>\n"
+"        </t>\n"
+"        <br><br>\n"
+"        No dude en contactarnos si tiene alguna pregunta.\n"
+"        <t t-if=\"not is_html_empty(object.invoice_user_id.signature)\">\n"
+"            <br><br>\n"
+"            <t t-out=\"object.invoice_user_id.signature or ''\">--<br>Mitchell Admin</t>\n"
+"        </t>\n"
+"    </p>\n"
+"</div>\n"
+"            "
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid ""
 "<span groups=\"account.group_show_line_subtotals_tax_excluded\">Amount</span>\n"
-"                                    <span groups=\"account.group_show_line_subtotals_tax_included\">Total Price</span>"
+"                                    <span groups=\"account.group_show_line_subtotals_tax_included\">Total</span>"
 msgstr ""
-"<span groups=\"account.group_show_line_subtotals_tax_excluded\">Monto</span>\n"
-"                                    <span groups=\"account.group_show_line_subtotals_tax_included\">Precio Total</span>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -72,7 +167,7 @@ msgstr "<span>Descripcion</span>"
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<span>Disc.%</span>"
-msgstr "<span>Desc. %</span>"
+msgstr "<span>Desc.%</span>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -82,7 +177,7 @@ msgstr "<span>Cantidad</span>"
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<span>Source Document</span>"
-msgstr "<span>Documento Origin</span>"
+msgstr ""
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -97,7 +192,12 @@ msgstr "<span>Precio Unitario</span>"
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<strong class=\"mr16\">Subtotal</strong>"
-msgstr "<strong>Subtotal</strong>"
+msgstr ""
+
+#. module: invoice_without_detail
+#: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
+msgid "<strong>Amount Due</strong>"
+msgstr "<strong>Monto adeudado</strong>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -112,17 +212,12 @@ msgstr "<strong>Fecha Vencimiento: </strong>"
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<strong>Exchange Rate</strong>"
-msgstr "<strong>Tipo de Cambio</strong>"
-
-#. module: invoice_without_detail
-#: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
-msgid "<strong>Invoiced period: </strong>"
-msgstr "<strong>Periodo Facturado</strong>"
+msgstr "<strong>Tipo de cambio</strong>"
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<strong>Subtotal (AED)</strong>"
-msgstr "<strong>subtotal</strong>"
+msgstr ""
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -132,17 +227,12 @@ msgstr ""
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<strong>Tax Amount (AED)</strong>"
-msgstr "<strong>Importe de impuesto</strong>"
-
-#. module: invoice_without_detail
-#: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
-msgid "<strong>Taxes</strong>"
-msgstr "<strong>Impuestos</strong>"
+msgstr ""
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<strong>Total (AED)</strong>"
-msgstr "<strong>Total</strong>"
+msgstr ""
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -152,7 +242,17 @@ msgstr ""
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "<strong>VAT Cond: </strong>"
-msgstr "<strong>Cond IVA</strong>"
+msgstr "<strong>Cond IVA: </strong>"
+
+#. module: invoice_without_detail
+#: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
+msgid "CAE Due Date:"
+msgstr ""
+
+#. module: invoice_without_detail
+#: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
+msgid "CAE:"
+msgstr ""
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -167,19 +267,62 @@ msgid ""
 msgstr ""
 
 #. module: invoice_without_detail
+#: model:ir.model.fields,field_description:invoice_without_detail.field_account_bank_statement_line__invoice_send_ids
+#: model:ir.model.fields,field_description:invoice_without_detail.field_account_move__invoice_send_ids
+#: model:ir.model.fields,field_description:invoice_without_detail.field_account_payment__invoice_send_ids
+msgid "Invoice Sends"
+msgstr ""
+
+#. module: invoice_without_detail
+#: model:mail.template,name:invoice_without_detail.email_template_invoice_without_detail
+msgid "Invoice without detail: Sending"
+msgstr "Factura sin detalles: Enviando "
+
+#. module: invoice_without_detail
 #: model:ir.actions.report,name:invoice_without_detail.action_invoce_without_details
 msgid "Invoice without details"
-msgstr ""Factura sin detalles""
+msgstr "Factura sin detalles"
 
 #. module: invoice_without_detail
 #: model:ir.model,name:invoice_without_detail.model_account_move
 msgid "Journal Entry"
-msgstr "Asiento contable"
+msgstr ""
+
+#. module: invoice_without_detail
+#. odoo-python
+#: code:addons/invoice_without_detail/models/account_move.py:0
+#: code:addons/latitud/invoice_without_detail/models/account_move.py:0
+#, python-format
+msgid "Only invoices could be printed."
+msgstr ""
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
 msgid "Page: <span class=\"page\"/> / <span class=\"topage\"/>"
-msgstr "Pagina: <span class=\"page\"/> / <span class=\"topage\"/>"
+msgstr ""
+
+#. module: invoice_without_detail
+#: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
+msgid "Paid on"
+msgstr ""
+
+#. module: invoice_without_detail
+#: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
+msgid "QR Code"
+msgstr ""
+
+#. module: invoice_without_detail
+#: model:mail.template,description:invoice_without_detail.email_template_invoice_without_detail
+msgid "Sent to customers with their invoices in attachment"
+msgstr ""
+
+#. module: invoice_without_detail
+#: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
+msgid ""
+"THE PURCHASER ASSUMES THE COMMITMENT, IN THE NATURE OF AN AFFECTED "
+"DECLARATION, OF NOT EXPORTING THE PROPERTY DURING THE TERM OF THREE 3 YEARS "
+"FROM THE ACQUISITION<br/>"
+msgstr ""
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
@@ -188,5 +331,17 @@ msgstr ""
 
 #. module: invoice_without_detail
 #: model_terms:ir.ui.view,arch_db:invoice_without_detail.report_invoice_wd
-msgid "to"
-msgstr "para"
+msgid "al"
+msgstr ""
+
+#. module: invoice_without_detail
+#: model:mail.template,report_name:invoice_without_detail.email_template_invoice_without_detail
+msgid ""
+"{{ (object.name or '').replace('/','_') }}{{ object.state == 'draft' and "
+"'_draft' or '' }}"
+msgstr ""
+
+#. module: invoice_without_detail
+#: model:mail.template,subject:invoice_without_detail.email_template_invoice_without_detail
+msgid "{{ object.company_id.name }} Invoice (Ref {{ object.name or 'n/a' }})"
+msgstr ""
