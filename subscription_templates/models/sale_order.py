@@ -8,10 +8,10 @@ class SaleOrder(models.Model):
     def _subscription_plans(self):
         self.ensure_one()
         res = {}
-        new_sub_lines = self.order_line.filtered(lambda l: not l.order_id.subscription_id and l.subscription_plan_id)
+        new_sub_lines = self.order_line.filtered(lambda l: (not l.order_id.subscription_id and l.subscription_plan_id) or l.display_type == 'line_section')
         plans = new_sub_lines.mapped('subscription_plan_id')
         for plan in plans:
-            lines = self.order_line.filtered(lambda l: l.subscription_plan_id == plan)
+            lines = self.order_line.filtered(lambda l: l.subscription_plan_id == plan or l.display_type == 'line_section')
             res[plan] = lines
         return res
 

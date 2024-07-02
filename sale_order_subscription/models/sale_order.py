@@ -50,7 +50,18 @@ class SaleOrder(models.Model):
                     subscription.button_start_date()
                     res.append(subscription)
                     plans[plan].order_id.write({'subscription_id': subscription.id})
-                    msg_body = _("Created with the product: (%s) a new subscription <a href=# data-oe-model=subscription.package data-oe-id=%d>%s</a>") % (', '.join([product.product_id.name for product in subscription.product_line_ids]) , self.subscription_id.id, self.subscription_id.name)
+                    product_names = []
+                    for product in subscription.product_line_ids:
+                        if product.display_type in ['line_section', 'line_note']:
+                            continue
+                        else:
+                            product_names.append(product.product_id.name)
+
+                    msg_body = _("Created with the product: (%s) a new subscription <a href=# data-oe-model=subscription.package data-oe-id=%d>%s</a>") % (
+                        ', '.join(product_names),
+                        self.subscription_id.id,
+                        self.subscription_id.name
+                    )
                     self.message_post(body=msg_body)
             return res
 
@@ -69,7 +80,7 @@ class SaleOrder(models.Model):
         subscription = None
         if len(self.company_id) == 1:
             subscription = self.sudo().with_company(self.company_id).create_service_subscription()
-        else:
+        else: # No deberia entrar ya que en la sale.order viene siempre una sola compañia
             for order in self:
                 subscription = order.order_line.sudo().with_company(order.company_id).create_service_subscription()
         if subscription:
