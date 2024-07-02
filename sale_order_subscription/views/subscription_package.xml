@@ -8,6 +8,36 @@
             <xpath expr="//form/sheet/notebook/page/field[@name='product_line_ids']/tree/field[@name='product_id']" position="after">
                 <field name="analytic_account_id" domain="['|', ('company_id', '=', False), ('company_id', '=', parent.company_id)]" groups="analytic.group_analytic_accounting" optional="show" />
             </xpath>
+            <xpath expr="//form/sheet/notebook/page/field[@name='product_line_ids']/tree" position="inside">
+                <control>
+                    <create name="add_section_control" string="Add a section" context="{'default_display_type': 'line_section', 'default_has_profile_admin': True}"/>
+                    <create name="add_note_control" string="Add a note" context="{'default_display_type': 'line_note'}"/>
+                </control>
+            </xpath>
+            <xpath expr="//form/sheet/notebook/page/field[@name='product_line_ids']/tree/field[@name='sequence']" position="after">
+                <field name="display_type" readonly='0' invisible='1'/>
+            </xpath>
+            <xpath expr="//form/sheet/notebook/page/field[@name='product_line_ids']/tree/field[@name='product_id']" position="attributes">
+                <attribute name='required'>0</attribute>
+                <attribute name="attrs">{'readonly': [('display_type', 'in', ['line_section', 'line_note'])]}</attribute>
+            </xpath>
+            <xpath expr="//form/sheet/notebook/page/field[@name='product_line_ids']/tree/field[@name='product_qty']" position="attributes">
+                <attribute name="attrs">{'readonly': [('display_type', 'in', ['line_section', 'line_note'])], 'required': [('display_type', 'not in', ['line_section', 'line_note'])]}</attribute>
+            </xpath>
+            <xpath expr="//form/sheet/notebook/page/field[@name='product_line_ids']/tree/field[@name='product_uom_id']" position="attributes">
+                <attribute name='required'>0</attribute>
+                <attribute name="attrs">{'readonly': [('display_type', 'in', ['line_section', 'line_note'])]}</attribute>
+            </xpath>
+            <xpath expr="//form/sheet/notebook/page/field[@name='product_line_ids']/tree/field[@name='unit_price']" position="attributes">
+                <attribute name="attrs">{'readonly': [('display_type', 'in', ['line_section', 'line_note'])], 'required': [('display_type', 'not in', ['line_section', 'line_note'])]}</attribute>
+            </xpath>
+            <xpath expr="//form/sheet/notebook/page/field[@name='product_line_ids']/tree/field[@name='total_amount']" position="after">
+                <field name="name" widget="section_and_note_text"/>
+            </xpath>
+            <!-- Aplicar widget 'section_and_note_one2many' -->
+            <xpath expr="//form/sheet/notebook/page/field[@name='product_line_ids']" position="attributes">
+                <attribute name="widget">section_and_note_one2many</attribute>
+            </xpath>
         </field>
     </record>
 </odoo>

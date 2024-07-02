@@ -33,14 +33,22 @@ class SubscriptionPackage(models.Model):
     def create_invoice_forced(self):
         this_products_line = []
         for rec in self.product_line_ids:
-            rec_list = [0, 0, {'product_id': rec.product_id.id,
-                            'name': rec.name_product,
-                            'quantity': rec.product_qty,
-                            'price_unit': rec.unit_price,
-                            'analytic_account_id': rec.analytic_account_id.id,
-                            'tax_ids': [(6, 0, rec.tax_id.ids)],
-
-                            }]
+            if rec.display_type == 'line_section':
+                rec_list = [0, 0, {
+                    'name': rec.name,  # Usa rec.name para secciones
+                    'display_type': rec.display_type,
+                    'sequence': rec.sequence,
+                }]
+            else:
+                rec_list = [0, 0, {
+                    'product_id': rec.product_id.id,
+                    'name': rec.name_product,
+                    'quantity': rec.product_qty,
+                    'price_unit': rec.unit_price,
+                    'analytic_account_id': rec.analytic_account_id.id,
+                    'tax_ids': [(6, 0, rec.tax_id.ids)],
+                    'sequence': rec.sequence,
+                }]
             this_products_line.append(rec_list)
         move = self.env['account.move'].with_company(self.company_id).create(
             {

@@ -41,16 +41,23 @@ class SaleOrderLine(models.Model):
     def _prepare_values_product(self):
         values = []
         for line in self:
-            if not line.product_id.is_dues_ok:
-                price = line.price_unit
+            if line.display_type == 'line_section':
                 values.append((0, False, {
-                    'sequence': line.sequence,
-                    'product_id': line.product_id.id,
-                    'name_product': line.name,
-                    'analytic_account_id': line.analytic_account_id.id,
-                    'product_qty': line.product_uom_qty,
-                    'product_uom_id': line.product_uom.id,
-                    'unit_price': price,
-                    'tax_id': [(6, 0, line.tax_id.ids)],
+                'sequence': line.sequence,
+                'name': line.name,
+                'display_type': line.display_type,
                 }))
+            else:
+                if not line.product_id.is_dues_ok:
+                    price = line.price_unit
+                    values.append((0, False, {
+                        'sequence': line.sequence,
+                        'product_id': line.product_id.id,
+                        'name_product': line.name,
+                        'analytic_account_id': line.analytic_account_id.id,
+                        'product_qty': line.product_uom_qty,
+                        'product_uom_id': line.product_uom.id,
+                        'unit_price': price,
+                        'tax_id': [(6, 0, line.tax_id.ids)], 
+                    }))
         return values
