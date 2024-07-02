@@ -8,7 +8,13 @@ class SubscriptionPackageProductLine(models.Model):
 
     analytic_account_id = fields.Many2one('account.analytic.account', string='Analytic Account',
     index=True, store=True, compute='_compute_analytic_account_id', readonly=False, check_company=True, copy=True)
+    display_type = fields.Selection([
+        ('product', "Product"),
+        ('line_section', "Section"),
+        ('line_note', "Note")], default='product', help="Technical field for UX purpose.")
 
+    name = fields.Char(string='Name')
+    
     @api.depends('product_id', 'subscription_id.sale_order.date_order', 'subscription_id.sale_order.partner_id')
     def _compute_analytic_account_id(self):
         for line in self:
