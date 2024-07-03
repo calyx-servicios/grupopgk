@@ -42,15 +42,16 @@ class TimesheetSige(models.Model):
         ('unique_period_employee', 'unique(period_id, employee_id)', _('Only one record allowed per period and employee.')),
     ]
 
-    @api.constrains('timesheet_ids')
-    def _check_duplicate_timesheet_line(self):
-        for record in self:
-            project_employee_pairs = set()
-            for line in record.timesheet_ids:
-                project_employee_pair = (line.project_id.id, line.employee_id.id)
-                if project_employee_pair in project_employee_pairs:
-                    raise ValidationError(_("Duplicate timesheet entry found for the same project and employee!"))
-                project_employee_pairs.add(project_employee_pair)
+    # Se quita ya que el cliente pide varias lineas al mismo proyecto
+    #@api.constrains('timesheet_ids')
+    #def _check_duplicate_timesheet_line(self):
+    #    for record in self:
+    #        project_employee_pairs = set()
+    #        for line in record.timesheet_ids:
+    #            project_employee_pair = (line.project_id.id, line.employee_id.id)
+    #            if project_employee_pair in project_employee_pairs:
+    #                raise ValidationError(_("Duplicate timesheet entry found for the same project and employee!"))
+    #            project_employee_pairs.add(project_employee_pair)
 
     @api.depends("start_of_period")
     def set_name(self):
