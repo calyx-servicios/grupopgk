@@ -2,10 +2,12 @@
 Show Analytical Accounts
 ========================
 
-.. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !! This module allow show analytical accounts with !!
-   !! the check enabled.                              !!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+.. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !! This module allows you to show analytical accounts !!
+   !! with the check enabled and does not allow you to   !!
+   !! archive analytical accounts that have active       !!
+   !! associated subscriptions                           !!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
 .. User https://shields.io for badge creation.
@@ -21,7 +23,7 @@ Show Analytical Accounts
 
 |badge1| |badge2| |badge3|
 
-This module allow show analytical accounts with the check enabled.
+This module allows you to show analytical accounts with the check enabled and does not allow you to archive analytical accounts that have active associated subscriptions.
 
 Install
 =======
@@ -56,6 +58,7 @@ Contributors
 * `Calyx Servicios S.A. <https://odoo.calyx-cloud.com.ar/>`_
   
   * Zamora, Javier
+  * Ferrari, Leandro
 
 Maintainers
 ~~~~~~~~~~~
