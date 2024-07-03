@@ -909,7 +909,7 @@ class AccountConsolidationReport(models.Model):
                 'date': line.date,  # Usar la fecha de la línea de movimiento contable
                 'account_id': 812,  # Ingresos Indirectos (PGK) / Diferencia de Cambio Comercial (PGK)
                 'move_id': line.id,  # Usar el ID del movimiento contable
-                'amount': line.amount_currency,  
+                'amount': line.credit - line.debit,  
                 'company_id': line.move_id.company_id.id,
                 'currency_id': line.move_id.currency_id.id,
                 'general_account_id': line.account_id.id,
