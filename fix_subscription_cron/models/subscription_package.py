@@ -104,3 +104,18 @@ class SubscriptionPackage(models.Model):
             'view_mode': 'tree,form'
         }
 
+    def next_date_invoice(self):
+        # Traigo todas las suscripciones
+        subscriptions = self.env['subscription.package'].search([('stage_category', '=', 'progress'), ('to_renew', '=', False)])
+        # Busco las facturas asociadas a cada suscripcion
+        for subscription in subscriptions:
+            invoices = self.env['account.move'].search([('subscription_id', '=', subscription.id)])
+            if invoices:
+                # Obtengo la fecha de la última factura
+                last_invoice_date = invoices[0].invoice_date
+                if last_invoice_date:
+                    # Agrego 30 días a la fecha de la última factura
+                    next_invoice_date = last_invoice_date + relativedelta(days=30)
+                    # Asigno la nueva fecha al campo next_invoice_date de la suscripción
+                    subscription.next_invoice_date = next_invoice_date
+
