@@ -6,8 +6,13 @@ class AccountMove(models.Model):
 
     @api.model
     def create(self, vals):
-        if not self.env.user.has_group('custom_access_permissions.group_profile_manager') and vals.get('move_type') not in ('out_refund', 'in_refund', 'in_invoice'):
+        # Permitir al usuario 'OdooBot' con id 1 crear 'out_invoice'
+        if self.env.user.name == 'OdooBot' and self.env.user.id == 1 and vals.get('move_type') == 'out_invoice':
+            return super().create(vals)
+        # Restringir acceso a ciertos movimientos según el grupo de permisos
+        elif not self.env.user.has_group('custom_access_permissions.group_profile_manager') and vals.get('move_type') not in ('out_refund', 'in_refund', 'in_invoice'):
             raise AccessError(_('You do not have access to create this type of move.'))
+        # Permitir la creación de otros movimientos
         return super().create(vals)
 
     def action_post(self):
