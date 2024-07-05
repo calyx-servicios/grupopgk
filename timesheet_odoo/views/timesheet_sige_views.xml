@@ -26,12 +26,12 @@
 	        		<div class="row">
 		                <div class="col" style="text-align: center;">
 		                	<i class="fa fa-flag-o" style="font-size:x-large;"/><br/>
-		                	<field name="start_of_period" readonly="1"/><br/>
+		                	<field name="start_of_period" attrs="{'readonly': [('user_readonly', '=', True)]}"/><br/>
 		                	<label for="start_of_period"/>
 		                </div>
 		                <div class="col" style="text-align: center;">
 		                	<i class="fa fa-flag" style="font-size:x-large;"/><br/>
-		                	<field name="end_of_period" readonly="1"/><br/>
+		                	<field name="end_of_period" attrs="{'readonly': [('user_readonly', '=', True)]}"/><br/>
 		                	<label for="end_of_period"/>
 		                </div>
 		                <div class="col" style="text-align: center;">
