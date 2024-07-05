@@ -14,8 +14,6 @@
                     <field name="employee_id" domain="[('id', 'in', employee_ids)]"/>
                     <field name="start_of_period"/>
                     <field name="end_of_period" readonly='1'/>
-                    
-
                 </group>
                 <footer>
                     <button string="Create" type="object" name="action_create_timesheet" class="btn-primary"/>
@@ -42,11 +40,4 @@
             }
         </field>
     </record>
-
-    <record id="add_employee_period_sige_action_window" model="ir.actions.act_window">
-        <field name="name">Add Employee Period Sige</field>
-        <field name="res_model">timesheet.sige</field>
-        <field name="view_mode">tree,form</field>
-    </record>
-   
 </odoo>

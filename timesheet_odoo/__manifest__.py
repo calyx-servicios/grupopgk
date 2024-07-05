@@ -19,7 +19,7 @@
         "data/timesheet_rule_odoo.xml",
         "data/mail_template_data.xml",
         "data/project_project_data.xml",
-        "wizards/timesheet_sige_wizard_view.xml",
+        "wizard/timesheet_sige_wizard_view.xml",
         "views/timesheet_sige_views.xml",
         "views/period_sige_views.xml",
     ],
