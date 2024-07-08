@@ -9,6 +9,9 @@ class AccountAnalyticAccount(models.Model):
 
     
     def action_archive(self):
+        # Verificar si el usuario pertenece al grupo de administradores
+        if not self.env.user.has_group('base.group_system'):
+            raise UserError(_("No tiene permiso para archivar esta cuenta."))
         for account in self:
             # Verificar si tiene suscripciones activas
             subscriptions = self.env['subscription.package'].search([
