@@ -45,6 +45,8 @@ Contributors
 
   * Zamora, Javier
 
+  * Ferrari, Leandro
+
 Maintainers
 ~~~~~~~~~~~
 
