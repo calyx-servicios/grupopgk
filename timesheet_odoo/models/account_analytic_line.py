@@ -7,6 +7,7 @@ class AccountAnalyticLine(models.Model):
 
     timesheet_id = fields.Many2one("timesheet.sige", string="Timesheet", ondelete="cascade")
     project_id = fields.Many2one(domain = [('allow_timesheets', '=', True)])
+    description_in_timesheet = fields.Char(string='Description')
     
     @api.constrains('timesheet_id', 'unit_amount')
     def _check_timesheet_line(self):

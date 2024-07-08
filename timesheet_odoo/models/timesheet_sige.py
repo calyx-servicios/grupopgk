@@ -176,3 +176,27 @@ class TimesheetSige(models.Model):
             period_ids = self.env['period.sige'].search([]).ids
             args += [('period_id', 'in', period_ids)]
         return super(TimesheetSige, self).search(args, offset=offset, limit=limit, order=order, count=count)
+    
+    @api.constrains('project_id')
+    def _check_description_in_timesheet(self):
+        for record in self:
+            if record.timesheet_ids:
+                lines = record.timesheet_ids
+                missing_descriptions = []
+                for line in lines:
+                    if line.project_id.name and 'no facturable' in line.project_id.name.lower() and not line.description_in_timesheet:
+                        missing_descriptions.append(line.project_id.name)
+                if missing_descriptions:
+                    projects = "\n".join(missing_descriptions)
+                    raise ValidationError(f"Falta la descripción en los siguientes proyectos:\n{projects}")
+
+    @api.model
+    def create(self, vals):
+        record = super(TimesheetSige, self).create(vals)
+        record._check_description_in_timesheet()
+        return record
+
+    def write(self, vals):
+        res = super(TimesheetSige, self).write(vals)
+        self._check_description_in_timesheet()
+        return res

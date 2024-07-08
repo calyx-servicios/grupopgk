@@ -78,7 +78,7 @@
 			       	<field name="timesheet_ids" attrs="{'readonly': [('state','in',('sent','close'))]}" >
 			       		<tree editable="bottom" >
 			       			<field name="project_id" options="{ 'no_create': True, 'no_create_edit': True, 'no_open': True }"/>
-			       			<field name="name"/>
+			       			<field name="description_in_timesheet"/>
 			       			<field name="unit_amount"/>
 			       		</tree>
 			       	</field>
