@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 15.0+e\n"
+"Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-03-23 13:43+0000\n"
-"PO-Revision-Date: 2023-03-23 13:43+0000\n"
+"POT-Creation-Date: 2024-07-10 11:52+0000\n"
+"PO-Revision-Date: 2024-07-10 11:52+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -26,6 +26,606 @@ msgstr ""
 " Monto(Salario + Monto facturado) {} / {} (Horas registradas) = {} (Costo Laboral)"
 
 #. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2000
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2000
+msgid "2000"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2001
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2001
+msgid "2001"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2002
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2002
+msgid "2002"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2003
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2003
+msgid "2003"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2004
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2004
+msgid "2004"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2005
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2005
+msgid "2005"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2006
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2006
+msgid "2006"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2007
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2007
+msgid "2007"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2008
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2008
+msgid "2008"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2009
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2009
+msgid "2009"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2010
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2010
+msgid "2010"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2011
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2011
+msgid "2011"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2012
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2012
+msgid "2012"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2013
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2013
+msgid "2013"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2014
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2014
+msgid "2014"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2015
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2015
+msgid "2015"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2016
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2016
+msgid "2016"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2017
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2017
+msgid "2017"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2018
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2018
+msgid "2018"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2019
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2019
+msgid "2019"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2020
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2020
+msgid "2020"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2021
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2021
+msgid "2021"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2022
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2022
+msgid "2022"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2023
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2023
+msgid "2023"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2024
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2024
+msgid "2024"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2025
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2025
+msgid "2025"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2026
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2026
+msgid "2026"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2027
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2027
+msgid "2027"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2028
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2028
+msgid "2028"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2029
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2029
+msgid "2029"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2030
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2030
+msgid "2030"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2031
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2031
+msgid "2031"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2032
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2032
+msgid "2032"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2033
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2033
+msgid "2033"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2034
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2034
+msgid "2034"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2035
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2035
+msgid "2035"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2036
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2036
+msgid "2036"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2037
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2037
+msgid "2037"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2038
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2038
+msgid "2038"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2039
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2039
+msgid "2039"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2040
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2040
+msgid "2040"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2041
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2041
+msgid "2041"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2042
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2042
+msgid "2042"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2043
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2043
+msgid "2043"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2044
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2044
+msgid "2044"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2045
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2045
+msgid "2045"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2046
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2046
+msgid "2046"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2047
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2047
+msgid "2047"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2048
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2048
+msgid "2048"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2049
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2049
+msgid "2049"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2050
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2050
+msgid "2050"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2051
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2051
+msgid "2051"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2052
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2052
+msgid "2052"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2053
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2053
+msgid "2053"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2054
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2054
+msgid "2054"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2055
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2055
+msgid "2055"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2056
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2056
+msgid "2056"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2057
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2057
+msgid "2057"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2058
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2058
+msgid "2058"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2059
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2059
+msgid "2059"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2060
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2060
+msgid "2060"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2061
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2061
+msgid "2061"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2062
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2062
+msgid "2062"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2063
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2063
+msgid "2063"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2064
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2064
+msgid "2064"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2065
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2065
+msgid "2065"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2066
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2066
+msgid "2066"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2067
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2067
+msgid "2067"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2068
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2068
+msgid "2068"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2069
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2069
+msgid "2069"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2070
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2070
+msgid "2070"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2071
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2071
+msgid "2071"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2072
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2072
+msgid "2072"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2073
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2073
+msgid "2073"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2074
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2074
+msgid "2074"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2075
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2075
+msgid "2075"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2076
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2076
+msgid "2076"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2077
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2077
+msgid "2077"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2078
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2078
+msgid "2078"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2079
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2079
+msgid "2079"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2080
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2080
+msgid "2080"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2081
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2081
+msgid "2081"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2082
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2082
+msgid "2082"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2083
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2083
+msgid "2083"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2084
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2084
+msgid "2084"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2085
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2085
+msgid "2085"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2086
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2086
+msgid "2086"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2087
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2087
+msgid "2087"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2088
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2088
+msgid "2088"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2089
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2089
+msgid "2089"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2090
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2090
+msgid "2090"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2091
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2091
+msgid "2091"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2092
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2092
+msgid "2092"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2093
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2093
+msgid "2093"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2094
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2094
+msgid "2094"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2095
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2095
+msgid "2095"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2096
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2096
+msgid "2096"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2097
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2097
+msgid "2097"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2098
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2098
+msgid "2098"
+msgstr ""
+
+#. module: labor_cost_employee
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee__year__2099
+#: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__year__2099
+msgid "2099"
+msgstr ""
+
+#. module: labor_cost_employee
 #: model_terms:ir.ui.view,arch_db:labor_cost_employee.labor_cost_employee_wizard
 msgid "Add Invoices"
 msgstr "Agregar facturas"
@@ -36,6 +636,12 @@ msgstr "Agregar facturas"
 #, python-format
 msgid "April"
 msgstr "Abril"
+
+#. module: labor_cost_employee
+#: model:ir.model.fields,field_description:labor_cost_employee.field_hr_employee__associated_contacts
+#: model_terms:ir.ui.view,arch_db:labor_cost_employee.hr_employee_view_form_inherit
+msgid "Associated Contacts"
+msgstr "Contactos asociados"
 
 #. module: labor_cost_employee
 #: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee_wizard__file_cost
@@ -49,11 +655,6 @@ msgstr "Adjuntar"
 #, python-format
 msgid "August"
 msgstr "Agosto"
-
-#. module: labor_cost_employee
-#: model:ir.model,name:labor_cost_employee.model_labor_cost_employee_wizard
-msgid "Calcular costo laboral wizard"
-msgstr ""
 
 #. module: labor_cost_employee
 #: model_terms:ir.ui.view,arch_db:labor_cost_employee.labor_cost_employee_wizard
@@ -75,6 +676,7 @@ msgstr "Calcular costo laboral"
 
 #. module: labor_cost_employee
 #: code:addons/labor_cost_employee/wizard/labor_cost_employee_wizard.py:0
+#: model:ir.model,name:labor_cost_employee.model_labor_cost_employee_wizard
 #, python-format
 msgid "Calculate labor cost wizard"
 msgstr "Calcular costo laboral wizard"
@@ -88,11 +690,6 @@ msgstr "Cálculo"
 #: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee__cost
 msgid "Cost"
 msgstr "Costo"
-
-#. module: labor_cost_employee
-#: model:ir.model,name:labor_cost_employee.model_labor_cost_employee
-msgid "Costo laboral por empleado"
-msgstr "Costo laboral por empleado"
 
 #. module: labor_cost_employee
 #: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee__create_uid
@@ -125,6 +722,7 @@ msgid "Display Name"
 msgstr "Nombre a mostrar"
 
 #. module: labor_cost_employee
+#: model:ir.model,name:labor_cost_employee.model_hr_employee
 #: model:ir.model.fields,field_description:labor_cost_employee.field_labor_cost_employee__employee_id
 msgid "Employee"
 msgstr "Empleado"
@@ -197,6 +795,7 @@ msgstr "Costo laboral por empleado"
 
 #. module: labor_cost_employee
 #: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
+#: model:ir.model,name:labor_cost_employee.model_labor_cost_employee
 #, python-format
 msgid "Labor cost per employee"
 msgstr "Costo laboral por empleado"
