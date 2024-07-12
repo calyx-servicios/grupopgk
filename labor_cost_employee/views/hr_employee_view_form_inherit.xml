@@ -8,7 +8,7 @@
         <field name="arch" type="xml">
 			<xpath expr="//field[@name='work_location_id']" position="after">
                 <field name="user_partner_id" invisible="1"/>
-                <field name="associated_contact_ids" string="Associated Contacts" widget="many2many_tags" domain="[('associated_employee_ids', '=', False),('id','!=', user_partner_id)]"/>
+                <field name="associated_contact_ids" string="Associated Contacts" widget="many2many_tags" domain="[('associated_employee_id', '=', False),('id','!=', user_partner_id)]"/>
             </xpath>
         </field>
     </record>    

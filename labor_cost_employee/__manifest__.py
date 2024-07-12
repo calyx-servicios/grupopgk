@@ -20,6 +20,7 @@
         "views/account_move_views.xml",
         "views/labor_cost_employee_views.xml",
         "views/hr_employee_view_form_inherit.xml",
+        "views/res_partner_view_inherit.xml",
     ],
     "assets": {
         "web.assets_backend": [

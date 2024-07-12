@@ -27,7 +27,7 @@
 	        		<div class="row">
 		                <div class="col" style="text-align: center;">
 		                	<i class="fa fa-flag-o" style="font-size:x-large;"/><br/>
-		                	<field name="start_of_period" attrs="{'readonly': [('user_readonly', '=', True)]}"/><br/>
+		                	<field name="start_of_period" readonly="1"/><br/>
 		                	<label for="start_of_period"/>
 		                </div>
 		                <div class="col" style="text-align: center;">
@@ -77,8 +77,9 @@
 		            <br/>
 			       	<field name="timesheet_ids" attrs="{'readonly': [('state','in',('sent','close'))]}" >
 			       		<tree editable="bottom" >
+							<field name="project_no_facturable" invisible='1'/>
 			       			<field name="project_id" options="{ 'no_create': True, 'no_create_edit': True, 'no_open': True }"/>
-			       			<field name="description_in_timesheet"/>
+			       			<field name="name" attrs="{'required': [('project_no_facturable','=', True)]}"/>
 			       			<field name="unit_amount"/>
 			       		</tree>
 			       	</field>
