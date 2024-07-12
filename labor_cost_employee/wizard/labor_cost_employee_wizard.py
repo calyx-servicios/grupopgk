@@ -167,11 +167,11 @@ class LaborCostEmployeeWizard(models.TransientModel):
                     )
                 )
                 employee.timesheet_cost = labor_cost
-                projects = tm_sige_emp.timesheet_ids
-                if projects:
-                    for project in projects:
-                        cost_total_in_project = project.unit_amount * labor_cost
-                        project.write({"amount": cost_total_in_project})
+                account_analytic_line_ids = tm_sige_emp.timesheet_ids
+                if account_analytic_line_ids:
+                    for account_analytic_line_id in account_analytic_line_ids:
+                        cost_total_in_project = account_analytic_line_id.unit_amount * labor_cost
+                        account_analytic_line_id.write({"amount": cost_total_in_project})
 
                 lce_obj.create(laboral_cost[cuil])
 
