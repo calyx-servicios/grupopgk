@@ -27,16 +27,14 @@ class AccountAnalyticLine(models.Model):
     def write(self, vals):
         # Verifica si la línea analítica está relacionada con un timesheet
         if self.timesheet_id:
-            # Obtiene el timesheet relacionado
-            timesheet = self.timesheet_id
             # Establece la fecha de la línea analítica a timesheet.end_of_period
-            vals['date'] = timesheet.end_of_period
+            vals['date'] = self.timesheet_id.end_of_period 
         return super().write(vals)
     
-    @api.model
+    @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if 'timesheet_id' in vals:
-                timesheet = self.env['timesheet.sige'].browse(vals['timesheet_id'])
-                vals['date'] = timesheet.end_of_period
+            if vals.get('timesheet_id', False):
+                timesheet_id = self.env['timesheet.sige'].browse(vals['timesheet_id'])
+                vals['date'] = timesheet_id.end_of_period
         return super(AccountAnalyticLine, self).create(vals_list)
