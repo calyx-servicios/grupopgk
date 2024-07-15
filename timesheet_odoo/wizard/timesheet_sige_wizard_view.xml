@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+    <!-- Define the wizard view -->
+    <record id="view_timesheet_sige_wizard_form" model="ir.ui.view">
+        <field name="name">timesheet.sige.wizard.form</field>
+        <field name="model">timesheet.sige.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Add Timesheet Record">
+                <group>
+                    <field name="period_id" domain="[('state', '=', 'open')]"/>
+                    <field name="state" invisible='1'/>
+                    <field name="employee_ids" invisible='1'/> <!-- Utilizo este campo para filtrar los empleados que no tienen timesheet creado en el periodo-->
+                    <field name="employee_id" domain="[('id', 'in', employee_ids)]"/>
+                    <field name="start_of_period"/>
+                    <field name="end_of_period" readonly='1'/>
+                </group>
+                <footer>
+                    <button string="Create" type="object" name="action_create_timesheet" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Update the server action to open the wizard -->
+    <record id="action_server_custom_add" model="ir.actions.server">
+        <field name="name">Custom Add Employee Action</field>
+        <field name="model_id" ref="timesheet_odoo.model_timesheet_sige"/>
+        <field name="binding_model_id" ref="timesheet_odoo.model_period_sige"/>
+        <field name="binding_view_types">tree,form</field>
+        <field name="state">code</field>
+        <field name="code">
+            action = {
+                'type': 'ir.actions.act_window',
+                'name': 'Detalles',
+                'res_model': 'timesheet.sige.wizard',
+                'view_mode': 'form',
+                'target': 'new',
+            }
+        </field>
+    </record>
+</odoo>

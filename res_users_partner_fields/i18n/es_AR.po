@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-03-19 13:47+0000\n"
-"PO-Revision-Date: 2024-03-19 13:47+0000\n"
+"POT-Creation-Date: 2024-07-11 19:23+0000\n"
+"PO-Revision-Date: 2024-07-11 19:23+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -17,13 +17,29 @@ msgstr ""
 
 #. module: res_users_partner_fields
 #: model:ir.model.fields,field_description:res_users_partner_fields.field_hr_employee__is_active
-msgid "Active employee?"
-msgstr "¿Empleado activo?"
+msgid "Active Employee?"
+msgstr "Empleado activo"
 
 #. module: res_users_partner_fields
 #: model:ir.model,name:res_users_partner_fields.model_hr_employee
 msgid "Employee"
 msgstr "Empleado"
+
+#. module: res_users_partner_fields
+#: model:ir.model.fields,field_description:res_users_partner_fields.field_hr_employee__entry_date
+msgid "Entry Date"
+msgstr "Fecha de alta"
+
+#. module: res_users_partner_fields
+#: model:ir.model.fields,field_description:res_users_partner_fields.field_hr_employee__exit_date
+msgid "Exit Date"
+msgstr "Fecha de baja"
+
+#. module: res_users_partner_fields
+#: code:addons/res_users_partner_fields/models/hr_employee.py:0
+#, python-format
+msgid "Exit Date must be greater than Entry Date."
+msgstr "La fecha de baja no puede ser menor que la fecha de alta"
 
 #. module: res_users_partner_fields
 #: model_terms:ir.ui.view,arch_db:res_users_partner_fields.view_search_account_move_is_partner

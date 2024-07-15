@@ -4,7 +4,8 @@ Partner fields
 
 .. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !! This module adds the partner field in          !! 
-   !! different views.                               !!
+   !! different views and add start_date and         !!
+   !! end_date in employee.                          !!
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -21,7 +22,7 @@ Partner fields
 
 |badge1| |badge2| |badge3|
 
-    This module adds the partner field in different views.
+    This module adds the partner field in different views and add start_date and end_date in employee.
 
 Install
 =======
