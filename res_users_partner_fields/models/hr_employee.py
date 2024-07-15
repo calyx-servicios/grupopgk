@@ -24,3 +24,15 @@ class HrEmployee(models.Model):
         for record in self:
             if record.entry_date and record.exit_date and record.exit_date <= record.entry_date:
                 raise ValidationError(_("Exit Date must be greater than Entry Date."))
+
+    def _check_entry_date(self):
+        employees = self.env['hr.employee'].search([])
+        for employee in employees:
+            if employee.is_active == False:
+                employee.entry_date = employee.create_date.date()
+                employee.exit_date = date.today()
+            else:
+                employee.entry_date = employee.create_date.date()
+            
+            
+            

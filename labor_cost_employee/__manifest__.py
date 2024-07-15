@@ -13,14 +13,12 @@
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
-    "depends": ['account', 'contacts', 'timesheet_odoo', 'hr'],
+    "depends": ['account', 'contacts', 'timesheet_odoo', 'associated_partner_employee'],
     "data": [
         "security/ir.model.access.csv",
         "wizard/labor_cost_employee_wizard_views.xml",
         "views/account_move_views.xml",
         "views/labor_cost_employee_views.xml",
-        "views/hr_employee_view_form_inherit.xml",
-        "views/res_partner_view_inherit.xml",
     ],
     "assets": {
         "web.assets_backend": [
