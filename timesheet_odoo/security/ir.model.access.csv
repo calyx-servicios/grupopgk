@@ -4,3 +4,4 @@ access_timesheet_sige_manager,timesheet.sige.manager,model_timesheet_sige,group_
 access_timesheet_sige_manager,timesheet.sige.manager,model_timesheet_sige,group_timesheet_sige_admin,1,1,1,1
 access_period_sige,period.sige.user,model_period_sige,group_timesheet_sige_manager,1,1,1,0
 access_period_sige_admin,period.sige.admin,model_period_sige,group_timesheet_sige_admin,1,1,1,1
+access_timesheet_sige_wizard_admin,timesheet.sige.wizard.admin,model_timesheet_sige_wizard,group_timesheet_sige_admin,1,1,1,1

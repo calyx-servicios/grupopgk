@@ -2,14 +2,14 @@
 {
     "name": "Partner fields",
     "summary": """
-        This module adds the partner field in different views.
+        This module adds the partner field in different views and add start_date and end_date in employee.
     """,
     "author": "Calyx Servicios S.A.",
     "maintainers": ["Zamora, Javier", "leandro090685"],
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Sales",
-    "version": "15.0.2.1.0",
+    "version": "15.0.3.1.0",
     "application": False,
     "installable": True,
     "depends": [
