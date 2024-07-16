@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <record id="account_move_approve_form_view" model="ir.ui.view">
+        <field name="name">account.move.approve.form</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/sheet/div[@name='button_box']" position="before">
+                <field name="state_approve" widget="statusbar" invisible='1'/>
+                <widget name="web_ribbon" title="Approved" bg_color="bg-success" attrs="{'invisible': ['|', ('state_approve', '!=', 'approved'), ('state', '!=', 'draft')]}"/>
+                <widget name="web_ribbon" title="To Approve" bg_color="bg-warning" attrs="{'invisible': ['|', ('state_approve', '!=', 'to_approve'), ('state', '!=', 'draft')]}"/>
+            </xpath>
+            <xpath expr="//field[@name='payment_reference']" position="before">
+                <field name="user_is_partner" invisible='1'/>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <!-- Botón "Para Aprobar" que solo se muestra en estado "draft" -->
+                <button name="action_to_approve" string="Para Aprobar" class="oe_highlight" type="object" groups="account.group_account_invoice" attrs="{'invisible':['|', '|', '|',('state', '!=', 'draft'), ('state_approve', '=', 'approved'), ('state_approve', '=', 'to_approve'), ('move_type', '!=', 'out_refund')]}"/>
+                <!-- Botón "Aprobar" que solo se muestra en estado "para_aprobar" -->
+                <button name="action_approved" string="Aprobar" class="oe_highlight" type="object" groups="account.group_account_invoice" attrs="{'invisible': ['|', '|', '|', '|',('state', '!=', 'draft'), ('state_approve', '=', 'approved'), ('state_approve', '=', 'none'), ('user_is_partner', '=', False), ('move_type', '!=', 'out_refund')]}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="account_move_approve_tree_view" model="ir.ui.view">
+        <field name="name">account.move.approve.tree</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="after">
+                <field name="state_approve" widget="badge" decoration-success="state_approve=='approved'" decoration-warning="state_approve=='to_approve'" attrs="{'invisible':[('state_approve', '=', 'none')]}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="account_move_approve_search_view" model="ir.ui.view">
+        <field name="name">account.move.approve.search</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_invoice_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='cancel']" position="after">
+                <separator/>
+                <filter string="Approved" name="approved" domain="[('state_approve', '=', 'approved')]"/>
+                <filter string="To Approve" name="to_approve" domain="[('state_approve', '=', 'to_approve')]"/>
+            </xpath>
+            <xpath expr="//filter[@name='status']" position="after">    
+                <filter name="approval_status" string="Approval status" context="{'group_by':'state_approve'}"/>  
+            </xpath>
+        </field>
+    </record>
+</odoo>

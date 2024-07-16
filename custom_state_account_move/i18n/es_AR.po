@@ -1,0 +1,69 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* custom_state_account_move
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-07-16 18:21+0000\n"
+"PO-Revision-Date: 2024-07-16 18:21+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: custom_state_account_move
+#: model_terms:ir.ui.view,arch_db:custom_state_account_move.account_move_approve_search_view
+msgid "Approval status"
+msgstr "Estado de aprobación"
+
+#. module: custom_state_account_move
+#: model:ir.model.fields.selection,name:custom_state_account_move.selection__account_move__state_approve__approved
+#: model_terms:ir.ui.view,arch_db:custom_state_account_move.account_move_approve_form_view
+#: model_terms:ir.ui.view,arch_db:custom_state_account_move.account_move_approve_search_view
+msgid "Approved"
+msgstr "Aprobado"
+
+#. module: custom_state_account_move
+#: model_terms:ir.ui.view,arch_db:custom_state_account_move.account_move_approve_form_view
+msgid "Aprobar"
+msgstr ""
+
+#. module: custom_state_account_move
+#: model:ir.model,name:custom_state_account_move.model_account_move
+msgid "Journal Entry"
+msgstr "Asiento contable"
+
+#. module: custom_state_account_move
+#: model:ir.model.fields.selection,name:custom_state_account_move.selection__account_move__state_approve__none
+msgid "None"
+msgstr ""
+
+#. module: custom_state_account_move
+#: model_terms:ir.ui.view,arch_db:custom_state_account_move.account_move_approve_form_view
+msgid "Para Aprobar"
+msgstr ""
+
+#. module: custom_state_account_move
+#: model:ir.model.fields.selection,name:custom_state_account_move.selection__account_move__state_approve__to_approve
+#: model_terms:ir.ui.view,arch_db:custom_state_account_move.account_move_approve_form_view
+#: model_terms:ir.ui.view,arch_db:custom_state_account_move.account_move_approve_search_view
+msgid "To Approve"
+msgstr "Para Aprobar"
+
+#. module: custom_state_account_move
+#: model:ir.model.fields,field_description:custom_state_account_move.field_account_bank_statement_line__user_is_partner
+#: model:ir.model.fields,field_description:custom_state_account_move.field_account_move__user_is_partner
+#: model:ir.model.fields,field_description:custom_state_account_move.field_account_payment__user_is_partner
+msgid "User is Partner"
+msgstr ""
+
+#. module: custom_state_account_move
+#: model:ir.model.fields,field_description:custom_state_account_move.field_account_bank_statement_line__state_approve
+#: model:ir.model.fields,field_description:custom_state_account_move.field_account_move__state_approve
+#: model:ir.model.fields,field_description:custom_state_account_move.field_account_payment__state_approve
+msgid "state_approve"
+msgstr "Estado Aprobación"
