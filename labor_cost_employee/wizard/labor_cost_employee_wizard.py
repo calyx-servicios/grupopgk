@@ -126,10 +126,10 @@ class LaborCostEmployeeWizard(models.TransientModel):
                     laboral_cost[cuil]["amount"] = 0.0
                     laboral_cost[cuil]["calculation"] = ""
 
-                laboral_cost[cuil]["amount"] += invoice.amount_total
+                laboral_cost[cuil]["amount"] += invoice.amount_untaxed
                 laboral_cost[cuil][
                     "calculation"
-                ] += f"{txt_invoice} {invoice.amount_total}"
+                ] += f"{txt_invoice} {invoice.amount_untaxed}"
 
         # Union de contactos asociados entre la informacion del txt y las facturas
         final_laboral_cost = self._process_final_costs(laboral_cost)
@@ -170,7 +170,7 @@ class LaborCostEmployeeWizard(models.TransientModel):
                 account_analytic_line_ids = tm_sige_emp.timesheet_ids
                 if account_analytic_line_ids:
                     for account_analytic_line_id in account_analytic_line_ids:
-                        cost_total_in_project = account_analytic_line_id.unit_amount * labor_cost
+                        cost_total_in_project = account_analytic_line_id.unit_amount * labor_cost * -1
                         account_analytic_line_id.write({"amount": cost_total_in_project})
 
                 lce_obj.create(laboral_cost[cuil])
