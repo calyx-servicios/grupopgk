@@ -1,0 +1,57 @@
+<!-- Copyright (C) 2019 Konos
+     License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl). -->
+     <odoo>
+        <record model="ir.ui.view" id="helpdesk_ticket_motive_form_inherit">
+            <field name="name">helpdesk.ticket.motive.form</field>
+            <field name="inherit_id" ref="helpdesk_motive.helpdesk_ticket_motive_form"/>
+            <field name="model">helpdesk.ticket.motive</field>
+            <field name="arch" type="xml">
+                <field name="team_id" position="after">
+                    <group>
+                        <field name="line_ids">
+                            <tree editable="bottom">
+                                <field name="description"/>
+                                <field name="required_field"/>
+                            </tree>
+                        </field>
+                    </group>
+                </field>
+            </field>
+        </record>
+    
+        <!-- Vista de árbol para el modelo secundario -->
+        <record model="ir.ui.view" id="helpdesk_ticket_motive_line_tree_inherit">
+            <field name="name">helpdesk.ticket.motive.line.tree</field>
+            <field name="model">helpdesk.ticket.motive.line</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="description"/>
+                    <field name="required_field"/>
+                </tree>
+            </field>
+        </record>
+    
+        <record model="ir.ui.view" id="helpdesk_ticket_motive_tree">
+            <field name="name">helpdesk.ticket.motive.tree</field>
+            <field name="model">helpdesk.ticket.motive</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name" />
+                    <field name="team_id" />
+                </tree>
+            </field>
+        </record>
+        <record id="action_helpdesk_ticket_motive_tree" model="ir.actions.act_window">
+            <field name="name">Helpdesk Ticket Motive</field>
+            <field name="res_model">helpdesk.ticket.motive</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+        <menuitem
+            id="helpdesk_motive"
+            name="Motives"
+            parent="helpdesk_mgmt.helpdesk_ticket_config_main_menu"
+            action="action_helpdesk_ticket_motive_tree"
+            sequence="7"
+        />
+    </odoo>
+    
