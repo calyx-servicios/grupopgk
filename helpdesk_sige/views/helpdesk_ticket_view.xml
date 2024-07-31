@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <record id="helpdesk_ticket_form_view" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.form.view</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk_mgmt_timesheet.timesheet_helpdesk_ticket_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='unit_amount']" position="after">
+                <field name="charge_sige" readonly='1'/>
+            </xpath>
+            <xpath expr="//page[@name='timesheets']/group" position="before">
+                <field name="all_sige" invisible='1'/>
+                <header>
+                    <button string="Charge hours manually sige" name="charge_manually_hours_sige" type="object" style="margin-bottom:15px !important;" class="oe_highlight" attrs="{'invisible' : [('all_sige', '!=', False)]}"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+</odoo>
