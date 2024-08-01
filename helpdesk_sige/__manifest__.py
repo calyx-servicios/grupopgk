@@ -1,5 +1,5 @@
 {
-    "name": "Helpdesk Ticket",
+    "name": "Helpdesk Sige",
     "summary": """
       This module integrates the loading of hours that is carried out in the help desk tickets with the SIGE timesheet
     """,

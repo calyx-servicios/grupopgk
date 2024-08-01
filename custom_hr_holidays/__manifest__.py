@@ -1,0 +1,21 @@
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
+{
+    "name": "Custom Hr Holidays",
+    "summary": """
+        This module customizes the vacation request
+    """,
+    "author": "Calyx Servicios S.A.",
+    "maintainers": ["leandro090685"],
+    "website": "https://odoo.calyx-cloud.com.ar/",
+    "license": "AGPL-3",
+    "category": "Technical Settings",
+    "version": "15.0.1.0.0",
+    "application": False,
+    "installable": True,
+    "depends": ['hr_holidays',
+                'calendar_view_timesheet',
+    ],
+    "data": [
+        'views/hr_leave_type_views.xml',
+    ],
+}
