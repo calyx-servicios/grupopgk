@@ -9,14 +9,17 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.3.0.0",
+    "version": "15.0.4.0.0",
     "application": False,
     "installable": True,
     "depends": ['hr_holidays',
                 'calendar_view_timesheet',
+                'res_users_partner_fields',
+                'hr_contract'
     ],
     "data": [
         'views/hr_leave_type_views.xml',
         'views/hr_leave_views.xml',
+        'views/hr_employee_views.xml',
     ],
 }

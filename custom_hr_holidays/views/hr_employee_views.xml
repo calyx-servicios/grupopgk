@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_employee_view_form" model="ir.ui.view" >
+        <field name="name">hr.employee.view.form</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="res_users_partner_fields.view_hr_employee_is_partner"/>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='exit_date']" position="after">
+                <field name="vacation_days"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
