@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-02 15:58+0000\n"
-"PO-Revision-Date: 2024-08-02 15:58+0000\n"
+"POT-Creation-Date: 2024-08-02 18:36+0000\n"
+"PO-Revision-Date: 2024-08-02 18:36+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -54,6 +54,11 @@ msgstr "Dias disponibles"
 #: model:ir.model.fields,field_description:custom_hr_holidays.field_hr_leave__days_by_antiquity
 msgid "Days by antiquity"
 msgstr "Dias según antigüedad"
+
+#. module: custom_hr_holidays
+#: model:ir.model,name:custom_hr_holidays.model_hr_employee
+msgid "Employee"
+msgstr "Empleado"
 
 #. module: custom_hr_holidays
 #: model:ir.model.fields.selection,name:custom_hr_holidays.selection__hr_leave_type__assign_start_date__friday
@@ -113,6 +118,11 @@ msgid "Tuesday"
 msgstr "Martes"
 
 #. module: custom_hr_holidays
+#: model:ir.model.fields,field_description:custom_hr_holidays.field_hr_employee__vacation_days
+msgid "Vacation Days"
+msgstr "Días de vacaciones"
+
+#. module: custom_hr_holidays
 #: model:ir.model.fields.selection,name:custom_hr_holidays.selection__hr_leave_type__assign_start_date__wednesday
 msgid "Wednesday"
-msgstr "Miércoles"
+msgstr "Miercoles"
