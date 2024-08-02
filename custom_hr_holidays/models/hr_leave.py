@@ -18,7 +18,7 @@ class HrLeave(models.Model):
 
     days_remaining = fields.Integer(string="Days Remaining", compute='_compute_days_remaining')
 
-    today = fields.Date(string="Today", default=fields.Date.today)
+    today = fields.Date(string="Today", default=lambda self: fields.Date.today(), readonly=True)
 
     @api.depends('date_from', 'date_to')
     def _compute_days_remaining(self):
