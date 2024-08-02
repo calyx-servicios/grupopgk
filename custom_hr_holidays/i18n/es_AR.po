@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-01 18:31+0000\n"
-"PO-Revision-Date: 2024-08-01 18:31+0000\n"
+"POT-Creation-Date: 2024-08-01 19:54+0000\n"
+"PO-Revision-Date: 2024-08-01 19:54+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -26,9 +26,19 @@ msgid "Consecutive Days"
 msgstr "Tomar dias consecutivos"
 
 #. module: custom_hr_holidays
+#: model:ir.model.fields,field_description:custom_hr_holidays.field_hr_leave__days_remaining
+msgid "Days Remaining"
+msgstr "Dias disponibles"
+
+#. module: custom_hr_holidays
 #: model:ir.model.fields.selection,name:custom_hr_holidays.selection__hr_leave_type__assign_start_date__friday
 msgid "Friday"
 msgstr "Viernes"
+
+#. module: custom_hr_holidays
+#: model:ir.model.fields,field_description:custom_hr_holidays.field_hr_leave__job_id
+msgid "Job Position"
+msgstr "Puesto de trabajo"
 
 #. module: custom_hr_holidays
 #: model:ir.model.fields.selection,name:custom_hr_holidays.selection__hr_leave_type__assign_start_date__monday
@@ -75,4 +85,4 @@ msgstr "Martes"
 #. module: custom_hr_holidays
 #: model:ir.model.fields.selection,name:custom_hr_holidays.selection__hr_leave_type__assign_start_date__wednesday
 msgid "Wednesday"
-msgstr "Wednesday"
+msgstr ""
