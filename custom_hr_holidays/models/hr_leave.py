@@ -1,5 +1,5 @@
 from odoo import fields, models, api, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
 import calendar
 from datetime import timedelta, datetime, date
 from dateutil.relativedelta import relativedelta
@@ -72,10 +72,21 @@ class HrLeave(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        self.check_date_range(vals_list)
         self.check_start_day(vals_list)
         return super(HrLeave, self).create(vals_list)
 
     def check_start_day(self, vals_list):
+        # Mapeo de los días de la semana de inglés a español
+        day_map = {
+            "monday": 0,
+            "tuesday": 1,
+            "wednesday": 2,
+            "thursday": 3,
+            "friday": 4,
+            "saturday": 5,
+            "sunday": 6,
+        }
         for vals in vals_list:
             holiday_status_id = vals.get("holiday_status_id")
             date_from = vals.get("date_from")
@@ -89,20 +100,9 @@ class HrLeave(models.Model):
                 # Obtener el día de la semana de date_from (0=Monday, 6=Sunday)
                 date_from_obj = datetime.strptime(date_from, "%Y-%m-%d %H:%M:%S").date()
                 day_of_week = date_from_obj.weekday()
-                # Mapeo de los días de la semana de inglés a español
-                day_map = {
-                    "monday": "lunes",
-                    "tuesday": "martes",
-                    "wednesday": "miércoles",
-                    "thursday": "jueves",
-                    "friday": "viernes",
-                    "saturday": "sábado",
-                    "sunday": "domingo",
-                }
-
-                assign_start_day = list(calendar.day_name).index(
-                    day_map[start_date.lower()]
-                )
+                
+                assign_start_day = day_map[start_date.lower()]
+                
 
                 result = self.check_date_from(date_from)
                 # Verificar si el día de inicio es el mismo que assign_start_date
@@ -112,6 +112,35 @@ class HrLeave(models.Model):
                     )
                 else:
                     pass
+    
+    def check_date_range(self, vals_list):
+        for vals in vals_list:
+            holiday_status_id = vals.get("holiday_status_id")
+            date_from = vals.get("date_from")
+            date_from_obj = datetime.strptime(date_from, "%Y-%m-%d %H:%M:%S").date()
+            date_to = vals.get("date_to")
+            date_to_obj = datetime.strptime(date_to, "%Y-%m-%d %H:%M:%S").date()
+            employee_id = vals.get("employee_id")
+
+            allocation = self.env["hr.leave.allocation"].search(
+                [("holiday_status_id", "=", holiday_status_id),
+                ("employee_id", "=", employee_id),
+                ("state", "=", 'validate')]
+            )
+            if allocation:
+                for alloc in allocation:
+                    alloc_date_from = alloc.date_from
+                    alloc_date_to = alloc.date_to
+
+                    if date_from_obj >= alloc_date_from and date_to_obj <= alloc_date_to:
+                       break
+                    else:
+                        # Lanzar un error con un mensaje
+                        raise ValidationError(_("The date range must be between %s and %s.") % (alloc_date_from, alloc_date_to))
+            else:
+                raise ValidationError(_("No validated assignments found"))
+        
+
 
     def check_date_from(self, date_from):
         # Verificamos que la fecha de inicio si no es lunes que se fije que ese lunes no es feriado.
