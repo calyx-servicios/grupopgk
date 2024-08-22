@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-05 13:35+0000\n"
-"PO-Revision-Date: 2024-08-05 13:35+0000\n"
+"POT-Creation-Date: 2024-08-22 14:41+0000\n"
+"PO-Revision-Date: 2024-08-22 14:41+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -56,14 +56,41 @@ msgid "Days by antiquity"
 msgstr "Dias según antigüedad"
 
 #. module: custom_hr_holidays
+#: code:addons/custom_hr_holidays/models/hr_leave.py:0
+#, python-format
+msgid "Debe tomar exactamente %s días."
+msgstr ""
+
+#. module: custom_hr_holidays
+#: code:addons/custom_hr_holidays/models/hr_leave.py:0
+#, python-format
+msgid "El rango de fechas debe estar entre %s y %s."
+msgstr ""
+
+#. module: custom_hr_holidays
 #: model:ir.model,name:custom_hr_holidays.model_hr_employee
 msgid "Employee"
 msgstr "Empleado"
 
 #. module: custom_hr_holidays
+#: model:ir.model.fields,field_description:custom_hr_holidays.field_hr_leave_type__first_end
+msgid "First end"
+msgstr "Tomar primero"
+
+#. module: custom_hr_holidays
 #: model:ir.model.fields.selection,name:custom_hr_holidays.selection__hr_leave_type__assign_start_date__friday
 msgid "Friday"
 msgstr "Viernes"
+
+#. module: custom_hr_holidays
+#: model_terms:ir.ui.view,arch_db:custom_hr_holidays.hr_leave_type_view_form
+msgid "Holidays"
+msgstr "vacaciones"
+
+#. module: custom_hr_holidays
+#: model:ir.model.fields,field_description:custom_hr_holidays.field_hr_leave_allocation__state_prescriptas
+msgid "Is Prescriptas"
+msgstr ""
 
 #. module: custom_hr_holidays
 #: model:ir.model.fields,field_description:custom_hr_holidays.field_hr_leave__job_id
@@ -83,9 +110,19 @@ msgid "No validated assignments found"
 msgstr "No se encontraron asignaciones validadas"
 
 #. module: custom_hr_holidays
+#: model:ir.model.fields.selection,name:custom_hr_holidays.selection__hr_leave_allocation__state__prescriptas
+msgid "Prescriptas"
+msgstr ""
+
+#. module: custom_hr_holidays
 #: model:ir.model.fields.selection,name:custom_hr_holidays.selection__hr_leave_type__assign_start_date__saturday
 msgid "Saturday"
 msgstr "Sábado"
+
+#. module: custom_hr_holidays
+#: model:ir.model.fields,field_description:custom_hr_holidays.field_hr_leave_allocation__state
+msgid "Status"
+msgstr "Estado"
 
 #. module: custom_hr_holidays
 #: model:ir.model.fields.selection,name:custom_hr_holidays.selection__hr_leave_type__assign_start_date__sunday
@@ -94,17 +131,28 @@ msgstr "Domingo"
 
 #. module: custom_hr_holidays
 #: code:addons/custom_hr_holidays/models/hr_leave.py:0
-#: code:addons/grupopgk/custom_hr_holidays/models/hr_leave.py:0
 #, python-format
-msgid "The date range must be between %s and %s."
-msgstr "El rango de fechas debe estar entre %s y %s."
+msgid "Superó los %s días que tiene disponibles."
+msgstr ""
 
 #. module: custom_hr_holidays
 #: code:addons/custom_hr_holidays/models/hr_leave.py:0
-#: code:addons/grupopgk/custom_hr_holidays/models/hr_leave.py:0
 #, python-format
-msgid "The start date of the holiday must be a %s."
-msgstr "El dia de inicio de vacaciones tiene que ser %s."
+msgid "The start date of the holiday must be a {}."
+msgstr "El dia de inicio de vacaciones debe ser {}."
+
+#. module: custom_hr_holidays
+#: model:ir.model.fields,help:custom_hr_holidays.field_hr_leave_allocation__state
+msgid ""
+"The status is set to 'To Submit', when an allocation request is created.\n"
+"The status is 'To Approve', when an allocation request is confirmed by user.\n"
+"The status is 'Refused', when an allocation request is refused by manager.\n"
+"The status is 'Approved', when an allocation request is approved by manager."
+msgstr ""
+"El estado se establece en 'Para enviar', cuando se crea una solicitud de asignación.\n"
+"El estado es 'Para aprobar', cuando el usuario confirma una solicitud de asignación.\n"
+"El estado es 'Rechazado', cuando el gerente rechaza una solicitud de asignación.\n"
+"El estado es 'Aprobado', cuando el gerente aprueba una solicitud de asignación."
 
 #. module: custom_hr_holidays
 #: model:ir.model.fields.selection,name:custom_hr_holidays.selection__hr_leave_type__assign_start_date__thursday
@@ -115,6 +163,11 @@ msgstr "Jueves"
 #: model:ir.model,name:custom_hr_holidays.model_hr_leave
 msgid "Time Off"
 msgstr "Ausencias"
+
+#. module: custom_hr_holidays
+#: model:ir.model,name:custom_hr_holidays.model_hr_leave_allocation
+msgid "Time Off Allocation"
+msgstr "Asignación de ausencias"
 
 #. module: custom_hr_holidays
 #: model:ir.model,name:custom_hr_holidays.model_hr_leave_type
@@ -130,6 +183,13 @@ msgstr "Fecha de solicitud"
 #: model:ir.model.fields.selection,name:custom_hr_holidays.selection__hr_leave_type__assign_start_date__tuesday
 msgid "Tuesday"
 msgstr "Martes"
+
+#. module: custom_hr_holidays
+#: model:ir.actions.server,name:custom_hr_holidays.ir_cron_update_prescriptas_state_ir_actions_server
+#: model:ir.cron,cron_name:custom_hr_holidays.ir_cron_update_prescriptas_state
+#: model:ir.cron,name:custom_hr_holidays.ir_cron_update_prescriptas_state
+msgid "Update Leave Allocation State to Prescriptas"
+msgstr ""
 
 #. module: custom_hr_holidays
 #: model:ir.model.fields,field_description:custom_hr_holidays.field_hr_employee__vacation_days

@@ -6,9 +6,13 @@
         <field name="model">hr.leave.type</field>
         <field name="inherit_id" ref="hr_holidays.edit_holiday_status_form"/>
         <field name="arch" type="xml">
-			<xpath expr="//field[@name='request_unit']" position="after">
-                <field name="assign_start_date"/>
-                <field name="consecutive_days"/>
+			<xpath expr="//group[@name='visual']" position="before">
+                <group name="holidays" style="width:50%" attrs="{'invisible': [('time_type', '!=', 'other')]}">
+                    <h2>Holidays</h2>
+                    <field name="assign_start_date"/>
+                    <field name="consecutive_days"/>
+                    <field name="first_end"/>
+                </group>
             </xpath>
         </field>
     </record>    
