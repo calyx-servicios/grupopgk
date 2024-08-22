@@ -15,3 +15,4 @@ class HrLeaveType(models.Model):
     ], string="Assign Start Date", required=True)
 
     consecutive_days = fields.Boolean(string="Consecutive Days", default=True)
+    first_end = fields.Boolean(string="First end", default=False)

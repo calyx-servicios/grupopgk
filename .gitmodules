@@ -122,3 +122,11 @@
 	path = submodules/OCA/timesheet
 	url = git@github.com:OCA/timesheet.git
 	branch = 15.0
+[submodule "submodules/ingadhoc/aeroolib"]
+	path = submodules/ingadhoc/aeroolib
+	url = https://github.com/ingadhoc/aeroolib.git
+	branch = master
+[submodule "submodules/ingadhoc/aeroo_reports"]
+	path = submodules/ingadhoc/aeroo_reports
+	url = git@github.com:ingadhoc/aeroo_reports.git
+	branch = 15.0
