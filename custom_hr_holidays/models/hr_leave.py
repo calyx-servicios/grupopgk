@@ -23,16 +23,6 @@ class HrLeave(models.Model):
         string="Today", default=lambda self: fields.Date.today(), readonly=True
     )
 
-    days_by_antiquity = fields.Selection(
-        [
-            ("14 days", "14 days"),
-            ("21 days", "21 days"),
-            ("28 days", "28 days"),
-            ("35 days", "35 days"),
-        ],
-        string="Days by antiquity",
-    )
-    
     @api.depends("date_from", "date_to", "employee_id")
     def _compute_number_of_days(self):
         super(HrLeave, self)._compute_number_of_days()
@@ -206,14 +196,4 @@ class HrLeave(models.Model):
 
         return False
 
-    @api.depends("holiday_type", "days_by_antiquity")
-    def _compute_from_holiday_type(self):
-        super(HrLeave, self)._compute_from_holiday_type()
-
-        for holiday in self:
-            if holiday.holiday_type == "employee" and holiday.days_by_antiquity:
-                antiquity_days = int(holiday.days_by_antiquity.split()[0])
-                filtered_employees = self.env["hr.employee"].search(
-                    [("vacation_days", "=", antiquity_days), ("is_active", "!=", False)]
-                )
-                holiday.employee_ids = filtered_employees
+    
