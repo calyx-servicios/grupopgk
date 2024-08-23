@@ -14,4 +14,15 @@
             </xpath>
         </field>
     </record>
+
+    <record id="hr_leave_allocation_days_by_antiquity_view_form_manager" model="ir.ui.view">
+		<field name="name">hr.leave.allocation.days.by.antiquity.view.form.manager</field>
+        <field name="model">hr.leave.allocation</field>
+        <field name="inherit_id" ref="hr_holidays.hr_leave_allocation_view_form_manager"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='employee_id']" position="before">
+                <field name="days_by_antiquity" attrs="{'invisible': [('holiday_type', '!=','employee')]}"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>
