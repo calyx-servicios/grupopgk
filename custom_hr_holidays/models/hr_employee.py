@@ -6,14 +6,14 @@ class Employee(models.Model):
 
     vacation_days = fields.Integer(
         string="Vacation Days",
-        compute="_compute_vacation_days",
         store=True
     )
 
-    @api.depends('contract_id.date_start')
-    def _compute_vacation_days(self):
+    @api.model
+    def update_vacation_days(self):
         today = fields.Date.today()
-        for employee in self:
+        employees = self.search([])
+        for employee in employees:
             if employee.is_active and employee.contract_id:
                 if not employee.contract_id.date_end:
                     start_date = employee.contract_id.date_start
