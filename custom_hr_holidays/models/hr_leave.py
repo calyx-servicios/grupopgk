@@ -17,9 +17,7 @@ class HrLeave(models.Model):
         tracking=True,
     )
 
-    days_remaining = fields.Integer(
-        string="Days Remaining", compute="_compute_days_remaining"
-    )
+    days_remaining = fields.Float(related="holiday_status_id.virtual_remaining_leaves", string="Days Remaining")
 
     today = fields.Date(
         string="Today", default=lambda self: fields.Date.today(), readonly=True
@@ -34,26 +32,7 @@ class HrLeave(models.Model):
         ],
         string="Days by antiquity",
     )
-
-    @api.depends("date_from", "date_to")
-    def _compute_days_remaining(self):
-        for leave in self:
-            if leave.state == "validate":
-                if leave.date_from and leave.date_to:
-                    today = date.today()
-                    date_to = leave.date_to.date()
-                    date_from = leave.date_from.date()
-                    if today < date_from:
-                        leave.days_remaining = 0
-                    elif today <= date_to:
-                        leave.days_remaining = (date_to - today).days
-                    else:
-                        leave.days_remaining = 0
-                else:
-                    leave.days_remaining = 0
-            else:
-                leave.days_remaining = 0
-
+    
     @api.depends("date_from", "date_to", "employee_id")
     def _compute_number_of_days(self):
         super(HrLeave, self)._compute_number_of_days()
