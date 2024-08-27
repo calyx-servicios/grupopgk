@@ -78,7 +78,7 @@
 			       	<field name="timesheet_ids" attrs="{'readonly': [('state','in',('sent','close'))]}" >
 			       		<tree editable="bottom" >
 							<field name="project_no_facturable" invisible='1'/>
-			       			<field name="project_id" options="{ 'no_create': True, 'no_create_edit': True, 'no_open': True }"/>
+			       			<field name="project_id" options="{ 'no_create': True, 'no_create_edit': True, 'no_open': True}" domain="[('analytic_account_id.active', '=', True)]"/>
 			       			<field name="name" attrs="{'required': [('project_no_facturable','=', True)]}"/>
 			       			<field name="unit_amount"/>
 			       		</tree>
