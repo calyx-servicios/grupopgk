@@ -19,6 +19,8 @@ class HrLeaveAllocation(models.Model):
         string="Days by antiquity",
     )
 
+    days_remaining = fields.Float(related="holiday_status_id.virtual_remaining_leaves", string="Days Remaining")
+
     @api.depends("holiday_type", "days_by_antiquity")
     def _compute_from_holiday_type(self):
         super(HrLeaveAllocation, self)._compute_from_holiday_type()
