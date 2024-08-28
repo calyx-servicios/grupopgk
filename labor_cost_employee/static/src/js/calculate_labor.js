@@ -8,7 +8,7 @@ ListController.include({
    renderButtons: function($node) {
 	   this._super.apply(this, arguments);
        if (this.$buttons) {
-           this.$buttons.find('.o_list_button_labor').click(this.proxy('action_labor')) ;
+           this.$buttons.find('.o_list_button_labor').click(this.proxy('action_labor'));
        }
 	},
     action_labor: function(){

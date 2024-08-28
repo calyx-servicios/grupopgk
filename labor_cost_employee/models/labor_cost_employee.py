@@ -16,6 +16,7 @@ class LaborCostEmployee(models.Model):
     calculation = fields.Text(string="Calculation") 
     date = fields.Date(string='Date', compute='_compute_date', store=True)
     year = fields.Selection(get_years(), string='Year', default=str(fields.Date.today().year))
+    amount = fields.Char(string="Amount", digits=(16,2))
 
     @api.depends('name')
     def _compute_date(self):
