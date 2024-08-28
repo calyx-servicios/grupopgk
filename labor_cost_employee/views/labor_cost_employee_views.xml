@@ -27,7 +27,7 @@
     	<field name="name">labor.cost.employee.tree</field>
         <field name="model">labor.cost.employee</field>
         <field name="arch" type="xml">
-            <tree string="Labor cost per Employee">
+            <tree string="Labor cost per Employee" create="false">
             	<field name="name"/>
             	<field name="employee_id"/>
             	<field name="cost"/>

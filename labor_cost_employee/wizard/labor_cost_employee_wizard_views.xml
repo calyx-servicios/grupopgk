@@ -21,7 +21,7 @@
                     		<field name="name"/>
                     		<field name="partner_id" readonly="1"/>
                     		<field name="invoice_date" readonly="1"/>
-                    		<field name="amount_total"/>
+                    		<field name="amount_untaxed" string="Total"/>
                     	</tree>
                     </field>
                 </group>
