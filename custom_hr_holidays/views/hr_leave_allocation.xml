@@ -23,6 +23,9 @@
             <xpath expr="//field[@name='employee_id']" position="before">
                 <field name="days_by_antiquity" attrs="{'invisible': [('holiday_type', '!=','employee')]}"/>
             </xpath>
+            <xpath expr="//field[@name='date_to']" position="attributes">
+                <attribute name="required">1</attribute>
+            </xpath>
         </field>
     </record>
 
