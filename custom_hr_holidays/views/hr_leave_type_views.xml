@@ -9,7 +9,7 @@
 			<xpath expr="//group[@name='visual']" position="before">
                 <group name="holidays" style="width:50%" attrs="{'invisible': [('time_type', '!=', 'other')]}">
                     <h2>Holidays</h2>
-                    <field name="assign_start_date"/>
+                    <field name="assign_start_date" attrs="{'required': [('time_type', '=', 'other')]}"/>
                     <field name="consecutive_days"/>
                     <field name="first_end"/>
                 </group>

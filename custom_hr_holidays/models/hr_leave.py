@@ -41,8 +41,9 @@ class HrLeave(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        self.check_date_range(vals_list)
-        self.check_start_day(vals_list)
+        if not self.env.user.has_group('hr_holidays.group_hr_holidays_manager'):
+            self.check_date_range(vals_list)
+            self.check_start_day(vals_list)
         return super(HrLeave, self).create(vals_list)
 
     def check_start_day(self, vals_list):
