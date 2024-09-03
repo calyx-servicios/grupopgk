@@ -9,6 +9,8 @@ class Employee(models.Model):
         store=True
     )
 
+    legajo = fields.Integer(string="Legajo")
+
     @api.model
     def update_vacation_days(self):
         today = fields.Date.today()
