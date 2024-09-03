@@ -11,4 +11,28 @@
             </xpath>
         </field>
     </record>
+
+    <record id="hr_employee_legajo_view_form" model="ir.ui.view" >
+        <field name="name">hr.employee.legajo.view.form</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field name="legajo"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hr_employee_legajo_view_tree" model="ir.ui.view" >
+        <field name="name">hr.employee.legajo.view.tree</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="legajo"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>
