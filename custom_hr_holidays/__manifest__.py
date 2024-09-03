@@ -22,6 +22,7 @@
         'views/hr_leave_views.xml',
         'views/hr_employee_views.xml',
         'views/hr_leave_allocation.xml',
+        'views/hr_contract_views.xml',
         'data/ir_cron_data.xml',
     ],
 }
