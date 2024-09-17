@@ -29,7 +29,7 @@ class HrLeaveAllocation(models.Model):
             if holiday.holiday_type == "employee" and holiday.days_by_antiquity:
                 antiquity_days = int(holiday.days_by_antiquity.split()[0])
                 filtered_employees = self.env["hr.employee"].search(
-                    [("vacation_days", "=", antiquity_days), ("is_active", "!=", False)]
+                    [("vacation_days", "=", antiquity_days), ("is_active", "!=", False), ('company_id', '=', holiday.holiday_status_id.company_id.id)]
                 )
                 holiday.employee_ids = filtered_employees
 
