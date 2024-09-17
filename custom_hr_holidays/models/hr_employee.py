@@ -35,4 +35,8 @@ class Employee(models.Model):
                     employee.vacation_days = 0
             else:
                 employee.vacation_days = 0
-            
+
+class EmployeePublic(models.Model):
+    _inherit = 'hr.employee.public'
+
+    legajo = fields.Integer(string="Legajo")
