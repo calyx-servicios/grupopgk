@@ -40,3 +40,4 @@ class EmployeePublic(models.Model):
     _inherit = 'hr.employee.public'
 
     legajo = fields.Integer(string="Legajo")
+    partner = fields.Many2one('res.partner', string="Partner")
