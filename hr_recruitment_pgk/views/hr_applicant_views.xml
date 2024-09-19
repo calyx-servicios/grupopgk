@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <record id="hr_applicant_view_form" model="ir.ui.view">
+        <field name="name">hr.applicant.view.form</field>
+        <field name="model">hr.applicant</field>
+        <field name="inherit_id" ref="hr_recruitment.hr_applicant_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='email_from']" position="after">
+                <field name="vat"/>
+                <field name="old_postulation" readonly='1'/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hr_applicant_view_tree" model="ir.ui.view">
+        <field name="name">hr.applicant.view.tree</field>
+        <field name="model">hr.applicant</field>
+        <field name="inherit_id" ref="hr_recruitment.crm_case_tree_view_job"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="old_postulation" readonly='1'/>
+                <field name="vat"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
