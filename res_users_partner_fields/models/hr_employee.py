@@ -2,6 +2,18 @@ from odoo import api, models, fields, _
 from datetime import date
 from odoo.exceptions import ValidationError
 
+
+class HrEmployeePublic(models.Model):
+    _inherit = 'hr.employee.public'
+    
+
+    partner = fields.Many2one("res.users", string="Partner", domain="[('is_partner', '=', True)]")
+    entry_date = fields.Date(string="Entry Date", required=True)
+    exit_date = fields.Date(string="Exit Date")
+    is_active = fields.Boolean('Active Employee?', compute='_compute_is_active', store=True, default=True)
+    
+
+
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
     
