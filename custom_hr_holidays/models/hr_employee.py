@@ -40,7 +40,7 @@ class EmployeePublic(models.Model):
     _inherit = 'hr.employee.public'
 
     legajo = fields.Integer(string="Legajo")
-    partner = fields.Many2one('res.partner', string="Partner")
-    entry_date = fields.Date(string="Entry Date", required=True)
-    exit_date = fields.Date(string="Exit Date")
-    is_active = fields.Boolean('Active Employee?', compute='_compute_is_active', store=True, default=True)
+    vacation_days = fields.Integer(
+        string="Vacation Days",
+        store=True
+    )
