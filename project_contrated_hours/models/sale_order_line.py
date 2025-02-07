@@ -44,5 +44,6 @@ class SaleOrderLine(models.Model):
                         rec.project_id.write({
                             'contrated_hours': oldest_line.contrated_hours,
                             'total_project_amount': oldest_line.total_project_amount,
+                            'project_currency_id': oldest_line.currency_id.id
                         })
         return res
