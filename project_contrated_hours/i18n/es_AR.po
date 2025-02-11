@@ -114,7 +114,7 @@ msgstr "Avance teórico"
 #. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__teorical_billing
 msgid "Teorical Billing"
-msgstr "Facturación teórica"
+msgstr "Desvío de facturación"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,help:project_contrated_hours.field_project_project__teorical_billing

@@ -13,6 +13,7 @@
                 <field name="total_project_amount" />
                 <field name="project_currency_id" />
                 <field name="teorical_billing" />
+                <field name="real_billing" />
             </xpath>
             <xpath expr="//field[@name='tag_ids']" position="after">
                 <field name="real_go_live_date" />

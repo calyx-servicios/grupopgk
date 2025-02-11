@@ -8,12 +8,11 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.2.0.1",
+    "version": "15.0.2.1.1",
     "application": False,
     "installable": True,
     "depends": [
-        'sale',
-        'project'
+        'sale', 'project', 'sale_timesheet', 'account_sale_timesheet'
     ],
     "data": [
         "views/sale_order_line_views.xml",

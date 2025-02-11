@@ -23,6 +23,10 @@ class ProjectProject(models.Model):
         compute="_compute_teorical_billing",
         help="Theoretical billing amount based on real advance percentage."
     )
+    real_billing = fields.Monetary(
+        string="Facturación",
+        compute="_compute_real_billing"
+    )
     project_currency_id = fields.Many2one(
         comodel_name="res.currency",
         string="Project currency",
@@ -56,6 +60,16 @@ class ProjectProject(models.Model):
         store=True,
         help="Difference in days between expected and actual go-live date."
     )
+
+    @api.depends('invoice_count')
+    def _compute_real_billing(self):
+        for rec in self:
+            rec.real_billing = False
+            action_invoices = rec.action_open_project_invoices()
+            invoices_domain = action_invoices["domain"]
+            invoices = self.env['account.move'].search(invoices_domain)
+            for invoice in invoices:
+                rec.real_billing += invoice.amount_total
 
     @api.depends('expected_go_live_date', 'real_go_live_date')
     def _compute_delivery_time_deviation(self):
