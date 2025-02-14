@@ -7,14 +7,20 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button string="Cancel" name="cancel" type="object" class="oe_highlight" attrs="{'invisible': [('state', '!=', 'pending')]}"/>
+                    <field name="can_cancel" invisible="True"/>
+                    <button string="Cancel" name="cancel" type="object" class="oe_highlight" attrs="{'invisible': ['|', ('state', '!=', 'pending'), ('can_cancel', '=', False)]}"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <h1 class="mt0">
                     <field name="ticket_id" readonly="True"/>
                 </h1>
                 <group>
-                    <field name="approver_ids" widget="many2many_tags"/>
+                    <group>
+                        <field name="user_id" readonly="True"/> 
+                    </group>
+                    <group>
+                        <field name="approver_ids" widget="many2many_tags" readonly="True"/>
+                    </group>
                 </group>
                 <br/>
                 <field name="line_ids" readonly="True">
@@ -40,6 +46,7 @@
             <tree>
                 <field name="ticket_id"/>
                 <field name="approver_ids" widget="many2many_tags"/>
+                <field name="user_id"/>
                 <field name="state"/>
             </tree>
         </field>
@@ -49,6 +56,7 @@
         <field name="name">Hours Reclassification</field>
         <field name="res_model">timesheet.reclassify</field>
         <field name="view_mode">tree,form</field>
+        <field name="domain">["|", ("user_id", "=", uid), ("approver_ids", "=", uid)]</field>
     </record>
 
     <menuitem

@@ -62,12 +62,8 @@ class TimesheetReclassifyWizard(models.TransientModel):
             raise ValidationError(_(
                 "There is a pending reclassification"
             ))
-        approv_ids = self.reclassify_ids.filtered(
-            lambda rec: rec.unit_amount_reclassify > rec.unit_amount
-        ).mapped("project_id.user_id").ids
         reclassify_id = TR.create({
             "ticket_id": ticket_id,
-            "approver_ids": approv_ids
         })
         for rec in self.reclassify_ids:
             approv_id = False
@@ -79,9 +75,21 @@ class TimesheetReclassifyWizard(models.TransientModel):
                 "unit_amount": rec.unit_amount,
                 "unit_amount_reclassify": rec.unit_amount_reclassify,
                 "reclassify_id": reclassify_id.id,
-                "approver_id": approv_id,
                 "analytic_line": rec.analytic_line.id if rec.analytic_line else False
             })
+
+    def onchange(self, values, field_name, field_onchange):
+        TR = self.env["timesheet.reclassify"].sudo()
+        ticket_id = self.env.context.get("active_id")
+        reclassify_count = TR.search_count([
+            ("state", "=", "pending"),
+            ("ticket_id", "=", ticket_id)
+        ])
+        if reclassify_count > 0:
+            raise ValidationError(_(
+                "There is a pending reclassification"
+            ))
+        return super().onchange(values, field_name, field_onchange)
 
 
 class TimesheetLineReclassifyWizard(models.TransientModel):

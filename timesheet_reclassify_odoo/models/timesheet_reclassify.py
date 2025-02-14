@@ -26,13 +26,38 @@ class TimesheetReclassify(models.Model):
     )
     approver_ids = fields.Many2many(
         string="Approvers",
-        comodel_name="res.users"
+        comodel_name="res.users",
+        compute="_compute_approver_ids",
+        store=True
+    )
+    user_id = fields.Many2one(
+        string="Employee",
+        comodel_name="res.users",
+        related="ticket_id.employee_id.user_id"
+    )
+    can_cancel = fields.Boolean(
+        compute="_compute_can_cancel"
     )
 
+    def _compute_can_cancel(self):
+        user = self.env.user.id
+        for rec in self:
+            rec.can_cancel = False
+            if user in rec.approver_ids.ids:
+                rec.can_cancel = True
+
+    def _compute_approver_ids(self):
+        for rec in self:
+            rec.approver_ids = rec.approver_ids.ids if rec.approver_ids else False
+            if rec.state not in ["cancel", "done"]:
+                rec.approver_ids = rec.line_ids.mapped("approver_id").ids
+
     def cancel(self):
+        user = self.env.user.id
         self = self.sudo()
         for rec in self:
-            rec.state = "cancel"
+            if rec.can_cancel:
+                rec.state = "cancel"
 
     @api.constrains("state")
     def _onchange_state(self):
@@ -52,6 +77,8 @@ class TimesheetReclassify(models.Model):
                                 "timesheet_id": rec.ticket_id.id,
                                 "project_id": line.project_id.id,
                                 "unit_amount": line.unit_amount_reclassify,
+                                "user_id": rec.user_id.id if rec.user_id else False,
+                                "employee_id": rec.user_id.employee_id.id if rec.user_id and rec.user_id.employee_id else False,
                                 "name": line.name,
                             })
 
@@ -85,15 +112,9 @@ class TimesheetReclassifyLine(models.Model):
     )
     approver_id = fields.Many2one(
         string="Approver",
-        comodel_name="res.users"
-    )
-    state = fields.Selection(
-        string="Status",
-        selection=[
-            ("to_approve", "To Approve"),
-            ("approved", "approved"),
-        ],
-        default="to_approve"
+        comodel_name="res.users",
+        compute="_compute_approver_id",
+        store=True
     )
     approved = fields.Boolean(
         string="Approved"
@@ -119,3 +140,13 @@ class TimesheetReclassifyLine(models.Model):
             approve_lines = reclassify.line_ids.filtered(lambda l: l.approver_id)
             if set(approve_lines.mapped("approved")) == {True}:
                 reclassify.state = "done"
+
+    @api.constrains("project_id")
+    def _compute_approver_id(self):
+        self = self.sudo()
+        for rec in self:
+            rec.approver_id = rec.approver_id.id if rec.approver_id else False
+            if rec.reclassify_id.state not in ["cancel", "done"]:
+                if rec.unit_amount_reclassify > rec.unit_amount:
+                    rec.approver_id = rec.project_id.user_id.id
+        self.mapped("reclassify_id")._compute_approver_ids()
