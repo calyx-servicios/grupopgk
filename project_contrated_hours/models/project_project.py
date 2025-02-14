@@ -7,7 +7,8 @@ class ProjectProject(models.Model):
 
     contrated_hours = fields.Float(
         string='Contrated Hours',
-        readonly=True
+        readonly=True,
+        compute="_compute_hours_and_amount_project"
     )
     deviation_project_hours = fields.Float(
         string="Deviation Project Hours",
@@ -61,6 +62,18 @@ class ProjectProject(models.Model):
         help="Difference in days between expected and actual go-live date."
     )
 
+    def _compute_hours_and_amount_project(self):
+        for rec in self:
+            rec.contrated_hours = 0
+            order_lines = self.env['sale.order.line'].search([
+                    ('project_id', '=', rec.id),
+                    ('state', '=', 'sale')
+                ])
+            if order_lines:
+                for line in order_lines:
+                    if line.contrated_hours:
+                        rec.contrated_hours += line.contrated_hours
+
     @api.depends('invoice_count')
     def _compute_real_billing(self):
         for rec in self:
@@ -96,7 +109,7 @@ class ProjectProject(models.Model):
             rec.deviation_project_hours = False
             if rec.total_timesheet_time and rec.contrated_hours:
                 rec.teorical_advance = (float(rec.total_timesheet_time) / rec.contrated_hours)
-                rec.deviation_project_hours = rec.contrated_hours - float(rec.total_timesheet_time)
+                rec.deviation_project_hours = float(rec.total_timesheet_time) - rec.contrated_hours
 
     @api.depends('real_advance', 'teorical_advance')
     def _compute_forward_deviation(self):
