@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- View project.project form -->
+    <record id="view_project_project_form" model="ir.ui.view">
+        <field name="name">view.project.project.form</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field name="contrated_hours" />
+                <field name="deviation_project_hours"/>
+                <field name="total_project_amount" />
+                <field name="project_currency_id" />
+                <field name="teorical_billing" />
+                <field name="real_billing" />
+            </xpath>
+            <xpath expr="//field[@name='tag_ids']" position="after">
+                <field name="real_go_live_date" />
+                <field name="expected_go_live_date" />
+                <field name="delivery_time_deviation" />
+                <field name="teorical_advance" widget="percentage"/>
+                <field name="real_advance" widget="percentage"/>
+                <field name="forward_deviation" widget="percentage"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
