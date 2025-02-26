@@ -4,6 +4,10 @@ from odoo import fields, models, api, _
 class AccountAnalyticLine(models.Model):
     _inherit = "account.analytic.line"
 
+    project_income_reclassify_id = fields.Many2one(
+        comodel_name="project.income.reclassify",
+    )
+
     @api.model
     def name_search(self, name, args=None, operator='ilike', limit=100):
         context = self.env.context

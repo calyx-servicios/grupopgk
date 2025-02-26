@@ -86,25 +86,32 @@ class ProjectIncomeReclassifyWizard(models.TransientModel):
                 "name": f"{display_name} - ${r.amount}",
                 "currency_id": currency_id,
                 "amount": r.amount,
-                "is_reclassify_line": True
+                "is_reclassify_line": True,
+                "line_id": self.inputed_incomes_id.id,
+                "project_id": self.project_id.id
             })
             for project in self.reclassify_project_ids:
                 LINE.create({
                     "reclassify_id": self.id,
                     "name": project.name,
                     "currency_id": currency_id,
+                    "project_id": project.id.origin
                 })
 
     def reclassify(self):
         amounts = self.reclassify_ids.mapped("amount_reclassify")
-        for amount in amounts:
+        income_line = self.reclassify_ids.filtered(lambda r: r.is_reclassify_line == True)
+        reclassify_lines = self.reclassify_ids.filtered(lambda r: r.is_reclassify_line == False)
+
+        if income_line.amount_reclassify < 0:
+            raise ValidationError(
+                "Los montos deben ser positivos"
+            )
+        for amount in reclassify_lines.mapped("amount_reclassify"):
             if amount <= 0:
                 raise ValidationError(
                     "Los montos deben ser positivos"
                 )
-
-        income_line = self.reclassify_ids.filtered(lambda r: r.is_reclassify_line == True)
-        reclassify_lines = self.reclassify_ids.filtered(lambda r: r.is_reclassify_line == False)
         if income_line.amount <= income_line.amount_reclassify:
             raise ValidationError(
                 "El monto a reclasificar debe ser menor al monto inicial del apunte contable"
@@ -113,6 +120,26 @@ class ProjectIncomeReclassifyWizard(models.TransientModel):
             raise ValidationError(
                 "La suma de montos a reclasificar debe ser igual al monto de origen"
             )
+
+        approver_id = income_line.project_id.user_id.id
+        user_id = self.env.user.id
+        PIR = self.env["project.income.reclassify"]
+        PIRL = self.env["project.income.reclassify.line"]
+        recl = PIR.create({
+            "approver_id": approver_id,
+            "user_id": user_id
+        })
+        for line in self.reclassify_ids:
+            PIRL.create({
+                "name": line.name,
+                "project_id": line.project_id.id,
+                "line_id": line.line_id.id if line.line_id else False,
+                "amount": line.amount,
+                "amount_reclassify": line.amount_reclassify,
+                "currency_id": line.currency_id.id if line.currency_id else False,
+                "is_reclassify_line": line.is_reclassify_line,
+                "reclassify_id": recl.id
+            })
 
 
 class ProjectIncomeReclassifyWizardLine(models.TransientModel):
@@ -123,11 +150,16 @@ class ProjectIncomeReclassifyWizardLine(models.TransientModel):
         string="Name",
         required=True
     )
+    project_id = fields.Many2one(
+        comodel_name="project.project"
+    )
+    line_id = fields.Many2one(
+        comodel_name="account.analytic.line"
+    )
     currency_id = fields.Many2one(
         comodel_name="res.currency",
         required=True
     )
-    is_reclassify_line = fields.Boolean()
     amount = fields.Monetary(
         string="Amount",
         currency_field="currency_id"
@@ -139,3 +171,4 @@ class ProjectIncomeReclassifyWizardLine(models.TransientModel):
     reclassify_id = fields.Many2one(
         comodel_name="project.income.reclassify.wizard"
     )
+    is_reclassify_line = fields.Boolean()

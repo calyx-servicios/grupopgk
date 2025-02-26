@@ -16,6 +16,7 @@
         "project"
     ],
     "data": [
+        "views/project_income_reclassify_views.xml",
         "wizard/project_income_reclassify_wizard_view.xml",
         "security/ir.model.access.csv"
     ],
