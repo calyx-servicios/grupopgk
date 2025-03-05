@@ -25,7 +25,7 @@ class ProjectProject(models.Model):
         help="Theoretical billing amount based on real advance percentage."
     )
     real_billing = fields.Monetary(
-        string="Facturación",
+        string="Billing",
         compute="_compute_real_billing"
     )
     project_currency_id = fields.Many2one(
@@ -61,6 +61,73 @@ class ProjectProject(models.Model):
         store=True,
         help="Difference in days between expected and actual go-live date."
     )
+    service_area_id = fields.Many2one(
+        comodel_name="account.analytic.group",
+        string="Service Area"
+    )
+    project_manager = fields.Char(
+        string="PM"
+    )
+    reference_month = fields.Text(
+        string="Comment actual month"
+    )
+    action_suggested = fields.Text(
+        string="Action suggested"
+    )
+    comment = fields.Text(
+        string="Comment DC"
+    )
+    comment_last_month = fields.Text(
+        string="Comment last month"
+    )
+    visible_fields_project = fields.Boolean(
+        related='service_area_id.visible_fields_project'
+    )
+    billing_multyply_advance = fields.Monetary(
+        string="Billing multyply by advance",
+        compute="_compute_billing_multyply_advance"
+    )
+    billing_deviation = fields.Monetary(
+        string="Billing deviation",
+        compute="_compute_billing_deviation"
+    )
+    remaining_hours = fields.Float(
+        string="Remaining hours",
+        compute="_compute_remaining_hours"
+    )
+    billing_hours = fields.Float(
+        string="Billing hours",
+        compute="_compute_real_billing"
+    )
+    hours_multiply_advance = fields.Float(
+        string="Advance by hours",
+        compute="_compute_remaining_hours"
+    )
+    advance_deviation = fields.Float(
+        string="Advance deviation",
+        compute="_compute_remaining_hours"
+    )
+
+    def _compute_remaining_hours(self):
+        for rec in self:
+            rec.remaining_hours = False
+            rec.hours_multiply_advance = False
+            rec.advance_deviation = False
+            if rec.contrated_hours:
+                rec.remaining_hours = rec.contrated_hours - rec.total_timesheet_time
+                if rec.billing_hours:
+                    rec.hours_multiply_advance = (rec.contrated_hours / rec.total_timesheet_time) * rec.billing_hours
+                    rec.advance_deviation = rec.hours_multiply_advance - rec.total_timesheet_time
+
+    def _compute_billing_deviation(self):
+        for rec in self:
+            rec.billing_deviation = rec.billing_multyply_advance - rec.real_billing
+
+    def _compute_billing_multyply_advance(self):
+        for rec in self:
+            rec.billing_multyply_advance = False
+            if rec.total_project_amount and rec.contrated_hours and rec.total_timesheet_time:
+                rec.billing_multyply_advance = (rec.total_project_amount / rec.contrated_hours) * rec.total_timesheet_time
 
     def _compute_hours_and_amount_project(self):
         for rec in self:
@@ -78,11 +145,14 @@ class ProjectProject(models.Model):
     def _compute_real_billing(self):
         for rec in self:
             rec.real_billing = False
+            rec.billing_hours = 0
             action_invoices = rec.action_open_project_invoices()
             invoices_domain = action_invoices["domain"]
             invoices = self.env['account.move'].search(invoices_domain)
             for invoice in invoices:
                 rec.real_billing += invoice.amount_total
+                for line in invoice.invoice_line_ids:
+                    rec.billing_hours += line.quantity
 
     @api.depends('expected_go_live_date', 'real_go_live_date')
     def _compute_delivery_time_deviation(self):
