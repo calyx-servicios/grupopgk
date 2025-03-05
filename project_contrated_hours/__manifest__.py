@@ -12,10 +12,11 @@
     "application": False,
     "installable": True,
     "depends": [
-        'sale', 'project', 'sale_timesheet', 'account_sale_timesheet'
+        'sale', 'project', 'sale_timesheet', 'account_sale_timesheet', 'analytic'
     ],
     "data": [
         "views/sale_order_line_views.xml",
-        "views/project_project_views.xml"
+        "views/project_project_views.xml",
+        "views/account_analytic_group_form_view.xml"
     ]
 }
