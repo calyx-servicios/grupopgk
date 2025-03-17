@@ -62,6 +62,11 @@ class ProjectIncomeReclassify(models.Model):
         self = self.sudo()
         for rec in self:
             if rec.can_cancel:
+                reclassify_line = rec.line_ids.mapped("line_id")
+                if reclassify_line:
+                    reclassify_line.write({
+                        "already_reclassified": False
+                    })
                 rec.state = "cancel"
 
     def approve(self):

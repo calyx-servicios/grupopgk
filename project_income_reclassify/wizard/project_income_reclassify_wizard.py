@@ -31,7 +31,8 @@ class ProjectIncomeReclassifyWizard(models.TransientModel):
                 aal = self.env["account.analytic.line"].sudo()
                 lines = aal.search([
                     ("account_id", "=", account.id),
-                    ("move_id.move_id.move_type", "in", ["out_invoice", "out_refund"])
+                    ("move_id.move_id.move_type", "in", ["out_invoice", "out_refund"]),
+                    ("already_reclassified", "=", False)
                 ])
                 return [("id", "in", lines.ids)]
 
@@ -78,6 +79,7 @@ class ProjectIncomeReclassifyWizard(models.TransientModel):
         LINE = self.env["project.income.reclassify.wizard.line"]
         self.reclassify_ids = False
         if self.inputed_incomes_id and self.reclassify_project_ids:
+            self.inputed_incomes_id.already_reclassified = True
             currency_id = self.inputed_incomes_id.currency_id.id
             r = self.inputed_incomes_id
             display_name = r.move_id.display_name if r.move_id else r.display_name

@@ -7,6 +7,9 @@ class AccountAnalyticLine(models.Model):
     project_income_reclassify_id = fields.Many2one(
         comodel_name="project.income.reclassify",
     )
+    already_reclassified = fields.Boolean(
+        string="Reclasificado"
+    )
 
     @api.model
     def name_search(self, name, args=None, operator='ilike', limit=100):
