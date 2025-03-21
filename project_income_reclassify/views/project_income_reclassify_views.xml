@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+	<record id="project_income_reclassify_form" model="ir.ui.view">
+		<field name="name">project.income.reclassify.form</field>
+        <field name="model">project.income.reclassify</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="can_cancel" invisible="True"/>
+                    <button string="Cancel" name="cancel" type="object" class="oe_highlight" attrs="{'invisible': ['|', ('state', '!=', 'pending'), ('can_cancel', '=', False)]}"/>
+                    <field name="can_approve" invisible="True"/>
+                    <button string="Approve" name="approve" type="object" class="oe_highlight" attrs="{'invisible': ['|', ('state', '!=', 'pending'), ('can_approve', '=', False)]}"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <group>
+                    <group>
+                        <field name="user_id" readonly="True"/> 
+                    </group>
+                    <group>
+                        <field name="approver_id" readonly="True"/>
+                    </group>
+                </group>
+                <br/>
+                <field name="line_ids" readonly="True">
+                    <tree>
+                        <field name="name"/>
+                        <field name="currency_id" invisible="True"/>
+                        <field name="amount" options="{'currency_field': 'currency_id'}"/>
+                        <field name="amount_reclassify" options="{'currency_field': 'currency_id'}"/>
+                    </tree>
+                </field>
+                <field name="analytic_lines" attrs="{'invisible': [('state', '!=', 'done')]}" readonly="True">
+                    <tree>
+                        <field name="employee_id"/>
+                        <field name="project_id"/>
+                        <field name="name"/>
+                        <field name="amount"/>
+                    </tree>
+                </field>
+            </form>
+        </field>
+    </record>
+
+	<record id="project_income_reclassify_tree" model="ir.ui.view">
+		<field name="name">project.income.reclassify.tree</field>
+        <field name="model">project.income.reclassify</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="approver_id"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_project_income_reclassify_action" model="ir.actions.act_window">
+        <field name="name">Approve income reclassification</field>
+        <field name="res_model">project.income.reclassify</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">["|", ("user_id", "=", uid), ("approver_id", "=", uid)]</field>
+    </record>
+
+    <menuitem
+        action="view_project_income_reclassify_action"
+        id="view_project_income_reclassify_menu"
+        parent="project.menu_projects_group_stage"
+        sequence="5"
+    />
+
+</odoo>
