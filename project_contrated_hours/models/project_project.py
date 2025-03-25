@@ -115,9 +115,9 @@ class ProjectProject(models.Model):
             rec.advance_deviation = False
             if rec.contrated_hours:
                 rec.remaining_hours = rec.contrated_hours - rec.total_timesheet_time
-                if rec.billing_hours:
+                rec.advance_deviation = rec.hours_multiply_advance - rec.total_timesheet_time
+                if rec.billing_hours and rec.total_timesheet_time:
                     rec.hours_multiply_advance = (rec.contrated_hours / rec.total_timesheet_time) * rec.billing_hours
-                    rec.advance_deviation = rec.hours_multiply_advance - rec.total_timesheet_time
 
     def _compute_billing_deviation(self):
         for rec in self:
@@ -150,9 +150,9 @@ class ProjectProject(models.Model):
             invoices_domain = action_invoices["domain"]
             invoices = self.env['account.move'].search(invoices_domain)
             for invoice in invoices:
-                rec.real_billing += invoice.amount_total
                 for line in invoice.invoice_line_ids:
                     rec.billing_hours += line.quantity
+                    rec.real_billing += line.price_subtotal
 
     @api.depends('expected_go_live_date', 'real_go_live_date')
     def _compute_delivery_time_deviation(self):
