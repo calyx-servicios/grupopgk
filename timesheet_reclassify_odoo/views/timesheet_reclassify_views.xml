@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+	<record id="view_reclassify_form" model="ir.ui.view">
+		<field name="name">timesheet.reclassify.form</field>
+        <field name="model">timesheet.reclassify</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="can_cancel" invisible="True"/>
+                    <button string="Cancel" name="cancel" type="object" class="oe_highlight" attrs="{'invisible': ['|', ('state', '!=', 'pending'), ('can_cancel', '=', False)]}"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <h1 class="mt0">
+                    <field name="ticket_id" readonly="True"/>
+                </h1>
+                <group>
+                    <group>
+                        <field name="user_id" readonly="True"/> 
+                    </group>
+                    <group>
+                        <field name="approver_ids" widget="many2many_tags" readonly="True"/>
+                    </group>
+                </group>
+                <br/>
+                <field name="line_ids" readonly="True">
+                    <tree>
+                        <field name="project_id"/>
+                        <field name="name"/>
+                        <field name="unit_amount"/>
+                        <field name="unit_amount_reclassify"/>
+                        <field name="approver_id"/>
+                        <field name="can_approve" invisible="True" column_invisible="True"/>
+                        <field name="approved" attrs="{'invisible': [('approver_id', '=', False)]}"/>
+                        <button string="Approve" name="approve" type="object" class="oe_highlight" attrs="{'invisible': [('can_approve', '=', False)]}"/>
+                    </tree>
+                </field>
+            </form>
+        </field>
+    </record>
+
+	<record id="view_reclassify_tree" model="ir.ui.view">
+		<field name="name">timesheet.reclassify.tree</field>
+        <field name="model">timesheet.reclassify</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="ticket_id"/>
+                <field name="approver_ids" widget="many2many_tags"/>
+                <field name="user_id"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_reclassify_action" model="ir.actions.act_window">
+        <field name="name">Hours Reclassification</field>
+        <field name="res_model">timesheet.reclassify</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">["|", ("user_id", "=", uid), ("approver_ids", "=", uid)]</field>
+    </record>
+
+    <menuitem
+        action="view_reclassify_action"
+        id="view_reclassify_menu"
+        parent="hr_timesheet.menu_hr_time_tracking"
+        sequence="10"
+    />
+
+</odoo>

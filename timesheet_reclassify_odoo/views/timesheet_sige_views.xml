@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+	<record id="view_timesheet_sige_form_inherit" model="ir.ui.view">
+		<field name="name">timesheet.sige.form.inherit</field>
+        <field name="model">timesheet.sige</field>
+        <field name="inherit_id" ref="timesheet_odoo.view_timessheet_sige_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="can_reclassify" invisible="True"/>
+                <button name="%(action_timesheet_classify)d" string="Reclassify hours" type="action" class="oe_highlight" attrs="{'invisible': [('can_reclassify', '=', False)]}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
