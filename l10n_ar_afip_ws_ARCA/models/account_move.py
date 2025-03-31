@@ -67,7 +67,7 @@ class AccountMove(models.Model):
             invoice_info["moneda_id"],
             invoice_info["moneda_ctz"],
             cancela_misma_moneda_ext=invoice_info["cancela_misma_moneda_ext"],
-            condicion_iva_receptor_id=invoice_info["condicion_iva_receptor_id"],
+            condicion_iva_receptor=invoice_info["condicion_iva_receptor_id"],
         )
 
     def wsmtxca_pyafipws_create_invoice(self, ws, invoice_info):
@@ -93,7 +93,7 @@ class AccountMove(models.Model):
             invoice_info["moneda_ctz"],
             invoice_info["obs_generales"],
             cancela_misma_moneda_ext=invoice_info["cancela_misma_moneda_ext"],
-            condicion_iva_receptor_id=invoice_info["condicion_iva_receptor_id"],
+            condicion_iva_receptor=invoice_info["condicion_iva_receptor_id"],
         )
 
     def wsfex_pyafipws_create_invoice(self, ws, invoice_info):
@@ -120,7 +120,7 @@ class AccountMove(models.Model):
             invoice_info["incoterms_ds"],
             invoice_info["fecha_pago"],
             cancela_misma_moneda_ext=invoice_info["cancela_misma_moneda_ext"],
-            condicion_iva_receptor_id=invoice_info["condicion_iva_receptor_id"],
+            condicion_iva_receptor=invoice_info["condicion_iva_receptor_id"],
         )
 
     def wsbfe_pyafipws_create_invoice(self, ws, invoice_info):
@@ -146,7 +146,7 @@ class AccountMove(models.Model):
             invoice_info["moneda_ctz"],
             invoice_info["fecha_venc_pago"],
             cancela_misma_moneda_ext=invoice_info["cancela_misma_moneda_ext"],
-            condicion_iva_receptor_id=invoice_info["condicion_iva_receptor_id"],
+            condicion_iva_receptor=invoice_info["condicion_iva_receptor_id"],
         )
 
     def base_map_invoice_info(self):
