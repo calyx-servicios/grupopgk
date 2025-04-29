@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- View project.project form -->
+    <record id="account_analytic_group_form_view" model="ir.ui.view">
+        <field name="name">account.analytic.group.form.view</field>
+        <field name="model">account.analytic.group</field>
+        <field name="inherit_id" ref="analytic.account_analytic_group_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='parent_id']" position="after">
+                <field name="visible_fields_project" />
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

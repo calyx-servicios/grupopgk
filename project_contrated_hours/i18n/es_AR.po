@@ -6,14 +6,24 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-07 15:24+0000\n"
-"PO-Revision-Date: 2025-02-07 15:24+0000\n"
+"POT-Creation-Date: 2025-03-05 20:03+0000\n"
+"PO-Revision-Date: 2025-03-05 20:03+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
 "Plural-Forms: \n"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__action_suggested
+msgid "Action suggested"
+msgstr "Acciones sugeridas"
+
+#. module: project_contrated_hours
+#: model_terms:ir.ui.view,arch_db:project_contrated_hours.view_project_project_form
+msgid "Actual consumed hours"
+msgstr "Horas consumidas"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,help:project_contrated_hours.field_project_project__real_go_live_date
@@ -24,6 +34,51 @@ msgstr "Fecha real en la que el proyecto salió a producción"
 #: model:ir.model.fields,help:project_contrated_hours.field_project_project__real_advance
 msgid "Actual project progress in percentage."
 msgstr "Progreso real del proyecto en porcentaje."
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__hours_multiply_advance
+msgid "Advance by hours"
+msgstr "Horas por avance"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__advance_deviation
+msgid "Advance deviation"
+msgstr "Desvío de horas"
+
+#. module: project_contrated_hours
+#: model:ir.model,name:project_contrated_hours.model_account_analytic_group
+msgid "Analytic Categories"
+msgstr "Categorías analíticas"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__billing_deviation
+msgid "Billing deviation"
+msgstr "Desvío de facturación"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__billing_hours
+msgid "Billing hours"
+msgstr "Horas facturadas"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__billing_multyply_advance
+msgid "Billing multyply by advance"
+msgstr "Horas por avance"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__comment
+msgid "Comment DC"
+msgstr "Comentarios DC"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__reference_month
+msgid "Comment actual month"
+msgstr "Comentarios mes actual"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__comment_last_month
+msgid "Comment last month"
+msgstr "Comentarios mes anterior"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__contrated_hours
@@ -64,7 +119,14 @@ msgstr "Fecha go live original"
 #. module: project_contrated_hours
 #: model:ir.model.fields,help:project_contrated_hours.field_project_project__teorical_advance
 msgid "Expected project progress based on contracted hours and timesheets."
-msgstr "Progreso esperado del proyecto basado en las horas contratadas y las registradas"
+msgstr ""
+"Progreso esperado del proyecto basado en las horas contratadas y las "
+"registradas"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__real_billing
+msgid "Billing"
+msgstr "Facturación realizada"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__forward_deviation
@@ -72,9 +134,20 @@ msgid "Forward Deviation"
 msgstr "Desvío de avance"
 
 #. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_account_analytic_group__visible_fields_project
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__visible_fields_project
+msgid "Make visible fields in project?"
+msgstr "Hacer visible campos en proyecto"
+
+#. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_sale_order_line__order_state
 msgid "Order State"
 msgstr "Estado de orden"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__project_manager
+msgid "PM"
+msgstr ""
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,help:project_contrated_hours.field_project_project__expected_go_live_date
@@ -102,9 +175,19 @@ msgid "Real go live date"
 msgstr "Fecha go live real"
 
 #. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__remaining_hours
+msgid "Remaining hours"
+msgstr "Horas remanente"
+
+#. module: project_contrated_hours
 #: model:ir.model,name:project_contrated_hours.model_sale_order_line
 msgid "Sales Order Line"
 msgstr "Línea de pedido de venta"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__service_area_id
+msgid "Service Area"
+msgstr "Área de servicio"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__teorical_advance
