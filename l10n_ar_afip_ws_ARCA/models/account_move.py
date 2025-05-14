@@ -66,7 +66,7 @@ class AccountMove(models.Model):
             invoice_info["fecha_serv_hasta"],
             invoice_info["moneda_id"],
             invoice_info["moneda_ctz"],
-            cancela_misma_moneda_ext=invoice_info["cancela_misma_moneda_ext"],
+            invoice_info["cancela_misma_moneda_ext"],
             condicion_iva_receptor=invoice_info["condicion_iva_receptor_id"],
         )
 
@@ -92,7 +92,7 @@ class AccountMove(models.Model):
             invoice_info["moneda_id"],
             invoice_info["moneda_ctz"],
             invoice_info["obs_generales"],
-            cancela_misma_moneda_ext=invoice_info["cancela_misma_moneda_ext"],
+            invoice_info["cancela_misma_moneda_ext"],
             condicion_iva_receptor=invoice_info["condicion_iva_receptor_id"],
         )
 
@@ -119,7 +119,7 @@ class AccountMove(models.Model):
             invoice_info["idioma_cbte"],
             invoice_info["incoterms_ds"],
             invoice_info["fecha_pago"],
-            cancela_misma_moneda_ext=invoice_info["cancela_misma_moneda_ext"],
+            invoice_info["cancela_misma_moneda_ext"],
             condicion_iva_receptor=invoice_info["condicion_iva_receptor_id"],
         )
 
@@ -145,7 +145,7 @@ class AccountMove(models.Model):
             invoice_info["moneda_id"],
             invoice_info["moneda_ctz"],
             invoice_info["fecha_venc_pago"],
-            cancela_misma_moneda_ext=invoice_info["cancela_misma_moneda_ext"],
+            invoice_info["cancela_misma_moneda_ext"],
             condicion_iva_receptor=invoice_info["condicion_iva_receptor_id"],
         )
 
@@ -172,3 +172,49 @@ class AccountMove(models.Model):
     def pyafipws_get_currency_rate(self, ws):
         return ws.ParamGetCotizacion(self.currency_id.l10n_ar_afip_code)
     
+    def _l10n_ar_get_invoice_totals_for_report(self):
+        res = super()._l10n_ar_get_invoice_totals_for_report()
+        involved_tax_group_ids = []
+        for subtotals in res['groups_by_subtotal'].values():
+            for subtotal in subtotals:
+                involved_tax_group_ids.append(subtotal['tax_group_id'])
+        involved_tax_groups = self.env['account.tax.group'].browse(involved_tax_group_ids)
+        nat_int_tax_groups = involved_tax_groups.filtered(lambda tax_group: tax_group.l10n_ar_tribute_afip_code in ('01', '04'))
+        vat_tax_groups = involved_tax_groups.filtered('l10n_ar_vat_afip_code')
+        both_tax_group_ids = nat_int_tax_groups.ids + vat_tax_groups.ids
+
+        # RG 5614/2024: Show ARCA VAT and Other National Internal Taxes
+        temp = res
+        if self.l10n_latam_document_type_id.code in ['6', '7', '8']:
+
+            # Prepare the subtotals to show in the report
+            currency_symbol = self.currency_id.symbol
+            detail_info = {}
+
+            for subtotals in temp['groups_by_subtotal'].values():
+                for subtotal in subtotals:
+                    tax_group_id = subtotal['tax_group_id']
+                    tax_amount = subtotal['tax_group_amount']
+
+                    if tax_group_id in nat_int_tax_groups.ids:
+                        key = 'other_taxes'
+                        name = _("Other National Ind. Taxes %s", currency_symbol)
+                    elif tax_group_id in vat_tax_groups.ids:
+                        key = 'vat_taxes'
+                        name = _("VAT Content %s", currency_symbol)
+                    else:
+                        continue  # If not belongs to the needed groups we ignore them
+
+                    if key not in detail_info:
+                        if tax_amount != 0.0:
+                            detail_info[key] = {"name": name, "tax_amount": tax_amount}
+                    else:
+                        detail_info[key]["tax_amount"] += tax_amount
+
+            # Format the amounts to show in the report
+            for _item, values in detail_info.items():
+                values["formatted_amount_tax"] = formatLang(self.env, values["tax_amount"])
+
+            res["detail_ar_tax"] = list(detail_info.values())
+
+            return res
