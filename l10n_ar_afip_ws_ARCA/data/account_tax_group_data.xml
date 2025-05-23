@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <odoo noupdate="1">
+        <record model="account.tax.group" id="tax_group_national_taxes">
+            <field name="name">National Taxes</field>
+            <field name="sequence">30</field>
+            <field name="l10n_ar_tribute_afip_code">01</field>
+            <field name="country_id" ref="base.ar"/>
+        </record>
+    </odoo>
