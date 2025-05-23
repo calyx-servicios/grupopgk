@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.tools.misc import formatLang
+import json
 
 
 class AccountMove(models.Model):
@@ -171,11 +173,12 @@ class AccountMove(models.Model):
 
     def pyafipws_get_currency_rate(self, ws):
         return ws.ParamGetCotizacion(self.currency_id.l10n_ar_afip_code)
-    
+
     def _l10n_ar_get_invoice_totals_for_report(self):
         res = super()._l10n_ar_get_invoice_totals_for_report()
         involved_tax_group_ids = []
-        for subtotals in res['groups_by_subtotal'].values():
+        totals = json.loads(self.tax_totals_json)
+        for subtotals in totals['groups_by_subtotal'].values():
             for subtotal in subtotals:
                 involved_tax_group_ids.append(subtotal['tax_group_id'])
         involved_tax_groups = self.env['account.tax.group'].browse(involved_tax_group_ids)
@@ -184,14 +187,13 @@ class AccountMove(models.Model):
         both_tax_group_ids = nat_int_tax_groups.ids + vat_tax_groups.ids
 
         # RG 5614/2024: Show ARCA VAT and Other National Internal Taxes
-        temp = res
         if self.l10n_latam_document_type_id.code in ['6', '7', '8']:
 
             # Prepare the subtotals to show in the report
             currency_symbol = self.currency_id.symbol
             detail_info = {}
 
-            for subtotals in temp['groups_by_subtotal'].values():
+            for subtotals in totals['groups_by_subtotal'].values():
                 for subtotal in subtotals:
                     tax_group_id = subtotal['tax_group_id']
                     tax_amount = subtotal['tax_group_amount']
