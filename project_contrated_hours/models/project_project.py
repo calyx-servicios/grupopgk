@@ -164,7 +164,7 @@ class ProjectProject(models.Model):
             real_date = rec.real_go_live_date
             expected_date = rec.expected_go_live_date
             if real_date and expected_date:
-                rec.delivery_time_deviation = (expected_date - real_date).days
+                rec.delivery_time_deviation = (real_date - expected_date).days
             else:
                 rec.delivery_time_deviation = 0
 
@@ -179,7 +179,7 @@ class ProjectProject(models.Model):
             rec.deviation_project_hours = False
             if rec.total_timesheet_time and rec.contrated_hours:
                 rec.teorical_advance = (float(rec.total_timesheet_time) / rec.contrated_hours)
-                rec.deviation_project_hours = float(rec.total_timesheet_time) - rec.contrated_hours
+                rec.deviation_project_hours = rec.contrated_hours - float(rec.total_timesheet_time)
 
     @api.depends('real_advance', 'teorical_advance')
     def _compute_forward_deviation(self):
@@ -201,4 +201,4 @@ class ProjectProject(models.Model):
         for rec in self:
             rec.teorical_billing = False
             if rec.total_project_amount:
-                rec.teorical_billing = rec.real_advance * rec.total_project_amount
+                rec.teorical_billing = rec.total_project_amount - (rec.real_advance * rec.total_project_amount)
