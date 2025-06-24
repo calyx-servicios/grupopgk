@@ -124,9 +124,9 @@ class ProjectProject(models.Model):
                     rec.hours_multiply_advance = (c_hours / tt_time) * b_hours
 
     def _compute_billing_deviation(self):
-        """ Enzo: I made a variable abbreviation to avoid very long lines """
+        """ Enzo: I made a variable abbreviation to avoid very long lines"""
         for rec in self:
-            bmadv = rec.billing_multyply_advance
+            bmadv = rec.total_project_amount
             ra = rec.real_advance
             rb = rec.real_billing
             rec.billing_deviation = rb - (bmadv * ra)
