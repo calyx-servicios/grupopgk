@@ -109,6 +109,7 @@ class ProjectProject(models.Model):
     )
 
     def _compute_remaining_hours(self):
+        """ Enzo: I made a variable abbreviation to avoid very long lines """
         for rec in self:
             rec.remaining_hours = False
             rec.hours_multiply_advance = False
@@ -117,17 +118,28 @@ class ProjectProject(models.Model):
                 rec.remaining_hours = rec.contrated_hours - rec.total_timesheet_time
                 rec.advance_deviation = rec.hours_multiply_advance - rec.total_timesheet_time
                 if rec.billing_hours and rec.total_timesheet_time:
-                    rec.hours_multiply_advance = (rec.contrated_hours / rec.total_timesheet_time) * rec.billing_hours
+                    b_hours = rec.billing_hours
+                    tt_time = rec.total_timesheet_time
+                    c_hours = rec.contrated_hours
+                    rec.hours_multiply_advance = (c_hours / tt_time) * b_hours
 
     def _compute_billing_deviation(self):
+        """ Enzo: I made a variable abbreviation to avoid very long lines"""
         for rec in self:
-            rec.billing_deviation = rec.billing_multyply_advance - rec.real_billing
+            bmadv = rec.total_project_amount
+            ra = rec.real_advance
+            rb = rec.real_billing
+            rec.billing_deviation = rb - (bmadv * ra)
 
     def _compute_billing_multyply_advance(self):
+        """ Enzo: I made a variable abbreviation to avoid very long lines """
         for rec in self:
             rec.billing_multyply_advance = False
             if rec.total_project_amount and rec.contrated_hours and rec.total_timesheet_time:
-                rec.billing_multyply_advance = (rec.total_project_amount / rec.contrated_hours) * rec.total_timesheet_time
+                tpa = rec.total_project_amount
+                c_hours = rec.contrated_hours
+                tt_time = rec.total_timesheet_time
+                rec.billing_multyply_advance = (tpa / c_hours) * tt_time
 
     def _compute_hours_and_amount_project(self):
         for rec in self:
@@ -171,15 +183,20 @@ class ProjectProject(models.Model):
     @api.depends('total_timesheet_time', 'contrated_hours')
     def _compute_teorical_advance(self):
         """
-        Calculates the theoretical advance of the project by dividing the total timesheet
-        hours by the contracted hours. Also computes the deviation in project hours.
+        Calculate the theoretical progress and the deviation of hours:
+        - theoretical progress = hours consumed / contracted hours (if contracted hours > 0)
+        - deviation = contracted hours – consumed hours (if at least one of the two is defined)
+        tt = total timesheet
+        ch = contracted hours
         """
-        for rec in self:
-            rec.teorical_advance = False
-            rec.deviation_project_hours = False
-            if rec.total_timesheet_time and rec.contrated_hours:
-                rec.teorical_advance = (float(rec.total_timesheet_time) / rec.contrated_hours)
-                rec.deviation_project_hours = rec.contrated_hours - float(rec.total_timesheet_time)
+        for r in self:
+            tt = float(r.total_timesheet_time or 0)
+            ch = float(r.contrated_hours or 0)
+            if ch > 0:
+                r.teorical_advance = tt / ch
+            else:
+                r.teorical_advance = False
+            r.deviation_project_hours = ch - tt
 
     @api.depends('real_advance', 'teorical_advance')
     def _compute_forward_deviation(self):
@@ -201,4 +218,6 @@ class ProjectProject(models.Model):
         for rec in self:
             rec.teorical_billing = False
             if rec.total_project_amount:
-                rec.teorical_billing = rec.total_project_amount - (rec.real_advance * rec.total_project_amount)
+                tpa = rec.total_project_amount
+                ra = rec.real_advance
+                rec.teorical_billing = tpa - (ra * tpa)
