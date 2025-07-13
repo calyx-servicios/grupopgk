@@ -88,7 +88,7 @@ class ProjectProject(models.Model):
         compute="_compute_billing_multyply_advance"
     )
     billing_deviation = fields.Monetary(
-        string="Billing deviation",
+        string="Billing deviation - Calyx",
         compute="_compute_billing_deviation"
     )
     remaining_hours = fields.Float(
