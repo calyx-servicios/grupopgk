@@ -256,6 +256,11 @@ msgid "Generate Report View"
 msgstr "Generar vista de informe"
 
 #. module: consolidation_report
+#: model_terms:ir.ui.view,arch_db:consolidation_report.view_account_consolidation_report_form
+msgid "Unlink Consolidation Lines"
+msgstr "Eliminar Líneas de Consolidación"
+
+#. module: consolidation_report
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__id
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_data__id
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_period__id

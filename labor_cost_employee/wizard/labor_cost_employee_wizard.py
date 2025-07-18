@@ -2,6 +2,10 @@ from odoo import fields, models, _, api
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 import base64
+from odoo.exceptions import UserError
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class LaborCostEmployeeWizard(models.TransientModel):
@@ -109,27 +113,37 @@ class LaborCostEmployeeWizard(models.TransientModel):
         # Union de contacto con contacto asociado en txt
         laboral_cost = self._process_costs(cost)
 
+        employees_not_found = []
+        
         if self.invoice_ids:
             txt_invoice = _("Total amount invoiced: ")
             employee_model = self.env["hr.employee"]
+
             for invoice in self.invoice_ids:
                 parent_partner_id = employee_model.search(
-                    [("associated_contact_ids", "in", [invoice.partner_id.id])]
+                    [("associated_contact_ids", "in", [invoice.partner_id.id])],
+                    limit=1  # importante agregar limit=1 si esperás uno solo
                 )
+
                 if parent_partner_id:
                     cuil = parent_partner_id.identification_id
                 else:
                     cuil = invoice.partner_id.vat
+                    employees_not_found.append(invoice.partner_id.name)  # Agregás el nombre del partner
 
-                if not cuil in laboral_cost:
-                    laboral_cost[cuil] = {}
-                    laboral_cost[cuil]["amount"] = 0.0
-                    laboral_cost[cuil]["calculation"] = ""
+                if cuil not in laboral_cost:
+                    laboral_cost[cuil] = {
+                        "amount": 0.0,
+                        "calculation": ""
+                    }
 
                 laboral_cost[cuil]["amount"] += invoice.amount_untaxed
-                laboral_cost[cuil][
-                    "calculation"
-                ] += f"{txt_invoice} {invoice.amount_untaxed}"
+                laboral_cost[cuil]["calculation"] += f"{txt_invoice} {invoice.amount_untaxed}"
+
+            if employees_not_found:
+                empleyees_filtered_list = set(employees_not_found)
+                _logger.warning("Empleados no encontrados para los siguientes Contactos o falta asignar un CUIT: %s", ', '.join(empleyees_filtered_list))
+                raise UserError(_("No related employees were found for: %s") % ', '.join(empleyees_filtered_list))
 
         # Union de contactos asociados entre la informacion del txt y las facturas
         final_laboral_cost = self._process_final_costs(laboral_cost)
