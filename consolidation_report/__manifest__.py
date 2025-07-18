@@ -16,6 +16,7 @@
         "account_analytic_currency",
         "report_analytic_account",
         "analytic",
+        "hr_timesheet_multi_company",
     ],
     "data": [
         "security/permissions.xml",

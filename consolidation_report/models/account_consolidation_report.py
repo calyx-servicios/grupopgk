@@ -1,7 +1,11 @@
+from re import A
 from odoo import api, fields, models, _
 import base64, xlsxwriter
 from io import BytesIO
 from odoo.exceptions import UserError
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class AccountConsolidationReport(models.Model):
@@ -419,6 +423,21 @@ class AccountConsolidationReport(models.Model):
         daughter_account_dict["total"] = daughter_account_total
         return daughter_account_dict
 
+    def create_consolidation_analytic_line(self, analytic_line, sign=-1):
+        analityc_line_obj = self.env["account.analytic.line"]
+        vals = {
+            "name": f"{analytic_line.name} - Línea consolidación (timesheet)",
+            "account_id": analytic_line.account_id.id,
+            "amount": sign * analytic_line.amount,
+            "unit_amount": analytic_line.unit_amount,
+            "product_id": analytic_line.product_id.id if analytic_line.product_id else False,
+            "date": analytic_line.date,
+            "currency_id": analytic_line.currency_id.id if analytic_line.currency_id else False,
+            "company_id": [(6, 0, analytic_line.company_id.ids)],
+            "consolidation_line": True,
+        }
+        return analityc_line_obj.with_context(only_active_employees=True).create(vals)
+
     ###########
     # REPORTE #    
     ###########
@@ -439,6 +458,9 @@ class AccountConsolidationReport(models.Model):
 
         # Calculo el porcentaje de facturacion de cada projecto
         percentage_for_project = self.calculate_percentage(total_sales_for_project)
+
+        # Crear lineas analiticas a partir del parte de horas excluyendo las no facturables que luego se redistribuiran a los proyectos a partir de su porcentaje en el metodo anterior
+        self.create_analytic_lines_from_timesheets()
 
         analytic_lines = self.env["account.analytic.line"].search(
             [
@@ -653,36 +675,15 @@ class AccountConsolidationReport(models.Model):
         for analytic_line in analytic_lines_calyx:
             amount = self._convert_amount(analytic_line)
             total_amount_cost_calyx += amount
-            # Crear una nueva línea analítica con los campos especificados
-            analytic_line.copy(default={
-                "name": f"{analytic_line.name} - Linea consolidacion",
-                "amount": -analytic_line.amount,
-                "debit": -analytic_line.debit,
-                "credit": -analytic_line.credit,
-                "date": analytic_line.date,
-                "general_account_id": False,
-                "move_id": analytic_line.move_id.id,
-                "consolidation_line": True,
-                "currency_id": analytic_line.currency_id.id,
-            })
-    
+            # Crear una nueva línea analítica con los campos especificados, se modifica el copy original ya que fallaba
+            self.create_consolidation_analytic_line(analytic_line)
+        
         # Procesa las líneas analíticas para otras empresas
         for analytic_line in analytic_lines_otros:
             amount = self._convert_amount(analytic_line)
             total_amount_cost_otros += amount
             # Crear una nueva línea analítica con los campos especificados
-            analytic_line.copy(default={
-                "name": f"{analytic_line.name} - Linea consolidacion",
-                "amount": -analytic_line.amount,
-                "debit": -analytic_line.debit,
-                "credit": -analytic_line.credit,
-                "date": analytic_line.date,
-                "general_account_id": False,
-                "move_id": analytic_line.move_id.id,
-                "consolidation_line": True,
-                "currency_id": analytic_line.currency_id.id,
-                "move_company_id": analytic_line.move_company_id.id,
-            })
+            self.create_consolidation_analytic_line(analytic_line)
     
         # Redondea los totales a dos decimales
         total_amount_cost_calyx = round(total_amount_cost_calyx, 2)
@@ -706,7 +707,7 @@ class AccountConsolidationReport(models.Model):
         for project, sales in sales_dict["calyx"].items():
             if project != "total_sales_calyx":  # Ignorar la clave 'total_sales_calyx'
                 sales_rounded = round(sales, 2)
-                percentage = round((sales_rounded / total_sales_calyx) * 100, 2)
+                percentage = round((sales_rounded / total_sales_calyx) * 100, 6)
                 if percentage != 0.00:
                     percentages["calyx"].append(
                         {
@@ -735,8 +736,29 @@ class AccountConsolidationReport(models.Model):
 
         return percentages
 
+    def create_analytic_lines_from_timesheets(self):
+        analytic_line_obj = self.env["account.analytic.line"]
+        timesheets = self.env["timesheet.sige"].search([
+            ("start_of_period", ">=", self.consolidation_period.date_from),
+            ("end_of_period", "<=", self.consolidation_period.date_to),
+        ])
 
-    
+        for timesheet in timesheets:
+            for analytic_line in timesheet.timesheet_ids:
+                project = self.env["project.project"].search([
+                    ("analytic_account_id", "=", analytic_line.account_id.id)
+                ], limit=1)
+
+                if not project or not project.allow_billable:
+                    continue
+                
+                self.create_consolidation_analytic_line(analytic_line)
+                
+        total_not_billable = timesheets.timesheet_ids.filtered(lambda l: not l.project_id.allow_billable).mapped('amount')
+
+        _logger.info(f"Total no facturable:{total_not_billable}")
+        return total_not_billable
+
     def get_management_id(self, analytic_line):
         current_account = analytic_line.account_id
 
