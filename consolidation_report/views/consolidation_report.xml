@@ -8,7 +8,10 @@
 				<header>
 					<button name="compute_consolidation_data" groups="consolidation_report.group_consolidation_manager" string="Consolidate" type="object" icon="fa-play" class="oe_highlight"/>
 					<button name="generate_consolidation_report_view" string="Generate Report View" type="object" class="oe_stat_button" icon="fa-line-chart" style="color: #337ab7; background-color: #f5f5f5; border-color: #337ab7;"/>
-					<button name="delete_entries" string="Unlink Consolidation Lines" type="object" class="oe_stat_button" icon="fa-trash" style="color: #337ab7; background-color: #f5f5f5; border-color: #337ab7;"/>
+					<button name="delete_entries" string="Unlink Consolidation Lines" type="object" class="oe_stat_button" icon="fa-trash" style="color: #337ab7; background-color: #f5f5f5; border-color: #337ab7;" attrs="{'invisible':[('is_last_report', '=', False)]}"/>
+					<button name="last_consolidation_report_view" string="Load Last Report View" type="object" class="oe_stat_button" icon="fa-history" style="color: #337ab7; background-color: #f5f5f5; border-color: #337ab7;" attrs="{'invisible':[('is_last_report', '=', False)]}"/>
+					<!-- <button name="clear_timesheet_sige_analytic_lines" string="Unlink Timesheets Lines" type="object" class="oe_stat_button" icon="fa-trash" style="color: #337ab7; background-color: #f5f5f5; border-color: #337ab7;" attrs="{'invisible':[('is_last_report', '=', False)]}"/>
+					<button name="clear_timesheet_sige_gastos_analytic_lines" string="Unlink Timesheets Gastos indirectos Lines" type="object" class="oe_stat_button" icon="fa-trash" style="color: #337ab7; background-color: #f5f5f5; border-color: #337ab7;" attrs="{'invisible':[('is_last_report', '=', False)]}"/> -->
 				</header>
 				<sheet>
 					<div class="oe_title">
@@ -19,12 +22,30 @@
 					<group>
 						<field name="consolidation_period"/>
 						<field name="period"/>
+						<field name="is_last_report" invisible="1"/>
 					</group>
 					<group string="File and data">
 						<field name="export_consolidation_filename" invisible="1"/>
 						<field name="export_consolidation_file" readonly="1" filename="export_consolidation_filename"/>
 					</group>
+					<notebook>
+						<page string="Errores">
+							<field name="counter" string="Líneas consolidadas"/>
+							<field name="list_errors" create="1" edit="1">
+								<tree>
+									<field name="line_id" widget="many2one" options="{'no_create': True}"/>
+									<field name="consolidation_id" invisible="1"/>
+									<field name="error_type" invisible="1"/>
+									<field name="amount_origin"/>
+									<field name="amount_consolidated"/>
+									<field name="description"/>
+									<button name="open_line_analytic_form" string="Open New Analytic Line" type="object"/>
+								</tree>
+							</field>
+						</page>
+					</notebook>
 				</sheet>
+
 			</form>
 		</field>
 	</record>
