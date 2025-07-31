@@ -10,6 +10,8 @@
                 <field name="sector_account_id" invisible="1"/>
                 <field name="bussines_group_id" invisible="1"/>
                 <field name="managment_account_id" invisible="1"/>
+                <field name="consolidation_line" invisible="1"/>
+                <field name="source_analytic_line_id" attrs="{'invisible': [('consolidation_line', '=', False)]}"/>
             </field>
         </field>
     </record>

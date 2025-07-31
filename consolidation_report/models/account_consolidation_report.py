@@ -4,6 +4,8 @@ import base64, xlsxwriter
 from io import BytesIO
 from odoo.exceptions import UserError
 import logging
+from datetime import date
+from dateutil.relativedelta import relativedelta
 
 _logger = logging.getLogger(__name__)
 
@@ -24,7 +26,14 @@ class AccountConsolidationReport(models.Model):
     export_consolidation_filename = fields.Char(
         "File consolidation", compute="_compute_files", readonly=True
     )
-
+    is_last_report = fields.Boolean(default=False)
+    list_errors = fields.One2many(
+        comodel_name='consolidation.analytic.line.error',
+        inverse_name='consolidation_id',
+        string='Lista de Errores',
+    )
+    counter = fields.Integer('Counter')
+     
     @api.depends("consolidation_period")
     def _compute_period(self):
         for record in self:
@@ -340,6 +349,42 @@ class AccountConsolidationReport(models.Model):
 
         return data
 
+    def create_consolidation_analytic_line(self, analytic_line, sign=-1, timesheet=False):
+        analityc_line_obj = self.env["account.analytic.line"]
+        account_id = False
+        if timesheet:
+            account = getattr(
+                analytic_line.timesheet_id.employee_id.department_id, 
+                'analytic_account', 
+                False
+            )
+            account_id = account.id if account else False
+            if not account_id:
+                raise UserError("El empleado de la línea analítica {} no tiene cuenta analítica designada en su departamento.".format(analytic_line.id))
+                            
+            project_costo_laboral = self.env['account.analytic.account'].search([
+                ('name', '=', 'Costo Laboral'),
+                ('parent_id', '=',account_id),
+            ], limit=1)
+            
+            if not project_costo_laboral:
+                raise UserError("La cuenta analítica del empleado (departamento) de la linea{} no tiene cuenta analítica hija para 'Costo Laboral'.".format(analytic_line.id))
+    
+        vals = {
+            "name": f"{analytic_line.name} - Línea consolidación (timesheet)" if timesheet else f"{analytic_line.name} - Línea consolidación",
+            "account_id": analytic_line.account_id.id if not timesheet else project_costo_laboral.id,            
+            "managment_account_id": analytic_line.account_id.id if not timesheet else project_costo_laboral.id,            
+            "amount": sign * analytic_line.amount,
+            "unit_amount": analytic_line.unit_amount,
+            "product_id": analytic_line.product_id.id if analytic_line.product_id else False,
+            "date": analytic_line.date,
+            "currency_id": analytic_line.currency_id.id if analytic_line.currency_id else False,
+            "company_id": [(6, 0, analytic_line.company_id.ids)] if not timesheet else [(6, 0, project_costo_laboral.company_id.ids)],
+            "consolidation_line": True,
+            "source_analytic_line_id": analytic_line.id,
+        }
+        return analityc_line_obj.with_context(only_active_employees=True).create(vals)
+
     @api.depends("export_consolidation_data", "period")
     def _compute_files(self):
         for record in self:
@@ -423,21 +468,24 @@ class AccountConsolidationReport(models.Model):
         daughter_account_dict["total"] = daughter_account_total
         return daughter_account_dict
 
-    def create_consolidation_analytic_line(self, analytic_line, sign=-1):
-        analityc_line_obj = self.env["account.analytic.line"]
-        vals = {
-            "name": f"{analytic_line.name} - Línea consolidación (timesheet)",
-            "account_id": analytic_line.account_id.id,
-            "amount": sign * analytic_line.amount,
-            "unit_amount": analytic_line.unit_amount,
-            "product_id": analytic_line.product_id.id if analytic_line.product_id else False,
-            "date": analytic_line.date,
-            "currency_id": analytic_line.currency_id.id if analytic_line.currency_id else False,
-            "company_id": [(6, 0, analytic_line.company_id.ids)],
-            "consolidation_line": True,
-        }
-        return analityc_line_obj.with_context(only_active_employees=True).create(vals)
-
+    def _get_managment_account_id(self, analytic_line):
+        account_analytic_obj = self.env['account.analytic.account']
+        managment_account_ids = account_analytic_obj.search([
+            ('is_management_group', '=', True),
+            ('parent_id', '!=', False),
+            ('group_id', '!=', False)
+        ])
+        if analytic_line.account_id:
+            account_id = managment_account_ids.filtered(lambda account: account.id == analytic_line.account_id.id)
+            if not account_id:
+                for mangment_account in managment_account_ids:
+                    if analytic_line.account_id.id == mangment_account.id:
+                        return mangment_account.id
+                return analytic_line.account_id.parent_id.id if analytic_line.account_id.parent_id and not analytic_line.source_analytic_line_id else analytic_line.account_id.id if analytic_line.account_id else False
+            else:
+                return account_id.id
+        return False
+    
     ###########
     # REPORTE #    
     ###########
@@ -471,6 +519,7 @@ class AccountConsolidationReport(models.Model):
 
         consolidation_data_vals = []
         for analytic_line in analytic_lines:
+            analytic_line.managment_account_id = self._get_managment_account_id(analytic_line)
             analytic_line.update_currency_id()
 
             current_account = analytic_line.account_id
@@ -520,10 +569,12 @@ class AccountConsolidationReport(models.Model):
                     "business_group": analytic_line.bussines_group_id.id,
                     "sector_account_group": analytic_line.sector_account_id.id,
                     "managment_account_group": analytic_line.managment_account_id.id,
-                    "company": analytic_line.company_id.ids,
+                    # si es linea consolidada que no muestre compañias
+                    "company": analytic_line.company_id.ids if analytic_line.consolidation_line else False,
                     "daughter_account": analytic_line.id,
                     "description": analytic_line.name or "",
-                    "account_id": analytic_line.general_account_id.code,
+                    # si es linea consolidada que no la muestre
+                    "account_id": analytic_line.general_account_id.code if analytic_line.consolidation_line else False,
                     "currency_origin": currency_origin if currency_origin else "",
                     "currency": new_currency if new_currency else "",
                     "rate": rate,
@@ -542,7 +593,10 @@ class AccountConsolidationReport(models.Model):
         consolidation_data.create(consolidation_data_vals)
         consolidation_data.create(consolidation_data_vals_cost)
         
-
+        unlink_last_report = self.search([('is_last_report', '=', True)], limit=1)
+        unlink_last_report.is_last_report = False
+        self.is_last_report = True
+        
         view_id_tree = self.env.ref("consolidation_report.view_consolidation_data_tree")
         return {
             "name": "Consolidation Report",
@@ -563,6 +617,9 @@ class AccountConsolidationReport(models.Model):
         }
 
     def delete_entries(self):
+        # Elimino las líneas de errores en informes previos
+        self.env['consolidation.analytic.line.error'].search([]).unlink()
+        
         self.env["account.consolidation.data"].search([]).unlink()
 
         lines_to_delete = self.env["account.analytic.line"].search(
@@ -646,7 +703,113 @@ class AccountConsolidationReport(models.Model):
 
         return project_sales
 
+    def catch_possible_error(self, line, consolidation_line, unknow_project=False):
+        ListErrors = self.env['consolidation.analytic.line.error']
+        sign = -1
+        new_amount = consolidation_line.amount if consolidation_line else 0
+        origin_amount = line.amount
+        if unknow_project:
+            ListErrors.create({
+                'line_id': consolidation_line.id,
+                'consolidation_id': self.id,
+                'error_type': 'no_project',
+                'description': 'Proyecto no definido en líneas de partes de hora',
+                'amount_origin': origin_amount,
+                'amount_consolidated': new_amount,
+            })
+        else:
+            if (origin_amount != -new_amount) or (origin_amount == 0 and new_amount == 0):
+                # new_amount = 0
+                # origin_amount = 0
+                if origin_amount == 0 and new_amount == 0:
+                    ListErrors.create({
+                        'line_id': consolidation_line.id,
+                        'consolidation_id': self.id,
+                        'error_type': 'zero',
+                        'description': 'Ambos valores son cero, lo cual no es válido.',
+                        'amount_origin': origin_amount,
+                        'amount_consolidated': new_amount,
+                    })
+                # new_amount = valor
+                # origin_amount = 0
+                elif origin_amount == 0 and new_amount != 0.0:
+                    ListErrors.create({
+                        'line_id': consolidation_line.id,
+                        'consolidation_id': self.id,
+                        'error_type': 'zero_dif',
+                        'description': 'El valor original es 0 pero el consolidado no lo es.',
+                        'amount_origin': origin_amount,
+                        'amount_consolidated': new_amount,
+                    })
+                # new_amount = valor
+                # origin_amount = valor
+                elif origin_amount == new_amount:
+                    ListErrors.create({
+                        'line_id': consolidation_line.id,
+                        'consolidation_id': self.id,
+                        'error_type': 'sign',
+                        'description': 'El valor consolidado debería ser el opuesto del original.',
+                        'amount_origin': origin_amount,
+                        'amount_consolidated': new_amount,
+                    })
+                # new_amount = valor
+                # origin_amount = -otro valor 
+                # ó
+                # new_amount = -valor
+                # origin_amount = otro valor 
+                elif (origin_amount < 0 and new_amount > 0) or (origin_amount > 0 and new_amount < 0):
 
+                    ListErrors.create({
+                        'line_id': consolidation_line.id,
+                        'consolidation_id': self.id,
+                        'error_type': 'amount',
+                        'description': 'El valor no es el opuesto exacto.',
+                        'amount_origin': origin_amount,
+                        'amount_consolidated': new_amount,
+                    })
+                # new_amount = -valor
+                # origin_amount = -otro valor 
+                # ó
+                # new_amount = -valor
+                # origin_amount = -otro valor 
+                elif (
+                    (origin_amount < 0 and new_amount < 0) or (origin_amount > 0 and new_amount > 0)
+                ) and origin_amount != sign * new_amount:
+                    ListErrors.create({
+                        'line_id': consolidation_line.id,
+                        'consolidation_id': self.id,
+                        'error_type': 'amount',
+                        'description': 'El signo es incorrecto y tambien sus decimales',
+                        'amount_origin': origin_amount,
+                        'amount_consolidated': new_amount,
+                    })
+                # new_amount = valor
+                # origin_amount = otro valor 
+                # ó
+                # new_amount = valor
+                # origin_amount = otro valor 
+                elif (
+                    (origin_amount < 0 and new_amount < 0) or (origin_amount > 0 and new_amount > 0)
+                ) and origin_amount == sign * new_amount:
+                    ListErrors.create({
+                        'line_id': consolidation_line.id,
+                        'consolidation_id': self.id,
+                        'error_type': 'amount',
+                        'description': 'El signo es incorrecto',
+                        'amount_origin': origin_amount,
+                        'amount_consolidated': new_amount,
+                    })
+                else:
+                    ListErrors.create({
+                        'line_id': consolidation_line.id,
+                        'consolidation_id': self.id,
+                        'error_type': 'other',
+                        'description': '?????',
+                        'amount_origin': origin_amount,
+                        'amount_consolidated': new_amount,
+                    })
+
+        
     def calculate_total_amount_cost(self):
         # Filtra las líneas analíticas para Calyx
         analytic_lines_calyx = self.env["account.analytic.line"].search(
@@ -674,17 +837,26 @@ class AccountConsolidationReport(models.Model):
         # Procesa las líneas analíticas para Calyx
         for analytic_line in analytic_lines_calyx:
             amount = self._convert_amount(analytic_line)
+            if analytic_line.project_id and analytic_line.timesheet_id:
+                amount = 0
             total_amount_cost_calyx += amount
-            # Crear una nueva línea analítica con los campos especificados, se modifica el copy original ya que fallaba
+            # Crear una nueva línea analítica con los campos especificados
             self.create_consolidation_analytic_line(analytic_line)
-        
+            self.catch_possible_error(analytic_line, calyx_line)
+            count += 1
+
         # Procesa las líneas analíticas para otras empresas
         for analytic_line in analytic_lines_otros:
             amount = self._convert_amount(analytic_line)
+            if analytic_line.project_id and analytic_line.timesheet_id:
+                amount = 0
             total_amount_cost_otros += amount
             # Crear una nueva línea analítica con los campos especificados
-            self.create_consolidation_analytic_line(analytic_line)
-    
+            self.create_consolidation_analytic_line(analytic_line) 
+            self.catch_possible_error(analytic_line, other_line)
+            count += 1
+                
+        self.counter = count
         # Redondea los totales a dos decimales
         total_amount_cost_calyx = round(total_amount_cost_calyx, 2)
         total_amount_cost_otros = round(total_amount_cost_otros, 2)
@@ -703,10 +875,10 @@ class AccountConsolidationReport(models.Model):
         }
 
         # Calcular los porcentajes para Calyx
-        total_sales_calyx = round(sales_dict["calyx"]["total_sales_calyx"], 2)
+        total_sales_calyx = round(sales_dict["calyx"]["total_sales_calyx"], 6)
         for project, sales in sales_dict["calyx"].items():
             if project != "total_sales_calyx":  # Ignorar la clave 'total_sales_calyx'
-                sales_rounded = round(sales, 2)
+                sales_rounded = round(sales, 6)
                 percentage = round((sales_rounded / total_sales_calyx) * 100, 6)
                 if percentage != 0.00:
                     percentages["calyx"].append(
@@ -742,20 +914,27 @@ class AccountConsolidationReport(models.Model):
             ("start_of_period", ">=", self.consolidation_period.date_from),
             ("end_of_period", "<=", self.consolidation_period.date_to),
         ])
-
+        not_billable_list_ids = []
+        not_project_ids = []
+        sum = 0
         for timesheet in timesheets:
             for analytic_line in timesheet.timesheet_ids:
                 project = self.env["project.project"].search([
                     ("analytic_account_id", "=", analytic_line.account_id.id)
                 ], limit=1)
-
-                if not project or not project.allow_billable:
+                if not project:
+                    self.catch_possible_error(analytic_line, False, True)
+                    sum += analytic_line.amount
+                    not_project_ids.append(analytic_line.id)
+                elif not project.allow_billable:
+                    not_billable_list_ids.append(analytic_line.id)
+                    if analytic_line.amount != 0:
+                        sum += analytic_line.amount
                     continue
-                
-                self.create_consolidation_analytic_line(analytic_line)
-                
-        total_not_billable = timesheets.timesheet_ids.filtered(lambda l: not l.project_id.allow_billable).mapped('amount')
+                self.create_consolidation_analytic_line(analytic_line, timesheet=True)
 
+        total_not_billable = timesheets.timesheet_ids.filtered(lambda l: not l.project_id.allow_billable and l.amount != 0).mapped('amount')
+        total_not_billable_ids = timesheets.timesheet_ids.filtered(lambda l: not l.project_id.allow_billable and l.amount != 0).mapped('id')
         _logger.info(f"Total no facturable:{total_not_billable}")
         return total_not_billable
 
@@ -972,3 +1151,71 @@ class AccountConsolidationReport(models.Model):
 
         # Crear las nuevas líneas analíticas
         self.env["account.analytic.line"].create(vals_list_calyx)
+
+    def last_consolidation_report_view(self):
+        view_id_tree = self.env.ref("consolidation_report.view_consolidation_data_tree")
+        return {
+            "name": "Consolidation Report",
+            "type": "ir.actions.act_window",
+            "view_type": "form",
+            "view_mode": "tree,form",
+            "res_model": "account.consolidation.data",
+            "views": [(view_id_tree.id, "tree")],
+            "context": {
+                "tree_view_ref": "view_consolidation_data_tree",
+                "group_by_no_leaf": 1,
+            },
+            "target": "current",
+        }
+    def clear_timesheet_sige_gastos_analytic_lines(self):
+        tm_sige_obj = self.env["timesheet.sige"]
+        
+        date_act = date.today().replace(month=int(self.period[5:]), year=int(self.period[:4]))
+        start_of_period = date_act.replace(day=1)
+        end_of_period = date_act + relativedelta(day=31)
+        
+        tm_sige_emp = tm_sige_obj.search(
+            [
+                ("state", "=", "close"),
+                ("start_of_period", "=", start_of_period),
+                ("end_of_period", "=", end_of_period),
+            ],
+        )
+        for line in tm_sige_emp.timesheet_ids:
+        
+            if 'No Facturable' in line.account_id.name:
+                line.amount = 0.0
+
+    def clear_timesheet_sige_analytic_lines(self):
+        tm_sige_obj = self.env["timesheet.sige"]
+        
+        date_act = date.today().replace(month=int(self.period[5:]), year=int(self.period[:4]))
+        start_of_period = date_act.replace(day=1)
+        end_of_period = date_act + relativedelta(day=31)
+        
+        tm_sige_emp = tm_sige_obj.search(
+            [
+                ("state", "=", "close"),
+                ("start_of_period", "=", start_of_period),
+                ("end_of_period", "=", end_of_period),
+            ],
+        )
+        for line in tm_sige_emp.timesheet_ids:
+        
+            line.amount = 0.0
+
+    def create_test_analytic_lines_from_timesheets_not_billable(self):
+        analytic_line_obj = self.env["account.analytic.line"]
+        timesheets = self.env["timesheet.sige"].search([
+            ("start_of_period", ">=", self.consolidation_period.date_from),
+            ("end_of_period", "<=", self.consolidation_period.date_to),
+        ])
+
+        for timesheet in timesheets:
+            for analytic_line in timesheet.timesheet_ids:
+                project = self.env["project.project"].search([
+                    ("analytic_account_id", "=", analytic_line.account_id.id)
+                ], limit=1)
+
+                if not project or not project.allow_billable:
+                    continue
