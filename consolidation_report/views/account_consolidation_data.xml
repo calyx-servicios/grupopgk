@@ -43,7 +43,7 @@
                         <filter string="Compañía" name="group_by_company" domain="[]" context="{'group_by': 'company'}"/>
                         <filter string="Moneda" name="group_by_currency" domain="[]" context="{'group_by': 'currency'}"/>
                         <filter string="Línea de cuenta analítica" name="group_by_daughter_account" domain="[]" context="{'group_by': 'daughter_account'}"/>
-                        <filter string="Projecto" name="group_by_project_id" domain="[]" context="{'group_by': 'project_id'}"/>
+                        <filter string="Proyecto" name="group_by_project_id" domain="[]" context="{'group_by': 'project_id'}"/>
                     </group>
                 </search>
             </field>
