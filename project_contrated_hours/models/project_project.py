@@ -7,7 +7,6 @@ class ProjectProject(models.Model):
 
     contrated_hours = fields.Float(
         string='Contrated Hours',
-        readonly=True,
         compute="_compute_hours_and_amount_project"
     )
     deviation_project_hours = fields.Float(
@@ -16,8 +15,7 @@ class ProjectProject(models.Model):
         help="Difference between contracted hours and actual timesheet hours."
     )
     total_project_amount = fields.Monetary(
-        string='Total Project Amount',
-        readonly=True
+        string='Total Project Amount'
     )
     teorical_billing = fields.Monetary(
         string="Teorical Billing",
