@@ -134,3 +134,7 @@
 	path = submodules/OCA/credit-control
 	url = git@github.com:OCA/credit-control.git
 	branch = 15.0
+[submodule "submodules/OCA/bank-statement-import"]
+	path = submodules/OCA/bank-statement-import
+	url = git@github.com:OCA/bank-statement-import.git
+	branch = 15.0
