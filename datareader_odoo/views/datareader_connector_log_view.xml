@@ -1,0 +1,117 @@
+<odoo>
+    <record id="view_account_payment_group_log_form" model="ir.ui.view">
+        <field name="name">datareader.account.payment.group.log.form</field>
+        <field name="model">datareader.account.payment.group.log</field>
+        <field name="arch" type="xml">
+            <form string="Conector DataReader">
+                <header>
+                    <button name="action_connect" type="object" string="Conectarse" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name" readonly="1"/>
+                        <field name="last_token" readonly="1"/>
+                        <field name="last_connection" readonly="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Process Details">
+                            <field name="account_payment_group_item_ids">
+                                <tree>
+                                    <field name="payment_group_id" widget="many2one" options="{'no_create': True}"/>
+                                    <field name="file_name"/>
+                                    <field name="attachment_op_id" widget="many2one" options="{'no_create': True}"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="has_withholding" invisible="1"/>
+                                    <field name="has_check" invisible="1"/>
+                                    <field name="create_date"/>
+                                    <field name="message" widget="char" style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" readonly="1"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="Search Alias">
+                            <group name="Partners" string="Alternative Partners Names">
+                                <button name="action_open_normalized_partners"
+                                    type="object"
+                                    string="Ver Contactos"
+                                    class="btn-info"
+                                    icon="fa-users"/>
+                                
+                                <button name="action_sync_normalized_partners"
+                                    type="object"
+                                    string="Update Partners"
+                                    class="btn-secondary"/>
+                            </group>
+                            <group name="Companies" string="Alternative Company Names">
+                                <button name="action_open_normalized_companies"
+                                    type="object"
+                                    string="Ver Comañías"
+                                    class="btn-info"
+                                    icon="fa-building"/>
+                                <button name="action_sync_normalized_companies"
+                                    type="object"
+                                    string="Update Companies"
+                                    class="btn-secondary"/>
+                            </group>
+                            <group name="Journals" string="Alternative Journal Names">
+                                <button name="action_open_normalized_journals"
+                                    type="object"
+                                    string="Ver Diarios"
+                                    class="btn-info"
+                                    icon="fa-book"/>
+                                <button name="action_sync_normalized_journals"
+                                    type="object"
+                                    string="Update Journals"
+                                    class="btn-secondary"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_account_payment_group_log_tree" model="ir.ui.view">
+        <field name="name">datareader.account.payment.group.log.tree</field>
+        <field name="model">datareader.account.payment.group.log</field>
+        <field name="arch" type="xml">
+            <tree string="Procesos de Conector DataReader">
+                <field name="name"/>
+                <field name="last_connection"/>
+                <field name="create_date"/>
+                <field name="last_token"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_datareader_account_payment_group_log" model="ir.actions.act_window">
+        <field name="name">Data Reader</field>
+        <field name="res_model">datareader.account.payment.group.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="target">current</field>
+    </record>
+
+    <record id="action_normalized_companies" model="ir.actions.act_window">
+        <field name="name">Companies Normalizadas</field>
+        <field name="res_model">normalized.text</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('company_id', '!=', False)]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="action_normalized_journals" model="ir.actions.act_window">
+        <field name="name">Journals Normalizados</field>
+        <field name="res_model">normalized.text</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('journal_id', '!=', False)]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <menuitem id="menu_datareader_root" name="Data Reader"
+              parent="account.menu_finance_receivables"
+              action="action_datareader_account_payment_group_log"
+              sequence="100"/>
+</odoo>
