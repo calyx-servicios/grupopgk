@@ -86,7 +86,7 @@
 	path = submodules/OCA/sale-workflow
 	url = https://github.com/OCA/sale-workflow.git
 	branch = 15.0
-[submodule "submodules/OCA/account-financial-reporting"]
+[submodule "submodule/OCA/account-financial-reporting"]
 	path = submodules/OCA/account-financial-reporting
 	url = https://github.com/OCA/account-financial-reporting.git
 	branch = 15.0
@@ -108,19 +108,19 @@
 	branch = 15.0
 [submodule "submodules/calyx-servicios/l10n-ar"]
 	path = submodules/calyx-servicios/l10n-ar
-	url = git@github.com:calyx-servicios/l10n-ar.git
+	url = https://github.com/calyx-servicios/l10n-ar.git
 	branch = 15.0
 [submodule "submodules/calyx-servicios/account-invoicing"]
 	path = submodules/calyx-servicios/account-invoicing
-	url = git@github.com:calyx-servicios/account-invoicing.git
+	url = https://github.com/calyx-servicios/account-invoicing.git
 	branch = 15.0
 [submodule "submodules/OCA/helpdesk"]
 	path = submodules/OCA/helpdesk
-	url = git@github.com:OCA/helpdesk.git
+	url = https://github.com/OCA/helpdesk.git
 	branch = 15.0
 [submodule "submodules/OCA/timesheet"]
 	path = submodules/OCA/timesheet
-	url = git@github.com:OCA/timesheet.git
+	url = https://github.com/OCA/timesheet.git
 	branch = 15.0
 [submodule "submodules/ingadhoc/aeroolib"]
 	path = submodules/ingadhoc/aeroolib
@@ -128,9 +128,13 @@
 	branch = master
 [submodule "submodules/ingadhoc/aeroo_reports"]
 	path = submodules/ingadhoc/aeroo_reports
-	url = git@github.com:ingadhoc/aeroo_reports.git
+	url = https://github.com/ingadhoc/aeroo_reports.git
 	branch = 15.0
 [submodule "submodules/OCA/credit-control"]
 	path = submodules/OCA/credit-control
-	url = git@github.com:OCA/credit-control.git
+	url = https://github.com/OCA/credit-control.git
 	branch = 15.0
+[submodule "submodules/calyx-servicios/datareader-box"]
+	path = submodules/calyx-servicios/datareader-box
+	url = https://github.com/calyx-servicios/datareader-submodule-box.git
+	branch = main

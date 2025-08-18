@@ -1,0 +1,115 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* datareader_odoo
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0+e-20240910\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-05-12 15:02+0000\n"
+"PO-Revision-Date: 2025-05-12 15:02+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: datareader_odoo
+#: model:ir.model,name:datareader_odoo.model_res_config_settings
+msgid "Config Settings"
+msgstr "Ajustes de configuración"
+
+#. module: datareader_odoo
+#. odoo-python
+#: code:addons/datareader_odoo/models/sale_order.py:0
+#, python-format
+msgid "Couldn't find product with EAN code {ean}."
+msgstr "No se encontró el producto con código EAN {ean}."
+
+#. module: datareader_odoo
+#. odoo-python
+#: code:addons/datareader_odoo/models/sale_order.py:0
+#, python-format
+msgid "Couldn't find product with module code {module}."
+msgstr "No se encontró el producto con código de módulo {module}."
+
+#. module: datareader_odoo
+#: model:ir.model.fields,field_description:datareader_odoo.field_res_config_settings__datareader_api_host
+msgid "Datareader Api Host"
+msgstr "Host de Datareader"
+
+#. module: datareader_odoo
+#: model:ir.model.fields,field_description:datareader_odoo.field_res_config_settings__datareader_api_pass
+msgid "Datareader Api Pass"
+msgstr "Contraseña de Datareader"
+
+#. module: datareader_odoo
+#: model:ir.model.fields,field_description:datareader_odoo.field_res_config_settings__datareader_api_user
+msgid "Datareader Api User"
+msgstr "Usuario de Datareader"
+
+#. module: datareader_odoo
+#: model_terms:ir.ui.view,arch_db:datareader_odoo.odoo_datareader_config_settings_view_form
+msgid "Datareader Host"
+msgstr "Host de Datareader"
+
+#. module: datareader_odoo
+#: model_terms:ir.ui.view,arch_db:datareader_odoo.odoo_datareader_config_settings_view_form
+msgid "Datareader Odoo"
+msgstr "Datareader Odoo"
+
+#. module: datareader_odoo
+#: model_terms:ir.ui.view,arch_db:datareader_odoo.odoo_datareader_config_settings_view_form
+msgid "Datareader Password"
+msgstr "Contraseña de Datareader"
+
+#. module: datareader_odoo
+#: model_terms:ir.ui.view,arch_db:datareader_odoo.odoo_datareader_config_settings_view_form
+msgid "Datareader User"
+msgstr "Usuario de Datareader"
+
+#. module: datareader_odoo
+#. odoo-python
+#: code:addons/datareader_odoo/models/sale_order.py:0
+#, python-format
+msgid "No EAN code or module code found on line with product {product}."
+msgstr "No se encontro un código EAN o código de módulo en la línea con el producto {product}."
+
+#. module: datareader_odoo
+#. odoo-python
+#: code:addons/datareader_odoo/models/sale_order.py:0
+#, python-format
+msgid "No valid attachment invoices found to send to Datareader."
+msgstr "No se encontró ningun pedido válido para enviar a Datareader."
+
+#. module: datareader_odoo
+#. odoo-python
+#: code:addons/datareader_odoo/models/sale_order.py:0
+#, python-format
+msgid "Product {product} is not allowed for sale."
+msgstr "El producto {product} no esta permitido para la venta."
+
+#. module: datareader_odoo
+#. odoo-python
+#: code:addons/datareader_odoo/models/sale_order.py:0
+#, python-format
+msgid "Product {product} has no quantity set."
+msgstr "El producto {product} no tiene una cantidad establecida."
+
+#. module: datareader_odoo
+#: model:ir.model,name:datareader_odoo.model_sale_order
+msgid "Sales Order"
+msgstr "Orden de venta"
+
+#. module: datareader_odoo
+#: model_terms:ir.ui.view,arch_db:datareader_odoo.view_sale_order_form_datareader
+msgid "Validate invoice with Datareader"
+msgstr "Digitalizar pedido"
+
+#. module: datareader_odoo
+#. odoo-python
+#: code:addons/datareader_odoo/models/utils/datareader_upload_result.py:0
+#, python-format
+msgid "{len} errors ocurred during Datareader validation:"
+msgstr "{len} errores han ocurrido durante la digitalización de la factura:"

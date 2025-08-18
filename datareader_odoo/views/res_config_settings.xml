@@ -1,0 +1,112 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record id="odoo_datareader_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.inherit</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="10"/>
+        <field name="inherit_id" ref="account.res_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//div[@class='app_settings_block' and @data-key='account']" position="inside">
+                <h2>DataReader</h2>
+                <div class="row mt16 o_settings_container" id="datareader_settings">
+                    <div class="col-12 col-lg-6 o_setting_box">
+                        <div class="o_setting_left_pane"/>
+                        <div class="o_setting_right_pane">
+                            <span class="o_form_label">Configuración de la API de DataReader</span>
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="datareader_api_host" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_api_host"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_api_user" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_api_user"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_api_pass" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_api_pass" password="True"/>
+                                </div>
+                            </div>
+                            <separator/>
+                            <span class="o_form_label">Configuración de Publicaciones en DataReader</span>
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="datareader_post_account_payment" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_post_account_payment"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_post_account_payment_groups" attrs="{'invisible':[('datareader_post_account_payment', '=', False)]}" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_post_account_payment_groups" attrs="{'invisible':[('datareader_post_account_payment', '=', False)]}"/>
+                                </div>
+                            </div>
+                            <separator/>
+                            <span class="o_form_label">Diarios Predeterminados (DataReader)</span>
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="datareader_default_transfer_journal_id" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_default_transfer_journal_id" domain="[('company_id', '=', company_id)]"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_default_check_journal_id" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_default_check_journal_id" domain="[('company_id', '=', company_id)]"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_default_withholding_journal_id" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_default_withholding_journal_id" domain="[('company_id', '=', company_id)]"/>
+                                </div>
+                            </div>
+                            <separator/>
+                            <span class="o_form_label">Cliente Box</span>
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="box_client_id" class="col-lg-4 o_light_label"/>
+                                    <field name="box_client_id" password="True"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="box_client_secret" class="col-lg-4 o_light_label"/>
+                                    <field name="box_client_secret" password="True"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="box_subject_type" class="col-lg-4 o_light_label"/>
+                                    <field name="box_subject_type"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="box_subject_id" class="col-lg-4 o_light_label"/>
+                                    <field name="box_subject_id"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="box_folder_id_op" class="col-lg-4 o_light_label"/>
+                                    <field name="box_folder_id_op"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="box_folder_id_withholding" class="col-lg-4 o_light_label"/>
+                                    <field name="box_folder_id_withholding"/>
+                                </div>
+                            </div>
+                            <separator/>
+                            <span class="o_form_label">Modo Testing / Producción</span>
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="datareader_mode" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_mode"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_download_files" class="col-lg-4 o_light_label" attrs="{'invisible': [('datareader_mode', '=', 'production')]}"/>
+                                    <field name="datareader_download_files" attrs="{'invisible': [('datareader_mode', '=', 'production')]}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_skip_op_close" class="col-lg-4 o_light_label" attrs="{'invisible': [('datareader_mode', '=', 'production')]}"/>
+                                    <field name="datareader_skip_op_close" attrs="{'invisible': [('datareader_mode', '=', 'production')]}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_download_first_batch" class="col-lg-4 o_light_label" attrs="{'invisible': [('datareader_mode', '=', 'production')]}"/>
+                                    <field name="datareader_download_first_batch" attrs="{'invisible': [('datareader_mode', '=', 'production')]}"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
