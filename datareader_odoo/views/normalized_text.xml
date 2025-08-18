@@ -1,0 +1,107 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record id="view_normalized_text_tree_partner" model="ir.ui.view">
+        <field name="name">normalized.text.tree.partner</field>
+        <field name="model">normalized.text</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="res_partner_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_normalized_text_tree_company" model="ir.ui.view">
+        <field name="name">normalized.text.tree.company</field>
+        <field name="model">normalized.text</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="res_company_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_normalized_text_tree_journal" model="ir.ui.view">
+        <field name="name">normalized.text.tree.journal</field>
+        <field name="model">normalized.text</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="account_journal_id"/>
+            </tree>
+        </field>
+    </record>
+    
+    <record id="view_normalized_text_form" model="ir.ui.view">
+        <field name="name">normalized.text.form</field>
+        <field name="model">normalized.text</field>
+        <field name="arch" type="xml">
+            <form string="Partner Normalizado">
+                <sheet>
+                    <group>
+                        <field name="res_partner_id" readonly="1" attrs="{'invisible': [('res_partner_id', '=', False)]}"/>
+                        <field name="res_company_id" readonly="1" attrs="{'invisible': [('res_company_id', '=', False)]}"/>
+                        <field name="account_journal_id" readonly="1" attrs="{'invisible': [('account_journal_id', '=', False)]}"/>
+                    </group>
+                    <notebook>
+                        <page string="Aliases">
+                            <field name="items_ids">
+                                <tree editable="bottom">
+                                    <field name="name"/>
+                                    <field name="normalized_name"/>
+                                    <field name="is_real_name" invisible="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_normalized_text_items_tree" model="ir.ui.view">
+        <field name="name">normalized.text.items.tree</field>
+        <field name="model">normalized.text.items</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="normalized_name"/>
+                <field name="is_real_name"/>
+                <field name="normalized_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_normalized_text_items_form" model="ir.ui.view">
+        <field name="name">normalized.text.items.form</field>
+        <field name="model">normalized.text.items</field>
+        <field name="arch" type="xml">
+            <form string="Alias de Partner">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="normalized_name" readonly="1"/>
+                        <field name="is_real_name"/>
+                        <field name="normalized_id"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_normalized_text_items_search" model="ir.ui.view">
+        <field name="name">normalized.text.search</field>
+        <field name="model">normalized.text</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="res_partner_id"/>
+            </search>
+        </field>
+    </record>
+    
+    <record id="action_open_res_partner_normalized" model="ir.actions.act_window">
+        <field name="name">Normalized Partners</field>
+        <field name="res_model">normalized.text</field>
+        <field name="view_mode">tree,form</field>
+        <field name="target">current</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,33 @@
+<odoo>
+    <record id="view_datareader_payment_group_log_item_form" model="ir.ui.view">
+        <field name="name">datareader.payment.group.log.item.form</field>
+        <field name="model">datareader.account.payment.group.log.item</field>
+        <field name="arch" type="xml">
+            <form string="Detalle de Payment Group">
+                <sheet>
+                    <group>
+                        <field name="payment_group_id" widget="many2one" readonly="1"/>
+                        <field name="log_id" readonly="1" invisible="1"/>
+                        <field name="state"/>
+                        <field name="message" widget="text" readonly="1"/>
+                        <field name="has_withholding" readonly="1"/>
+                        <field name="has_check" readonly="1"/>
+                        <field name="create_date" readonly="1"/>
+                    </group>
+
+                    <notebook>
+                        <page string="Archivos">
+                            <group>
+                                <field name="attachment_op_id" widget="attachment" filename="name" readonly="1" attrs="{'invisible': [('attachment_op_id', '=', False)]}"/>
+                                <field name="attachment_ret1_id" widget="attachment" filename="name" readonly="1" attrs="{'invisible': [('attachment_ret1_id', '=', False)]}"/>
+                                <field name="attachment_ret2_id" widget="attachment" filename="name" readonly="1" attrs="{'invisible': [('attachment_ret2_id', '=', False)]}"/>
+                                <field name="attachment_ret3_id" widget="attachment" filename="name" readonly="1" attrs="{'invisible': [('attachment_ret3_id', '=', False)]}"/>
+                                <field name="attachment_ret4_id" widget="attachment" filename="name" readonly="1" attrs="{'invisible': [('attachment_ret4_id', '=', False)]}"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>    
+</odoo>
