@@ -411,80 +411,16 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
     def action_connect(self):
         ir_config = self.env['ir.config_parameter'].sudo()
-        download_files = eval(ir_config.get_param("datareader_odoo.datareader_download_files_in_testing", 'False'))
+        download_files = eval(ir_config.get_param("datareader_odoo.download_files", 'False'))
+        skip_op_close = eval(ir_config.get_param("datareader_odoo.skip_op_close", 'False'))
+        download_first_batch = eval(ir_config.get_param("datareader_odoo.download_first_batch", 'False'))
         connector = self.env["datareader.connector"].get_connector()
+
         try:
             connector.login()
 
             while True:
-                orders = [
-                    {
-                        "id": 465,
-                        "user_id": 10,
-                        "file_name": "op  -00061757.pdf",
-                        "recognize_date": "2025-08-01 08:57:27.973175",
-                        "error_code": 9,
-                        "process_time": 8.89,
-                        "op_number": "-00061757",
-                        "society": "PALUDI, GONZALEZ, Y ASOCIADOS SOCIEDAD CIVIL",
-                        "amount": 689433.66,
-                        "date": "2025-04-08",
-                        "readed": False,
-                        "client_cuit": "na",
-                        "client_name": "A. R. M. D. SRL",
-                        "currency": "ARS",
-                        "pay_method": "Transferencia",
-                        "journal": "3332953-001",
-                        "nro_cheque": "na",
-                        "retentions": [
-                            {
-                                "amount": 101254.41,
-                                "name": "GANANCIAS",
-                                "number": "2025-0001-000000064"
-                            },
-                            {
-                                "amount": 101254.41,
-                                "name": "IIBB",
-                                "number": "2025-0001-000000064"
-                            },
-                            {
-                                "amount": 101254.41,
-                                "name": "SUSS",
-                                "number": "2025-0001-000000064"
-                            },
-                            {
-                                "amount": 101254.41,
-                                "name": "IIBB_BS_AS",
-                                "number": "2025-0001-000000064"
-                            },
-                            {
-                                "amount": 101254.41,
-                                "name": "IIBB_CABA",
-                                "number": "2025-0001-000000064"
-                            }
-                        ]
-                    },
-                    {
-                        "id": 467,
-                        "user_id": 10,
-                        "file_name": "payment_order_ (5).pdf",
-                        "recognize_date": "2025-08-01 08:57:50.579741",
-                        "error_code": 0,
-                        "process_time": 10.34,
-                        "op_number": "0001-00000126",
-                        "society": "PALUDI, GONZALEZ, Y ASOCIADOS SOCIEDAD CIVIL",
-                        "amount": 6207167.76,
-                        "date": "2025-03-12",
-                        "readed": False,
-                        "client_cuit": "30716302764",
-                        "client_name": "CHEIL ARGENTINA S.A.",
-                        "currency": "ARS",
-                        "pay_method": "Transferencia",
-                        "journal": "na",
-                        "nro_cheque": "na"
-                    }
-                ]
-                #orders = connector.get_payment_orders()
+                orders = connector.get_payment_orders()
                 if not orders:
                     break
 
@@ -498,6 +434,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 
                 for order in orders:
                     log_item = self.create_from_datareader_json(order)
+                    if skip_op_close:
+                        connector.set_payment_order_readed(order.get("id"))
                     file_name = order.get("file_name")
                     attachment_status = "No descargado"
                     if download_files and file_name:
@@ -516,7 +454,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
                 message += f"\nArchivos descargados: {all_files_downloaded}"
                 _logger.info(message)
-                break
+                if download_first_batch:
+                    break
 
         except Exception as e:
             message = f"Error al conectar u obtener órdenes: {str(e)}"

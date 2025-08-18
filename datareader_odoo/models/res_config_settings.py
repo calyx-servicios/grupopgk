@@ -12,8 +12,8 @@ class ResConfigSettings(models.TransientModel):
     datareader_api_host = fields.Char(config_parameter="datareader_odoo.datareader_api_host")
     datareader_api_user = fields.Char(config_parameter="datareader_odoo.datareader_api_user")
     datareader_api_pass = fields.Char(config_parameter="datareader_odoo.datareader_api_pass")
-    datareader_post_account_payment = fields.Boolean(string="Publicar Líneas de Pago", default=False)
-    datareader_post_account_payment_groups = fields.Boolean(string="Publicar Pago", default=False)    
+    datareader_post_account_payment = fields.Boolean(config_parameter="datareader_odoo.datareader_post_account_payment", string="Publicar Líneas de Pago", default=False)
+    datareader_post_account_payment_groups = fields.Boolean(config_parameter="datareader_odoo.datareader_post_account_payment_groups", string="Publicar Pago", default=False)    
 
     box_client_id = fields.Char(string="Box Client ID", config_parameter="datareader_odoo.box_client_id")
     box_client_secret = fields.Char(string="Box Client Secret", config_parameter="datareader_odoo.box_client_secret")
@@ -69,7 +69,7 @@ class ResConfigSettings(models.TransientModel):
     def _onchange_datareader_mode(self):
         for rec in self:
             if rec.datareader_mode == 'production':
-                rec.datareader_download_files = False
+                rec.datareader_download_files = True
                 rec.datareader_skip_op_close = False
                 rec.datareader_download_first_batch = False
     

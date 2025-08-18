@@ -123,3 +123,38 @@ class DatareaderConnector:
                 time.sleep(5)
 
         raise Exception("No se pudieron obtener las órdenes de pago después de varios intentos.")
+    
+    def set_payment_order_readed(self, payment_order_id: int) -> bool:
+        """
+        Marca una orden de pago como leída (readed = True).
+        """
+        attempts = 0
+        while attempts < _MAX_ATTEMPTS:
+            try:
+                headers = {"Authorization": f"Bearer {self._token}"}
+                url = f"{self._base_url}/api/payment_orders/{payment_order_id}/readed"
+                response = requests.patch(url, headers=headers)
+
+                if response.status_code == 200:
+                    logging.info(f"Orden de pago {payment_order_id} marcada como leída.")
+                    return True
+                elif response.status_code in (403, 422):
+                    logging.warning("Token expirado o inválido. Reautenticando.")
+                    self.login()
+                    attempts += 1
+                elif response.status_code in (502, 503, 504):
+                    logging.error(f"Error {response.status_code}. Reintentando...")
+                    time.sleep(5)
+                    attempts += 1
+                elif response.status_code == 404:
+                    logging.error(f"Orden de pago {payment_order_id} no encontrada.")
+                    return False
+                else:
+                    logging.error(f"Error inesperado: {response.status_code} - {response.text}")
+                    return False
+            except Exception:
+                logging.error(traceback.format_exc())
+                attempts += 1
+                time.sleep(5)
+
+        raise Exception(f"No se pudo marcar la orden {payment_order_id} como leída después de varios intentos.")
