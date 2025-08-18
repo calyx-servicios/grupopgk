@@ -89,13 +89,59 @@ def download_and_attach_file(self, file_name, folder_field='box_folder_id_op', d
             'mimetype': 'application/pdf',
         })
         self.attachment_op_id = attachment
-
-        """ local_file_path = os.path.join(download_path, item.name)
-        with open(local_file_path, "wb") as f:
-            f.write(file_content)
-        _logger.info(f"Archivo descargado y guardado temporalmente en: {local_file_path}") """
-
         return attachment
 
     _logger.warning(f"No se encontró el archivo {file_name} en Box.")
     return None
+
+
+def download_and_attach_retentions(self, op_filename, folder_field='box_folder_id_ret', download_path="/tmp/datareader_box"):
+    """
+    Descarga hasta 4 archivos de retenciones asociados a la OP.
+    El prefijo se obtiene del nombre del archivo de la OP (identificador + mail, hasta el segundo '-').
+    """
+    client, _ = get_client(self.env)
+    if not client:
+        raise ValueError("No se pudo obtener cliente Box.")
+
+    ir_config = self.env['ir.config_parameter'].sudo()
+    folder_id = ir_config.get_param(f"datareader_odoo.{folder_field}")
+    if not folder_id:
+        raise ValueError(f"No está configurado {folder_field} en Configuración.")
+
+    parts = op_filename.strip().split("-")
+    prefix = "-".join(parts[:2]) if len(parts) >= 2 else op_filename.strip()
+    items = client.folder(folder_id=folder_id).get_items()
+    os.makedirs(download_path, exist_ok=True)
+
+    ret_attachments = []
+    for item in items:
+        item_name = item.name.strip()
+        if item.type != 'file':
+            continue
+        if not item_name.startswith(prefix):
+            continue
+        file_stream = BytesIO()
+        client.file(file_id=item.id).download_to(file_stream)
+        file_content = file_stream.getvalue()
+
+        attachment = self.env['ir.attachment'].create({
+            'name': item_name,
+            'type': 'binary',
+            'datas': base64.b64encode(file_content),
+            'res_model': self._name,
+            'res_id': self.id,
+            'mimetype': 'application/pdf',
+        })
+        ret_attachments.append(attachment)
+
+        if len(ret_attachments) >= 4:
+            break
+
+    for i, attach in enumerate(ret_attachments, start=1):
+        setattr(self, f"attachment_ret{i}_id", attach)
+
+    if not ret_attachments:
+        _logger.info(f"No se encontraron retenciones para la OP {op_filename}")
+
+    return ret_attachments

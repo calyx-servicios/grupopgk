@@ -434,18 +434,22 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 
                 for order in orders:
                     log_item = self.create_from_datareader_json(order)
-                    if skip_op_close:
+                    if not skip_op_close:
                         connector.set_payment_order_readed(order.get("id"))
                     file_name = order.get("file_name")
+                    
                     attachment_status = "No descargado"
                     if download_files and file_name:
                         try:
                             attachment = box.download_and_attach_file(log_item, file_name, folder_field='box_folder_id_op')
                             if attachment:
-                                attachment_status = f"Adjuntado: {attachment.name}"
-                                _logger.info(f"Archivo adjuntado: {attachment.name}")
+                                attachment_status = f"Adjuntado OP: {attachment.name}"
+                                _logger.info(f"Archivo OP adjuntado: {attachment.name}")
+                                ret_attachments = box.download_and_attach_retentions(log_item, file_name, folder_field='box_folder_id_withholding')
+                                if ret_attachments:
+                                    attachment_status += f" | Retenciones: {[a.name for a in ret_attachments]}"
                             else:
-                                attachment_status = "No se encontró el archivo en Box"
+                                attachment_status = "No se encontró el archivo de OP en Box"
                         except Exception as e:
                             attachment_status = f"Error descargando: {str(e)}"
                             _logger.error(f"Error descargando y adjuntando {file_name}: {e}")
@@ -454,7 +458,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
                 message += f"\nArchivos descargados: {all_files_downloaded}"
                 _logger.info(message)
-                if download_first_batch:
+                if download_first_batch or skip_op_close:
                     break
 
         except Exception as e:
