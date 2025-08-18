@@ -134,7 +134,3 @@
 	path = submodules/OCA/credit-control
 	url = https://github.com/OCA/credit-control.git
 	branch = 15.0
-[submodule "submodules/calyx-servicios/datareader-box"]
-	path = submodules/calyx-servicios/datareader-box
-	url = https://github.com/calyx-servicios/datareader-submodule-box.git
-	branch = main
