@@ -6,9 +6,7 @@ class ProjectProject(models.Model):
     _inherit = 'project.project'
 
     contrated_hours = fields.Float(
-        string='Contrated Hours',
-        readonly=True,
-        compute="_compute_hours_and_amount_project"
+        string='Contrated Hours'
     )
     deviation_project_hours = fields.Float(
         string="Deviation Project Hours",
@@ -16,8 +14,7 @@ class ProjectProject(models.Model):
         help="Difference between contracted hours and actual timesheet hours."
     )
     total_project_amount = fields.Monetary(
-        string='Total Project Amount',
-        readonly=True
+        string='Total Project Amount'
     )
     teorical_billing = fields.Monetary(
         string="Teorical Billing",
@@ -140,18 +137,6 @@ class ProjectProject(models.Model):
                 c_hours = rec.contrated_hours
                 tt_time = rec.total_timesheet_time
                 rec.billing_multyply_advance = (tpa / c_hours) * tt_time
-
-    def _compute_hours_and_amount_project(self):
-        for rec in self:
-            rec.contrated_hours = 0
-            order_lines = self.env['sale.order.line'].search([
-                    ('project_id', '=', rec.id),
-                    ('state', '=', 'sale')
-                ])
-            if order_lines:
-                for line in order_lines:
-                    if line.contrated_hours:
-                        rec.contrated_hours += line.contrated_hours
 
     @api.depends('invoice_count')
     def _compute_real_billing(self):
