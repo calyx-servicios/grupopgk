@@ -122,14 +122,14 @@ class LaborCostEmployeeWizard(models.TransientModel):
             for invoice in self.invoice_ids:
                 parent_partner_id = employee_model.search(
                     [("associated_contact_ids", "in", [invoice.partner_id.id])],
-                    limit=1  # importante agregar limit=1 si esperás uno solo
+                    limit=1
                 )
 
                 if parent_partner_id:
                     cuil = parent_partner_id.identification_id
                 else:
                     cuil = invoice.partner_id.vat
-                    employees_not_found.append(invoice.partner_id.name)  # Agregás el nombre del partner
+                    employees_not_found.append(invoice.partner_id.name)
 
                 if cuil not in laboral_cost:
                     laboral_cost[cuil] = {
@@ -148,6 +148,7 @@ class LaborCostEmployeeWizard(models.TransientModel):
         # Union de contactos asociados entre la informacion del txt y las facturas
         final_laboral_cost = self._process_final_costs(laboral_cost)
 
+        employees_not_found = []
         employee_list = []
         for employee_key in laboral_cost.keys():
             employee_list.append(employee_key)
@@ -162,32 +163,70 @@ class LaborCostEmployeeWizard(models.TransientModel):
                 [
                     ("employee_id", "=", employee.id),
                     ("state", "=", "close"),
-                    ("start_of_period", "=", start_of_period),
-                    ("end_of_period", "=", end_of_period),
+                    ("start_of_period", ">=", start_of_period),
+                    ("end_of_period", "<=", end_of_period),
                 ],
                 limit=1,
             )
             cuil = employee.identification_id
-            exist_emp = laboral_cost.get(cuil, False)
-            if exist_emp and tm_sige_emp:
-                amount = laboral_cost[cuil]["amount"]
-                labor_cost = amount / tm_sige_emp.register_hours
-                laboral_cost[cuil]["cost"] = labor_cost
-                laboral_cost[cuil]["employee_id"] = employee.id
-                laboral_cost[cuil]["name"] = self.name
-                laboral_cost[cuil]["calculation"] += _(
-                    "\n Amount(Salary + Invoiced Amount) {} / {} (Register Hours) = {} (Labor cost)".format(
-                        amount, tm_sige_emp.register_hours, labor_cost
-                    )
-                )
-                employee.timesheet_cost = labor_cost
-                account_analytic_line_ids = tm_sige_emp.timesheet_ids
-                if account_analytic_line_ids:
-                    for account_analytic_line_id in account_analytic_line_ids:
-                        cost_total_in_project = account_analytic_line_id.unit_amount * labor_cost * -1
-                        account_analytic_line_id.write({"amount": cost_total_in_project})
+            if not cuil:
+                employees_not_found.append(f"Falta asignar un CUIT al empleado {employee.name}")
 
-                lce_obj.create(laboral_cost[cuil])
+            else:
+                if tm_sige_emp:
+                    amount = laboral_cost[cuil]["amount"]
+                    labor_cost = amount / tm_sige_emp.register_hours
+                    laboral_cost[cuil]["cost"] = labor_cost
+                    laboral_cost[cuil]["employee_id"] = employee.id
+                    laboral_cost[cuil]["name"] = self.name
+                    laboral_cost[cuil]["calculation"] += _(
+                        "\n Amount(Salary + Invoiced Amount) {} / {} (Register Hours) = {} (Labor cost)".format(
+                            amount, tm_sige_emp.register_hours, labor_cost
+                        )
+                    )
+                    employee.timesheet_cost = labor_cost
+                    account_analytic_line_ids = tm_sige_emp.timesheet_ids
+                    if account_analytic_line_ids:
+                        for account_analytic_line_id in account_analytic_line_ids:
+                            cost_total_in_project = account_analytic_line_id.unit_amount * labor_cost * -1
+                            account_analytic_line_id.write({"amount": cost_total_in_project})
+
+                    lce_obj.create(laboral_cost[cuil])
+                else:
+                    employees_not_found.append(employee.name)
+                    _logger.warning(f"Falta asignar costo laboral al empleado {employee.name}")
+                    #raise UserError(f"Falta asignar costo laboral al empleado {employee.name}")
+        if employees_not_found:
+            empleyees_filtered_list = set(employees_not_found)
+            raise UserError(_(
+                "Falta cargar parte de horas de los empleados: %s"
+            ) % ', '.join(empleyees_filtered_list))
+            
+        employees_without_cost = []
+        all_tm_sige = tm_sige_obj.search([
+            ("state", "=", "close"),
+            ("start_of_period", ">=", start_of_period),
+            ("end_of_period", "<=", end_of_period),
+        ])
+
+        for tm in all_tm_sige:
+            if not tm.timesheet_ids:
+                continue  
+            employee = tm.employee_id
+            if not employee:
+                continue
+            if not employee.timesheet_cost or employee.timesheet_cost == 0:
+                employees_without_cost.append(employee.name)
+
+        if employees_without_cost:
+            filtered = set(employees_without_cost)
+            _logger.warning(
+                "Empleados con partes de horas y sin costo laboral asignado: %s",
+                ', '.join(filtered)
+            )
+            raise UserError(_(
+                "Los siguientes empleados tienen partes de horas en el período pero no poseen costo laboral asignado: %s"
+            ) % ', '.join(filtered))
 
         action = self.env.ref("labor_cost_employee.action_window_labor_cost").read()[0]
         return action
