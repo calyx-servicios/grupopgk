@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="hr_employee_view_form_inherit_domain" model="ir.ui.view">
+        <field name="name">hr.employee.view.form.inherit.domain</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="associated_partner_employee.hr_employee_view_form_inherit"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='associated_contact_ids']" position="attributes">
+                <attribute name="domain">[('associated_employee_id', '=', False)]</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="account_consolidation_correct_groupings" model="ir.actions.server">
+        <field name="name">Corregir Agrupaciones</field>
+        <field name="model_id" ref="consolidation_report.model_account_consolidation_report"/>
+        <field name="binding_model_id" ref="consolidation_report.model_account_consolidation_report"/>
+        <field name="binding_view_types">form</field>
+        <field name="state">code</field>
+        <field name="code">
+            action = records.action_correct_groupings()
+        </field>
+    </record>
+</odoo>

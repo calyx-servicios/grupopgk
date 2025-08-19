@@ -291,6 +291,13 @@ class AccountConsolidationReport(models.Model):
         )
 
         for analytic_line in analytic_lines:
+            if analytic_line.debit == 0 and analytic_line.credit == 0:
+                _logger.info(f"Línea descartada, ID {analytic_line.id}") 
+                continue
+            """elif analytic_line.general_account_id.code.startswith("4.2"):
+                _logger.info(f"Línea descartada, ID {analytic_line.id}") 
+                continue """
+            
             analytic_line.update_currency_id()
 
             group_key = analytic_line.parent_prin_group_id.name or "Undefined"
@@ -371,9 +378,9 @@ class AccountConsolidationReport(models.Model):
                 raise UserError("La cuenta analítica del empleado (departamento) de la linea{} no tiene cuenta analítica hija para 'Costo Laboral'.".format(analytic_line.id))
     
         vals = {
-            "name": f"{analytic_line.name} - Línea consolidación (timesheet)" if timesheet else f"{analytic_line.name} - Línea consolidación",
-            "account_id": analytic_line.account_id.id if not timesheet else project_costo_laboral.id,            
-            "managment_account_id": analytic_line.account_id.id if not timesheet else project_costo_laboral.id,            
+            "name": f"Costo laboral - {analytic_line.name} - Línea consolidación" if timesheet else f"{analytic_line.name} - Línea consolidación",
+            "account_id": analytic_line.account_id.id if not timesheet else account_id,            
+            "managment_account_id": analytic_line.account_id.id if not timesheet else account_id,            
             "amount": sign * analytic_line.amount,
             "unit_amount": analytic_line.unit_amount,
             "product_id": analytic_line.product_id.id if analytic_line.product_id else False,
@@ -467,24 +474,6 @@ class AccountConsolidationReport(models.Model):
 
         daughter_account_dict["total"] = daughter_account_total
         return daughter_account_dict
-
-    def _get_managment_account_id(self, analytic_line):
-        account_analytic_obj = self.env['account.analytic.account']
-        managment_account_ids = account_analytic_obj.search([
-            ('is_management_group', '=', True),
-            ('parent_id', '!=', False),
-            ('group_id', '!=', False)
-        ])
-        if analytic_line.account_id:
-            account_id = managment_account_ids.filtered(lambda account: account.id == analytic_line.account_id.id)
-            if not account_id:
-                for mangment_account in managment_account_ids:
-                    if analytic_line.account_id.id == mangment_account.id:
-                        return mangment_account.id
-                return analytic_line.account_id.parent_id.id if analytic_line.account_id.parent_id and not analytic_line.source_analytic_line_id else analytic_line.account_id.id if analytic_line.account_id else False
-            else:
-                return account_id.id
-        return False
     
     ###########
     # REPORTE #    
@@ -519,7 +508,13 @@ class AccountConsolidationReport(models.Model):
 
         consolidation_data_vals = []
         for analytic_line in analytic_lines:
-            analytic_line.managment_account_id = self._get_managment_account_id(analytic_line)
+            if analytic_line.debit == 0 and analytic_line.credit == 0:
+                _logger.info(f"Línea descartada, ID {analytic_line.id}") 
+                continue
+            elif analytic_line.general_account_id and analytic_line.general_account_id.code.startswith("4.2") and analytic_line.move_id:
+                if analytic_line.move_id.debit == 0 and  analytic_line.move_id.credit == 0:
+                    _logger.info(f"Línea descartada, ID {analytic_line.id}") 
+                    continue
             analytic_line.update_currency_id()
 
             current_account = analytic_line.account_id
@@ -837,26 +832,21 @@ class AccountConsolidationReport(models.Model):
         # Procesa las líneas analíticas para Calyx
         for analytic_line in analytic_lines_calyx:
             amount = self._convert_amount(analytic_line)
-            if analytic_line.project_id and analytic_line.timesheet_id:
-                amount = 0
+            """ if analytic_line.project_id and analytic_line.timesheet_id:
+                amount = 0 """
             total_amount_cost_calyx += amount
             # Crear una nueva línea analítica con los campos especificados
-            self.create_consolidation_analytic_line(analytic_line)
+            calyx_line = self.create_consolidation_analytic_line(analytic_line)
             self.catch_possible_error(analytic_line, calyx_line)
-            count += 1
 
         # Procesa las líneas analíticas para otras empresas
         for analytic_line in analytic_lines_otros:
             amount = self._convert_amount(analytic_line)
-            if analytic_line.project_id and analytic_line.timesheet_id:
-                amount = 0
             total_amount_cost_otros += amount
             # Crear una nueva línea analítica con los campos especificados
-            self.create_consolidation_analytic_line(analytic_line) 
+            other_line = self.create_consolidation_analytic_line(analytic_line) 
             self.catch_possible_error(analytic_line, other_line)
-            count += 1
                 
-        self.counter = count
         # Redondea los totales a dos decimales
         total_amount_cost_calyx = round(total_amount_cost_calyx, 2)
         total_amount_cost_otros = round(total_amount_cost_otros, 2)
@@ -917,6 +907,7 @@ class AccountConsolidationReport(models.Model):
         not_billable_list_ids = []
         not_project_ids = []
         sum = 0
+        from pprint import pprint
         for timesheet in timesheets:
             for analytic_line in timesheet.timesheet_ids:
                 project = self.env["project.project"].search([
@@ -925,14 +916,17 @@ class AccountConsolidationReport(models.Model):
                 if not project:
                     self.catch_possible_error(analytic_line, False, True)
                     sum += analytic_line.amount
-                    not_project_ids.append(analytic_line.id)
+                    not_project_ids.append(analytic_line.amount)
                 elif not project.allow_billable:
                     not_billable_list_ids.append(analytic_line.id)
                     if analytic_line.amount != 0:
                         sum += analytic_line.amount
-                    continue
+                        pprint({'analytic not billiable': analytic_line.name})
+                        if analytic_line.name == 'Sin asignación':
+                            pprint ({'monto de la linea sin asignación':analytic_line.amount})
                 self.create_consolidation_analytic_line(analytic_line, timesheet=True)
-
+        pprint({'suma':sum})
+        pprint({'not_project':not_project_ids})
         total_not_billable = timesheets.timesheet_ids.filtered(lambda l: not l.project_id.allow_billable and l.amount != 0).mapped('amount')
         total_not_billable_ids = timesheets.timesheet_ids.filtered(lambda l: not l.project_id.allow_billable and l.amount != 0).mapped('id')
         _logger.info(f"Total no facturable:{total_not_billable}")
@@ -1167,6 +1161,7 @@ class AccountConsolidationReport(models.Model):
             },
             "target": "current",
         }
+        
     def clear_timesheet_sige_gastos_analytic_lines(self):
         tm_sige_obj = self.env["timesheet.sige"]
         
@@ -1219,3 +1214,26 @@ class AccountConsolidationReport(models.Model):
 
                 if not project or not project.allow_billable:
                     continue
+    
+    @api.model
+    def action_correct_groupings(self):
+        if not self.consolidation_period:
+            return
+
+        analytic_lines = self.env["account.analytic.line"].search([
+            ("date", ">=", self.consolidation_period.date_from),
+            ("date", "<=", self.consolidation_period.date_to),
+        ])
+
+        for line in analytic_lines:
+            line._compute_managment_account_id()
+            line._compute_bussines_group_id()
+            line._compute_sector_account_id()
+
+            line.write({
+                'managment_account_id': line.managment_account_id,
+                'bussines_group_id': line.bussines_group_id,
+                'sector_account_id': line.sector_account_id,
+            })
+
+        return {'type': 'ir.actions.act_window_close'}
