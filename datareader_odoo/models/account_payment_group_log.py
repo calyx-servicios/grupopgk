@@ -1,8 +1,10 @@
 from odoo import models, fields, api, _
+from odoo.tools import cache
 from .utils import datareader_conn, box, cuit_alias
 from datetime import datetime
 import logging
 import re
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -434,7 +436,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 
                 for order in orders:
                     log_item = self.create_from_datareader_json(order)
-                    if not skip_op_close:
+                    if not skip_op_close and log_item.payment_group_id:
                         connector.set_payment_order_readed(order.get("id"))
                     file_name = order.get("file_name")
                     
@@ -605,5 +607,3 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
     attachment_ret2_id = fields.Many2one('ir.attachment', string="Retención 2")
     attachment_ret3_id = fields.Many2one('ir.attachment', string="Retención 3")
     attachment_ret4_id = fields.Many2one('ir.attachment', string="Retención 4")
-
-    
