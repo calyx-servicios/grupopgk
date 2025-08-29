@@ -838,6 +838,12 @@ msgid "Month"
 msgstr "Mes"
 
 #. module: labor_cost_employee
+#: code:addons/labor_cost_employee/wizard/labor_cost_employee_wizard.py:0
+#, python-format
+msgid "No related employees were found for: %s"
+msgstr "No se encontraron empleados relacionados a estos contactos: %s"
+
+#. module: labor_cost_employee
 #: code:addons/labor_cost_employee/models/labor_cost_employee.py:0
 #: model:ir.model.fields.selection,name:labor_cost_employee.selection__labor_cost_employee_wizard__month__11
 #, python-format

@@ -16,6 +16,8 @@
         "account_analytic_currency",
         "report_analytic_account",
         "analytic",
+        "hr_timesheet_multi_company",
+        "associated_partner_employee",
     ],
     "data": [
         "security/permissions.xml",
@@ -26,5 +28,7 @@
         "views/account_analytic_group.xml",
         "views/account_analytic_account.xml",
         "views/account_analytic_line.xml",
+        "views/hr_employee.xml",
+        "views/ir_action_data.xml",
     ],
 }

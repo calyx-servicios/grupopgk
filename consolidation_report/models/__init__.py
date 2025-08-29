@@ -5,3 +5,6 @@ from . import account_consolidation_data
 from . import account_analytic_account
 from . import account_analytic_group
 from . import account_analytic_line
+from . import hr_timesheet
+from . import account_consolidation_analityc_line_error
+from . import hr_employee
