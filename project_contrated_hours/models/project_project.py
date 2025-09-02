@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
+from datetime import datetime
 
 
 class ProjectProject(models.Model):
@@ -17,7 +18,7 @@ class ProjectProject(models.Model):
         string='Total Project Amount'
     )
     teorical_billing = fields.Monetary(
-        string="Teorical Billing",
+        string="Teorical Billing - PGK",
         compute="_compute_teorical_billing",
         help="Theoretical billing amount based on real advance percentage."
     )
@@ -80,8 +81,8 @@ class ProjectProject(models.Model):
     visible_fields_project = fields.Boolean(
         related='service_area_id.visible_fields_project'
     )
-    billing_multyply_advance = fields.Monetary(
-        string="Billing multyply by advance",
+    billing_multyply_advance = fields.Float(
+        string="Billing multyply by advance - PGK",
         compute="_compute_billing_multyply_advance"
     )
     billing_deviation = fields.Monetary(
@@ -97,13 +98,31 @@ class ProjectProject(models.Model):
         compute="_compute_real_billing"
     )
     hours_multiply_advance = fields.Float(
-        string="Advance by hours",
+        string="Advance by hours - Calyx",
         compute="_compute_remaining_hours"
     )
     advance_deviation = fields.Float(
-        string="Advance deviation",
+        string="Advance deviation - Calyx",
         compute="_compute_remaining_hours"
     )
+    advance_deviation_pgk = fields.Float(
+        string="Advance deviation - PGK",
+        compute="_compute_billing_multyply_advance"
+    )
+    advance_billing = fields.Float(
+        string="Advance billing - PGK",
+        compute="_compute_advance_billing"
+    )
+
+    @api.depends('total_project_amount', 'contrated_hours', 'total_timesheet_time')
+    def _compute_advance_billing(self):
+        for rec in self:
+            rec.advance_billing = False
+            if rec.total_project_amount and rec.contrated_hours and rec.total_timesheet_time:
+                tpa = rec.total_project_amount
+                c_hours = rec.contrated_hours
+                tt_time = rec.total_timesheet_time
+                rec.advance_billing = (tpa / c_hours) * tt_time
 
     def _compute_remaining_hours(self):
         """ Enzo: I made a variable abbreviation to avoid very long lines """
@@ -129,14 +148,15 @@ class ProjectProject(models.Model):
             rec.billing_deviation = rb - (bmadv * ra)
 
     def _compute_billing_multyply_advance(self):
-        """ Enzo: I made a variable abbreviation to avoid very long lines """
+        """ Compute billing advance by current month """
         for rec in self:
             rec.billing_multyply_advance = False
-            if rec.total_project_amount and rec.contrated_hours and rec.total_timesheet_time:
-                tpa = rec.total_project_amount
-                c_hours = rec.contrated_hours
-                tt_time = rec.total_timesheet_time
-                rec.billing_multyply_advance = (tpa / c_hours) * tt_time
+            rec.advance_deviation_pgk = False
+            if rec.contrated_hours:
+                current_month = datetime.today().month
+                rec.billing_multyply_advance = (rec.contrated_hours / 12) * current_month
+            if rec.total_timesheet_time:
+                rec.advance_deviation_pgk = rec.billing_multyply_advance - rec.total_timesheet_time
 
     @api.depends('invoice_count')
     def _compute_real_billing(self):
@@ -194,15 +214,12 @@ class ProjectProject(models.Model):
             if rec.teorical_advance:
                 rec.forward_deviation = rec.real_advance - rec.teorical_advance
 
-    @api.depends('real_advance', 'total_project_amount')
+    @api.depends('advance_billing', 'real_billing')
     def _compute_teorical_billing(self):
         """
-        Computes the theoretical billing by multiplying the real advance percentage
-        by the total project amount.
+        Computes the theoretical billing PGK by subtracting the real billing from the advance billing.
         """
         for rec in self:
             rec.teorical_billing = False
-            if rec.total_project_amount:
-                tpa = rec.total_project_amount
-                ra = rec.real_advance
-                rec.teorical_billing = tpa - (ra * tpa)
+            if rec.advance_billing and rec.real_billing:
+                rec.teorical_billing = rec.advance_billing - rec.real_billing
