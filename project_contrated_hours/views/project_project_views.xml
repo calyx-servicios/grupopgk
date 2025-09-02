@@ -20,6 +20,8 @@
                 <field name="billing_hours" />
                 <field name="hours_multiply_advance" />
                 <field name="advance_deviation" />
+                <field name="advance_deviation_pgk" />
+                <field name="advance_billing" />
 
             </xpath>
             <xpath expr="//field[@name='tag_ids']" position="after">
