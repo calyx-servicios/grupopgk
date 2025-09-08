@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from pprint import pprint
 
 def preprocess_siglas(name):
     name = name or ''
@@ -72,21 +73,36 @@ def find_record_by_cuit_or_name(env, model_name, name=None, cuit=None, errors=No
         name_alt = preprocess_siglas(name)
         normalize_model_type = 'normalized_id.' + model_name.replace('.', '_') + '_id'
         field_name = model_name.replace('.', '_') + '_id'
-        aliases = AliasModel.search([
-            ('normalized_name', 'in', [name_norm, name_alt]),
-            (normalize_model_type, '!=', False)
-        ])
+        domain = [
+            '|',
+                ('normalized_name', 'ilike', name_norm),
+                ('normalized_name', 'ilike', name_alt),
+            (normalize_model_type, '!=', False),
+        ]
+        if model_name == 'res.partner':
+            domain.append((normalize_model_type + '.active', '=', True))
+        aliases = AliasModel.search(domain)
         
         if aliases:
-            normalized_ids = aliases.mapped('normalized_id').filtered(lambda n: getattr(n, field_name))
+            normalized_ids = aliases.mapped('normalized_id').filtered(lambda n: getattr(n, field_name))                    
             records = normalized_ids.mapped(field_name)
             unique_records = list(set(records))
             if unique_records:
-                record = unique_records[0]
-                if len(unique_records) > 1:
-                    errors.append(
-                        f"Se encontraron múltiples registros distintos para '{name}' en {model_name}: {[r.id for r in unique_records]}"
-                    )
+                if model_name == 'res.partner':
+                    real_partners = records.filtered(lambda p: not p.parent_id and p.id == p.commercial_partner_id.id)
+                    if len(real_partners) == 1:
+                        record = real_partners
+                    else:
+                        record = False
+                        errors.append(
+                            f"Se encontraron múltiples registros distintos para '{name}' en {model_name}: {[r.id for r in real_partners]}"
+                        )
+                else:
+                    if len(unique_records) > 1:
+                        errors.append(
+                            f"Se encontraron múltiples registros distintos para '{name}' en {model_name}: {[r.id for r in unique_records]}"
+                        )
+                    record = unique_records[0]
             else:
                 errors.append(f"No se encontraron registros válidos para '{name}' en {model_name}")
         else:
