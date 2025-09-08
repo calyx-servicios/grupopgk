@@ -1,9 +1,14 @@
 from odoo import models, fields, api, _
+from odoo.tools import cache
 from .utils import datareader_conn, box, cuit_alias
 from datetime import datetime
 import logging
 import re
-
+from odoo.exceptions import UserError
+import os
+import json
+from datetime import datetime
+    
 _logger = logging.getLogger(__name__)
 
 
@@ -72,7 +77,6 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
             partner_id, errors = cuit_alias.find_record_by_cuit_or_name(self.env, 'res.partner', cuit=partner_cuit, name=partner_name, errors=errors)
             if not partner_id:
-                errors.append(f"No se encontró contacto con CUIT '{partner_cuit}' o nombre '{partner_name}'.")
                 log_item.write({'message': "\n".join(errors)})
                 return log_item
 
@@ -122,6 +126,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
             vals = {
                 'partner_id': partner_id.id,
+                'commercial_partner_id': partner_id.commercial_partner_id.id,
                 'company_id': company_id.id,
                 'payment_date': payment_date_str,
                 'receiptbook_id': receiptbook_id.id,
@@ -146,7 +151,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             )
             if not payment_method:
                 errors.append(f"No se encontró método de pago para '{pay_method}'.")
-
+            payment_method_line = False
             if not journal_id:
                 payment_method_obj = self.env['account.payment.method']
                 payment_method = payment_method_obj.search([
@@ -154,6 +159,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     ('payment_type', '=', 'inbound')
                 ], limit=1)
 
+                payment_method_line = False
                 if not payment_method:
                     errors.append(f"No se encontró método de pago para '{pay_method}'.")
                 else:
@@ -161,7 +167,6 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         default_journal = company_id.datareader_default_check_journal_id
                     else:
                         default_journal = company_id.datareader_default_transfer_journal_id
-
                     if default_journal:
                         payment_method_line = self.env['account.payment.method.line'].search([
                             ('payment_method_id', '=', payment_method.id),
@@ -194,16 +199,28 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                                 f"No se encontró ningún diario de tipo '{journal_type}' "
                                 f"en la compañía '{company_id.name}' con el método de pago '{payment_method.name}'."
                             )
-                            
+                          
             if not journal_id:
                 errors.append(f"No se encontró diario para la orden, proceso detenido.")
                 log_item.write({'message': "\n".join(errors)})
                 return log_item
-
             
-            log_item.write({'message': "\n".join(errors)})
-            self._find_and_attach_invoices(payment_group, data.get('lines', []), errors=errors)
-            log_item.write({'message': "\n".join(errors)})
+            if not payment_method_line:
+                errors.append(
+                    f"El diario '{ret_journal_id.display_name if ret_journal_id else 'N/A'}' "
+                    "no tiene línea configurada para el método de pago."
+                )
+                log_item.write({'message': "\n".join(errors)})
+                return log_item
+                
+            invoices_found = self._find_and_attach_invoices(payment_group, data.get('lines', []), errors=errors)
+            if invoices_found:
+                log_item.write({
+                    'invoices_found': True
+                })
+            log_item.write({
+                'message': "\n".join(errors)
+            })
             payment_vals = {
                 'payment_type': 'inbound',
                 'partner_type': 'customer',
@@ -211,7 +228,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'amount': amount,
                 'date': payment_date_str,
                 'journal_id': journal_id.id,
-                'payment_method_line_id': payment_method_line.id,
+                'payment_method_line_id': payment_method_line.id if payment_method_line else False,
                 'company_id': company_id.id,
                 'currency_id': company_id.currency_id.id,
                 'state': 'draft',
@@ -301,7 +318,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     'amount': ret_amount,
                     'date': payment_date_str,
                     'journal_id': ret_journal_id.id,
-                    'payment_method_line_id': payment_method_retention_line.id,
+                    'payment_method_line_id': payment_method_retention_line.id if payment_method_retention_line else False,
                     'company_id': company_id.id,
                     'currency_id': company_id.currency_id.id,
                     'tax_withholding_id': withholding_tax.id,
@@ -355,17 +372,17 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         - Coincide exactamente si viene punto de venta, puede ser 1-12345678 ó 00001-12345678
         - Si solo trae el número (8 dígitos), hace comparación con los últimos 8 dígitos de las facturas del cliente a pagar
         """
-
         domain = [
             ('partner_id.commercial_partner_id', '=', payment_group.commercial_partner_id.id),
-            ('company_id', '=', payment_group.company_id.id),
-            ('move_id.state', '=', 'posted'),
             ('account_id.reconcile', '=', True),
             ('reconciled', '=', False),
             ('full_reconcile_id', '=', False),
+            ('company_id', '=', payment_group.company_id.id),
+            ('move_id.state', '=', 'posted'),
             ('account_id.internal_type', '=', 'receivable' if payment_group.partner_type == 'customer' else 'payable'),
         ]
         pending_lines = self.env['account.move.line'].search(domain)
+        
         pending_by_number = {}
         for l in pending_lines:
             norm_number = self._normalize_invoice_number(l.move_id.name)
@@ -373,52 +390,45 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 if norm_number not in pending_by_number:
                     pending_by_number[norm_number] = []
                 pending_by_number[norm_number].append(l)
-
         found_moves = []
         missing_found = False
         for line in lines:
             norm_line_number = self._normalize_invoice_number(line.get('number'))
-            matches = pending_by_number.get(norm_line_number)
+            matches = None
+            for key, lines in pending_by_number.items():
+                if norm_line_number in key:
+                    matches = lines
+                    break
 
-            if not matches and norm_line_number and '-' not in norm_line_number:
-                last8 = norm_line_number[-8:]
-                for key, vals in pending_by_number.items():
-                    if key.endswith(last8):
-                        matches = vals
-                        break
+
             if matches:
-                if len(matches) == 1:
-                    found_moves.append(matches[0].id)
-                else:
-                    errors.append(
-                        _("Factura %s encontrada más de una vez para el partner %s") %
-                        (line.get('number'), payment_group.commercial_partner_id.name)
-                    )
-                    missing_found = True
+                found_moves.append(matches[0].id)
             else:
                 errors.append(
                     _("No se encontró la factura %s para el partner %s") %
                     (line.get('number'), payment_group.commercial_partner_id.name)
                 )
                 missing_found = True
-
         if missing_found:
-            payment_group.to_pay_move_line_ids = [(6, 0, pending_lines.ids)]
-            payment_group.state = 'draft'
+            if len(found_moves) > 0:
+                errors.append(
+                    _("No se imputaron todas las facturas")
+                )
+                payment_group.to_pay_move_line_ids = [(6, 0, found_moves)]
+                payment_group.state = 'draft'
         else:
-            payment_group.to_pay_move_line_ids = [(6, 0, found_moves)]
-
+            payment_group.to_pay_move_line_ids = [(6, 0, found_moves)] if found_moves else [(6, 0, 0)]
 
     def action_connect(self):
         ir_config = self.env['ir.config_parameter'].sudo()
-        download_files = eval(ir_config.get_param("datareader_odoo.download_files", 'False'))
+        download_files = eval(ir_config.get_param("datareader_odoo.download_files", 'True'))
         skip_op_close = eval(ir_config.get_param("datareader_odoo.skip_op_close", 'False'))
         download_first_batch = eval(ir_config.get_param("datareader_odoo.download_first_batch", 'False'))
         connector = self.env["datareader.connector"].get_connector()
 
         try:
             connector.login()
-
+            failed_orders = []
             while True:
                 orders = connector.get_payment_orders()
                 if not orders:
@@ -435,7 +445,10 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 for order in orders:
                     log_item = self.create_from_datareader_json(order)
                     if not skip_op_close:
-                        connector.set_payment_order_readed(order.get("id"))
+                        connector.set_payment_order_readed(order.get("id"), True)
+                        if not log_item.payment_group_id:
+                            failed_orders.append(order.get("id"))
+
                     file_name = order.get("file_name")
                     
                     attachment_status = "No descargado"
@@ -455,16 +468,18 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                             _logger.error(f"Error descargando y adjuntando {file_name}: {e}")
 
                     all_files_downloaded.append(f"{file_name}: {attachment_status}")
-
+                        
                 message += f"\nArchivos descargados: {all_files_downloaded}"
                 _logger.info(message)
                 if download_first_batch or skip_op_close:
                     break
+            for order in failed_orders:
+                connector.set_payment_order_readed(order, False)
 
         except Exception as e:
             message = f"Error al conectar u obtener órdenes: {str(e)}"
             _logger.error(message)
-
+            raise UserError(f"Error al conectar u obtener órdenes: {str(e)}")
 
     def action_sync_normalized_partners(self):
         partners = self.env['res.partner'].search([
@@ -605,5 +620,4 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
     attachment_ret2_id = fields.Many2one('ir.attachment', string="Retención 2")
     attachment_ret3_id = fields.Many2one('ir.attachment', string="Retención 3")
     attachment_ret4_id = fields.Many2one('ir.attachment', string="Retención 4")
-
-    
+    invoices_found = fields.Boolean(string="Invoices", default=False)

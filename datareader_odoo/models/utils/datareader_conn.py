@@ -124,7 +124,7 @@ class DatareaderConnector:
 
         raise Exception("No se pudieron obtener las órdenes de pago después de varios intentos.")
     
-    def set_payment_order_readed(self, payment_order_id: int) -> bool:
+    def set_payment_order_readed(self, payment_order_id: int, readed=True) -> bool:
         """
         Marca una orden de pago como leída (readed = True).
         """
@@ -132,7 +132,7 @@ class DatareaderConnector:
         while attempts < _MAX_ATTEMPTS:
             try:
                 headers = {"Authorization": f"Bearer {self._token}"}
-                url = f"{self._base_url}/api/payment_orders/{payment_order_id}/readed"
+                url = f"{self._base_url}/api/payment_orders/{payment_order_id}/readed?readed={str(readed).lower()}"
                 response = requests.patch(url, headers=headers)
 
                 if response.status_code == 200:
