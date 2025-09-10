@@ -9,6 +9,7 @@ class AccountAnalyticLine(models.Model):
     managment_account_id = fields.Many2one('account.analytic.account', string='Managment ID', compute='_compute_managment_account_id', store=True)
     is_sector_group = fields.Boolean(string="Is Sector Group", related='account_id.is_sector_group')
     consolidation_line = fields.Boolean(string='Consolidation line', default=False)
+    source_analytic_line_id = fields.Many2one('account.analytic.line', string="Línea Analítica Origen")
 
     @api.depends('account_id')
     def _compute_managment_account_id(self):
@@ -27,7 +28,7 @@ class AccountAnalyticLine(models.Model):
                             line.managment_account_id = mangment_account.id
                             break
                         else:
-                            line.managment_account_id = line.account_id.parent_id.id
+                            line.managment_account_id = line.account_id.parent_id.id if not self.source_analytic_line_id else line.account_id.id
                 else:
                     line.managment_account_id = account_id.id
             else:
