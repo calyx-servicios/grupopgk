@@ -1,0 +1,21 @@
+<odoo>
+    <record id="view_partner_form_datareader" model="ir.ui.view">
+        <field name="name">res.partner.form.datareader</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <!-- Insertar en el grupo Purchase -->
+            <xpath expr="//group[@name='misc']" position="before">
+                <group name="datareader" string="Customer Receipts DataReader">
+                    <field name="datareader_auto_lines_post"/>
+                    <field name="datareader_auto_payment_post"/>
+                    <field name="datareader_default_partner_transfer_journal_id" />
+                    <field name="datareader_default_partner_transfer_usd_journal_id" />
+                    <field name="datareader_default_partner_check_journal_id" />
+                    <field name="datareader_default_partner_withholding_journal_id" />
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

@@ -1,6 +1,6 @@
 from odoo import models, fields, api, _
 from odoo.tools import cache
-from .utils import datareader_conn, box, cuit_alias
+from ..utils import datareader_conn, box, cuit_alias
 from datetime import datetime
 import logging
 import re

@@ -2,13 +2,13 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 {
     "name": "Datareader Odoo",
-    "summary": "Integración con DataReader para importar y procesar órdenes de pago y facturas.",
+    "summary": "Integración con DataReader para importar y procesar órdenes de pago e impactar en facturas impagas.",
     "author": "Calyx Servicios S.A.",
     "maintainers": ["sgutierrez"],
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Accounting",
-    "version": "15.0.1.0.0",
+    "version": "15.0.1.2.1",
     "application": False,
     "installable": True,
     "development_status": "Production/Stable",
@@ -31,5 +31,6 @@
         "views/datareader_connector_log_view.xml",
         "views/account_payment_receiptbook.xml",
         "views/account_tax.xml",
+        "views/res_partner.xml",
     ],
 }

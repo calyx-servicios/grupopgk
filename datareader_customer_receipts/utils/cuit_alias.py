@@ -81,7 +81,7 @@ def find_record_by_cuit_or_name(env, model_name, name=None, cuit=None, errors=No
         ]
         if model_name == 'res.partner':
             domain.append((normalize_model_type + '.active', '=', True))
-        aliases = AliasModel.search(domain)
+        aliases = AliasModel.search(domain) if name_norm != 'na' else False
         
         if aliases:
             normalized_ids = aliases.mapped('normalized_id').filtered(lambda n: getattr(n, field_name))                    

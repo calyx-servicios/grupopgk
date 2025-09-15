@@ -10,7 +10,12 @@ class ResCompany(models.Model):
         domain="[('type', '=', 'bank'), ('active', '=', True)]",
         help=_('Diario usado por defecto para pagos por transferencia')
     )
-
+    datareader_default_transfer_usd_journal_id = fields.Many2one(
+        'account.journal',
+        string=_('Diario para Transferencias en dolares'),
+        domain="[('type', '=', 'bank'), ('active', '=', True)]",
+        help=_('Diario usado por defecto para pagos por transferencia')
+    )
     datareader_default_check_journal_id = fields.Many2one(
         'account.journal',
         string=_('Diario para Cheques'),
