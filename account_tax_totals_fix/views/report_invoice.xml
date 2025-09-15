@@ -1,0 +1,26 @@
+<odoo>
+    <template id="account.document_tax_totals">
+        <!-- Tu versión segura completa -->
+        <t t-if="tax_totals and tax_totals.get('subtotals')">
+            <t t-foreach="tax_totals['subtotals']" t-as="subtotal">
+                <tr class="border-black o_subtotal">
+                    <td><strong t-esc="subtotal['name']"/></td>
+                    <td class="text-right">
+                        <span t-att-class="oe_subtotal_footer_separator"
+                              t-esc="subtotal['formatted_amount']"/>
+                    </td>
+                </tr>
+
+                <t t-set="subtotal_to_show" t-value="subtotal['name']"/>
+                <t t-call="account.tax_groups_totals"/>
+            </t>
+        </t>
+
+        <tr class="border-black o_total">
+            <td><strong>Total</strong></td>
+            <td class="text-right">
+                <span t-esc="tax_totals['formatted_amount_total']" t-if="tax_totals"/>
+            </td>
+        </tr>
+    </template>
+</odoo>
