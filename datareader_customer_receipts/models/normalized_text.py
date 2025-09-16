@@ -1,5 +1,5 @@
 from odoo import models, fields, api, _
-from .utils import cuit_alias
+from ..utils import cuit_alias
 
 class ResPartnerNormalized(models.Model):
     _name = 'normalized.text'

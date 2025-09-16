@@ -109,7 +109,7 @@ msgstr "Digitalizar pedido"
 
 #. module: datareader_odoo
 #. odoo-python
-#: code:addons/datareader_odoo/models/utils/datareader_upload_result.py:0
+#: code:addons/datareader_odoo/utils/datareader_upload_result.py:0
 #, python-format
 msgid "{len} errors ocurred during Datareader validation:"
 msgstr "{len} errores han ocurrido durante la digitalización de la factura:"

@@ -1,9 +1,57 @@
-from odoo import models, api, _
+from odoo import models, fields, api, _
 import re
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
+    
+    datareader_auto_lines_post = fields.Boolean('Líneas Listas para Publicar', default=False)
+    datareader_auto_payment_post = fields.Boolean('Recibo de Pago Listo para Publicar', default=False)
 
+    datareader_default_partner_transfer_journal_id = fields.Many2one(
+        'account.journal',
+        string=_('Diario para Transferencias en Pesos'),
+        domain=lambda self: [
+                    ('company_id', '=', self.env.company.id),
+                    ('type', '=', 'bank'),
+                    ('active', '=', True)
+                ],
+        company_dependent=True,
+        help=_('Diario usado por defecto para pagos por transferencia en pesos')
+    )
+    datareader_default_partner_transfer_usd_journal_id = fields.Many2one(
+        'account.journal',
+        string=_('Diario para Transferencias en Dólares'),
+        domain=lambda self: [
+                    ('company_id', '=', self.env.company.id),
+                    ('type', '=', 'bank'),
+                    ('active', '=', True)
+                ],
+        company_dependent=True,
+        help=_('Diario usado por defecto para pagos por transferencia en dólares')
+    )
+    datareader_default_partner_check_journal_id = fields.Many2one(
+        'account.journal',
+        string=_('Diario para Cheques'),
+        domain=lambda self: [
+                    ('company_id', '=', self.env.company.id),
+                    ('type', 'in', ['bank', 'cash']),
+                    ('active', '=', True)
+                ],
+        company_dependent=True,
+        help=_('Diario usado por defecto para pagos con cheque depositado')
+    )
+    datareader_default_partner_withholding_journal_id = fields.Many2one(
+        'account.journal',
+        string=_('Diario para Retenciones'),
+        domain=lambda self: [
+                    ('company_id', '=', self.env.company.id),
+                    ('type', '=', 'cash'),
+                    ('active', '=', True)
+                ],
+        company_dependent=True,
+        help=_('Diario usado por defecto para retenciones')
+    )
+    
     @staticmethod
     def preprocess_siglas(name):
         """
