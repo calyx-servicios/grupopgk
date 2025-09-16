@@ -7,7 +7,7 @@
             <!-- Insertar en el grupo Purchase -->
             <xpath expr="//group[@name='misc']" position="before">
                 <group name="datareader" string="Customer Receipts DataReader">
-                    <field name="datareader_auto_lines_post"/>
+                    <!-- <field name="datareader_auto_lines_post"/> -->
                     <field name="datareader_auto_payment_post"/>
                     <field name="datareader_default_partner_transfer_journal_id" />
                     <field name="datareader_default_partner_transfer_usd_journal_id" />
