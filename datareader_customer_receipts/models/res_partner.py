@@ -4,7 +4,7 @@ import re
 class ResPartner(models.Model):
     _inherit = 'res.partner'
     
-    datareader_auto_lines_post = fields.Boolean('Líneas Listas para Publicar', default=False)
+    datareader_auto_lines_post = fields.Boolean('Líneas de Cheques Listas para Publicar', default=False)
     datareader_auto_payment_post = fields.Boolean('Recibo de Pago Listo para Publicar', default=False)
 
     datareader_default_partner_transfer_journal_id = fields.Many2one(

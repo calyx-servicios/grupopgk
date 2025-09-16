@@ -200,6 +200,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         desde un JSON proveniente de DataReader.
         """
         ir_config = self.env['ir.config_parameter'].sudo()
+        # ver si se utiliza
         ap_post = eval(ir_config.get_param("datareader_odoo.datareader_post_account_payment", 'False'))
         apg_post = eval(ir_config.get_param("datareader_odoo.datareader_post_account_payment_group", 'False'))
         
@@ -392,15 +393,13 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             )
             if not missings:
                 ret_account_payment = ret_account_payment_obj.create(ret_payment_vals)
-                if ap_post:
-                    ret_account_payment.action_post()
                 log_item.write({'message': "\n".join(errors)})
             else:
                 errors.append(f"Faltan campos obligatorios para la retención: {', '.join(missings)}")
                 log_item.write({'message': "\n".join(errors)})
                 return log_item
-        
-        if apg_post and payment_group.payment_difference == 0:
+            
+        if partner_id.datareader_auto_payment_post and payment_method != 'cheque': # and payment_group.payment_difference == 0:
             payment_group.post()
             
         return log_item
