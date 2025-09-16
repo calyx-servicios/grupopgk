@@ -49,7 +49,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         # Validar duplicado en payment.group
         existing_op = self.env['account.payment.group'].search([('communication', '=', op_number)], limit=1)
         if existing_op:
-            errors.append(f"Ya existe un recibo de pago con el número {op_number}.")
+            errors.append(f"Ya existe un recibo de pago con el número {op_number} (ID {existing_op.id}) .")
             if log_item:
                 log_item.write({'message': "\n".join(errors)})
             return None, errors
@@ -130,6 +130,26 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         return receiptbook, errors
     
+    def _get_default_withholding_journal(self, data, partner, company, journal_name, errors, log_item=None):
+        """
+        Busca un diario por defecto en el partner y, si no lo encuentra, en la compañía.
+        Usa la moneda para decidir cuál diario corresponde.
+        Si no encuentra ninguno, devuelve None y acumula errores.
+        """
+        journal = partner.with_company(company).datareader_default_partner_withholding_journal_id or False
+        if not journal:
+            errors.append(f"No se encontró diario predeterminado para retenciones en el contacto '{partner.name}' para la compañía '{company.name}'.")
+            if log_item:
+                log_item.write({'message': "\n".join(errors)})
+            journal = company.datareader_default_withholding_journal_id or False
+            if not journal:
+                errors.append("Tampoco se encontró diario predeterminado para retenciones en las configuraciones de la compañia.")
+                if log_item:
+                    log_item.write({'message': "\n".join(errors)})
+                    return None, errors
+
+        return journal, errors
+                
     def _get_default_journal(self, data, partner, company, journal_name, errors, log_item=None):
         """
         Busca un diario por defecto en el partner y, si no lo encuentra, en la compañía.
@@ -137,18 +157,24 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         Si no encuentra ninguno, devuelve None y acumula errores.
         """
         currency = data.get('currency')
-        journal = False
-
-        if not currency or currency == 'ARS':
-            journal = partner.datareader_default_partner_transfer_journal_id or False
+        journal= False
+        pay_method = data.get('pay_method').lower()
+        if pay_method == 'cheque':
+            journal = partner.with_company(company).datareader_default_partner_check_journal_id or False
+            if not journal:
+                errors.append(f"No se encontró diario Predeterminado para cheques en el contacto '{partner.name}' para la compañía '{company.name}'.")
+                if log_item:
+                    log_item.write({'message': "\n".join(errors)})
+                journal = company.datareader_default_check_journal_id or False
+        elif currency == 'ARS':
+            journal = partner.with_company(company).datareader_default_partner_transfer_journal_id or False
             if not journal:
                 errors.append(f"No se encontró diario Predeterminado (Pesos) en el contacto '{partner.name}' para la compañía '{company.name}'.")
                 if log_item:
                     log_item.write({'message': "\n".join(errors)})
                 journal = company.datareader_default_transfer_journal_id or False
-
         elif currency == 'USD':
-            journal = partner.datareader_default_partner_transfer_usd_journal_id or False
+            journal = partner.with_company(company).datareader_default_partner_transfer_usd_journal_id or False
             if not journal:
                 errors.append(f"No se encontró diario Predeterminado (Dólares) en el contacto '{partner.name}' para la compañía '{company.name}'.")
                 if log_item:
@@ -158,9 +184,10 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             errors.append("No se encontró tipo de moneda en DataReader.")
             if log_item:
                 log_item.write({'message': "\n".join(errors)})
+                return None, errors
 
         if not journal:
-            errors.append(f"No se encontró ningún diario predeterminado en el contacto ni en compañía, ({partner.name}, {company.name})se detiene el proceso.")
+            errors.append(f"No se encontró ningún diario predeterminado ({pay_method}) en el contacto ni en compañía, ({partner.name}, {company.name})se detiene el proceso.")
             if log_item:
                 log_item.write({'message': "\n".join(errors)})
             return None, errors
@@ -206,21 +233,69 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             if not journal_id:
                 return log_item
 
+        if data.get('retentions'):
+            log_item.has_withholding = True
+            payment_method_withholding = self.env.ref(
+                'account_withholding.account_payment_method_in_withholding', raise_if_not_found=False
+            )
+            if not payment_method_withholding:
+                errors.append("No se encontró el método de pago para retenciones.")
+                errors.append("No se encontró el método de pago para retenciones, se detiene el proceso.")
+                log_item.write({'message': "\n".join(errors)})
+                return log_item
+            
+            ret_journal_id, errors = self._get_default_withholding_journal(data, partner_id, company_id, journal_name, errors, log_item)
+
+            if not ret_journal_id:
+                return log_item
+            payment_method_withholding_line = self.env['account.payment.method.line'].search([
+                ('payment_method_id', '=', payment_method_withholding.id),
+                ('journal_id', '=', ret_journal_id.id),
+            ], limit=1)
+
+            if not payment_method_withholding_line:
+                errors.append(
+                    f"El diario '{ret_journal_id.display_name}' "
+                    f"no tiene línea para el método de pago de retenciones."
+                )
+                log_item.write({'message': "\n".join(errors)})
+                return log_item
+
         payment_date_str, errors = self._parse_payment_date(data.get('date'), errors)
-        
-        ret_journal_id = False
-        payment_method_retention_line = False
 
         receiptbook_id, errors = self._get_receiptbook(company_id, errors, log_item)
         if not receiptbook_id:
             return log_item
-        
-########## Hasta aca ###########
 
         amount = float(data.get('amount') or 0.0)
         if amount == 0.0:
             errors.append(f"No vino monto en la orden.")
+        # Método de pago base
+        pay_method = data.get('pay_method').lower()
+        payment_method_obj = self.env['account.payment.method']
+        payment_method = payment_method_obj.search([
+            ('code', '=', 'new_third_party_checks' if pay_method == 'cheque' else 'manual'),
+            ('payment_type', '=', 'inbound')
+        ], limit=1)
+        if not payment_method:
+            errors.append(f"No hay método de pago {'Cheque' if pay_method == 'cheque' else 'Manual'} para la compañia {company_id.name}."
+            )
+            log_item.write({'message': "\n".join(errors)})
+            return log_item
+            
+        payment_method_line = self.env['account.payment.method.line'].search([
+            ('payment_method_id', '=', payment_method.id),
+            ('journal_id', '=', journal_id.id),
+        ], limit=1)
 
+        if not payment_method_line:
+            errors.append(
+                f"El diario '{journal_id.display_name}' "
+                f"no tiene línea configurada para el método de pago '{payment_method.name}'."
+            )
+            log_item.write({'message': "\n".join(errors)})
+            return log_item
+        
         vals = {
             'partner_id': partner_id.id,
             'commercial_partner_id': partner_id.commercial_partner_id.id,
@@ -237,80 +312,6 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         self.env.cr.flush()
         log_item.payment_group_id = payment_group
 
-        pay_method = data.get('pay_method').lower()
-        # Método de pago base
-        payment_method_obj = self.env['account.payment.method']
-        payment_method = payment_method_obj.search(
-            [('code', '=', 'in_third_party_checks'), ('payment_type', '=', 'inbound')],
-            limit=1
-        ) if pay_method == 'cheque' else payment_method_obj.search(
-            [('code', '=', 'manual'), ('payment_type', '=', 'inbound')],
-            limit=1
-        )
-        if not payment_method:
-            errors.append(f"No se encontró método de pago para '{pay_method}'.")
-        payment_method_line = False
-        if not journal_id:
-            payment_method_obj = self.env['account.payment.method']
-            payment_method = payment_method_obj.search([
-                ('code', '=', 'in_third_party_checks' if pay_method == 'cheque' else 'manual'),
-                ('payment_type', '=', 'inbound')
-            ], limit=1)
-
-            payment_method_line = False
-            if not payment_method:
-                errors.append(f"No se encontró método de pago para '{pay_method}'.")
-            else:
-                if pay_method == 'cheque':
-                    default_journal = company_id.datareader_default_check_journal_id
-                else:
-                    default_journal = company_id.datareader_default_transfer_journal_id
-                if default_journal:
-                    payment_method_line = self.env['account.payment.method.line'].search([
-                        ('payment_method_id', '=', payment_method.id),
-                        ('journal_id', '=', default_journal.id),
-                    ], limit=1)
-                    if payment_method_line:
-                        journal_id = default_journal
-                    else:
-                        errors.append(
-                            f"El diario por defecto '{default_journal.display_name}' "
-                            f"no tiene línea de método de pago '{payment_method.name}'."
-                        )
-                else:
-                    errors.append(
-                        f"La compañía '{company_id.name}' no tiene diario por defecto para "
-                        f"{'cheques' if pay_method == 'cheque' else 'transferencias'}."
-                    )
-
-                if not journal_id and payment_method:
-                    journal_type = 'cash' if pay_method == 'cheque' else 'bank'
-                    payment_method_line = self.env['account.payment.method.line'].search([
-                        ('payment_method_id', '=', payment_method.id),
-                        ('journal_id.company_id', '=', company_id.id),
-                        ('journal_id.type', '=', journal_type),
-                    ], limit=1)
-                    if payment_method_line:
-                        journal_id = payment_method_line.journal_id
-                    else:
-                        errors.append(
-                            f"No se encontró ningún diario de tipo '{journal_type}' "
-                            f"en la compañía '{company_id.name}' con el método de pago '{payment_method.name}'."
-                        )
-                        
-        if not journal_id:
-            errors.append(f"No se encontró diario para la orden, proceso detenido.")
-            log_item.write({'message': "\n".join(errors)})
-            return log_item
-        
-        if not payment_method_line:
-            errors.append(
-                f"El diario '{ret_journal_id.display_name if ret_journal_id else 'N/A'}' "
-                "no tiene línea configurada para el método de pago."
-            )
-            log_item.write({'message': "\n".join(errors)})
-            return log_item
-            
         invoices_found = self._find_and_attach_invoices(payment_group, data.get('lines', []), errors=errors)
         if invoices_found:
             log_item.write({
@@ -340,56 +341,15 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         total_payment_line = self.env['account.payment'].create(payment_vals)
         if ap_post:
-            total_payment_line.action_post()
-        if data.get('retentions'):
-            log_item.has_withholding = True
-            payment_method_retention = self.env.ref(
-                'account_withholding.account_payment_method_in_withholding', raise_if_not_found=False
-            )
-            if not payment_method_retention:
-                errors.append("No se encontró el método de pago para retenciones.")
+            total_payment_line.action_post()            
 
-            ret_journal_id = company_id.datareader_default_withholding_journal_id
-            if not ret_journal_id:
-                errors.append(
-                    f"No hay diario configurado para retenciones en la compañía '{company_id.name}'. "
-                    f"Configúralo en Ajustes > Contabilidad > DataReader."
-                )
-
-            payment_method_retention_line = self.env['account.payment.method.line'].search([
-                ('payment_method_id', '=', payment_method_retention.id if payment_method_retention else False),
-                ('journal_id', '=', ret_journal_id.id if ret_journal_id else False),
-                
-            ], limit=1)
-
-            if not payment_method_retention_line:
-                errors.append(
-                    f"El diario '{ret_journal_id.display_name if ret_journal_id else 'N/A'}' "
-                    f"no tiene línea para el método de pago de retenciones."
-                )
-
-        if not ret_journal_id:
-            errors.append(
-                f"No hay diario configurado para retenciones en la compañía '{company_id.name}'. "
-                "Este debe estar configurado en Ajustes > Contabilidad > DataReader."
-            )
-
-        if not payment_method_retention_line:
-            errors.append(
-                f"El diario '{ret_journal_id.display_name if ret_journal_id else 'N/A'}' "
-                "no tiene línea configurada para el método de pago de retenciones."
-            )
-        if (not payment_method_retention_line) or (not ret_journal_id):
-            log_item.write({'message': "\n".join(errors)})
-            return log_item
-
-        retentions = data.get('retentions', [])
+        withholdings = data.get('retentions', [])
         
-        for retention in retentions:
+        for withholding in withholdings:
             ret_account_payment_obj = self.env['account.payment']
-            ret_amount = float(retention.get('amount') or 0.0)
-            ret_number = retention.get('number') or False
-            ret_name = retention.get('name') or False
+            ret_amount = float(withholding.get('amount') or 0.0)
+            ret_number = withholding.get('number') or False
+            ret_name = withholding.get('name') or False
             if not ret_number or str(ret_number).lower() == 'na':
                 ret_number = 'N/A'
                 
@@ -417,7 +377,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'amount': ret_amount,
                 'date': payment_date_str,
                 'journal_id': ret_journal_id.id,
-                'payment_method_line_id': payment_method_retention_line.id if payment_method_retention_line else False,
+                'payment_method_line_id': payment_method_withholding_line.id,
                 'company_id': company_id.id,
                 'currency_id': company_id.currency_id.id,
                 'tax_withholding_id': withholding_tax.id,
@@ -543,6 +503,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 
                 for order in orders:
                     log_item = self.create_from_datareader_json(order, connector)
+                    log_item.json_data = order
                     if not skip_op_close:
                         connector.set_payment_order_readed(order.get("id"), True)
                         if not log_item.payment_group_id:
@@ -720,3 +681,4 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
     attachment_ret3_id = fields.Many2one('ir.attachment', string="Retención 3")
     attachment_ret4_id = fields.Many2one('ir.attachment', string="Retención 4")
     invoices_found = fields.Boolean(string="Invoices", default=False)
+    json_data = fields.Text(string="Invoices", default=False)

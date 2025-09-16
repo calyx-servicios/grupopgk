@@ -25,6 +25,11 @@
                                 <field name="attachment_ret4_id" widget="attachment" filename="name" readonly="1" attrs="{'invisible': [('attachment_ret4_id', '=', False)]}"/>
                             </group>
                         </page>
+                        <page string="Datos del Recibo">
+                            <group>
+                                <field name="json_data" string="Información"/>
+                            </group>
+                        </page>
                     </notebook>
                 </sheet>
             </form>
