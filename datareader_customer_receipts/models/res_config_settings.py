@@ -7,13 +7,12 @@ class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
     datareader_default_transfer_journal_id = fields.Many2one(related='company_id.datareader_default_transfer_journal_id', readonly=False)
+    datareader_default_transfer_usd_journal_id = fields.Many2one(related='company_id.datareader_default_transfer__usd_journal_id', readonly=False)
     datareader_default_check_journal_id = fields.Many2one(related='company_id.datareader_default_check_journal_id', readonly=False)
     datareader_default_withholding_journal_id = fields.Many2one(related='company_id.datareader_default_withholding_journal_id', readonly=False)
     datareader_api_host = fields.Char(config_parameter="datareader_odoo.datareader_api_host")
     datareader_api_user = fields.Char(config_parameter="datareader_odoo.datareader_api_user")
     datareader_api_pass = fields.Char(config_parameter="datareader_odoo.datareader_api_pass")
-    datareader_post_account_payment = fields.Boolean(config_parameter="datareader_odoo.datareader_post_account_payment", string="Publicar Líneas de Pago", default=False)
-    datareader_post_account_payment_groups = fields.Boolean(config_parameter="datareader_odoo.datareader_post_account_payment_groups", string="Publicar Pago", default=False)    
 
     box_client_id = fields.Char(string="Box Client ID", config_parameter="datareader_odoo.box_client_id")
     box_client_secret = fields.Char(string="Box Client Secret", config_parameter="datareader_odoo.box_client_secret")

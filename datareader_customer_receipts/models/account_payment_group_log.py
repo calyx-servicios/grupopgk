@@ -218,13 +218,17 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         if not company_id:
             log_item.write({'message': "\n".join(errors)})
             return log_item
+        elif len(company_id) > 1:
+            return log_item
         
         partner_cuit = data.get('client_cuit')
         partner_name = data.get('client_name')
         partner_id, errors = self._get_partner(partner_cuit, partner_name, errors)
         if not partner_id:
-                log_item.write({'message': "\n".join(errors)})
-                return log_item
+            log_item.write({'message': "\n".join(errors)})
+            return log_item
+        elif len(partner_id) > 1:
+            return log_item
 
         journal_name = data.get('journal')
         journal_id, errors = self._get_journal(journal_name, errors)
@@ -233,6 +237,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             journal_id, errors = self._get_default_journal(data, partner_id, company_id, journal_name, errors, log_item)
             if not journal_id:
                 return log_item
+        elif len(journal_id) > 1:
+            return log_item
 
         if data.get('retentions'):
             log_item.has_withholding = True
@@ -240,7 +246,6 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'account_withholding.account_payment_method_in_withholding', raise_if_not_found=False
             )
             if not payment_method_withholding:
-                errors.append("No se encontró el método de pago para retenciones.")
                 errors.append("No se encontró el método de pago para retenciones, se detiene el proceso.")
                 log_item.write({'message': "\n".join(errors)})
                 return log_item
