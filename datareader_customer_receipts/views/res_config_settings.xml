@@ -79,12 +79,12 @@
                             <span class="o_form_label">Another Settings</span>
                             <div class="content-group">
                                 <div class="row mt8">
-                                    <label for="datareader_download_files" class="col-lg-4 o_light_label" attrs="{'invisible': [('datareader_mode', '=', 'production')]}"/>
-                                    <field name="datareader_download_files" attrs="{'invisible': [('datareader_mode', '=', 'production')]}"/>
+                                    <label for="datareader_download_files" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_download_files"/>
                                 </div>
                                 <div class="row mt8">
-                                    <label for="datareader_download_first_batch" class="col-lg-4 o_light_label" attrs="{'invisible': [('datareader_mode', '=', 'production')]}"/>
-                                    <field name="datareader_download_first_batch" attrs="{'invisible': [('datareader_mode', '=', 'production')]}"/>
+                                    <label for="datareader_download_first_batch" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_download_first_batch"/>
                                 </div>
                             </div>
                         </div>
