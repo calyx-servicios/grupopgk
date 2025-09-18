@@ -1,7 +1,7 @@
 # pylint: disable=missing-module-docstring
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 {
-    "name": "Datareader Odoo",
+    "name": "Datareader Odoo for Customer Reciepts",
     "summary": "Integración con DataReader para importar y procesar órdenes de pago e impactar en facturas impagas.",
     "author": "Calyx Servicios S.A.",
     "maintainers": ["sgutierrez"],

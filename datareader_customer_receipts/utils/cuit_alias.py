@@ -91,7 +91,7 @@ def find_record_by_cuit_or_name(env, model_name, name=None, cuit=None, errors=No
                 if model_name == 'res.partner':
                     real_partners = records.filtered(lambda p: not p.parent_id and p.id == p.commercial_partner_id.id)
                     if len(real_partners) == 1:
-                        record = real_partners
+                        record = real_partners[0]
                     else:
                         record = False
                         errors.append(
@@ -101,10 +101,12 @@ def find_record_by_cuit_or_name(env, model_name, name=None, cuit=None, errors=No
                     if len(unique_records) > 1:
                         errors.append(
                             f"Se encontraron múltiples registros distintos para '{name}' en {model_name}: {[r.id for r in unique_records]}"
+                            f"Se detiene el proceso."
                         )
                     record = unique_records[0]
             else:
                 errors.append(f"No se encontraron registros válidos para '{name}' en {model_name}")
         else:
-            errors.append(f"No se encontró alias para '{name}' en {model_name}")
+            if model_name != 'account.journal':
+                errors.append(f"No se encontró alias para '{name}' en {model_name}")
     return record, errors
