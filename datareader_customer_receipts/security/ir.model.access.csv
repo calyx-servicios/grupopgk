@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_datareader_connector,datareader.connector,model_datareader_connector,base.group_system,1,1,1,1
+access_datareader_account_payment_group_log,datareader.account.payment.group.log,model_datareader_account_payment_group_log,base.group_system,1,1,1,1
+access_datareader_account_payment_group_log_item,datareader.account.payment.group.log.item,model_datareader_account_payment_group_log_item,base.group_system,1,1,1,1
+access_normalized_text,normalized_text,model_normalized_text,base.group_system,1,1,1,1
+access_normalized_text_items,normalized_text_items,model_normalized_text_items,base.group_system,1,1,1,1

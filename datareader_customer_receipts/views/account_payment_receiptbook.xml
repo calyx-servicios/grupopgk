@@ -1,0 +1,12 @@
+<odoo>
+    <record id="view_receipt_receiptbook_form_inherit_auto" model="ir.ui.view">
+        <field name="name">account.payment.receiptbook.form.inherit.auto</field>
+        <field name="model">account.payment.receiptbook</field>
+        <field name="inherit_id" ref="account_payment_group.view_receipt_receiptbook_form"/>
+        <field name="arch" type="xml">
+            <field name="active" position="after">
+                <field name="is_automatic_receiptbook"/>
+            </field>
+        </field>
+    </record>
+</odoo>
