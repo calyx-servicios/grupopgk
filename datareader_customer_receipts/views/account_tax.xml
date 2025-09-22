@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_tax_form_inherit_dr" model="ir.ui.view">
+        <field name="name">account.tax.form.inherit.datareader</field>
+        <field name="model">account.tax</field>
+        <field name="inherit_id" ref="payment_withholding.view_tax_form_inherit"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook/page[@name='advanced_options']/group/group[1]/field[@name='custom_identifier']" position="after">
+                <field name="datareader_custom_identifier" string="DataReader Custom Identifier"/>
+            </xpath>
+        </field>
+    </record>
+    
+</odoo>
