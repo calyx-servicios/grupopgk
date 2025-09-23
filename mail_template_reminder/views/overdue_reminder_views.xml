@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <record id="overdue_reminder_step_form_inherit" model="ir.ui.view">
+            <field name="name">overdue.reminder.step.form.inherit</field>
+            <field name="model">overdue.reminder.step</field>
+            <field name="inherit_id" ref="account_invoice_overdue_reminder.overdue_reminder_step_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='commercial_partner_id']" position="after">
+                    <field name="company_id" invisible="1"/>
+                    <field name="interface" invisible="1"/>
+                </xpath>
+
+                <xpath expr="//field[@name='mail_subject']" position="after">
+                    <field name="reminder_template_id" 
+                           attrs="{'invisible': [('reminder_type', '!=', 'mail')], 'required': [('reminder_type', '=', 'mail'), ('interface', '=', 'onebyone')], 'readonly': [('interface', '=', 'mass')]}"
+                           string="Plantilla de Recordatorio"
+                           context="{'default_is_reminder_template': True}"/>
+                </xpath>
+
+                <xpath expr="//field[@name='mail_body']" position="attributes">
+                    <attribute name="attrs">{'readonly': [('reminder_template_id', '!=', False)], 'invisible': [('reminder_type', '!=', 'mail')]}</attribute>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="overdue_reminder_step_tree_inherit" model="ir.ui.view">
+            <field name="name">overdue.reminder.step.tree.inherit</field>
+            <field name="model">overdue.reminder.step</field>
+            <field name="inherit_id" ref="account_invoice_overdue_reminder.overdue_reminder_step_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='reminder_type']" position="after">
+                    <field name="reminder_template_id" string="Plantilla"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
