@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <record id="overdue_reminder_start_form_inherit" model="ir.ui.view">
+            <field name="name">overdue.reminder.start.form.inherit</field>
+            <field name="model">overdue.reminder.start</field>
+            <field name="inherit_id" ref="account_invoice_overdue_reminder.overdue_reminder_start_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//group[@name='options']" position="after">
+                    <group name="template_info" string="Plantillas de Recordatorio">
+                        <div class="alert alert-info" role="alert">
+                            <strong>Información:</strong> Se utilizará la primera plantilla de recordatorio 
+                            disponible para la compañía seleccionada. Asegúrese de tener al menos una 
+                            plantilla configurada antes de continuar.
+                        </div>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
