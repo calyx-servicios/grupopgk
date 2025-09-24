@@ -100,13 +100,18 @@ class OverdueReminderStep(models.TransientModel):
         if mvals.get("email_cc"):
             cc_list.append(mvals["email_cc"])
         
+        # No pisar subject y body_html con valores estáticos, usar los del template renderizado
         mvals.update({
-            "subject": self.mail_subject,
-            "body_html": self.mail_body,
             "email_cc": ", ".join(cc_list),
             "model": "res.partner",
             "res_id": self.commercial_partner_id.id,
         })
+        
+        # Solo actualizar subject y body si no vienen del template
+        if not mvals.get("subject") and self.mail_subject:
+            mvals["subject"] = self.mail_subject
+        if not mvals.get("body_html") and self.mail_body:
+            mvals["body_html"] = self.mail_body
         
         mvals.pop("attachment_ids", None)
         mvals.pop("attachments", None)
