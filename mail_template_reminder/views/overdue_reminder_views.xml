@@ -19,7 +19,7 @@
                 </xpath>
 
                 <xpath expr="//field[@name='mail_body']" position="attributes">
-                    <attribute name="attrs">{'readonly': [('reminder_template_id', '!=', False)], 'invisible': [('reminder_type', '!=', 'mail')]}</attribute>
+                    <attribute name="attrs">{'invisible': [('reminder_type', '!=', 'mail')]}</attribute>
                 </xpath>
             </field>
         </record>
