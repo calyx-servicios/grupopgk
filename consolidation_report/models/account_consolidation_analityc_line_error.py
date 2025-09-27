@@ -4,11 +4,6 @@ class ConsolidationAnalyticLineError(models.Model):
     _name = 'consolidation.analytic.line.error'
     _description = 'Errores en Líneas Analíticas en el Informe de Consolidación'
 
-    line_id = fields.Many2one(
-        'account.analytic.line',
-        string='Línea Analítica Original',
-        required=True
-    )
     consolidation_id = fields.Many2one(
         'account.consolidation.report',
         string='Mes de Consolidación',
@@ -25,6 +20,12 @@ class ConsolidationAnalyticLineError(models.Model):
     amount_origin = fields.Float('Monto Original')
     amount_consolidated = fields.Float('Monto Consolidado')
     description = fields.Char('Detalle del Error')
+
+    line_id = fields.Many2one(
+        'account.analytic.line',
+        string='Línea Analítica Original',
+        required=True
+    )
 
     def open_line_analytic_form(self):
         self.ensure_one()

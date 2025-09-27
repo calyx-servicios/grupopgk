@@ -366,16 +366,6 @@ class AccountConsolidationReport(models.Model):
                 False
             )
             account_id = account.id if account else False
-            if not account_id:
-                raise UserError("El empleado de la línea analítica {} no tiene cuenta analítica designada en su departamento.".format(analytic_line.id))
-                            
-            project_costo_laboral = self.env['account.analytic.account'].search([
-                ('name', '=', 'Costo Laboral'),
-                ('parent_id', '=',account_id),
-            ], limit=1)
-            
-            if not project_costo_laboral:
-                raise UserError("La cuenta analítica del empleado (departamento) de la linea{} no tiene cuenta analítica hija para 'Costo Laboral'.".format(analytic_line.id))
     
         vals = {
             "name": f"Costo laboral - {analytic_line.name} - Línea consolidación" if timesheet else f"{analytic_line.name} - Línea consolidación",
@@ -386,7 +376,7 @@ class AccountConsolidationReport(models.Model):
             "product_id": analytic_line.product_id.id if analytic_line.product_id else False,
             "date": analytic_line.date,
             "currency_id": analytic_line.currency_id.id if analytic_line.currency_id else False,
-            "company_id": [(6, 0, analytic_line.company_id.ids)] if not timesheet else [(6, 0, project_costo_laboral.company_id.ids)],
+            "company_id": [(6, 0, analytic_line.company_id.ids)] if analytic_line.company_id else False,
             "consolidation_line": True,
             "source_analytic_line_id": analytic_line.id,
         }
@@ -480,7 +470,115 @@ class AccountConsolidationReport(models.Model):
     ###########
 
     
+    def validate_employees_departments(self):
+        """
+        Valida que todos los empleados tengan departamento asignado y configuración correcta.
+        Recolecta empleados por nombre y línea analítica por ID sin romper el flujo.
+        """
+        
+        timesheets = self.env["timesheet.sige"].search([
+            ("start_of_period", ">=", self.consolidation_period.date_from),
+            ("end_of_period", "<=", self.consolidation_period.date_to),
+        ])
+        
+        # Listas de errores separadas por tipo
+        employees_without_department = []
+        employees_without_analytic_account = []
+        employees_without_costo_laboral = []
+        employees_with_department = []
+        analytic_lines_info = []
+        
+        for timesheet in timesheets:
+            employee = timesheet.employee_id
+            if employee:
+                employee_info = {
+                    'employee_id': employee.id,
+                    'employee_name': employee.name,
+                    'department_id': employee.department_id.id if employee.department_id else False,
+                    'department_name': employee.department_id.name if employee.department_id else 'Sin departamento',
+                    'analytic_account_id': employee.department_id.analytic_account.id if employee.department_id and employee.department_id.analytic_account else False,
+                    'analytic_account_name': employee.department_id.analytic_account.name if employee.department_id and employee.department_id.analytic_account else 'Sin cuenta analítica'
+                }
+                
+                # Validación 1: Empleado sin departamento
+                if not employee.department_id:
+                    employees_without_department.append(employee_info)
+                else:
+                    # Validación 2: Empleado sin cuenta analítica en departamento
+                    if not employee.department_id.analytic_account:
+                        employees_without_analytic_account.append(employee_info)
+                    else:
+                        # Validación 3: Empleado sin cuenta "Costo Laboral"
+                        project_costo_laboral = self.env['account.analytic.account'].search([
+                            ('name', '=', 'Costo Laboral'),
+                            ('parent_id', '=', employee.department_id.analytic_account.id),
+                        ], limit=1)
+                        
+                        if not project_costo_laboral:
+                            employees_without_costo_laboral.append(employee_info)
+                        else:
+                            employees_with_department.append(employee_info)
+                
+                # Recolectar información de líneas analíticas
+                for analytic_line in timesheet.timesheet_ids:
+                    analytic_lines_info.append({
+                        'analytic_line_id': analytic_line.id,
+                        'analytic_line_name': analytic_line.name,
+                        'employee_name': employee.name,
+                        'account_id': analytic_line.account_id.id,
+                        'account_name': analytic_line.account_id.name,
+                        'amount': analytic_line.amount,
+                        'date': analytic_line.date
+                    })
+        
+        # Construir mensaje de error con todos los problemas encontrados
+        error_messages = []
+        
+        if employees_without_department:
+            employee_names = [emp['employee_name'] for emp in employees_without_department]
+            error_messages.append(
+                "1. EMPLEADOS SIN DEPARTAMENTO (%d empleados):\n   • %s" % (
+                    len(employees_without_department), 
+                    '\n   • '.join(employee_names)
+                )
+            )
+        
+        if employees_without_analytic_account:
+            employee_names = [emp['employee_name'] for emp in employees_without_analytic_account]
+            error_messages.append(
+                "2. EMPLEADOS SIN CUENTA ANALÍTICA EN DEPARTAMENTO (%d empleados):\n   • %s" % (
+                    len(employees_without_analytic_account), 
+                    '\n   • '.join(employee_names)
+                )
+            )
+        
+        if employees_without_costo_laboral:
+            employee_names = [emp['employee_name'] for emp in employees_without_costo_laboral]
+            error_messages.append(
+                "3. EMPLEADOS SIN CUENTA 'COSTO LABORAL' (%d empleados):\n   • %s" % (
+                    len(employees_without_costo_laboral), 
+                    '\n   • '.join(employee_names)
+                )
+            )
+        
+        # Si hay errores, lanzar UserError con todos los problemas
+        if error_messages:
+            full_error_message = "ERRORES ENCONTRADOS EN LA CONFIGURACIÓN DE EMPLEADOS:\n\n" + "\n\n".join(error_messages)
+            full_error_message += "\n\nPor favor, corrija estos problemas antes de continuar con el reporte de consolidación."
+            raise UserError(_(full_error_message))
+
+        return {
+            'employees_without_department': employees_without_department,
+            'employees_without_analytic_account': employees_without_analytic_account,
+            'employees_without_costo_laboral': employees_without_costo_laboral,
+            'employees_with_department': employees_with_department,
+            'analytic_lines_info': analytic_lines_info
+        }
+
     def generate_consolidation_report_view(self):
+        # Validar empleados y departamentos antes de continuar
+        validation_result = self.validate_employees_departments()
+        
         # Elimino si es que existen lineas analiticas de redistribucion de gastos indirectos creadas anteriormente (en caso que el informe se pide mas de una vez) y lineas de account consolidation data por el mismo motivo
         self.delete_entries()
 
@@ -705,7 +803,7 @@ class AccountConsolidationReport(models.Model):
         origin_amount = line.amount
         if unknow_project:
             ListErrors.create({
-                'line_id': consolidation_line.id,
+                'line_id': line.id,  # Siempre usar line.id ya que consolidation_line es False
                 'consolidation_id': self.id,
                 'error_type': 'no_project',
                 'description': 'Proyecto no definido en líneas de partes de hora',
@@ -837,7 +935,7 @@ class AccountConsolidationReport(models.Model):
             total_amount_cost_calyx += amount
             # Crear una nueva línea analítica con los campos especificados
             calyx_line = self.create_consolidation_analytic_line(analytic_line)
-            self.catch_possible_error(analytic_line, calyx_line)
+            #self.catch_possible_error(analytic_line, calyx_line)
 
         # Procesa las líneas analíticas para otras empresas
         for analytic_line in analytic_lines_otros:
@@ -845,7 +943,7 @@ class AccountConsolidationReport(models.Model):
             total_amount_cost_otros += amount
             # Crear una nueva línea analítica con los campos especificados
             other_line = self.create_consolidation_analytic_line(analytic_line) 
-            self.catch_possible_error(analytic_line, other_line)
+            #self.catch_possible_error(analytic_line, other_line)
                 
         # Redondea los totales a dos decimales
         total_amount_cost_calyx = round(total_amount_cost_calyx, 2)
@@ -907,28 +1005,22 @@ class AccountConsolidationReport(models.Model):
         not_billable_list_ids = []
         not_project_ids = []
         sum = 0
-        from pprint import pprint
+    
         for timesheet in timesheets:
             for analytic_line in timesheet.timesheet_ids:
                 project = self.env["project.project"].search([
                     ("analytic_account_id", "=", analytic_line.account_id.id)
                 ], limit=1)
                 if not project:
-                    self.catch_possible_error(analytic_line, False, True)
+                    #self.catch_possible_error(analytic_line, False, True)
                     sum += analytic_line.amount
                     not_project_ids.append(analytic_line.amount)
                 elif not project.allow_billable:
                     not_billable_list_ids.append(analytic_line.id)
                     if analytic_line.amount != 0:
                         sum += analytic_line.amount
-                        pprint({'analytic not billiable': analytic_line.name})
-                        if analytic_line.name == 'Sin asignación':
-                            pprint ({'monto de la linea sin asignación':analytic_line.amount})
                 self.create_consolidation_analytic_line(analytic_line, timesheet=True)
-        pprint({'suma':sum})
-        pprint({'not_project':not_project_ids})
         total_not_billable = timesheets.timesheet_ids.filtered(lambda l: not l.project_id.allow_billable and l.amount != 0).mapped('amount')
-        total_not_billable_ids = timesheets.timesheet_ids.filtered(lambda l: not l.project_id.allow_billable and l.amount != 0).mapped('id')
         _logger.info(f"Total no facturable:{total_not_billable}")
         return total_not_billable
 
