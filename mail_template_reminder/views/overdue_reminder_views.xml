@@ -14,7 +14,7 @@
                 <xpath expr="//field[@name='mail_subject']" position="after">
                     <field name="reminder_template_id" 
                            attrs="{'invisible': [('reminder_type', '!=', 'mail')], 'required': [('reminder_type', '=', 'mail'), ('interface', '=', 'onebyone')], 'readonly': [('interface', '=', 'mass')]}"
-                           string="Plantilla de Recordatorio"
+                           string="Reminder Template"
                            context="{'default_is_reminder_template': True}"/>
                 </xpath>
 
@@ -30,7 +30,7 @@
             <field name="inherit_id" ref="account_invoice_overdue_reminder.overdue_reminder_step_tree"/>
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='reminder_type']" position="after">
-                    <field name="reminder_template_id" string="Plantilla"/>
+                    <field name="reminder_template_id" string="Template"/>
                 </xpath>
             </field>
         </record>

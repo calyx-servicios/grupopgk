@@ -7,11 +7,11 @@
             <field name="inherit_id" ref="account_invoice_overdue_reminder.overdue_reminder_start_form"/>
             <field name="arch" type="xml">
                 <xpath expr="//group[@name='options']" position="after">
-                    <group name="template_info" string="Plantillas de Recordatorio">
+                    <group name="template_info" string="Reminder Templates">
                         <div class="alert alert-info" role="alert">
-                            <strong>Información:</strong> Se utilizará la primera plantilla de recordatorio 
-                            disponible para la compañía seleccionada. Asegúrese de tener al menos una 
-                            plantilla configurada antes de continuar.
+                            <strong>Information:</strong> The first available reminder template 
+                            for the selected company will be used. Make sure you have at least one 
+                            template configured before continuing.
                         </div>
                     </group>
                 </xpath>

@@ -2,6 +2,10 @@
 
 from odoo import models, fields, api, tools, _
 from odoo.exceptions import UserError
+import logging
+import base64
+
+_logger = logging.getLogger(__name__)
 
 
 class OverdueReminderStep(models.TransientModel):
@@ -9,13 +13,13 @@ class OverdueReminderStep(models.TransientModel):
 
     reminder_template_id = fields.Many2one(
         'mail.template',
-        string='Plantilla de Recordatorio',
+        string=_('Reminder Template'),
         domain="[('is_reminder_template', '=', True), '|', ('company_ids', '=', False), ('company_ids', 'in', [company_id])]",
-        help='Seleccione la plantilla de correo que se utilizará para este recordatorio'
+        help=_('Select the email template that will be used for this reminder')
     )
     mail_body = fields.Html(
         related='reminder_template_id.body_html',
-        string='Cuerpo del Correo',
+        string=_('Email Body'),
         readonly=False,
         store=True
     )
@@ -40,11 +44,97 @@ class OverdueReminderStep(models.TransientModel):
 
     @api.model
     def create(self, vals):
-        """
-        Sobrescribir create para manejar selección automática en modo masivo
-        """
-        record = super().create(vals)
-        return record
+        _logger.info("=== MAIL_TEMPLATE_REMINDER DEBUG ===")
+        _logger.info("vals recibido: %s", vals)
+        
+        # Asegurar que un template se asigne antes de crear el registro
+        if vals.get('reminder_type') == 'mail' and not vals.get('reminder_template_id'):
+            _logger.info("Buscando template para reminder_type='mail' sin template_id")
+            
+            # Debug: buscar todos los templates de reminder
+            all_reminder_templates = self.env['mail.template'].search([
+                ('is_reminder_template', '=', True)
+            ])
+            _logger.info("Templates con is_reminder_template=True: %s", 
+                        [f"{t.name} (ID: {t.id})" for t in all_reminder_templates])
+            
+            template = self.env['mail.template'].search([
+                ('is_reminder_template', '=', True),
+                '|',
+                ('company_ids', '=', False),
+                ('company_ids', 'in', [vals.get('company_id', self.env.company.id)])
+            ], limit=1)
+            
+            if template:
+                _logger.info("Template encontrado: %s (ID: %s)", template.name, template.id)
+                vals['reminder_template_id'] = template.id
+            else:
+                _logger.info("No se encontró template para la compañía %s", vals.get('company_id', self.env.company.id))
+        
+        _logger.info("vals antes de crear: %s", vals)
+        
+        # Crear el registro sin procesar template (saltar el create de OCA)
+        step = super(models.TransientModel, self).create(vals)
+        
+        _logger.info("Registro creado con ID: %s", step.id)
+        
+        # Procesar nuestro template personalizado
+        if step.reminder_template_id:
+            commercial_partner = self.env["res.partner"].browse(
+                vals["commercial_partner_id"]
+            )
+            
+            # Debug: verificar las facturas
+            _logger.info("=== DEBUG FACTURAS ===")
+            _logger.info("step.invoice_ids: %s", step.invoice_ids)
+            _logger.info("Número de facturas: %s", len(step.invoice_ids))
+            for inv in step.invoice_ids:
+                _logger.info("Factura: %s - Fecha: %s - Saldo: %s", inv.name, inv.invoice_date, inv.amount_residual)
+            
+            mail_tpl_lang = step.reminder_template_id.with_context(
+                lang=commercial_partner.lang or "en_US"
+            )
+            mail_subject = mail_tpl_lang._render_template(
+                mail_tpl_lang.subject, self._name, [step.id]
+            )[step.id]
+            mail_body = mail_tpl_lang._render_template(
+                mail_tpl_lang.body_html, self._name, [step.id], "qweb"
+            )[step.id]
+            mail_body = tools.html_sanitize(mail_body)
+            
+            _logger.info("=== DEBUG TEMPLATE RENDERIZADO ===")
+            _logger.info("Subject renderizado: %s", mail_subject)
+            _logger.info("Body renderizado (primeros 500 chars): %s", mail_body[:500])
+            
+            step.write(
+                {
+                    "mail_subject": mail_subject,
+                    "mail_body": mail_body,
+                }
+            )
+        else:
+            # Fallback: usar el template por defecto de OCA si no hay template seleccionado
+            commercial_partner = self.env["res.partner"].browse(
+                vals["commercial_partner_id"]
+            )
+            xmlid = self._get_overdue_invoice_reminder_template()
+            mail_tpl = self.env.ref(xmlid)
+            mail_tpl_lang = mail_tpl.with_context(lang=commercial_partner.lang or "en_US")
+            mail_subject = mail_tpl_lang._render_template(
+                mail_tpl_lang.subject, self._name, [step.id]
+            )[step.id]
+            mail_body = mail_tpl_lang._render_template(
+                mail_tpl_lang.body_html, self._name, [step.id], "qweb"
+            )[step.id]
+            mail_body = tools.html_sanitize(mail_body)
+            step.write(
+                {
+                    "mail_subject": mail_subject,
+                    "mail_body": mail_body,
+                }
+            )
+        
+        return step
 
     @api.onchange('reminder_template_id')
     def _onchange_reminder_template(self):
@@ -67,24 +157,24 @@ class OverdueReminderStep(models.TransientModel):
 
     def _get_overdue_invoice_reminder_template(self):
         """
-        Sobrescribir el método para usar la plantilla seleccionada
+        Sobrescribir para usar nuestro template personalizado por defecto
         """
+        # Si hay un reminder_template_id seleccionado, usarlo
         if self.reminder_template_id:
             external_id = self.reminder_template_id.get_external_id().get(self.reminder_template_id.id)
             if external_id:
                 return external_id
-            else:
-                return super()._get_overdue_invoice_reminder_template()
-        else:
-            return super()._get_overdue_invoice_reminder_template()
-
+        
+        # Si no hay template seleccionado, usar nuestro template personalizado por defecto
+        return 'mail_template_reminder.custom_overdue_invoice_reminder_mail_template'
+    
     def generate_mail_vals(self):
         """
         Sobrescribir el método para usar la plantilla seleccionada
         """
         self.ensure_one()
         if self.reminder_type == 'mail' and not self.reminder_template_id:
-            raise UserError(_("Debe seleccionar una plantilla de recordatorio para continuar."))
+            raise UserError(_("You must select a reminder template to continue."))
         
         if self.reminder_template_id:
             mvals = self.reminder_template_id.generate_email(
@@ -123,11 +213,60 @@ class OverdueReminderStep(models.TransientModel):
         )
         
         if self.company_id.overdue_reminder_attach_invoice:
-            attachment_ids = self._get_attachment_ids(inv_report, mail)
-            mail.write({"attachment_ids": [(6, 0, attachment_ids)]})
+            try:
+                attachment_ids = self._get_attachment_ids(inv_report, mail)
+                mail.write({"attachment_ids": [(6, 0, attachment_ids)]})
+            except Exception as e:
+                # Si hay error en la generación de PDFs, continuar sin adjuntos
+                _logger.warning("Error generando PDFs para recordatorio %s: %s", self.id, str(e))
         
         vals = {"mail_id": mail.id}
         return vals
+
+    def _get_attachment_ids(self, inv_report, mail):
+        """
+        Sobrescribir el método para manejar mejor los errores de generación de PDF
+        """
+        attachment_ids = []
+        iao = self.env["ir.attachment"]
+        problematic_invoices = []
+        
+        for inv in self.invoice_ids:
+            try:
+                if inv_report.report_type in ("qweb-html", "qweb-pdf"):
+                    report_bin, report_format = inv_report._render_qweb_pdf([inv.id])
+                else:
+                    res = inv_report.render([inv.id])
+                    if not res:
+                        raise UserError(
+                            _("Report format '%s' is not supported.")
+                            % inv_report.report_type
+                        )
+                    report_bin, report_format = res
+                
+                filename = "{}.{}".format(inv._get_report_base_filename(), report_format)
+                attach = iao.create(
+                    {
+                        "name": filename,
+                        "datas": base64.b64encode(report_bin),
+                        "res_model": "mail.message",
+                        "res_id": mail.mail_message_id.id,
+                    }
+                )
+                attachment_ids.append(attach.id)
+                
+            except Exception as e:
+                # Si hay error con una factura específica, la marcamos como problemática
+                problematic_invoices.append(inv.name or inv.id)
+                _logger.warning("Error generando PDF para factura %s: %s", inv.name or inv.id, str(e))
+                continue
+        
+        # Si hay facturas problemáticas, mostrar advertencia al usuario
+        if problematic_invoices:
+            _logger.warning("No se pudieron generar PDFs para las siguientes facturas: %s", 
+                          ", ".join(problematic_invoices))
+        
+        return attachment_ids
 
     def check_available_templates(self):
         """
@@ -144,8 +283,8 @@ class OverdueReminderStep(models.TransientModel):
             
             if not template:
                 raise UserError(_(
-                    "No hay plantillas de recordatorio disponibles para la compañía '%s'. "
-                    "Por favor, cree una plantilla de recordatorio o asigne una a esta compañía."
+                    "No reminder templates available for company '%s'. "
+                    "Please create a reminder template or assign one to this company."
                 ) % self.env.company.name)
         return True
 
