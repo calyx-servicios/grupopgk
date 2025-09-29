@@ -14,8 +14,11 @@
         "account_invoice_overdue_reminder",
     ],
     "data": [
+        "views/res_partner_views.xml",
         "views/mail_template_views.xml",
         "views/overdue_reminder_views.xml",
         "views/overdue_reminder_start_views.xml",
+        "data/mail_template.xml",
     ],
+    "demo": [],
 }

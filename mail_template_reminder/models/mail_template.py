@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 
 
 class MailTemplate(models.Model):
     _inherit = 'mail.template'
 
     is_reminder_template = fields.Boolean(
-        string='Es Plantilla de Recordatorio',
+        string=_('Is Reminder Template'),
         default=False,
-        help='Marque esta casilla si esta plantilla se utilizará para recordatorios de facturas vencidas'
+        help=_('Check this box if this template will be used for overdue invoice reminders')
     )
     company_ids = fields.Many2many(
         'res.company',
         'mail_template_company_rel',
         'template_id',
         'company_id',
-        string='Compañías',
-        help='Compañías para las cuales esta plantilla estará disponible. Si no se especifica ninguna, estará disponible para todas las compañías.'
+        string=_('Companies'),
+        help=_('Companies for which this template will be available. If none specified, it will be available for all companies.')
     )
 
     @api.model

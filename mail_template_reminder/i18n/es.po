@@ -1,0 +1,210 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+#	* mail_template_reminder
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-01 12:00+0000\n"
+"PO-Revision-Date: 2024-01-01 12:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: \n"
+"Language: es\n"
+
+#. module: mail_template_reminder
+#: model:ir.model.fields,field_description:mail_template_reminder.field_overdue_reminder_step__reminder_template_id
+msgid "Reminder Template"
+msgstr "Plantilla de Recordatorio"
+
+#. module: mail_template_reminder
+#: model:ir.model.fields,help:mail_template_reminder.field_overdue_reminder_step__reminder_template_id
+msgid "Select the email template that will be used for this reminder"
+msgstr "Seleccione la plantilla de correo que se utilizará para este recordatorio"
+
+#. module: mail_template_reminder
+#: model:ir.model.fields,field_description:mail_template_reminder.field_overdue_reminder_step__mail_body
+msgid "Email Body"
+msgstr "Cuerpo del Correo"
+
+#. module: mail_template_reminder
+#: model:ir.model.fields,field_description:mail_template_reminder.field_mail_template__is_reminder_template
+msgid "Is Reminder Template"
+msgstr "Es Plantilla de Recordatorio"
+
+#. module: mail_template_reminder
+#: model:ir.model.fields,help:mail_template_reminder.field_mail_template__is_reminder_template
+msgid "Check this box if this template will be used for overdue invoice reminders"
+msgstr "Marque esta casilla si esta plantilla se utilizará para recordatorios de facturas vencidas"
+
+#. module: mail_template_reminder
+#: model:ir.model.fields,field_description:mail_template_reminder.field_mail_template__company_ids
+msgid "Companies"
+msgstr "Compañías"
+
+#. module: mail_template_reminder
+#: model:ir.model.fields,help:mail_template_reminder.field_mail_template__company_ids
+msgid "Companies for which this template will be available. If none specified, it will be available for all companies."
+msgstr "Compañías que pueden usar esta plantilla. Si está vacío, todas las compañías pueden usarla."
+
+#. module: mail_template_reminder
+#: code:addons/mail_template_reminder/models/overdue_reminder_step.py:0
+#, python-format
+msgid "You must select a reminder template to continue."
+msgstr "Debe seleccionar una plantilla de recordatorio para continuar."
+
+#. module: mail_template_reminder
+#: code:addons/mail_template_reminder/models/overdue_reminder_step.py:0
+#, python-format
+msgid "Report format '%s' is not supported."
+msgstr "Formato de reporte '%s' no es soportado."
+
+#. module: mail_template_reminder
+#: code:addons/mail_template_reminder/models/overdue_reminder_step.py:0
+#, python-format
+msgid "No reminder templates available for company '%s'. Please create a reminder template or assign one to this company."
+msgstr "No hay plantillas de recordatorio disponibles para la compañía '%s'. Por favor, cree una plantilla de recordatorio o asigne una a esta compañía."
+
+#. module: mail_template_reminder
+#: model:ir.ui.view,arch_db:mail_template_reminder.mail_template_form_inherit
+msgid "Reminder Template"
+msgstr "Plantilla de Recordatorio"
+
+#. module: mail_template_reminder
+#: model:ir.ui.view,arch_db:mail_template_reminder.mail_template_form_inherit
+msgid "Companies"
+msgstr "Compañías"
+
+#. module: mail_template_reminder
+#: model:ir.ui.view,arch_db:mail_template_reminder.overdue_reminder_step_form_inherit
+msgid "Reminder Template"
+msgstr "Plantilla de Recordatorio"
+
+#. module: mail_template_reminder
+#: model:ir.ui.view,arch_db:mail_template_reminder.overdue_reminder_step_tree_inherit
+msgid "Template"
+msgstr "Plantilla"
+
+#. module: mail_template_reminder
+#: model:ir.ui.view,arch_db:mail_template_reminder.overdue_reminder_start_form_inherit
+msgid "Reminder Templates"
+msgstr "Plantillas de Recordatorio"
+
+#. module: mail_template_reminder
+#: model:ir.ui.view,arch_db:mail_template_reminder.overdue_reminder_start_form_inherit
+msgid "Information:"
+msgstr "Información:"
+
+#. module: mail_template_reminder
+#: model:ir.ui.view,arch_db:mail_template_reminder.overdue_reminder_start_form_inherit
+msgid "The first available reminder template for the selected company will be used. Make sure you have at least one template configured before continuing."
+msgstr "Se utilizará la primera plantilla de recordatorio disponible para la compañía seleccionada. Asegúrese de tener al menos una plantilla configurada antes de continuar."
+
+#. module: mail_template_reminder
+#: model:mail.template,name:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Custom Overdue Invoice Reminder"
+msgstr "Recordatorio de Facturas Vencidas Personalizado"
+
+#. module: mail_template_reminder
+#: model:mail.template,subject:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "{{object.company_id.name}} - Overdue Invoice Reminder No. {{object.counter}}"
+msgstr "{{object.company_id.name}} - Recordatorio de Facturas Vencidas N°{{object.counter}}"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Dear customer,"
+msgstr "Estimado/a cliente,"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "According to our records, the following invoices are overdue:"
+msgstr "Según nuestros registros, las siguientes facturas están vencidas:"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Invoice Number"
+msgstr "Número de Factura"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Invoice Date"
+msgstr "Fecha de Factura"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Payment Terms"
+msgstr "Términos de Pago"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Due Date"
+msgstr "Fecha de Vencimiento"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Order Ref."
+msgstr "Ref. Pedido"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Type"
+msgstr "Tipo"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Total Without Tax"
+msgstr "Total Sin Impuestos"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Total With Tax"
+msgstr "Total con Impuestos"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Outstanding Amount"
+msgstr "Saldo Pendiente"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Previous Reminders"
+msgstr "Recordatorios Anteriores"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Total Outstanding Amount in"
+msgstr "Total del Saldo Pendiente en"
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "If you made a payment for these invoices a few days ago, please ignore this email."
+msgstr "Si realizó un pago por estas facturas hace unos días, por favor ignore este correo electrónico."
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "You will find the overdue invoices attached."
+msgstr "Encontrará adjuntas las facturas vencidas."
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Despite several reminders, we are disappointed to see that these overdue invoices remain unpaid. To avoid legal proceedings, we urge you to pay these overdue invoices in the coming days."
+msgstr "A pesar de varios recordatorios, nos decepciona ver que estas facturas vencidas siguen sin pagar. Para evitar procedimientos legales, le instamos a pagar estas facturas vencidas en los próximos días."
+
+#. module: mail_template_reminder
+#: model:mail.template,body_html:mail_template_reminder.custom_overdue_invoice_reminder_mail_template
+msgid "Kind regards,"
+msgstr "Saludos cordiales,"
+
+#. module: mail_template_reminder
+#: model:ir.model.fields,field_description:mail_template_reminder.field_res_partner__reminder_email
+msgid "Reminder Email"
+msgstr "Correo electrónico de recordatorio"
+
+#. module: mail_template_reminder
+#: model:ir.model.fields,help:mail_template_reminder.field_res_partner__reminder_email
+msgid "Email address to use for overdue invoice reminders. If not set, the main email will be used."
+msgstr "Dirección de correo electrónico a utilizar para recordatorios de facturas vencidas. Si no se establece, se utilizará el correo electrónico principal."
