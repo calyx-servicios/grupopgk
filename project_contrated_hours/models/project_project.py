@@ -10,7 +10,7 @@ class ProjectProject(models.Model):
         string='Contrated Hours'
     )
     deviation_project_hours = fields.Float(
-        string="Deviation Project Hours",
+        string="Deviation Project Hours - Calyx",
         compute="_compute_teorical_advance",
         help="Difference between contracted hours and actual timesheet hours."
     )
@@ -154,9 +154,9 @@ class ProjectProject(models.Model):
             rec.advance_deviation_pgk = False
             if rec.contrated_hours:
                 current_month = datetime.today().month
-                rec.billing_multyply_advance = (rec.contrated_hours / 12) * current_month
+                rec.advance_deviation_pgk = (rec.contrated_hours / 12) * current_month
             if rec.total_timesheet_time:
-                rec.advance_deviation_pgk = rec.billing_multyply_advance - rec.total_timesheet_time
+                rec.billing_multyply_advance = rec.billing_multyply_advance - rec.total_timesheet_time
 
     @api.depends('invoice_count')
     def _compute_real_billing(self):

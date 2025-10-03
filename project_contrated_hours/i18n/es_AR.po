@@ -108,8 +108,8 @@ msgstr "Desviación de fecha de entrega"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__deviation_project_hours
-msgid "Deviation Project Hours"
-msgstr "Desvío horas del proyecto"
+msgid "Deviation Project Hours - Calyx"
+msgstr "Desvío de horas - Calyx"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,help:project_contrated_hours.field_project_project__deviation_project_hours
