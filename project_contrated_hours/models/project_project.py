@@ -156,7 +156,7 @@ class ProjectProject(models.Model):
                 current_month = datetime.today().month
                 rec.advance_deviation_pgk = (rec.contrated_hours / 12) * current_month
             if rec.total_timesheet_time:
-                rec.billing_multyply_advance = rec.billing_multyply_advance - rec.total_timesheet_time
+                rec.billing_multyply_advance = rec.advance_deviation_pgk - rec.total_timesheet_time
 
     @api.depends('invoice_count')
     def _compute_real_billing(self):
