@@ -8,5 +8,5 @@ class ResPartner(models.Model):
 
     reminder_email = fields.Char(
         string=_('Reminder Email'),
-        help=_('Email address to use for overdue invoice reminders. If not set, the main email will be used.')
+        help=_('Email address to use specifically for overdue invoice reminders. If not set, the main email will be used.')
     )
