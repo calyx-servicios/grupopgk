@@ -17,11 +17,11 @@ class OverdueReminderStep(models.TransientModel):
         domain="[('is_reminder_template', '=', True), '|', ('company_ids', '=', False), ('company_ids', 'in', [company_id])]",
         help=_('Select the email template that will be used for this reminder')
     )
-    mail_body = fields.Html(
-        related='reminder_template_id.body_html',
-        string=_('Email Body'),
-        readonly=False,
-        store=True
+    reminder_email = fields.Char(
+        related='partner_id.reminder_email',
+        readonly=True,
+        string=_('Reminder Email'),
+        help=_('Email address to use specifically for overdue invoice reminders. If not set, the main email will be used.')
     )
 
     @api.onchange('company_id', 'reminder_type')
