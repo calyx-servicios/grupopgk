@@ -120,8 +120,6 @@ class OverdueReminderStart(models.TransientModel):
         if vals:
             template = self.env['mail.template'].search([
                 ('is_reminder_template', '=', True),
-                '|',
-                ('company_ids', '=', False),
                 ('company_ids', 'in', [self.company_id.id])
             ], limit=1)
             

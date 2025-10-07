@@ -14,7 +14,7 @@ class OverdueReminderStep(models.TransientModel):
     reminder_template_id = fields.Many2one(
         'mail.template',
         string=_('Reminder Template'),
-        domain="[('is_reminder_template', '=', True), '|', ('company_ids', '=', False), ('company_ids', 'in', [company_id])]",
+        domain="[('is_reminder_template', '=', True), ('company_ids', 'in', [company_id])]",
         help=_('Select the email template that will be used for this reminder')
     )
     reminder_email = fields.Char(
@@ -32,8 +32,6 @@ class OverdueReminderStep(models.TransientModel):
         if self.company_id and self.reminder_type == 'mail':
             template = self.env['mail.template'].search([
                 ('is_reminder_template', '=', True),
-                '|',
-                ('company_ids', '=', False),
                 ('company_ids', 'in', [self.env.company.id])
             ], limit=1)
             
@@ -60,8 +58,6 @@ class OverdueReminderStep(models.TransientModel):
             
             template = self.env['mail.template'].search([
                 ('is_reminder_template', '=', True),
-                '|',
-                ('company_ids', '=', False),
                 ('company_ids', 'in', [vals.get('company_id', self.env.company.id)])
             ], limit=1)
             
@@ -101,6 +97,26 @@ class OverdueReminderStep(models.TransientModel):
                 mail_tpl_lang.body_html, self._name, [step.id], "qweb"
             )[step.id]
             mail_body = tools.html_sanitize(mail_body)
+            
+            # Eliminar filas que contengan 'INVISIBLE'
+            import re
+            # Buscar y eliminar líneas que contengan INVISIBLE
+            # Dividir por líneas y filtrar las que contienen INVISIBLE
+            lines = mail_body.split('\n')
+            filtered_lines = []
+            skip_line = False
+            
+            for line in lines:
+                if 'INVISIBLE' in line:
+                    skip_line = True
+                    continue
+                if skip_line and '</tr>' in line:
+                    skip_line = False
+                    continue
+                if not skip_line:
+                    filtered_lines.append(line)
+            
+            mail_body = '\n'.join(filtered_lines)
             
             _logger.info("=== DEBUG TEMPLATE RENDERIZADO ===")
             _logger.info("Subject renderizado: %s", mail_subject)
@@ -276,8 +292,6 @@ class OverdueReminderStep(models.TransientModel):
         if self.reminder_type == 'mail':
             template = self.env['mail.template'].search([
                 ('is_reminder_template', '=', True),
-                '|',
-                ('company_ids', '=', False),
                 ('company_ids', 'in', [self.env.company.id])
             ], limit=1)
             
@@ -292,3 +306,38 @@ class OverdueReminderStep(models.TransientModel):
         for rec in self:
             rec.check_available_templates()
         return super().validate()
+
+    def get_invoice_safe(self, index):
+        """
+        Obtiene una factura de forma segura por índice
+        Si el índice no existe, devuelve valores ficticios
+        """
+        if len(self.invoice_ids) > index:
+            return self.invoice_ids[index]
+        else:
+            # Devolver valores ficticios para que el template no falle
+            class FakeInvoice:
+                def __init__(self):
+                    self.name = 'INVISIBLE'
+                    self.invoice_date = ''
+                    self.invoice_payment_term_id = type('obj', (object,), {'name': ''})()
+                    self.invoice_date_due = ''
+                    self.ref = ''
+                    self.amount_untaxed = 0.0
+                    self.amount_total = 0.0
+                    self.amount_residual = 0.0
+                    self.move_type = 'out_invoice'
+                    # Crear una moneda ficticia con decimal_places y método round
+                    class FakeCurrency:
+                        def __init__(self):
+                            self.name = 'USD'
+                            self.symbol = '$'
+                            self.decimal_places = 2
+                            self.position = 'before'
+                        
+                        def round(self, amount):
+                            return round(amount, self.decimal_places)
+                    
+                    self.currency_id = FakeCurrency()
+                    self.overdue_reminder_counter = 0
+            return FakeInvoice()
