@@ -24,7 +24,6 @@
                         <th style="padding: 5px; border: 1px solid black;">Invoice Date</th>
                         <th style="padding: 5px; border: 1px solid black;">Payment Terms</th>
                         <th style="padding: 5px; border: 1px solid black;">Due Date</th>
-                        <th style="padding: 5px; border: 1px solid black;">Order Ref.</th>
                         <th style="padding: 5px; border: 1px solid black;">Type</th>
                         <th style="padding: 5px; border: 1px solid black;">Total Untaxed</th>
                         <th style="padding: 5px; border: 1px solid black;">Total</th>
@@ -33,98 +32,302 @@
                     </tr>
 
                     <!-- Fila 1: Primera factura -->
-                    <t t-if="len(object.invoice_ids) >= 1">
-                        <tr style="background-color: % if object.invoice_ids[0].move_type == 'out_refund': LightGray % endif">
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[0].name"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[0].invoice_date"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[0].invoice_payment_term_id.name or ''"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[0].invoice_date_due"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[0].ref or ''"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="dict(object.invoice_ids[0].fields_get(allfields=['move_type'])['move_type']['selection'])[object.invoice_ids[0].move_type]"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[0].amount_untaxed * (object.invoice_ids[0].move_type == 'out_refund' and -1 or 1), object.invoice_ids[0].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[0].amount_total * (object.invoice_ids[0].move_type == 'out_refund' and -1 or 1), object.invoice_ids[0].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[0].amount_residual * (object.invoice_ids[0].move_type == 'out_refund' and -1 or 1), object.invoice_ids[0].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[0].overdue_reminder_counter"/></td>
+                    <t t-if="object.get_invoice_safe(0).name and object.get_invoice_safe(0).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(0).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(0).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(0).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(0).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(0).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(0).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(0).amount_untaxed * (object.get_invoice_safe(0).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(0).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(0).amount_total * (object.get_invoice_safe(0).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(0).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(0).amount_residual * (object.get_invoice_safe(0).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(0).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(0).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
 
                     <!-- Fila 2: Segunda factura -->
-                    <t t-if="len(object.invoice_ids) >= 2">
-                        <tr style="background-color: % if object.invoice_ids[1].move_type == 'out_refund': LightGray % endif">
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[1].name"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[1].invoice_date"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[1].invoice_payment_term_id.name or ''"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[1].invoice_date_due"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[1].ref or ''"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="dict(object.invoice_ids[1].fields_get(allfields=['move_type'])['move_type']['selection'])[object.invoice_ids[1].move_type]"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[1].amount_untaxed * (object.invoice_ids[1].move_type == 'out_refund' and -1 or 1), object.invoice_ids[1].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[1].amount_total * (object.invoice_ids[1].move_type == 'out_refund' and -1 or 1), object.invoice_ids[1].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[1].amount_residual * (object.invoice_ids[1].move_type == 'out_refund' and -1 or 1), object.invoice_ids[1].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[1].overdue_reminder_counter"/></td>
+                    <t t-if="object.get_invoice_safe(1).name and object.get_invoice_safe(1).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(1).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(1).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(1).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(1).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(1).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(1).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(1).amount_untaxed * (object.get_invoice_safe(1).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(1).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(1).amount_total * (object.get_invoice_safe(1).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(1).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(1).amount_residual * (object.get_invoice_safe(1).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(1).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(1).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
 
                     <!-- Fila 3: Tercera factura -->
-                    <t t-if="len(object.invoice_ids) >= 3">
-                        <tr style="background-color: % if object.invoice_ids[2].move_type == 'out_refund': LightGray % endif">
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[2].name"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[2].invoice_date"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[2].invoice_payment_term_id.name or ''"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[2].invoice_date_due"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[2].ref or ''"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="dict(object.invoice_ids[2].fields_get(allfields=['move_type'])['move_type']['selection'])[object.invoice_ids[2].move_type]"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[2].amount_untaxed * (object.invoice_ids[2].move_type == 'out_refund' and -1 or 1), object.invoice_ids[2].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[2].amount_total * (object.invoice_ids[2].move_type == 'out_refund' and -1 or 1), object.invoice_ids[2].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[2].amount_residual * (object.invoice_ids[2].move_type == 'out_refund' and -1 or 1), object.invoice_ids[2].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[2].overdue_reminder_counter"/></td>
+                    <t t-if="object.get_invoice_safe(2).name and object.get_invoice_safe(2).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(2).move_type == 'out_refund': LightGray % endif">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(2).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(2).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(2).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(2).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(2).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(2).amount_untaxed * (object.get_invoice_safe(2).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(2).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(2).amount_total * (object.get_invoice_safe(2).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(2).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(2).amount_residual * (object.get_invoice_safe(2).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(2).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(2).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
 
                     <!-- Fila 4: Cuarta factura -->
-                    <t t-if="len(object.invoice_ids) >= 4">
-                        <tr style="background-color: % if object.invoice_ids[3].move_type == 'out_refund': LightGray % endif">
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[3].name"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[3].invoice_date"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[3].invoice_payment_term_id.name or ''"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[3].invoice_date_due"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[3].ref or ''"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="dict(object.invoice_ids[3].fields_get(allfields=['move_type'])['move_type']['selection'])[object.invoice_ids[3].move_type]"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[3].amount_untaxed * (object.invoice_ids[3].move_type == 'out_refund' and -1 or 1), object.invoice_ids[3].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[3].amount_total * (object.invoice_ids[3].move_type == 'out_refund' and -1 or 1), object.invoice_ids[3].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[3].amount_residual * (object.invoice_ids[3].move_type == 'out_refund' and -1 or 1), object.invoice_ids[3].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[3].overdue_reminder_counter"/></td>
+                    <t t-if="object.get_invoice_safe(3).name and object.get_invoice_safe(3).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(3).move_type == 'out_refund': LightGray % endif">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(3).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(3).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(3).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(3).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(3).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(3).amount_untaxed * (object.get_invoice_safe(3).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(3).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(3).amount_total * (object.get_invoice_safe(3).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(3).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(3).amount_residual * (object.get_invoice_safe(3).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(3).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(3).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
 
                     <!-- Fila 5: Quinta factura -->
-                    <t t-if="len(object.invoice_ids) >= 5">
-                        <tr style="background-color: % if object.invoice_ids[4].move_type == 'out_refund': LightGray % endif">
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[4].name"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[4].invoice_date"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[4].invoice_payment_term_id.name or ''"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[4].invoice_date_due"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[4].ref or ''"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="dict(object.invoice_ids[4].fields_get(allfields=['move_type'])['move_type']['selection'])[object.invoice_ids[4].move_type]"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[4].amount_untaxed * (object.invoice_ids[4].move_type == 'out_refund' and -1 or 1), object.invoice_ids[4].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[4].amount_total * (object.invoice_ids[4].move_type == 'out_refund' and -1 or 1), object.invoice_ids[4].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[4].amount_residual * (object.invoice_ids[4].move_type == 'out_refund' and -1 or 1), object.invoice_ids[4].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[4].overdue_reminder_counter"/></td>
+                    <t t-if="object.get_invoice_safe(4).name and object.get_invoice_safe(4).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(4).move_type == 'out_refund': LightGray % endif">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(4).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(4).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(4).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(4).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(4).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(4).amount_untaxed * (object.get_invoice_safe(4).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(4).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(4).amount_total * (object.get_invoice_safe(4).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(4).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(4).amount_residual * (object.get_invoice_safe(4).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(4).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(4).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
 
                     <!-- Fila 6: Sexta factura -->
-                    <t t-if="len(object.invoice_ids) >= 5">
-                        <tr style="background-color: % if object.invoice_ids[5].move_type == 'out_refund': LightGray % endif">
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[5].name"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[5].invoice_date"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[5].invoice_payment_term_id.name or ''"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[5].invoice_date_due"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[5].ref or ''"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="dict(object.invoice_ids[5].fields_get(allfields=['move_type'])['move_type']['selection'])[object.invoice_ids[5].move_type]"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[5].amount_untaxed * (object.invoice_ids[5].move_type == 'out_refund' and -1 or 1), object.invoice_ids[5].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[5].amount_total * (object.invoice_ids[5].move_type == 'out_refund' and -1 or 1), object.invoice_ids[5].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.invoice_ids[5].amount_residual * (object.invoice_ids[5].move_type == 'out_refund' and -1 or 1), object.invoice_ids[5].currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.invoice_ids[5].overdue_reminder_counter"/></td>
+                    <t t-if="object.get_invoice_safe(5).name and object.get_invoice_safe(5).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(5).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(5).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(5).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(5).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(5).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(5).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(5).amount_untaxed * (object.get_invoice_safe(5).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(5).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(5).amount_total * (object.get_invoice_safe(5).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(5).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(5).amount_residual * (object.get_invoice_safe(5).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(5).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(5).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 7: Séptima factura -->
+                    <t t-if="object.get_invoice_safe(6).name and object.get_invoice_safe(6).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(6).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(6).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(6).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(6).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(6).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(6).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(6).amount_untaxed * (object.get_invoice_safe(6).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(6).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(6).amount_total * (object.get_invoice_safe(6).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(6).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(6).amount_residual * (object.get_invoice_safe(6).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(6).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(6).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 8: Octava factura -->
+                    <t t-if="object.get_invoice_safe(7).name and object.get_invoice_safe(7).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(7).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(7).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(7).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(7).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(7).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(7).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(7).amount_untaxed * (object.get_invoice_safe(7).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(7).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(7).amount_total * (object.get_invoice_safe(7).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(7).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(7).amount_residual * (object.get_invoice_safe(7).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(7).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(7).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 9: Novena factura -->
+                    <t t-if="object.get_invoice_safe(8).name and object.get_invoice_safe(8).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(8).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(8).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(8).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(8).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(8).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(8).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(8).amount_untaxed * (object.get_invoice_safe(8).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(8).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(8).amount_total * (object.get_invoice_safe(8).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(8).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(8).amount_residual * (object.get_invoice_safe(8).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(8).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(8).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 10: Décima factura -->
+                    <t t-if="object.get_invoice_safe(9).name and object.get_invoice_safe(9).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(9).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(9).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(9).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(9).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(9).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(9).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(9).amount_untaxed * (object.get_invoice_safe(9).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(9).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(9).amount_total * (object.get_invoice_safe(9).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(9).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(9).amount_residual * (object.get_invoice_safe(9).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(9).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(9).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 11: Undécima factura -->
+                    <t t-if="object.get_invoice_safe(10).name and object.get_invoice_safe(10).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(10).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(10).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(10).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(10).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(10).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(10).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(10).amount_untaxed * (object.get_invoice_safe(10).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(10).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(10).amount_total * (object.get_invoice_safe(10).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(10).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(10).amount_residual * (object.get_invoice_safe(10).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(10).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(10).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 12: Duodécima factura -->
+                    <t t-if="object.get_invoice_safe(11).name and object.get_invoice_safe(11).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(11).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(11).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(11).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(11).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(11).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(11).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(11).amount_untaxed * (object.get_invoice_safe(11).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(11).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(11).amount_total * (object.get_invoice_safe(11).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(11).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(11).amount_residual * (object.get_invoice_safe(11).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(11).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(11).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 13: Decimotercera factura -->
+                    <t t-if="object.get_invoice_safe(12).name and object.get_invoice_safe(12).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(12).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(12).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(12).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(12).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(12).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(12).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(12).amount_untaxed * (object.get_invoice_safe(12).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(12).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(12).amount_total * (object.get_invoice_safe(12).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(12).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(12).amount_residual * (object.get_invoice_safe(12).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(12).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(12).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 14: Decimocuarta factura -->
+                    <t t-if="object.get_invoice_safe(13).name and object.get_invoice_safe(13).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(13).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(13).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(13).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(13).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(13).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(13).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(13).amount_untaxed * (object.get_invoice_safe(13).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(13).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(13).amount_total * (object.get_invoice_safe(13).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(13).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(13).amount_residual * (object.get_invoice_safe(13).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(13).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(13).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 15: Decimoquinta factura -->
+                    <t t-if="object.get_invoice_safe(14).name and object.get_invoice_safe(14).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(14).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(14).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(14).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(14).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(14).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(14).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(14).amount_untaxed * (object.get_invoice_safe(14).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(14).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(14).amount_total * (object.get_invoice_safe(14).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(14).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(14).amount_residual * (object.get_invoice_safe(14).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(14).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(14).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 16: Decimosexta factura -->
+                    <t t-if="object.get_invoice_safe(15).name and object.get_invoice_safe(15).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(15).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(15).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(15).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(15).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(15).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(15).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(15).amount_untaxed * (object.get_invoice_safe(15).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(15).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(15).amount_total * (object.get_invoice_safe(15).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(15).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(15).amount_residual * (object.get_invoice_safe(15).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(15).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(15).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 17: Decimoséptima factura -->
+                    <t t-if="object.get_invoice_safe(16).name and object.get_invoice_safe(16).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(16).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(16).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(16).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(16).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(16).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(16).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(16).amount_untaxed * (object.get_invoice_safe(16).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(16).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(16).amount_total * (object.get_invoice_safe(16).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(16).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(16).amount_residual * (object.get_invoice_safe(16).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(16).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(16).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 18: Decimoctava factura -->
+                    <t t-if="object.get_invoice_safe(17).name and object.get_invoice_safe(17).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(17).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(17).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(17).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(17).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(17).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(17).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(17).amount_untaxed * (object.get_invoice_safe(17).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(17).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(17).amount_total * (object.get_invoice_safe(17).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(17).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(17).amount_residual * (object.get_invoice_safe(17).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(17).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(17).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 19: Decimonovena factura -->
+                    <t t-if="object.get_invoice_safe(18).name and object.get_invoice_safe(18).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(18).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(18).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(18).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(18).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(18).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(18).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(18).amount_untaxed * (object.get_invoice_safe(18).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(18).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(18).amount_total * (object.get_invoice_safe(18).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(18).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(18).amount_residual * (object.get_invoice_safe(18).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(18).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(18).overdue_reminder_counter"/></td>
+                        </tr>
+                    </t>
+
+                    <!-- Fila 20: Vigésima factura -->
+                    <t t-if="object.get_invoice_safe(19).name and object.get_invoice_safe(19).name != 'INVISIBLE'">
+                        <tr style="background-color: % if object.get_invoice_safe(19).move_type == 'out_refund': LightGray % endif;">
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(19).name"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(19).invoice_date"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(19).invoice_payment_term_id.name or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(19).invoice_date_due"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(19).ref or ''"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(19).amount_untaxed * (object.get_invoice_safe(19).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(19).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(19).amount_total * (object.get_invoice_safe(19).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(19).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(19).amount_residual * (object.get_invoice_safe(19).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(19).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(19).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
 
