@@ -96,9 +96,13 @@ def find_record_by_cuit_or_name(env, model_name, name=None, cuit=None, errors=No
         aliases = AliasModel.search(domain) if name_norm != 'na' else False
         
         if aliases:
-            normalized_ids = aliases.mapped('normalized_id').filtered(lambda n: getattr(n, field_name))                    
+            # Obtener normalized_ids como recordset, filtrando los que tienen el field_name
+            all_normalized = aliases.mapped('normalized_id')
+            normalized_ids = all_normalized.filtered(lambda n: getattr(n, field_name, False))
             records = normalized_ids.mapped(field_name)
-            unique_records = list(set(records))
+            # Convertir a lista para eliminar duplicados, luego volver a recordset
+            unique_ids = list(set(records.ids))
+            unique_records = records.browse(unique_ids)
             
             if unique_records:
                 if model_name == 'res.partner':
@@ -107,6 +111,7 @@ def find_record_by_cuit_or_name(env, model_name, name=None, cuit=None, errors=No
                         record = unique_records[0]
                     else:
                         # Buscar si hay algún partner con categoría 'Cliente'
+                        # unique_records ahora es un recordset, podemos usar .filtered()
                         client_partners = unique_records.filtered(lambda p: 'Cliente' in p.category_id.mapped('name'))
                         if len(client_partners) == 1:
                             record = client_partners[0]
@@ -114,13 +119,13 @@ def find_record_by_cuit_or_name(env, model_name, name=None, cuit=None, errors=No
                         else:
                             record = False
                             if client_partners:
-                                errors.append(_("Multiple partners with 'Cliente' category found for '%s': %s") % (name, [p.id for p in client_partners]))
+                                errors.append(_("Multiple partners with 'Cliente' category found for '%s': %s") % (name, client_partners.ids))
                             else:
-                                errors.append(_("No partner with 'Cliente' category found for '%s'. Available partners: %s") % (name, [p.id for p in unique_records]))
+                                errors.append(_("No partner with 'Cliente' category found for '%s'. Available partners: %s") % (name, unique_records.ids))
                 else:
                     if len(unique_records) > 1:
                         errors.append(
-                            _("Multiple distinct records found for '%s' in %s: %s. Process stopped.") % (name, model_name, [r.id for r in unique_records])
+                            _("Multiple distinct records found for '%s' in %s: %s. Process stopped.") % (name, model_name, unique_records.ids)
                         )
                     record = unique_records[0]
             else:
