@@ -157,19 +157,43 @@ class OverdueReminderStep(models.TransientModel):
         """
         Actualizar el asunto y cuerpo del correo cuando cambie la plantilla
         """
-        if self.reminder_template_id:
+        if self.reminder_template_id and self.commercial_partner_id:
             try:
                 template_lang = self.reminder_template_id.with_context(
                     lang=self.commercial_partner_id.lang or 'en_US'
                 )
                 
+                # Renderizar el asunto
+                mail_subject = False
                 if template_lang.subject:
                     mail_subject = template_lang._render_template(
                         template_lang.subject, self._name, [self.id]
                     )[self.id]
-                    self.mail_subject = mail_subject                
+                
+                # Renderizar el cuerpo del correo
+                mail_body = False
+                if template_lang.body_html:
+                    mail_body = template_lang._render_template(
+                        template_lang.body_html, self._name, [self.id], "qweb"
+                    )[self.id]
+                    mail_body = tools.html_sanitize(mail_body)
+
+                # Actualizar los campos y retornar explícitamente los valores
+                self.mail_subject = mail_subject
+                self.mail_body = mail_body
+                
+                # Retornar un diccionario para forzar la actualización en la UI
+                return {
+                    'value': {
+                        'mail_subject': mail_subject,
+                        'mail_body': mail_body,
+                    }
+                }
+                    
             except Exception as e:
-                pass
+                _logger.warning("Error rendering template %s: %s", 
+                              self.reminder_template_id.name, str(e))
+                return {}
 
     def _get_overdue_invoice_reminder_template(self):
         """
