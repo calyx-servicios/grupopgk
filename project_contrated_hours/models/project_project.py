@@ -118,11 +118,9 @@ class ProjectProject(models.Model):
     def _compute_advance_billing(self):
         for rec in self:
             rec.advance_billing = False
-            if rec.total_project_amount and rec.contrated_hours and rec.total_timesheet_time:
-                tpa = rec.total_project_amount
-                c_hours = rec.contrated_hours
-                tt_time = rec.total_timesheet_time
-                rec.advance_billing = (tpa / c_hours) * tt_time
+            if rec.contrated_hours:
+                current_month = datetime.today().month
+                rec.advance_billing = (rec.contrated_hours / 12) * current_month
 
     def _compute_remaining_hours(self):
         """ Enzo: I made a variable abbreviation to avoid very long lines """
@@ -152,11 +150,9 @@ class ProjectProject(models.Model):
         for rec in self:
             rec.billing_multyply_advance = False
             rec.advance_deviation_pgk = False
-            if rec.contrated_hours:
-                current_month = datetime.today().month
-                rec.advance_deviation_pgk = (rec.contrated_hours / 12) * current_month
-            if rec.total_timesheet_time:
-                rec.billing_multyply_advance = rec.advance_deviation_pgk - rec.total_timesheet_time
+            if rec.contrated_hours and rec.total_timesheet_time:
+                rec.billing_multyply_advance = (rec.total_project_amount / rec.contrated_hours) * rec.total_timesheet_time
+                rec.advance_deviation_pgk = rec.billing_multyply_advance - rec.total_timesheet_time
 
     @api.depends('invoice_count')
     def _compute_real_billing(self):
