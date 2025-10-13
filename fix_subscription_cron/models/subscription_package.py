@@ -56,11 +56,11 @@ class SubscriptionPackage(models.Model):
         return dict(pending=pending_subscription, closed=close_subscription)
 
     def next_invoice_or_close(self):
-        subscriptions = self.env['subscription.package'].search([('stage_category', '=', 'progress')])
+        subscriptions = self.env['subscription.package'].sudo().search([('stage_category', '=', 'progress')])
         today_date = fields.Date.today()
         for pending_subscription in subscriptions.filtered(lambda s: s.to_renew == False):
             if pending_subscription.next_invoice_date == today_date:
-                invoice_count = self.env['account.move'].search_count([('subscription_id', '=', pending_subscription.id)])
+                invoice_count = self.env['account.move'].sudo().search_count([('subscription_id', '=', pending_subscription.id)])
                 if pending_subscription.plan_id.limit_choice == 'custom' and invoice_count >= pending_subscription.plan_id.limit_count:
                     pending_subscription.set_close()
                 elif pending_subscription.plan_id.limit_choice == 'ones' and invoice_count >= 1:
