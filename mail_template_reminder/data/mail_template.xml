@@ -41,7 +41,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(0).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(0).amount_untaxed * (object.get_invoice_safe(0).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(0).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(0).amount_total * (object.get_invoice_safe(0).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(0).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(0).amount_residual * (object.get_invoice_safe(0).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(0).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(0) * (object.get_invoice_safe(0).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(0).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(0).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -56,7 +56,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(1).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(1).amount_untaxed * (object.get_invoice_safe(1).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(1).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(1).amount_total * (object.get_invoice_safe(1).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(1).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(1).amount_residual * (object.get_invoice_safe(1).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(1).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(1) * (object.get_invoice_safe(1).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(1).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(1).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -71,7 +71,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(2).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(2).amount_untaxed * (object.get_invoice_safe(2).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(2).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(2).amount_total * (object.get_invoice_safe(2).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(2).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(2).amount_residual * (object.get_invoice_safe(2).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(2).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(2) * (object.get_invoice_safe(2).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(2).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(2).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -86,7 +86,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(3).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(3).amount_untaxed * (object.get_invoice_safe(3).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(3).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(3).amount_total * (object.get_invoice_safe(3).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(3).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(3).amount_residual * (object.get_invoice_safe(3).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(3).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(3) * (object.get_invoice_safe(3).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(3).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(3).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -101,7 +101,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(4).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(4).amount_untaxed * (object.get_invoice_safe(4).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(4).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(4).amount_total * (object.get_invoice_safe(4).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(4).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(4).amount_residual * (object.get_invoice_safe(4).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(4).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(4) * (object.get_invoice_safe(4).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(4).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(4).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -116,7 +116,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(5).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(5).amount_untaxed * (object.get_invoice_safe(5).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(5).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(5).amount_total * (object.get_invoice_safe(5).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(5).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(5).amount_residual * (object.get_invoice_safe(5).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(5).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(5) * (object.get_invoice_safe(5).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(5).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(5).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -131,7 +131,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(6).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(6).amount_untaxed * (object.get_invoice_safe(6).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(6).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(6).amount_total * (object.get_invoice_safe(6).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(6).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(6).amount_residual * (object.get_invoice_safe(6).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(6).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(6) * (object.get_invoice_safe(6).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(6).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(6).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -146,7 +146,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(7).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(7).amount_untaxed * (object.get_invoice_safe(7).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(7).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(7).amount_total * (object.get_invoice_safe(7).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(7).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(7).amount_residual * (object.get_invoice_safe(7).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(7).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(7) * (object.get_invoice_safe(7).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(7).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(7).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -161,7 +161,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(8).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(8).amount_untaxed * (object.get_invoice_safe(8).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(8).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(8).amount_total * (object.get_invoice_safe(8).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(8).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(8).amount_residual * (object.get_invoice_safe(8).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(8).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(8) * (object.get_invoice_safe(8).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(8).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(8).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -176,7 +176,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(9).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(9).amount_untaxed * (object.get_invoice_safe(9).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(9).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(9).amount_total * (object.get_invoice_safe(9).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(9).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(9).amount_residual * (object.get_invoice_safe(9).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(9).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(9) * (object.get_invoice_safe(9).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(9).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(9).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -191,7 +191,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(10).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(10).amount_untaxed * (object.get_invoice_safe(10).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(10).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(10).amount_total * (object.get_invoice_safe(10).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(10).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(10).amount_residual * (object.get_invoice_safe(10).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(10).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(10) * (object.get_invoice_safe(10).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(10).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(10).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -206,7 +206,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(11).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(11).amount_untaxed * (object.get_invoice_safe(11).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(11).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(11).amount_total * (object.get_invoice_safe(11).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(11).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(11).amount_residual * (object.get_invoice_safe(11).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(11).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(11) * (object.get_invoice_safe(11).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(11).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(11).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -221,7 +221,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(12).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(12).amount_untaxed * (object.get_invoice_safe(12).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(12).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(12).amount_total * (object.get_invoice_safe(12).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(12).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(12).amount_residual * (object.get_invoice_safe(12).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(12).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(12) * (object.get_invoice_safe(12).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(12).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(12).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -236,7 +236,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(13).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(13).amount_untaxed * (object.get_invoice_safe(13).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(13).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(13).amount_total * (object.get_invoice_safe(13).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(13).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(13).amount_residual * (object.get_invoice_safe(13).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(13).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(13) * (object.get_invoice_safe(13).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(13).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(13).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -251,7 +251,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(14).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(14).amount_untaxed * (object.get_invoice_safe(14).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(14).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(14).amount_total * (object.get_invoice_safe(14).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(14).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(14).amount_residual * (object.get_invoice_safe(14).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(14).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(14) * (object.get_invoice_safe(14).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(14).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(14).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -266,7 +266,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(15).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(15).amount_untaxed * (object.get_invoice_safe(15).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(15).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(15).amount_total * (object.get_invoice_safe(15).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(15).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(15).amount_residual * (object.get_invoice_safe(15).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(15).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(15) * (object.get_invoice_safe(15).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(15).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(15).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -281,7 +281,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(16).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(16).amount_untaxed * (object.get_invoice_safe(16).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(16).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(16).amount_total * (object.get_invoice_safe(16).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(16).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(16).amount_residual * (object.get_invoice_safe(16).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(16).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(16) * (object.get_invoice_safe(16).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(16).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(16).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -296,7 +296,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(17).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(17).amount_untaxed * (object.get_invoice_safe(17).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(17).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(17).amount_total * (object.get_invoice_safe(17).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(17).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(17).amount_residual * (object.get_invoice_safe(17).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(17).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(17) * (object.get_invoice_safe(17).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(17).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(17).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -311,7 +311,7 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(18).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(18).amount_untaxed * (object.get_invoice_safe(18).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(18).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(18).amount_total * (object.get_invoice_safe(18).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(18).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(18).amount_residual * (object.get_invoice_safe(18).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(18).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(18) * (object.get_invoice_safe(18).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(18).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(18).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
@@ -326,30 +326,42 @@
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(19).ref or ''"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(19).amount_untaxed * (object.get_invoice_safe(19).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(19).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(19).amount_total * (object.get_invoice_safe(19).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(19).currency_id)"/></td>
-                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_invoice_safe(19).amount_residual * (object.get_invoice_safe(19).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(19).currency_id)"/></td>
+                            <td style="padding: 5px; border: 1px solid black; text-align: right;"><t t-out="format_amount(object.get_residual_by_index(19) * (object.get_invoice_safe(19).move_type == 'out_refund' and -1 or 1), object.get_invoice_safe(19).currency_id)"/></td>
                             <td style="padding: 5px; border: 1px solid black;"><t t-out="object.get_invoice_safe(19).overdue_reminder_counter"/></td>
                         </tr>
                     </t>
-
-                    <t t-foreach="object.total_residual()" t-as="total_residual">
-                        <tr>
-                            <td/>
-                            <td/>
-                            <td/>
-                            <td/>
-                            <td/>
-                            <td/>
-                            <td colspan="2" style="padding: 5px; border: 1px solid black; font-weight: bold; text-align: right;">
-                                Total Residual in
-                                <t t-out="total_residual[0].name"/>
-                                :
-                            </td>
-                            <td style="padding: 5px; border: 1px solid black; font-weight: bold; text-align: right;">
-                                <t t-out="format_amount(total_residual[1], total_residual[0])"/>
-                            </td>
-                            <td/>
-                        </tr>
-                    </t>
+<!-- Total ARS -->
+                    <tr>
+                        <td style="border: 0px solid black;"/>
+                        <td style="border: 0px solid black;"/>
+                        <td style="border: 0px solid black;"/>
+                        <td style="border: 0px solid black;"/>
+                        <td style="border: 0px solid black;"/>
+                        <td colspan="2" style="padding: 5px; border: 1px solid black; font-weight: bold; text-align: right; background-color: #f0f0f0;">
+                            Total Residual in ARS:
+                        </td>
+                        <td style="padding: 5px; border: 1px solid black; font-weight: bold; text-align: right; background-color: #f0f0f0;">
+                            $ <t t-out="'{:,.2f}'.format(object.total_ars)"/>
+                        </td>
+                        <td style="border: 1px solid black;"/>
+                    </tr>
+                    <!-- Totales por moneda - Filas estáticas -->
+                    <!-- Total USD -->
+                    <tr>
+                        <td style="border: 0px solid black;"/>
+                        <td style="border: 0px solid black;"/>
+                        <td style="border: 0px solid black;"/>
+                        <td style="border: 0px solid black;"/>
+                        <td style="border: 0px solid black;"/>
+                        <td colspan="2" style="padding: 5px; border: 1px solid black; font-weight: bold; text-align: right; background-color: #f0f0f0;">
+                            Total Residual in USD:
+                        </td>
+                        <td style="padding: 5px; border: 1px solid black; font-weight: bold; text-align: right; background-color: #f0f0f0;">
+                            $ <t t-out="'{:,.2f}'.format(object.total_usd)"/>
+                        </td>
+                        <td style="border: 1px solid black;"/>
+                    </tr>
+                    
                 </table>
 
                 <p>If you made a payment for these invoices a few days ago, please ignore this email.</p>

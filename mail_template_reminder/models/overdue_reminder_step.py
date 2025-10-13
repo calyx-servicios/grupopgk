@@ -13,16 +13,61 @@ class OverdueReminderStep(models.TransientModel):
 
     reminder_template_id = fields.Many2one(
         'mail.template',
-        string=_('Reminder Template'),
+        string='Plantilla de recordatorio',
         domain="[('is_reminder_template', '=', True), ('company_ids', 'in', [company_id])]",
         help=_('Select the email template that will be used for this reminder')
     )
     reminder_email = fields.Char(
         related='partner_id.reminder_email',
         readonly=True,
-        string=_('Reminder Email'),
+        string='Correo electrónico',
         help=_('Email address to use specifically for overdue invoice reminders. If not set, the main email will be used.')
     )
+    
+    invoices_data_json = fields.Text(
+        string='Invoices Data JSON'
+    )
+    
+    total_usd = fields.Float(
+        string='Total USD',
+        help='Total residual amount in USD'
+    )
+    
+    total_ars = fields.Float(
+        string='Total ARS',
+        help='Total residual amount in ARS (Pesos)'
+    )
+
+    def _filter_invisible_lines(self, mail_body):
+        """
+        Filtrar y eliminar las líneas que contienen 'INVISIBLE' del body HTML
+        """
+        lines = mail_body.split('\n')
+        filtered_lines = []
+        skip_line = False
+        
+        for line in lines:
+            if 'INVISIBLE' in line:
+                skip_line = True
+                continue
+            if skip_line and '</tr>' in line:
+                skip_line = False
+                continue
+            if not skip_line:
+                filtered_lines.append(line)
+        
+        return '\n'.join(filtered_lines)
+    
+    def get_invoices_from_json(self):
+        """
+        Obtener los datos de las facturas desde el JSON guardado
+        Esto permite acceder a los residuales correctos en el onchange
+        Retorna una lista: [{id, amount_residual}, ...]
+        """
+        if self.invoices_data_json:
+            import json
+            return json.loads(self.invoices_data_json)
+        return []
 
     @api.onchange('company_id', 'reminder_type')
     def _onchange_company_reminder_type(self):
@@ -74,6 +119,15 @@ class OverdueReminderStep(models.TransientModel):
         
         _logger.info("Registro creado con ID: %s", step.id)
         
+        # ORDENAR LAS FACTURAS DE MÁS VIEJA A MÁS NUEVA
+        if step.invoice_ids:
+            # Ordenar por fecha de factura, luego por fecha de vencimiento
+            sorted_invoices = step.invoice_ids.sorted(
+                key=lambda inv: (inv.invoice_date or fields.Date.min, inv.invoice_date_due or fields.Date.min)
+            )
+            step.invoice_ids = sorted_invoices
+            _logger.info("Facturas ordenadas de más vieja a más nueva")
+        
         # Procesar nuestro template personalizado
         if step.reminder_template_id:
             commercial_partner = self.env["res.partner"].browse(
@@ -84,8 +138,45 @@ class OverdueReminderStep(models.TransientModel):
             _logger.info("=== DEBUG FACTURAS ===")
             _logger.info("step.invoice_ids: %s", step.invoice_ids)
             _logger.info("Número de facturas: %s", len(step.invoice_ids))
+            
+            # Guardar los datos de las facturas en JSON para usarlos en el onchange
+            import json
+            invoices_data = []  # Volver a usar lista como antes
+            for index, inv in enumerate(step.invoice_ids):
+                _logger.info("Factura [%s]: %s (ID: %s) - Fecha: %s - Saldo: %s", index, inv.name, inv.id, inv.invoice_date, inv.amount_residual)
+                invoices_data.append({
+                    'index': index,
+                    'amount_residual': inv.amount_residual,
+                })
+
+            step.invoices_data_json = json.dumps(invoices_data)
+            _logger.info("Datos de facturas guardados en JSON: %s facturas", len(invoices_data))
+            
+            # Calcular totales por moneda
+            total_usd = 0.0
+            total_ars = 0.0
+            
             for inv in step.invoice_ids:
-                _logger.info("Factura: %s - Fecha: %s - Saldo: %s", inv.name, inv.invoice_date, inv.amount_residual)
+                # Ajustar el signo según el tipo de factura (refund es negativo)
+                amount = inv.amount_residual * (inv.move_type == 'out_refund' and -1 or 1)
+                
+                # Identificar la moneda y sumar al total correspondiente
+                if inv.currency_id.name == 'USD':
+                    total_usd += amount
+                elif inv.currency_id.name == 'PES':
+                    total_ars += amount
+                else:
+                    # Para otras monedas, loguear para debug
+                    _logger.warning("Moneda no contemplada: %s para factura %s", 
+                                  inv.currency_id.name, inv.name)
+            
+            _logger.info("=== TOTALES POR MONEDA ===")
+            _logger.info("Total USD: %s", total_usd)
+            _logger.info("Total ARS: %s", total_ars)
+            
+            # Guardar los totales
+            step.total_usd = total_usd
+            step.total_ars = total_ars
             
             mail_tpl_lang = step.reminder_template_id.with_context(
                 lang=commercial_partner.lang or "en_US"
@@ -98,25 +189,8 @@ class OverdueReminderStep(models.TransientModel):
             )[step.id]
             mail_body = tools.html_sanitize(mail_body)
             
-            # Eliminar filas que contengan 'INVISIBLE'
-            import re
-            # Buscar y eliminar líneas que contengan INVISIBLE
-            # Dividir por líneas y filtrar las que contienen INVISIBLE
-            lines = mail_body.split('\n')
-            filtered_lines = []
-            skip_line = False
-            
-            for line in lines:
-                if 'INVISIBLE' in line:
-                    skip_line = True
-                    continue
-                if skip_line and '</tr>' in line:
-                    skip_line = False
-                    continue
-                if not skip_line:
-                    filtered_lines.append(line)
-            
-            mail_body = '\n'.join(filtered_lines)
+            # Filtrar líneas invisibles
+            mail_body = step._filter_invisible_lines(mail_body)
             
             _logger.info("=== DEBUG TEMPLATE RENDERIZADO ===")
             _logger.info("Subject renderizado: %s", mail_subject)
@@ -128,28 +202,6 @@ class OverdueReminderStep(models.TransientModel):
                     "mail_body": mail_body,
                 }
             )
-        else:
-            # Fallback: usar el template por defecto de OCA si no hay template seleccionado
-            commercial_partner = self.env["res.partner"].browse(
-                vals["commercial_partner_id"]
-            )
-            xmlid = self._get_overdue_invoice_reminder_template()
-            mail_tpl = self.env.ref(xmlid)
-            mail_tpl_lang = mail_tpl.with_context(lang=commercial_partner.lang or "en_US")
-            mail_subject = mail_tpl_lang._render_template(
-                mail_tpl_lang.subject, self._name, [step.id]
-            )[step.id]
-            mail_body = mail_tpl_lang._render_template(
-                mail_tpl_lang.body_html, self._name, [step.id], "qweb"
-            )[step.id]
-            mail_body = tools.html_sanitize(mail_body)
-            step.write(
-                {
-                    "mail_subject": mail_subject,
-                    "mail_body": mail_body,
-                }
-            )
-        
         return step
 
     @api.onchange('reminder_template_id')
@@ -159,6 +211,9 @@ class OverdueReminderStep(models.TransientModel):
         """
         if self.reminder_template_id and self.commercial_partner_id:
             try:
+                # El JSON ya fue creado en create() con los residuales correctos
+                # No intentar recrearlo aquí porque los residuales computados estarían en 0
+                
                 template_lang = self.reminder_template_id.with_context(
                     lang=self.commercial_partner_id.lang or 'en_US'
                 )
@@ -177,6 +232,9 @@ class OverdueReminderStep(models.TransientModel):
                         template_lang.body_html, self._name, [self.id], "qweb"
                     )[self.id]
                     mail_body = tools.html_sanitize(mail_body)
+                    
+                    # Filtrar líneas invisibles
+                    mail_body = self._filter_invisible_lines(mail_body)
 
                 # Actualizar los campos y retornar explícitamente los valores
                 self.mail_subject = mail_subject
@@ -191,8 +249,8 @@ class OverdueReminderStep(models.TransientModel):
                 }
                     
             except Exception as e:
-                _logger.warning("Error rendering template %s: %s", 
-                              self.reminder_template_id.name, str(e))
+                _logger.error("Error rendering template %s: %s", 
+                              self.reminder_template_id.name, str(e), exc_info=True)
                 return {}
 
     def _get_overdue_invoice_reminder_template(self):
@@ -336,12 +394,19 @@ class OverdueReminderStep(models.TransientModel):
         Obtiene una factura de forma segura por índice
         Si el índice no existe, devuelve valores ficticios
         """
+        _logger.info("get_invoice_safe(%s): len(invoice_ids) = %s", index, len(self.invoice_ids))
+        
+        # Usar invoice_ids directamente (ya están ordenados en create())
         if len(self.invoice_ids) > index:
-            return self.invoice_ids[index]
+            inv = self.invoice_ids[index]
+            _logger.info("get_invoice_safe(%s): Retornando factura real ID=%s, name=%s", index, inv.id, inv.name)
+            return inv
         else:
+            _logger.warning("get_invoice_safe(%s): NO hay factura, retornando FakeInvoice", index)
             # Devolver valores ficticios para que el template no falle
             class FakeInvoice:
                 def __init__(self):
+                    self.id = 0
                     self.name = 'INVISIBLE'
                     self.invoice_date = ''
                     self.invoice_payment_term_id = type('obj', (object,), {'name': ''})()
@@ -365,3 +430,25 @@ class OverdueReminderStep(models.TransientModel):
                     self.currency_id = FakeCurrency()
                     self.overdue_reminder_counter = 0
             return FakeInvoice()
+    
+    def get_residual_by_index(self, index):
+        """
+        Obtiene el amount_residual desde el JSON por índice
+        Este es el método recomendado para usar en templates
+        """
+        # Si el índice no es válido, retornar 0
+        if not isinstance(index, int) or index < 0:
+            return 0.0
+            
+        invoices_data = self.get_invoices_from_json()
+        
+        # Buscar por índice en la lista
+        for inv_data in invoices_data:
+            if inv_data.get('index') == index:
+                return inv_data.get('amount_residual', 0.0)
+        
+        # Fallback: si no hay JSON, buscar directamente en invoice_ids
+        if len(self.invoice_ids) > index:
+            return self.invoice_ids[index].amount_residual
+        
+        return 0.0
