@@ -19,12 +19,17 @@
                 <xpath expr="//field[@name='mail_subject']" position="after">
                     <field name="reminder_template_id" 
                            attrs="{'invisible': [('reminder_type', '!=', 'mail')], 'required': [('reminder_type', '=', 'mail'), ('interface', '=', 'onebyone')], 'readonly': [('interface', '=', 'mass')]}"
-                           string="Reminder Template"
+                           string="Plantilla de recordatorio"
                            context="{'default_is_reminder_template': True}"/>
+                </xpath>
+
+                <xpath expr="//field[@name='mail_subject']" position="attributes">
+                    <attribute name="force_save">1</attribute>
                 </xpath>
 
                 <xpath expr="//field[@name='mail_body']" position="attributes">
                     <attribute name="attrs">{'invisible': [('reminder_type', '!=', 'mail')]}</attribute>
+                    <attribute name="force_save">1</attribute>
                 </xpath>
             </field>
         </record>
