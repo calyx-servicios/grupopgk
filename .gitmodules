@@ -138,3 +138,11 @@
 	path = submodules/OCA/bank-statement-import
 	url = git@github.com:OCA/bank-statement-import.git
 	branch = 15.0
+[submodule "submodules/OCA/dms"]
+	path = submodules/OCA/dms
+	url = git@github.com:OCA/dms.git
+	branch = 15.0
+[submodule "submodules/OCA/sign"]
+	path = submodules/OCA/sign
+	url = git@github.com:OCA/sign.git
+	branch = 15.0
