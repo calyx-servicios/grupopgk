@@ -93,6 +93,10 @@ class ProjectProject(models.Model):
         string="Remaining hours",
         compute="_compute_remaining_hours"
     )
+    left_hours = fields.Float(
+        string="Left Hours",
+        compute="_compute_left_hours"
+    )
     billing_hours = fields.Float(
         string="Billing hours",
         compute="_compute_real_billing"
@@ -137,6 +141,15 @@ class ProjectProject(models.Model):
                     c_hours = rec.contrated_hours
                     rec.hours_multiply_advance = (c_hours / tt_time) * b_hours
 
+    @api.depends('contrated_hours', 'total_timesheet_time')
+    def _compute_left_hours(self):
+        """ Compute left hours as contracted hours minus total timesheet time """
+        for rec in self:
+            if rec.contrated_hours and rec.total_timesheet_time:
+                rec.left_hours = rec.contrated_hours - rec.total_timesheet_time
+            else:
+                rec.left_hours = False
+
     def _compute_billing_deviation(self):
         """ Enzo: I made a variable abbreviation to avoid very long lines"""
         for rec in self:
@@ -154,18 +167,48 @@ class ProjectProject(models.Model):
                 rec.billing_multyply_advance = (rec.total_project_amount / rec.contrated_hours) * rec.total_timesheet_time
                 rec.advance_deviation_pgk = rec.billing_multyply_advance - rec.total_timesheet_time
 
+    def action_open_project_invoices_with_credits(self):
+        """Get all invoices and credit notes for this project"""
+        invoices = self.env['account.move'].search([
+            ('line_ids.analytic_account_id', '!=', False),
+            ('line_ids.analytic_account_id', 'in', self.analytic_account_id.ids),
+            ('move_type', 'in', ['out_invoice', 'out_refund'])
+        ])
+        action = {
+            'name': _('Invoices & Credit Notes'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'views': [[False, 'tree'], [False, 'form'], [False, 'kanban']],
+            'domain': [('id', 'in', invoices.ids)],
+            'context': {
+                'create': False,
+            }
+        }
+        if len(invoices) == 1:
+            action['views'] = [[False, 'form']]
+            action['res_id'] = invoices.id
+        return action
+
     @api.depends('invoice_count')
     def _compute_real_billing(self):
+        """ Compute real billing by subtracting credit notes from invoices """
         for rec in self:
             rec.real_billing = False
             rec.billing_hours = 0
-            action_invoices = rec.action_open_project_invoices()
+            
+            action_invoices = rec.action_open_project_invoices_with_credits()
             invoices_domain = action_invoices["domain"]
+            invoices_domain.append(('state', '=', 'posted'))
             invoices = self.env['account.move'].search(invoices_domain)
             for invoice in invoices:
                 for line in invoice.invoice_line_ids:
-                    rec.billing_hours += line.quantity
-                    rec.real_billing += line.price_subtotal
+                    if (line.analytic_account_id and line.analytic_account_id.id == rec.analytic_account_id.id):
+                        if invoice.move_type == 'out_refund':
+                            rec.billing_hours -= line.quantity
+                            rec.real_billing -= line.price_subtotal
+                        else:
+                            rec.billing_hours += line.quantity
+                            rec.real_billing += line.price_subtotal
 
     @api.depends('expected_go_live_date', 'real_go_live_date')
     def _compute_delivery_time_deviation(self):

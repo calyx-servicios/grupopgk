@@ -16,6 +16,7 @@
                 <field name="billing_multyply_advance" />
                 <field name="billing_deviation" />
                 <field name="remaining_hours" />
+                <field name="left_hours" />
                 <field name="billing_hours" />
                 <field name="hours_multiply_advance" />
                 <field name="advance_deviation_pgk" />
