@@ -114,9 +114,10 @@ class ProjectProject(models.Model):
         compute="_compute_advance_billing"
     )
 
-    @api.depends('total_project_amount', 'contrated_hours', 'total_timesheet_time')
+    @api.depends('contrated_hours')
     def _compute_advance_billing(self):
         for rec in self:
+            # Horas por avance - PGK = (horas contratadas / 12) * mes actual
             rec.advance_billing = False
             if rec.contrated_hours:
                 current_month = datetime.today().month
@@ -146,13 +147,14 @@ class ProjectProject(models.Model):
             rec.billing_deviation = rb - (bmadv * ra)
 
     def _compute_billing_multyply_advance(self):
-        """ Compute billing advance by current month """
+        # Facturación por avance - PGK = (monto total del proyecto / horas contratadas) * horas consumidas
+        # Desvío de horas - PGK = Horas por avance (pgk) - Horas consumidas
         for rec in self:
             rec.billing_multyply_advance = False
             rec.advance_deviation_pgk = False
             if rec.contrated_hours and rec.total_timesheet_time:
                 rec.billing_multyply_advance = (rec.total_project_amount / rec.contrated_hours) * rec.total_timesheet_time
-                rec.advance_deviation_pgk = rec.billing_multyply_advance - rec.total_timesheet_time
+                rec.advance_deviation_pgk = rec.advance_billing - rec.total_timesheet_time
 
     @api.depends('invoice_count')
     def _compute_real_billing(self):
@@ -210,12 +212,8 @@ class ProjectProject(models.Model):
             if rec.teorical_advance:
                 rec.forward_deviation = rec.real_advance - rec.teorical_advance
 
-    @api.depends('advance_billing', 'real_billing')
+    @api.depends('billing_multyply_advance', 'real_billing')
     def _compute_teorical_billing(self):
-        """
-        Computes the theoretical billing PGK by subtracting the real billing from the advance billing.
-        """
+        # Desvío de facturación - PGK = Facturación por avance - Facturación realizada
         for rec in self:
-            rec.teorical_billing = False
-            if rec.advance_billing and rec.real_billing:
-                rec.teorical_billing = rec.advance_billing - rec.real_billing
+            rec.teorical_billing = rec.billing_multyply_advance - rec.real_billing
