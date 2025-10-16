@@ -190,6 +190,11 @@ msgid "Remaining hours"
 msgstr ""
 
 #. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__left_hours
+msgid "Left Hours"
+msgstr "Horas remanentes"
+
+#. module: project_contrated_hours
 #: model:ir.model,name:project_contrated_hours.model_sale_order_line
 msgid "Sales Order Line"
 msgstr "Línea de pedido de venta"
