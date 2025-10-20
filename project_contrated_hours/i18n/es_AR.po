@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-07-11 18:38+0000\n"
-"PO-Revision-Date: 2025-07-11 18:38+0000\n"
+"POT-Creation-Date: 2025-09-02 12:06+0000\n"
+"PO-Revision-Date: 2025-09-02 12:06+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -36,14 +36,24 @@ msgid "Actual project progress in percentage."
 msgstr "Progreso real del proyecto en porcentaje."
 
 #. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__advance_billing
+msgid "Advance billing - PGK"
+msgstr "Horas por avance - PGK"
+
+#. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__hours_multiply_advance
-msgid "Advance by hours"
-msgstr "Horas por avance"
+msgid "Advance by hours - Calyx"
+msgstr "Horas por avance - Calyx"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__advance_deviation
-msgid "Advance deviation"
-msgstr "Desvío de horas"
+msgid "Advance deviation - Calyx"
+msgstr "Desvío de horas - Calyx"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__advance_deviation_pgk
+msgid "Advance deviation - PGK"
+msgstr "Desvío de horas - PGK"
 
 #. module: project_contrated_hours
 #: model:ir.model,name:project_contrated_hours.model_account_analytic_group
@@ -67,8 +77,8 @@ msgstr "Horas facturadas"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__billing_multyply_advance
-msgid "Billing multyply by advance"
-msgstr "Horas por avance"
+msgid "Billing multyply by advance - PGK"
+msgstr "Facturación por avance - PGK"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__comment
@@ -98,8 +108,8 @@ msgstr "Desviación de fecha de entrega"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__deviation_project_hours
-msgid "Deviation Project Hours"
-msgstr "Desvío horas del proyecto"
+msgid "Deviation Project Hours - Calyx"
+msgstr "Desvío de horas - Calyx"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,help:project_contrated_hours.field_project_project__deviation_project_hours
@@ -180,6 +190,11 @@ msgid "Remaining hours"
 msgstr ""
 
 #. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__left_hours
+msgid "Left Hours"
+msgstr "Horas remanentes"
+
+#. module: project_contrated_hours
 #: model:ir.model,name:project_contrated_hours.model_sale_order_line
 msgid "Sales Order Line"
 msgstr "Línea de pedido de venta"
@@ -196,8 +211,8 @@ msgstr "Avance teórico"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__teorical_billing
-msgid "Teorical Billing"
-msgstr "Desvío de facturación"
+msgid "Teorical Billing - PGK"
+msgstr "Desvío de facturación - PGK"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,help:project_contrated_hours.field_project_project__teorical_billing

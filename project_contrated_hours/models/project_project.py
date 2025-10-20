@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
+from datetime import datetime
 
 
 class ProjectProject(models.Model):
@@ -9,7 +10,7 @@ class ProjectProject(models.Model):
         string='Contrated Hours'
     )
     deviation_project_hours = fields.Float(
-        string="Deviation Project Hours",
+        string="Deviation Project Hours - Calyx",
         compute="_compute_teorical_advance",
         help="Difference between contracted hours and actual timesheet hours."
     )
@@ -17,7 +18,7 @@ class ProjectProject(models.Model):
         string='Total Project Amount'
     )
     teorical_billing = fields.Monetary(
-        string="Teorical Billing",
+        string="Teorical Billing - PGK",
         compute="_compute_teorical_billing",
         help="Theoretical billing amount based on real advance percentage."
     )
@@ -80,8 +81,8 @@ class ProjectProject(models.Model):
     visible_fields_project = fields.Boolean(
         related='service_area_id.visible_fields_project'
     )
-    billing_multyply_advance = fields.Monetary(
-        string="Billing multyply by advance",
+    billing_multyply_advance = fields.Float(
+        string="Billing multyply by advance - PGK",
         compute="_compute_billing_multyply_advance"
     )
     billing_deviation = fields.Monetary(
@@ -92,18 +93,39 @@ class ProjectProject(models.Model):
         string="Remaining hours",
         compute="_compute_remaining_hours"
     )
+    left_hours = fields.Float(
+        string="Left Hours",
+        compute="_compute_left_hours"
+    )
     billing_hours = fields.Float(
         string="Billing hours",
         compute="_compute_real_billing"
     )
     hours_multiply_advance = fields.Float(
-        string="Advance by hours",
+        string="Advance by hours - Calyx",
         compute="_compute_remaining_hours"
     )
     advance_deviation = fields.Float(
-        string="Advance deviation",
+        string="Advance deviation - Calyx",
         compute="_compute_remaining_hours"
     )
+    advance_deviation_pgk = fields.Float(
+        string="Advance deviation - PGK",
+        compute="_compute_billing_multyply_advance"
+    )
+    advance_billing = fields.Float(
+        string="Advance billing - PGK",
+        compute="_compute_advance_billing"
+    )
+
+    @api.depends('contrated_hours')
+    def _compute_advance_billing(self):
+        for rec in self:
+            # Horas por avance - PGK = (horas contratadas / 12) * mes actual
+            rec.advance_billing = False
+            if rec.contrated_hours:
+                current_month = datetime.today().month
+                rec.advance_billing = (rec.contrated_hours / 12) * current_month
 
     def _compute_remaining_hours(self):
         """ Enzo: I made a variable abbreviation to avoid very long lines """
@@ -120,6 +142,15 @@ class ProjectProject(models.Model):
                     c_hours = rec.contrated_hours
                     rec.hours_multiply_advance = (c_hours / tt_time) * b_hours
 
+    @api.depends('contrated_hours', 'total_timesheet_time')
+    def _compute_left_hours(self):
+        """ Compute left hours as contracted hours minus total timesheet time """
+        for rec in self:
+            if rec.contrated_hours and rec.total_timesheet_time:
+                rec.left_hours = rec.contrated_hours - rec.total_timesheet_time
+            else:
+                rec.left_hours = False
+
     def _compute_billing_deviation(self):
         """ Enzo: I made a variable abbreviation to avoid very long lines"""
         for rec in self:
@@ -129,27 +160,57 @@ class ProjectProject(models.Model):
             rec.billing_deviation = rb - (bmadv * ra)
 
     def _compute_billing_multyply_advance(self):
-        """ Enzo: I made a variable abbreviation to avoid very long lines """
+        # Facturación por avance - PGK = (monto total del proyecto / horas contratadas) * horas consumidas
+        # Desvío de horas - PGK = Horas por avance (pgk) - Horas consumidas
         for rec in self:
             rec.billing_multyply_advance = False
-            if rec.total_project_amount and rec.contrated_hours and rec.total_timesheet_time:
-                tpa = rec.total_project_amount
-                c_hours = rec.contrated_hours
-                tt_time = rec.total_timesheet_time
-                rec.billing_multyply_advance = (tpa / c_hours) * tt_time
+            rec.advance_deviation_pgk = False
+            if rec.contrated_hours and rec.total_timesheet_time:
+                rec.billing_multyply_advance = (rec.total_project_amount / rec.contrated_hours) * rec.total_timesheet_time
+                rec.advance_deviation_pgk = rec.advance_billing - rec.total_timesheet_time
+
+    def action_open_project_invoices_with_credits(self):
+        """Get all invoices and credit notes for this project"""
+        invoices = self.env['account.move'].search([
+            ('line_ids.analytic_account_id', '!=', False),
+            ('line_ids.analytic_account_id', 'in', self.analytic_account_id.ids),
+            ('move_type', 'in', ['out_invoice', 'out_refund'])
+        ])
+        action = {
+            'name': _('Invoices & Credit Notes'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.move',
+            'views': [[False, 'tree'], [False, 'form'], [False, 'kanban']],
+            'domain': [('id', 'in', invoices.ids)],
+            'context': {
+                'create': False,
+            }
+        }
+        if len(invoices) == 1:
+            action['views'] = [[False, 'form']]
+            action['res_id'] = invoices.id
+        return action
 
     @api.depends('invoice_count')
     def _compute_real_billing(self):
+        """ Compute real billing by subtracting credit notes from invoices """
         for rec in self:
             rec.real_billing = False
             rec.billing_hours = 0
-            action_invoices = rec.action_open_project_invoices()
+            
+            action_invoices = rec.action_open_project_invoices_with_credits()
             invoices_domain = action_invoices["domain"]
+            invoices_domain.append(('state', '=', 'posted'))
             invoices = self.env['account.move'].search(invoices_domain)
             for invoice in invoices:
                 for line in invoice.invoice_line_ids:
-                    rec.billing_hours += line.quantity
-                    rec.real_billing += line.price_subtotal
+                    if (line.analytic_account_id and line.analytic_account_id.id == rec.analytic_account_id.id):
+                        if invoice.move_type == 'out_refund':
+                            rec.billing_hours -= line.quantity
+                            rec.real_billing -= line.price_subtotal
+                        else:
+                            rec.billing_hours += line.quantity
+                            rec.real_billing += line.price_subtotal
 
     @api.depends('expected_go_live_date', 'real_go_live_date')
     def _compute_delivery_time_deviation(self):
@@ -194,15 +255,8 @@ class ProjectProject(models.Model):
             if rec.teorical_advance:
                 rec.forward_deviation = rec.real_advance - rec.teorical_advance
 
-    @api.depends('real_advance', 'total_project_amount')
+    @api.depends('billing_multyply_advance', 'real_billing')
     def _compute_teorical_billing(self):
-        """
-        Computes the theoretical billing by multiplying the real advance percentage
-        by the total project amount.
-        """
+        # Desvío de facturación - PGK = Facturación por avance - Facturación realizada
         for rec in self:
-            rec.teorical_billing = False
-            if rec.total_project_amount:
-                tpa = rec.total_project_amount
-                ra = rec.real_advance
-                rec.teorical_billing = tpa - (ra * tpa)
+            rec.teorical_billing = rec.billing_multyply_advance - rec.real_billing
