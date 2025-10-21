@@ -21,6 +21,9 @@
                 <field name="hours_multiply_advance" />
                 <field name="advance_deviation_pgk" />
                 <field name="advance_billing" />
+                <field name="cost" />
+                <field name="overbilling_cost_rate" widget="percentage"/>
+                <field name="achievement_rate" widget="percentage"/>
 
             </xpath>
             <xpath expr="//field[@name='tag_ids']" position="after">

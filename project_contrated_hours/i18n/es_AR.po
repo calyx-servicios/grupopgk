@@ -6,14 +6,19 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 15.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-02 12:06+0000\n"
-"PO-Revision-Date: 2025-09-02 12:06+0000\n"
+"POT-Creation-Date: 2025-10-21 18:16+0000\n"
+"PO-Revision-Date: 2025-10-21 18:16+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: \n"
 "Plural-Forms: \n"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__achievement_rate
+msgid "Achievement Rate"
+msgstr "Realización"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__action_suggested
@@ -102,6 +107,11 @@ msgid "Contrated Hours"
 msgstr "Horas contratadas"
 
 #. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__cost
+msgid "Cost"
+msgstr "Costos"
+
+#. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__delivery_time_deviation
 msgid "Delivery time deviation"
 msgstr "Desviación de fecha de entrega"
@@ -144,6 +154,17 @@ msgid "Forward Deviation"
 msgstr "Desvío de avance"
 
 #. module: project_contrated_hours
+#: code:addons/project_contrated_hours/models/project_project.py:0
+#, python-format
+msgid "Invoices & Credit Notes"
+msgstr ""
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__left_hours
+msgid "Left Hours"
+msgstr "Horas remanentes"
+
+#. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_account_analytic_group__visible_fields_project
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__visible_fields_project
 msgid "Make visible fields in project?"
@@ -153,6 +174,11 @@ msgstr "Hacer visible campos en proyecto"
 #: model:ir.model.fields,field_description:project_contrated_hours.field_sale_order_line__order_state
 msgid "Order State"
 msgstr "Estado de orden"
+
+#. module: project_contrated_hours
+#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__overbilling_cost_rate
+msgid "Overbilling Cost"
+msgstr "% Costos sobre ingresos"
 
 #. module: project_contrated_hours
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__project_manager
@@ -188,11 +214,6 @@ msgstr "Fecha go live real"
 #: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__remaining_hours
 msgid "Remaining hours"
 msgstr ""
-
-#. module: project_contrated_hours
-#: model:ir.model.fields,field_description:project_contrated_hours.field_project_project__left_hours
-msgid "Left Hours"
-msgstr "Horas remanentes"
 
 #. module: project_contrated_hours
 #: model:ir.model,name:project_contrated_hours.model_sale_order_line
