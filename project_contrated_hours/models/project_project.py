@@ -117,6 +117,56 @@ class ProjectProject(models.Model):
         string="Advance billing - PGK",
         compute="_compute_advance_billing"
     )
+    cost = fields.Monetary(
+        string="Cost",
+        compute="_compute_cost"
+    )
+    overbilling_cost_rate = fields.Float(
+        string="Overbilling Cost",
+        compute="_compute_overbilling_cost"
+    )
+    achievement_rate = fields.Float(
+        string="Achievement Rate",
+        compute="_compute_overbilling_cost"
+    )
+
+    @api.depends('real_billing', 'cost')
+    def _compute_overbilling_cost(self):
+        """ 
+        Calcular el porcentaje de costos sobre ingresos en función del costo y la facturación real
+        """
+        for rec in self:
+            rec.overbilling_cost_rate = 0.0
+            rec.achievement_rate = 0.0
+            if rec.real_billing and rec.cost:
+                rec.overbilling_cost_rate = rec.cost / rec.real_billing
+                rec.achievement_rate = 45 / rec.overbilling_cost_rate
+
+    def _compute_cost(self):
+        """ 
+        Calcular el costo teniendo en cuenta solo las líneas de timesheet y las líneas
+        de órdenes de compra asociadas a la cuenta analítica del proyecto.
+        """
+        for rec in self:
+            total_cost = 0.0
+            if rec.analytic_account_id:
+                timesheet_lines = self.env['account.analytic.line'].search([
+                    ('account_id', '=', rec.analytic_account_id.id),
+                    ('timesheet_id', '!=', False)
+                ])
+                for line in timesheet_lines:
+                    total_cost += line.amount
+                lines_from_purchase_orders = self.env['account.analytic.line'].search([
+                    ('account_id', '=', rec.analytic_account_id.id),
+                    ('amount', '<', 0),
+                    ('move_id', '!=', False)
+                ])
+                for line in lines_from_purchase_orders:
+                    if line.move_id.move_id.move_type == 'in_invoice':
+                        total_cost += line.amount
+                    elif line.move_id.move_id.move_type == 'in_refund':
+                        total_cost -= line.amount
+            rec.cost = total_cost
 
     @api.depends('contrated_hours')
     def _compute_advance_billing(self):
