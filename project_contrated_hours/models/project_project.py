@@ -150,22 +150,27 @@ class ProjectProject(models.Model):
         for rec in self:
             total_cost = 0.0
             if rec.analytic_account_id:
+                # Costos desde partes de horas
                 timesheet_lines = self.env['account.analytic.line'].search([
                     ('account_id', '=', rec.analytic_account_id.id),
                     ('timesheet_id', '!=', False)
                 ])
                 for line in timesheet_lines:
-                    total_cost += line.amount
+                    total_cost += abs(line.amount)
+
+                # Costos desde facturas de proveedor asociadas a órdenes de compra
                 lines_from_purchase_orders = self.env['account.analytic.line'].search([
                     ('account_id', '=', rec.analytic_account_id.id),
                     ('amount', '<', 0),
                     ('move_id', '!=', False)
                 ])
                 for line in lines_from_purchase_orders:
-                    if line.move_id.move_id.move_type == 'in_invoice':
-                        total_cost += line.amount
-                    elif line.move_id.move_id.move_type == 'in_refund':
-                        total_cost -= line.amount
+                    move = line.move_id.move_id  # Acceso a account.move
+                    if move.move_type == 'in_invoice':
+                        total_cost += abs(line.amount)
+                    elif move.move_type == 'in_refund':
+                        total_cost -= abs(line.amount)  # un reembolso resta al costo total
+
             rec.cost = total_cost
 
     @api.depends('contrated_hours')
