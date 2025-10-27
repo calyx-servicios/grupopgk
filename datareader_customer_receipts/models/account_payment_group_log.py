@@ -112,16 +112,25 @@ class DataReaderAccountPaymentGroupLog(models.Model):
     def _get_receiptbook(self, company, errors, log_item=None):
         """
         Searches for the company's receiptbook.
-        First tries with the automatic one, if not found searches for any.
+        First tries with the DataReader one, then automatic one, if not found searches for any.
         """
+        # First try to find DataReader receiptbook
         receiptbook = self.env['account.payment.receiptbook'].sudo().search([
-            ('is_automatic_receiptbook', '=', True),
+            ('is_datareader_receiptbook', '=', True),
             ('company_id', '=', company.id),
             ('partner_type', '=', 'customer')
         ], limit=1)
 
         if not receiptbook:
-            errors.append(_("No automatic receiptbook found for company '%s'.") % company.name)
+            # If no DataReader receiptbook, try automatic one
+            receiptbook = self.env['account.payment.receiptbook'].sudo().search([
+                ('is_automatic_receiptbook', '=', True),
+                ('company_id', '=', company.id),
+                ('partner_type', '=', 'customer')
+            ], limit=1)
+
+        if not receiptbook:
+            errors.append(_("No DataReader or automatic receiptbook found for company '%s'.") % company.name)
             receiptbook = self.env['account.payment.receiptbook'].sudo().search([
                 ('company_id', '=', company.id),
                 ('partner_type', '=', 'customer')
@@ -277,7 +286,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         if not receiptbook_id:
             return log_item
 
-        amount = float(data.get('amount_bruto') or 0.0)
+        amount = float(data.get('amount_neto') or 0.0)
         if amount == 0.0:
             errors.append(_("No amount came in the order."))
         # Método de pago base
@@ -393,7 +402,6 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'payment_group_id': payment_group.id,
             }
 
-            total_payment_line.amount -= ret_amount
             missings = self._validate_required_fields(
                 ret_payment_vals,
                 ['partner_id', 'amount', 'date', 'journal_id', 'payment_method_line_id', 'tax_withholding_id', 'withholding_number']
@@ -490,9 +498,11 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         download_first_batch = eval(ir_config.get_param("datareader_odoo.download_first_batch", 'False'))
         connector = self.env["datareader.connector"].get_connector()
 
+        processed_orders = []  # Lista para trackear órdenes procesadas
+        failed_orders = []
+        
         try:
             connector.login()
-            failed_orders = []
             while True:
                 orders = connector.get_payment_orders()
                 if not orders:
@@ -507,46 +517,83 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 all_files_downloaded = []
                 
                 for order in orders:
-                    log_item = self.create_from_datareader_json(order, connector)
-                    log_item.json_data = order
-                    
-                    connector.set_payment_order_readed(order.get("id"), True)
-                    if not log_item.payment_group_id and not 'Ya existe un recibo de pago' in log_item.message:
-                        failed_orders.append(order.get("id"))
+                    order_id = order.get("id")
+                    try:
+                        log_item = self.create_from_datareader_json(order, connector)
+                        log_item.json_data = order
+                        
+                        # Marcar como leída solo si se procesó exitosamente
+                        connector.set_payment_order_readed(order_id, True)
+                        processed_orders.append(order_id)
+                        
+                        if not log_item.payment_group_id and not 'Ya existe un recibo de pago' in log_item.message:
+                            failed_orders.append(order_id)
 
-                    file_name = order.get("file_name")
-                    
-                    attachment_status = _("Not downloaded")
-                    if download_files and file_name:
+                        file_name = order.get("file_name")
+                        
+                        attachment_status = _("Not downloaded")
+                        if download_files and file_name:
+                            try:
+                                attachment = box.download_and_attach_file(log_item, file_name, folder_field='box_folder_id_op')
+                                if attachment:
+                                    attachment_status = _("Attached OP: %s") % attachment.name
+                                    _logger.info(f"Archivo OP adjuntado: {attachment.name}")
+                                    ret_attachments = box.download_and_attach_retentions(log_item, file_name, folder_field='box_folder_id_withholding')
+                                    if ret_attachments:
+                                        attachment_status += _(" | Withholdings: %s") % [a.name for a in ret_attachments]
+                                else:
+                                    attachment_status = "No se encontró el archivo de OP en Box"
+                            except Exception as e:
+                                attachment_status = f"Error descargando: {str(e)}"
+                                _logger.error(f"Error descargando y adjuntando {file_name}: {e}")
+
+                        all_files_downloaded.append(f"{file_name}: {attachment_status}")
+                        
+                    except Exception as e:
+                        # Si hay error procesando una orden, agregar a failed_orders y revertir
+                        failed_orders.append(order_id)
+                        error_msg = f"Error procesando orden {order_id}: {str(e)}"
+                        _logger.error(error_msg)
+                        
+                        # Revertir la orden marcada como leída
                         try:
-                            attachment = box.download_and_attach_file(log_item, file_name, folder_field='box_folder_id_op')
-                            if attachment:
-                                attachment_status = _("Attached OP: %s") % attachment.name
-                                _logger.info(f"Archivo OP adjuntado: {attachment.name}")
-                                ret_attachments = box.download_and_attach_retentions(log_item, file_name, folder_field='box_folder_id_withholding')
-                                if ret_attachments:
-                                    attachment_status += _(" | Withholdings: %s") % [a.name for a in ret_attachments]
-                            else:
-                                attachment_status = "No se encontró el archivo de OP en Box"
-                        except Exception as e:
-                            attachment_status = f"Error descargando: {str(e)}"
-                            _logger.error(f"Error descargando y adjuntando {file_name}: {e}")
-
-                    all_files_downloaded.append(f"{file_name}: {attachment_status}")
+                            connector.set_payment_order_readed(order_id, False)
+                            processed_orders.remove(order_id) if order_id in processed_orders else None
+                        except:
+                            pass
+                        
+                        # Mostrar error en chatter
+                        self.message_post(body=error_msg, message_type='notification')
                         
                 message += f"\nArchivos descargados: {all_files_downloaded}"
                 _logger.info(message)
+                
                 if download_first_batch:
-                    for order in failed_orders:
-                        connector.set_payment_order_readed(order, False)
                     break
-            for order in failed_orders:
-                connector.set_payment_order_readed(order, False)
+                    
+            # Revertir órdenes fallidas
+            for order_id in failed_orders:
+                try:
+                    connector.set_payment_order_readed(order_id, False)
+                except:
+                    pass
 
         except Exception as e:
-            message = f"Error al conectar u obtener órdenes: {str(e)}"
-            _logger.error(message)
-            raise UserError(f"Error al conectar u obtener órdenes: {str(e)}")
+            # En caso de error general, revertir TODAS las órdenes procesadas
+            error_message = f"Error al conectar u obtener órdenes: {str(e)}"
+            _logger.error(error_message)
+            
+            # Revertir todas las órdenes que se marcaron como leídas
+            for order_id in processed_orders:
+                try:
+                    connector.set_payment_order_readed(order_id, False)
+                except:
+                    pass
+            
+            # Mostrar error en chatter
+            self.message_post(body=error_message, message_type='notification')
+            
+            raise UserError(error_message)
 
     def action_sync_normalized_partners(self):
         partners = self.env['res.partner'].sudo().search([

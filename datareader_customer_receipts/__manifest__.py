@@ -24,8 +24,10 @@
         "payment_withholding",
     ],
     "data": [
+        "security/datareader_security.xml",
+        "security/ir_model_access.xml",
+        "data/l10n_latam_document_type.xml",
         "views/normalized_text.xml",
-        "security/ir.model.access.csv",
         "views/res_config_settings.xml",
         "views/datareader_connector_log_item_view.xml",
         "views/datareader_connector_log_view.xml",

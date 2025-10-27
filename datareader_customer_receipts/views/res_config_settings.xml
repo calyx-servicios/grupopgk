@@ -13,7 +13,7 @@
                         <div class="o_setting_left_pane"/>
                         <div class="o_setting_right_pane">
                             <span class="o_form_label">DataReader API Settings</span>
-                            <div class="content-group">
+                            <div class="content-group" groups="datareader_customer_receipts.group_datareader_admin">
                                 <div class="row mt8">
                                     <label for="datareader_api_host" class="col-lg-4 o_light_label"/>
                                     <field name="datareader_api_host"/>
@@ -29,7 +29,7 @@
                             </div>
                             <separator/>
                             <span class="o_form_label">Default Journals (DataReader)</span>
-                            <div class="content-group">
+                            <div class="content-group" groups="datareader_customer_receipts.group_datareader_admin">
                                 <div class="row mt8">
                                     <label for="datareader_default_transfer_journal_id" class="col-lg-4 o_light_label"/>
                                     <field name="datareader_default_transfer_journal_id" domain="[('company_id', '=', company_id)]"/>

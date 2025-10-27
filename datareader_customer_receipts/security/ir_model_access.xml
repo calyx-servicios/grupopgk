@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- DataReader Connector - Solo Administradores pueden usarlo -->
+        <record id="access_datareader_connector" model="ir.model.access">
+            <field name="name">datareader.connector</field>
+            <field name="model_id" ref="model_datareader_connector"/>
+            <field name="group_id" ref="group_datareader_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- DataReader Account Payment Group Log - Permisos diferenciados -->
+        <record id="access_datareader_account_payment_group_log_readonly" model="ir.model.access">
+            <field name="name">datareader.account.payment.group.log readonly</field>
+            <field name="model_id" ref="model_datareader_account_payment_group_log"/>
+            <field name="group_id" ref="group_datareader_readonly"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="access_datareader_account_payment_group_log_edit" model="ir.model.access">
+            <field name="name">datareader.account.payment.group.log edit</field>
+            <field name="model_id" ref="model_datareader_account_payment_group_log"/>
+            <field name="group_id" ref="group_datareader_edit"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="access_datareader_account_payment_group_log_admin" model="ir.model.access">
+            <field name="name">datareader.account.payment.group.log admin</field>
+            <field name="model_id" ref="model_datareader_account_payment_group_log"/>
+            <field name="group_id" ref="group_datareader_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- DataReader Account Payment Group Log Item - Permisos diferenciados -->
+        <record id="access_datareader_account_payment_group_log_item_readonly" model="ir.model.access">
+            <field name="name">datareader.account.payment.group.log.item readonly</field>
+            <field name="model_id" ref="model_datareader_account_payment_group_log_item"/>
+            <field name="group_id" ref="group_datareader_readonly"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="access_datareader_account_payment_group_log_item_edit" model="ir.model.access">
+            <field name="name">datareader.account.payment.group.log.item edit</field>
+            <field name="model_id" ref="model_datareader_account_payment_group_log_item"/>
+            <field name="group_id" ref="group_datareader_edit"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="access_datareader_account_payment_group_log_item_admin" model="ir.model.access">
+            <field name="name">datareader.account.payment.group.log.item admin</field>
+            <field name="model_id" ref="model_datareader_account_payment_group_log_item"/>
+            <field name="group_id" ref="group_datareader_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Normalized Text - Permisos diferenciados -->
+        <record id="access_normalized_text_readonly" model="ir.model.access">
+            <field name="name">normalized_text readonly</field>
+            <field name="model_id" ref="model_normalized_text"/>
+            <field name="group_id" ref="group_datareader_readonly"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="access_normalized_text_edit" model="ir.model.access">
+            <field name="name">normalized_text edit</field>
+            <field name="model_id" ref="model_normalized_text"/>
+            <field name="group_id" ref="group_datareader_edit"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="access_normalized_text_admin" model="ir.model.access">
+            <field name="name">normalized_text admin</field>
+            <field name="model_id" ref="model_normalized_text"/>
+            <field name="group_id" ref="group_datareader_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+        <!-- Normalized Text Items - Permisos diferenciados -->
+        <record id="access_normalized_text_items_readonly" model="ir.model.access">
+            <field name="name">normalized_text_items readonly</field>
+            <field name="model_id" ref="model_normalized_text_items"/>
+            <field name="group_id" ref="group_datareader_readonly"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="access_normalized_text_items_edit" model="ir.model.access">
+            <field name="name">normalized_text_items edit</field>
+            <field name="model_id" ref="model_normalized_text_items"/>
+            <field name="group_id" ref="group_datareader_edit"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="access_normalized_text_items_admin" model="ir.model.access">
+            <field name="name">normalized_text_items admin</field>
+            <field name="model_id" ref="model_normalized_text_items"/>
+            <field name="group_id" ref="group_datareader_admin"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="True"/>
+            <field name="perm_create" eval="True"/>
+            <field name="perm_unlink" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

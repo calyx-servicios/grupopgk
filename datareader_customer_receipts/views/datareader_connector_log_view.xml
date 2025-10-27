@@ -6,7 +6,7 @@
         <field name="arch" type="xml">
             <form string="Customer Receipts Connector">
                 <header>
-                    <button name="action_connect" type="object" string="Connect" class="btn-primary"/>
+                    <button name="action_connect" type="object" string="Connect" class="btn-primary" groups="datareader_customer_receipts.group_datareader_admin"/>
                 </header>
                 <sheet>
                     <group>
@@ -40,7 +40,8 @@
                                 <button name="action_sync_normalized_partners"
                                     type="object"
                                     string="Update Partners"
-                                    class="btn-secondary"/>
+                                    class="btn-secondary"
+                                    groups="datareader_customer_receipts.group_datareader_admin"/>
                             </group>
                             <group name="Companies" string="Alternative Company Names">
                                 <button name="action_open_normalized_companies"
@@ -51,7 +52,8 @@
                                 <button name="action_sync_normalized_companies"
                                     type="object"
                                     string="Update Companies"
-                                    class="btn-secondary"/>
+                                    class="btn-secondary"
+                                    groups="datareader_customer_receipts.group_datareader_admin"/>
                             </group>
                             <group name="Journals" string="Alternative Journal Names">
                                 <button name="action_open_normalized_journals"
@@ -62,7 +64,8 @@
                                 <button name="action_sync_normalized_journals"
                                     type="object"
                                     string="Update Journals"
-                                    class="btn-secondary"/>
+                                    class="btn-secondary"
+                                    groups="datareader_customer_receipts.group_datareader_admin"/>
                             </group>
                         </page>
                     </notebook>
