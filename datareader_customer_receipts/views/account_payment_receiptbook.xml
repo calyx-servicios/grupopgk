@@ -6,6 +6,7 @@
         <field name="arch" type="xml">
             <field name="active" position="after">
                 <field name="is_automatic_receiptbook"/>
+                <field name="is_datareader_receiptbook"/>
             </field>
         </field>
     </record>
