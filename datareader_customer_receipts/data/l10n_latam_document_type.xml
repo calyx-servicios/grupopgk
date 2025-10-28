@@ -7,7 +7,7 @@
             <field name="name">RECIBOS D</field>
             <field name="doc_code_prefix">RE-D-</field>
             <field name="report_name">RECIBO</field>
-            <field name="internal_type">customer_receipt</field>
+            <field name="internal_type">customer_payment</field>
             <field name="country_id" ref="base.ar"/>
             <field name="active" eval="True"/>
             <field name="sequence" eval="100"/>
