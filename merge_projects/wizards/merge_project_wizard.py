@@ -132,7 +132,7 @@ class MergeProjectWizard(models.TransientModel):
         if not account:
             acc_vals = self.analytic_values()
             account = self.env['account.analytic.account'].create(acc_vals)
-        return {
+        vals = {
             'name': self.new_project_name,
             'partner': self.partner.id,
             'analytic_account_id': account.id,
@@ -141,6 +141,29 @@ class MergeProjectWizard(models.TransientModel):
             'company_id': self.company_id.id,
             'allow_billable': True
         }
+
+        # Sum all numeric fields (Float, Integer, Monetary) from merged projects
+        numeric_fields = []
+        if self.projects_ids:
+            project_fields = self.projects_ids[0]._fields
+            for field_name, field in project_fields.items():
+                # Get Float, Integer, and Monetary fields that are not computed
+                if field.type in ('integer', 'float', 'monetary') and not field.compute:
+                    numeric_fields.append(field_name)
+
+        # Sum numeric fields from all projects
+        for project in self.projects_ids:
+            for field_name in numeric_fields:
+                if hasattr(project, field_name):
+                    value = project[field_name]
+                    # Only sum if value is truthy (not 0, False, or None)
+                    if value:
+                        if field_name in vals:
+                            vals[field_name] += value
+                        else:
+                            vals[field_name] = value
+
+        return vals
 
     # Sequence
     def _prepare_sequence_name(self, obj):
