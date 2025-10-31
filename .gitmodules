@@ -126,3 +126,7 @@
 	path = submodules/ingadhoc/aeroo_reports
 	url = git@github.com:ingadhoc/aeroo_reports.git
 	branch = 15.0
+[submodule "submodules/OCA/credit-control"]
+	path = submodules/OCA/credit-control
+	url = https://github.com/OCA/credit-control.git
+	branch = 15.0
