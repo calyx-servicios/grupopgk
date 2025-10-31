@@ -1,0 +1,16 @@
+{
+    "name": "Acount AR VAT Fix",
+    "summary": "Corrección del reporte de IVA para Argentina",
+    "author": "Calyx Servicios S.A.",
+    "website": "https://odoo.calyx-cloud.com.ar/",
+    "license": "LGPL-3",
+    "category": "Localization/Argentina",
+    "version": "15.0.1.0.0",
+    "sequence": 14,
+    "application": False,
+    "auto_install": False,
+    "installable": True,
+    "depends": ["l10n_ar_reports"],
+    "data": [],
+    "demo": [],
+}

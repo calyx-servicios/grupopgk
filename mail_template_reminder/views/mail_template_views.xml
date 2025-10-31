@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <record id="mail_template_form_inherit" model="ir.ui.view">
+            <field name="name">mail.template.form.inherit</field>
+            <field name="model">mail.template</field>
+            <field name="inherit_id" ref="mail.email_template_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='advanced_settings']/group" position="inside">
+                    <field name="is_reminder_template" string="Reminder Template"/>
+                    <field name="company_ids" widget="many2many_tags" 
+                           attrs="{'invisible': [('is_reminder_template', '=', False)]}"
+                           string="Companies"/>
+                </xpath>
+            </field>
+        </record>
+        
+    </data>
+</odoo>
