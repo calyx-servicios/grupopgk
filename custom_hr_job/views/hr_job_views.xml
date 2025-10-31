@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_job_simple_form_inherit" model="ir.ui.view">
+        <field name="name">hr.job.simple.form.inherit</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr_recruitment.hr_job_simple_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="applicant_category_id" widget="many2many_tags" options="{'color_field': 'color'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hr_job_kanban_inherit" model="ir.ui.view">
+        <field name="name">hr.job.kanban.inherit</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr_recruitment.view_hr_job_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban" position="inside">
+                <field name="applicant_category_id" widget="many2many_tags" options="{'color_field': 'color'}"/>
+            </xpath>
+            <xpath expr="//div[@class='container o_kanban_card_content mt-0 mt-sm-3']/t" position="after">
+                <div class="row mb-2">
+                    <field name="applicant_category_id" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hr_job_search_inherit" model="ir.ui.view">
+        <field name="name">hr.job.search.inherit</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_job_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="applicant_category_id"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hr_job_form_inherit" model="ir.ui.view">
+        <field name="name">hr.job.form.inherit</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_hr_job_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@class='oe_title']/h1" position="after">
+                <label for="applicant_category_id"/>
+                <field name="applicant_category_id" widget="many2many_tags" options="{'color_field': 'color'}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
