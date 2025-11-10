@@ -130,3 +130,7 @@
 	path = submodules/OCA/credit-control
 	url = git@github.com:OCA/credit-control.git
 	branch = 15.0
+[submodule "submodules/OCA/social"]
+	path = submodules/OCA/social
+	url = git@github.com:OCA/social.git
+	branch = 15.0
