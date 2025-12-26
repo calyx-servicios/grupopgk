@@ -4,10 +4,15 @@
         <field name="model">datareader.account.payment.group.log.item</field>
         <field name="arch" type="xml">
             <form string="Detalle de Payment Group">
+                <header>
+                    <button name="action_mark_as_read" string="Marcar como Leída" type="object" class="oe_highlight" attrs="{'invisible': ['|', ('payment_group_id', '!=', False), ('readed', '=', True)]}" />
+                    <button name="action_reprocess_payment_order" string="Reprocesar Orden de Pago" type="object" attrs="{'invisible': [('payment_group_id', '!=', False)]}" />
+                </header>
                 <sheet>
                     <group>
                         <field name="payment_group_id" widget="many2one" readonly="1"/>
                         <field name="log_id" readonly="1" invisible="1"/>
+                        <field name="readed" invisible="1"/>
                         <field name="state"/>
                         <field name="message" widget="text" readonly="1"/>
                         <field name="has_withholding" readonly="1"/>

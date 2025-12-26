@@ -28,6 +28,22 @@ class ResCompany(models.Model):
         domain="[('type', '=', 'cash'), ('active', '=', True)]",
         help=_('Diario usado por defecto para retenciones')
     )
+    datareader_tolerance_enabled = fields.Boolean(
+        string=_('Activar Margen de Tolerancia'),
+        default=False,
+        help=_('Si está activado, permite publicar recibos automáticamente cuando la diferencia está dentro del margen configurado')
+    )
+    datareader_tolerance_amount = fields.Float(
+        string=_('Monto de Tolerancia (Abs)'),
+        default=0.0,
+        help=_('Monto máximo de diferencia permitido (valor absoluto) entre el recibo y las facturas para aplicar tolerancia')
+    )
+    datareader_tolerance_account_id = fields.Many2one(
+        'account.account',
+        string=_('Cuenta para Diferencias de Tolerancia'),
+        domain="[('company_id', '=', id)]",
+        help=_('Cuenta contable donde se registrará la diferencia cuando se aplique la tolerancia')
+    )
 
     @staticmethod
     def preprocess_siglas(name):
