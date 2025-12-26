@@ -1,13 +1,13 @@
 # Translation of Odoo Server.
 # This file contains the translation of the following modules:
-# 	* datareader_odoo
+# 	* datareader_customer_receipts
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 17.0+e-20240910\n"
+"Project-Id-Version: Odoo Server 15.0-20221216\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-12 15:02+0000\n"
-"PO-Revision-Date: 2025-05-12 15:02+0000\n"
+"POT-Creation-Date: 2025-12-22 14:46+0000\n"
+"PO-Revision-Date: 2025-12-22 14:46+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -15,101 +15,1302 @@ msgstr ""
 "Content-Transfer-Encoding: \n"
 "Plural-Forms: \n"
 
-#. module: datareader_odoo
-#: model:ir.model,name:datareader_odoo.model_res_config_settings
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid " | Withholdings: %s"
+msgstr " | Retenciones: %s"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.odoo_datareader_config_settings_view_form
+msgid "<span class=\"o_form_label\">Another Settings</span>"
+msgstr "<span class=\"o_form_label\">Otras Configuraciones</span>"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.odoo_datareader_config_settings_view_form
+msgid "<span class=\"o_form_label\">Box Client</span>"
+msgstr "<span class=\"o_form_label\">Cliente Box</span>"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.odoo_datareader_config_settings_view_form
+msgid "<span class=\"o_form_label\">DataReader API Settings</span>"
+msgstr "<span class=\"o_form_label\">Configuración API DataReader</span>"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.odoo_datareader_config_settings_view_form
+msgid "<span class=\"o_form_label\">Default Journals (DataReader)</span>"
+msgstr "<span class=\"o_form_label\">Diarios por Defecto (DataReader)</span>"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "A payment receipt with number %s (ID %s) already exists."
+msgstr "Ya existe un recibo de pago con número %s (ID %s)."
+
+#. module: datareader_customer_receipts
+#: model:res.groups,comment:datareader_customer_receipts.group_datareader_admin
+msgid ""
+"Acceso completo a DataReader incluyendo conexión API y configuración de "
+"diarios."
+msgstr ""
+"Acceso completo a DataReader incluyendo conexión API y configuración de "
+"diarios."
+
+#. module: datareader_customer_receipts
+#: model:ir.model,name:datareader_customer_receipts.model_account_payment_receiptbook
+msgid "Account payment Receiptbook"
+msgstr "Talonario de Recibos de Pago"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_needaction
+msgid "Action Needed"
+msgstr "Acción Requerida"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+msgid "Alias Management"
+msgstr "Gestión de Alias"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_normalized_text_items_form
+msgid "Alias de Partner"
+msgstr "Alias de Contactos"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_normalized_text_form
+msgid "Aliases"
+msgstr "Alias"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+msgid "Alternative Company Names"
+msgstr "Nombres Alternativos de Compañías"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+msgid "Alternative Journal Names"
+msgstr "Nombres Alternativos de Diarios"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+msgid "Alternative Partner Names"
+msgstr "Nombres Alternativos de Contactos"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__attachment_op_id
+msgid "Archivo OP"
+msgstr "Archivo OP"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,help:datareader_customer_receipts.field_datareader_account_payment_group_log_item__attachment_op_id
+msgid "Archivo PDF o documento original de la Orden de Pago"
+msgstr "Archivo PDF o documento original de la Orden de Pago"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_datareader_payment_group_log_item_form
+msgid "Archivos"
+msgstr "Archivos"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "Attached OP: %s"
+msgstr "OP Adjunta: %s"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_attachment_count
+msgid "Attachment Count"
+msgstr "Cantidad de Adjuntos"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_receiptbook.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_account_payment_receiptbook__is_automatic_receiptbook
+#, python-format
+msgid "Automatic ReceiptBook"
+msgstr "Libro de recepción Automático (receiptbook)"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_config_settings.py:0
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_config_settings__box_folder_id_op
+#, python-format
+msgid "Base folder ID in Box for payment orders"
+msgstr "ID de carpeta base en Box para órdenes de pago"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_config_settings.py:0
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_config_settings__box_folder_id_withholding
+#, python-format
+msgid "Base folder ID in Box for withholding files"
+msgstr "ID de carpeta base en Box para archivos de retenciones"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__box_client_id
+msgid "Box Client ID"
+msgstr "ID Cliente Box"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__box_client_secret
+msgid "Box Client Secret"
+msgstr "Secreto Cliente Box"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_config_settings.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__box_folder_id_op
+#, python-format
+msgid "Box Folder ID (OP)"
+msgstr "ID Carpeta Box (OP)"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_config_settings.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__box_folder_id_withholding
+#, python-format
+msgid "Box Folder ID (RET)"
+msgstr "ID Carpeta Box (RET)"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__box_subject_id
+msgid "Box Subject ID"
+msgstr "ID Asunto Box"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__box_subject_type
+msgid "Box Subject Type"
+msgstr "Tipo de Asunto Box"
+
+#. module: datareader_customer_receipts
+#: model:ir.model,name:datareader_customer_receipts.model_res_company
+msgid "Companies"
+msgstr "Compañías"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/normalized_text.py:0
+#, python-format
+msgid "Company"
+msgstr "Compañía"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "Company '%s' not found, process stopped."
+msgstr "Compañía '%s' no encontrada, proceso detenido."
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text__res_company_id
+msgid "Compañía"
+msgstr "Compañía"
+
+#. module: datareader_customer_receipts
+#: model:ir.model,name:datareader_customer_receipts.model_res_config_settings
 msgid "Config Settings"
-msgstr "Ajustes de configuración"
+msgstr "Configurar Ajustes"
 
-#. module: datareader_odoo
-#. odoo-python
-#: code:addons/datareader_odoo/models/sale_order.py:0
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+msgid "Connect"
+msgstr "Conectar"
+
+#. module: datareader_customer_receipts
+#: model:ir.model,name:datareader_customer_receipts.model_res_partner
+msgid "Contact"
+msgstr "Contacto"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text__res_partner_id
+msgid "Contacto"
+msgstr "Contacto"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__create_uid
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__create_uid
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text__create_uid
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text_items__create_uid
+msgid "Created by"
+msgstr "Creado por"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__create_date
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text__create_date
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text_items__create_date
+msgid "Created on"
+msgstr "Creado en"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+msgid "Customer Receipts Connector"
+msgstr "Conector de Recibos de Clientes"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_tree
+msgid "Customer Receipts Connector Processes"
+msgstr "Procesos del Conector de Recibos de Clientes"
+
+#. module: datareader_customer_receipts
+#: model:ir.actions.act_window,name:datareader_customer_receipts.action_datareader_account_payment_group_log
+#: model:ir.ui.menu,name:datareader_customer_receipts.menu_datareader_root
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_partner_form_datareader
+msgid "Customer Receipts DataReader"
+msgstr "DataReader Recibos de Clientes"
+
+#. module: datareader_customer_receipts
+#: model:res.groups,name:datareader_customer_receipts.group_datareader_admin
+msgid "DataReader - Administrador"
+msgstr "DataReader - Administrador"
+
+#. module: datareader_customer_receipts
+#: model:res.groups,name:datareader_customer_receipts.group_datareader_edit
+msgid "DataReader - Edición"
+msgstr "DataReader - Edición"
+
+#. module: datareader_customer_receipts
+#: model:res.groups,name:datareader_customer_receipts.group_datareader_readonly
+msgid "DataReader - Solo Lectura"
+msgstr "DataReader - Solo Lectura"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
 #, python-format
-msgid "Couldn't find product with EAN code {ean}."
-msgstr "No se encontró el producto con código EAN {ean}."
+msgid "DataReader Connector"
+msgstr "Conector DataReader"
 
-#. module: datareader_odoo
-#. odoo-python
-#: code:addons/datareader_odoo/models/sale_order.py:0
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#: model:ir.model,name:datareader_customer_receipts.model_datareader_account_payment_group_log
 #, python-format
-msgid "Couldn't find product with module code {module}."
-msgstr "No se encontró el producto con código de módulo {module}."
+msgid "DataReader Connector to Process Json"
+msgstr "Conector DataReader para Procesar Json"
 
-#. module: datareader_odoo
-#: model:ir.model.fields,field_description:datareader_odoo.field_res_config_settings__datareader_api_host
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_account_tax__datareader_custom_identifier
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_tax_form_inherit_dr
+msgid "DataReader Custom Identifier"
+msgstr "Identificador Personalizado DataReader"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.odoo_datareader_config_settings_view_form
+msgid "DataReader Customer Receipts"
+msgstr "Recibos de Clientes DataReader"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_config_settings.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__datareader_mode
+#, python-format
+msgid "DataReader Mode"
+msgstr "Modo DataReader"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_receiptbook.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_account_payment_receiptbook__is_datareader_receiptbook
+#, python-format
+msgid "DataReader ReceiptBook"
+msgstr "Talonario DataReader"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__datareader_api_host
 msgid "Datareader Api Host"
-msgstr "Host de Datareader"
+msgstr "Host API DataReader"
 
-#. module: datareader_odoo
-#: model:ir.model.fields,field_description:datareader_odoo.field_res_config_settings__datareader_api_pass
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__datareader_api_pass
 msgid "Datareader Api Pass"
-msgstr "Contraseña de Datareader"
+msgstr "Contraseña API DataReader"
 
-#. module: datareader_odoo
-#: model:ir.model.fields,field_description:datareader_odoo.field_res_config_settings__datareader_api_user
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__datareader_api_user
 msgid "Datareader Api User"
-msgstr "Usuario de Datareader"
+msgstr "Usuario API DataReader"
 
-#. module: datareader_odoo
-#: model_terms:ir.ui.view,arch_db:datareader_odoo.odoo_datareader_config_settings_view_form
-msgid "Datareader Host"
-msgstr "Host de Datareader"
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_datareader_payment_group_log_item_form
+msgid "Datos del Recibo"
+msgstr "Datos del Recibo"
 
-#. module: datareader_odoo
-#: model_terms:ir.ui.view,arch_db:datareader_odoo.odoo_datareader_config_settings_view_form
-msgid "Datareader Odoo"
-msgstr "Datareader Odoo"
-
-#. module: datareader_odoo
-#: model_terms:ir.ui.view,arch_db:datareader_odoo.odoo_datareader_config_settings_view_form
-msgid "Datareader Password"
-msgstr "Contraseña de Datareader"
-
-#. module: datareader_odoo
-#: model_terms:ir.ui.view,arch_db:datareader_odoo.odoo_datareader_config_settings_view_form
-msgid "Datareader User"
-msgstr "Usuario de Datareader"
-
-#. module: datareader_odoo
-#. odoo-python
-#: code:addons/datareader_odoo/models/sale_order.py:0
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_config_settings.py:0
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_config_settings__datareader_mode
 #, python-format
-msgid "No EAN code or module code found on line with product {product}."
-msgstr "No se encontro un código EAN o código de módulo en la línea con el producto {product}."
+msgid "Define if DataReader operates in production or testing mode."
+msgstr "Define si DataReader opera en modo producción o prueba."
 
-#. module: datareader_odoo
-#. odoo-python
-#: code:addons/datareader_odoo/models/sale_order.py:0
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__message
+msgid "Detalle / Error"
+msgstr "Detalle / Error"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_datareader_payment_group_log_item_form
+msgid "Detalle de Payment Group"
+msgstr "Detalle de Grupo de Pago"
+
+#. module: datareader_customer_receipts
+#: model:ir.model,name:datareader_customer_receipts.model_datareader_account_payment_group_log_item
+msgid "Detalle de ejecución del Payment Group"
+msgstr "Detalle de ejecución del Grupo de Pago"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text__account_journal_id
+msgid "Diario"
+msgstr "Diario"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_company.py:0
+#: code:addons/datareader_customer_receipts/models/res_partner.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_company__datareader_default_check_journal_id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__datareader_default_check_journal_id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_partner__datareader_default_partner_check_journal_id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_users__datareader_default_partner_check_journal_id
 #, python-format
-msgid "No valid attachment invoices found to send to Datareader."
-msgstr "No se encontró ningun pedido válido para enviar a Datareader."
+msgid "Diario para Cheques"
+msgstr "Diario para Cheques"
 
-#. module: datareader_odoo
-#. odoo-python
-#: code:addons/datareader_odoo/models/sale_order.py:0
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_company.py:0
+#: code:addons/datareader_customer_receipts/models/res_partner.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_company__datareader_default_withholding_journal_id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__datareader_default_withholding_journal_id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_partner__datareader_default_partner_withholding_journal_id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_users__datareader_default_partner_withholding_journal_id
 #, python-format
-msgid "Product {product} is not allowed for sale."
-msgstr "El producto {product} no esta permitido para la venta."
+msgid "Diario para Retenciones"
+msgstr "Diario para Retenciones"
 
-#. module: datareader_odoo
-#. odoo-python
-#: code:addons/datareader_odoo/models/sale_order.py:0
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_company.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_company__datareader_default_transfer_journal_id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__datareader_default_transfer_journal_id
 #, python-format
-msgid "Product {product} has no quantity set."
-msgstr "El producto {product} no tiene una cantidad establecida."
+msgid "Diario para Transferencias"
+msgstr "Diario para Transferencias"
 
-#. module: datareader_odoo
-#: model:ir.model,name:datareader_odoo.model_sale_order
-msgid "Sales Order"
-msgstr "Orden de venta"
-
-#. module: datareader_odoo
-#: model_terms:ir.ui.view,arch_db:datareader_odoo.view_sale_order_form_datareader
-msgid "Validate invoice with Datareader"
-msgstr "Digitalizar pedido"
-
-#. module: datareader_odoo
-#. odoo-python
-#: code:addons/datareader_odoo/utils/datareader_upload_result.py:0
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_partner.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_partner__datareader_default_partner_transfer_usd_journal_id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_users__datareader_default_partner_transfer_usd_journal_id
 #, python-format
-msgid "{len} errors ocurred during Datareader validation:"
-msgstr "{len} errores han ocurrido durante la digitalización de la factura:"
+msgid "Diario para Transferencias en Dólares"
+msgstr "Diario para Transferencias en Dólares"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_partner.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_partner__datareader_default_partner_transfer_journal_id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_users__datareader_default_partner_transfer_journal_id
+#, python-format
+msgid "Diario para Transferencias en Pesos"
+msgstr "Diario para Transferencias en Pesos"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_company.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_company__datareader_default_transfer_usd_journal_id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__datareader_default_transfer_usd_journal_id
+#, python-format
+msgid "Diario para Transferencias en dolares"
+msgstr "Diario para Transferencias en dólares"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_company.py:0
+#: code:addons/datareader_customer_receipts/models/res_partner.py:0
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_company__datareader_default_check_journal_id
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_config_settings__datareader_default_check_journal_id
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_partner__datareader_default_partner_check_journal_id
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_users__datareader_default_partner_check_journal_id
+#, python-format
+msgid "Diario usado por defecto para pagos con cheque depositado"
+msgstr "Diario usado por defecto para pagos con cheque depositado"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_company.py:0
+#: code:addons/datareader_customer_receipts/models/res_company.py:0
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_company__datareader_default_transfer_journal_id
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_company__datareader_default_transfer_usd_journal_id
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_config_settings__datareader_default_transfer_journal_id
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_config_settings__datareader_default_transfer_usd_journal_id
+#, python-format
+msgid "Diario usado por defecto para pagos por transferencia"
+msgstr "Diario usado por defecto para pagos por transferencia"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_partner.py:0
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_partner__datareader_default_partner_transfer_usd_journal_id
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_users__datareader_default_partner_transfer_usd_journal_id
+#, python-format
+msgid "Diario usado por defecto para pagos por transferencia en dólares"
+msgstr "Diario usado por defecto para pagos por transferencia en dólares"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_partner.py:0
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_partner__datareader_default_partner_transfer_journal_id
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_users__datareader_default_partner_transfer_journal_id
+#, python-format
+msgid "Diario usado por defecto para pagos por transferencia en pesos"
+msgstr "Diario usado por defecto para pagos por transferencia en pesos"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_company.py:0
+#: code:addons/datareader_customer_receipts/models/res_partner.py:0
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_company__datareader_default_withholding_journal_id
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_config_settings__datareader_default_withholding_journal_id
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_partner__datareader_default_partner_withholding_journal_id
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_users__datareader_default_partner_withholding_journal_id
+#, python-format
+msgid "Diario usado por defecto para retenciones"
+msgstr "Diario usado por defecto para retenciones"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__display_name
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__display_name
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text__display_name
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text_items__display_name
+msgid "Display Name"
+msgstr "Nombre a Mostrar"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_config_settings.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__datareader_download_first_batch
+#, python-format
+msgid "Download Only First Batch"
+msgstr "Descargar Solo Primer Lote"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_config_settings.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_config_settings__datareader_download_files
+#, python-format
+msgid "Download PDF Files"
+msgstr "Descargar Archivos PDF"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/normalized_text.py:0
+#: model:ir.model.constraint,message:datareader_customer_receipts.constraint_normalized_text_unique_res_company_id
+#, python-format
+msgid "Each company can only have one normalized record."
+msgstr "Cada compañía solo puede tener un registro normalizado."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/normalized_text.py:0
+#: model:ir.model.constraint,message:datareader_customer_receipts.constraint_normalized_text_unique_account_journal_id
+#, python-format
+msgid "Each journal can only have one normalized record."
+msgstr "Cada diario solo puede tener un registro normalizado."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/normalized_text.py:0
+#: model:ir.model.constraint,message:datareader_customer_receipts.constraint_normalized_text_unique_res_partner_id
+#, python-format
+msgid "Each partner can only have one normalized record."
+msgstr "Cada contacto solo puede tener un registro normalizado."
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__state
+msgid "Estado"
+msgstr "Estado"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__create_date
+msgid "Fecha de Creación"
+msgstr "Fecha de Creación"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_follower_ids
+msgid "Followers"
+msgstr "Seguidores"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_partner_ids
+msgid "Followers (Partners)"
+msgstr "Seguidores (Contactos)"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__ganancias
+msgid "Ganancias"
+msgstr "Ganancias"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__has_message
+msgid "Has Message"
+msgstr "Tiene Mensaje"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text__id
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text_items__id
+msgid "ID"
+msgstr "ID"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb
+msgid "IIBB"
+msgstr "IIBB"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_arba
+msgid "IIBB Arba"
+msgstr "IIBB Arba"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_bs_as
+msgid "IIBB Buenos Aires"
+msgstr "IIBB Buenos Aires"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_caba
+msgid "IIBB CABA"
+msgstr "IIBB CABA"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_catamarca
+msgid "IIBB Catamarca"
+msgstr "IIBB Catamarca"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_chaco
+msgid "IIBB Chaco"
+msgstr "IIBB Chaco"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_chubut
+msgid "IIBB Chubut"
+msgstr "IIBB Chubut"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_corrientes
+msgid "IIBB Corrientes"
+msgstr "IIBB Corrientes"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_cordoba
+msgid "IIBB Córdoba"
+msgstr "IIBB Córdoba"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_entre_rios
+msgid "IIBB Entre Ríos"
+msgstr "IIBB Entre Ríos"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_formosa
+msgid "IIBB Formosa"
+msgstr "IIBB Formosa"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_jujuy
+msgid "IIBB Jujuy"
+msgstr "IIBB Jujuy"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_la_pampa
+msgid "IIBB La Pampa"
+msgstr "IIBB La Pampa"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_la_rioja
+msgid "IIBB La Rioja"
+msgstr "IIBB La Rioja"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_mendoza
+msgid "IIBB Mendoza"
+msgstr "IIBB Mendoza"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_misiones
+msgid "IIBB Misiones"
+msgstr "IIBB Misiones"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_neuquen
+msgid "IIBB Neuquén"
+msgstr "IIBB Neuquén"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_rio_negro
+msgid "IIBB Río Negro"
+msgstr "IIBB Río Negro"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_salta
+msgid "IIBB Salta"
+msgstr "IIBB Salta"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_san_juan
+msgid "IIBB San Juan"
+msgstr "IIBB San Juan"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_san_luis
+msgid "IIBB San Luis"
+msgstr "IIBB San Luis"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_santa_cruz
+msgid "IIBB Santa Cruz"
+msgstr "IIBB Santa Cruz"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_santa_fe
+msgid "IIBB Santa Fe"
+msgstr "IIBB Santa Fe"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_santiago_del_estero
+msgid "IIBB Santiago del Estero"
+msgstr "IIBB Santiago del Estero"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_tierra_del_fuego
+msgid "IIBB Tierra del Fuego"
+msgstr "IIBB Tierra del Fuego"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iibb_tucuman
+msgid "IIBB Tucumán"
+msgstr "IIBB Tucumán"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__iva
+msgid "IVA"
+msgstr "IVA"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,help:datareader_customer_receipts.field_datareader_account_payment_group_log__message_needaction
+#: model:ir.model.fields,help:datareader_customer_receipts.field_datareader_account_payment_group_log__message_unread
+msgid "If checked, new messages require your attention."
+msgstr "Si está marcado, los mensajes nuevos requieren su atención."
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,help:datareader_customer_receipts.field_datareader_account_payment_group_log__message_has_error
+#: model:ir.model.fields,help:datareader_customer_receipts.field_datareader_account_payment_group_log__message_has_sms_error
+msgid "If checked, some messages have a delivery error."
+msgstr "Si está marcado, algunos mensajes tienen un error de entrega."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_receiptbook.py:0
+#: model:ir.model.fields,help:datareader_customer_receipts.field_account_payment_receiptbook__is_datareader_receiptbook
+#, python-format
+msgid ""
+"If checked, this receiptbook will be used for DataReader payment receipts "
+"with RE-D prefix"
+msgstr ""
+"Si está marcado, este talonario se usará para recibos de pago DataReader "
+"con prefijo RE-D"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_config_settings.py:0
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_config_settings__datareader_download_files
+#, python-format
+msgid ""
+"If enabled and mode is Testing, it will download files from Box; otherwise, "
+"it is omitted to speed up the process."
+msgstr ""
+"Si está habilitado y el modo es Prueba, descargará archivos de Box; de lo contrario, "
+"se omite para acelerar el proceso."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_config_settings.py:0
+#: model:ir.model.fields,help:datareader_customer_receipts.field_res_config_settings__datareader_download_first_batch
+#, python-format
+msgid ""
+"If enabled, the download process will only get the first batch of records "
+"from DataReader."
+msgstr ""
+"Si está habilitado, el proceso de descarga solo obtendrá el primer lote de registros "
+"de DataReader."
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_datareader_payment_group_log_item_form
+msgid "Información"
+msgstr "Información"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid "Invalid CUIT for '%s': %s"
+msgstr "CUIT inválido para '%s': %s"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "Invoice %s not found for partner %s - invoice in odoo format (%s)"
+msgstr "Factura %s no encontrada para contacto %s - factura en formato odoo (%s)"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__invoices_found
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__json_data
+msgid "Invoices"
+msgstr "Facturas"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_is_follower
+msgid "Is Follower"
+msgstr "Es Seguidor"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/normalized_text.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text_items__is_real_name
+#, python-format
+msgid "Is Real Name?"
+msgstr "¿Es Nombre Real?"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/normalized_text.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text_items__name
+#, python-format
+msgid "Item Name"
+msgstr "Nombre del Item"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/normalized_text.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text__items_ids
+#, python-format
+msgid "Items"
+msgstr "Items"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/normalized_text.py:0
+#: model:ir.model,name:datareader_customer_receipts.model_account_journal
+#, python-format
+msgid "Journal"
+msgstr "Diario"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "Journal '%s' does not have a line configured for payment method '%s'."
+msgstr "El diario '%s' no tiene una línea configurada para el método de pago '%s'."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "Journal '%s' does not have a line for withholding payment method."
+msgstr "El diario '%s' no tiene una línea para el método de pago de retención."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__last_connection
+#, python-format
+msgid "Last Connection"
+msgstr "Última Conexión"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log____last_update
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item____last_update
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text____last_update
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text_items____last_update
+msgid "Last Modified on"
+msgstr "Última Modificación el"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__last_token
+#, python-format
+msgid "Last Token"
+msgstr "Último Token"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__write_uid
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__write_uid
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text__write_uid
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text_items__write_uid
+msgid "Last Updated by"
+msgstr "Última Actualización por"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__write_date
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__write_date
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text__write_date
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text_items__write_date
+msgid "Last Updated on"
+msgstr "Última Actualización el"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__log_id
+msgid "Log Principal"
+msgstr "Log Principal"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_partner__datareader_auto_lines_post
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_users__datareader_auto_lines_post
+msgid "Líneas de Cheques Listas para Publicar"
+msgstr "Líneas de Cheques Listas para Publicar"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_main_attachment_id
+msgid "Main Attachment"
+msgstr "Adjunto Principal"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "Malformed date '%s', today's date will be used."
+msgstr "Fecha malformada '%s', se usará la fecha de hoy."
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_has_error
+msgid "Message Delivery error"
+msgstr "Error de Entrega de Mensaje"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_ids
+msgid "Messages"
+msgstr "Mensajes"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "Missing required fields for withholding: %s"
+msgstr "Faltan campos requeridos para retención: %s"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid "Multiple distinct records found for '%s' in %s: %s. Process stopped."
+msgstr "Se encontraron múltiples registros distintos para '%s' en %s: %s. Proceso detenido."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid "Multiple partners found for CUIT %s: %s"
+msgstr "Se encontraron múltiples contactos para CUIT %s: %s"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid "Multiple partners with 'Cliente' category found for '%s': %s"
+msgstr "Se encontraron múltiples contactos con categoría 'Cliente' para '%s': %s"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid "Multiple partners with 'Cliente' category found for CUIT %s: %s"
+msgstr "Se encontraron múltiples contactos con categoría 'Cliente' para CUIT %s: %s"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "Name"
+msgstr "Nombre"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid "No CUIT for '%s'"
+msgstr "No hay CUIT para '%s'"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "No DataReader or automatic receiptbook found for company '%s'."
+msgstr "No se encontró talonario DataReader o automático para la compañía '%s'."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid "No alias found for '%s' in %s"
+msgstr "No se encontró alias para '%s' en %s"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "No amount came in the order."
+msgstr "No vino monto en la orden."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "No currency type found in DataReader."
+msgstr "No se encontró tipo de moneda en DataReader."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid ""
+"No default journal found (%s) in contact or company, (%s, %s), process "
+"stopped."
+msgstr ""
+"No se encontró diario por defecto (%s) en contacto o compañía, (%s, %s), proceso "
+"detenido."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "No default journal found (Dollars) in contact '%s' for company '%s'."
+msgstr "No se encontró diario por defecto (Dólares) en contacto '%s' para compañía '%s'."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "No default journal found (Pesos) in contact '%s' for company '%s'."
+msgstr "No se encontró diario por defecto (Pesos) en contacto '%s' para compañía '%s'."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "No default journal found for checks in contact '%s' for company '%s'."
+msgstr "No se encontró diario por defecto para cheques en contacto '%s' para compañía '%s'."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "No default journal found for withholdings in company settings either."
+msgstr "Tampoco se encontró diario por defecto para retenciones en la configuración de la compañía."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid ""
+"No default journal found for withholdings in contact '%s' for company '%s'."
+msgstr ""
+"No se encontró diario por defecto para retenciones en contacto '%s' para compañía '%s'."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "No operation number came in the order."
+msgstr "No vino número de operación en la orden."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid "No partner found for CUIT %s"
+msgstr "No se encontró contacto para CUIT %s"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid ""
+"No partner with 'Cliente' category found for '%s'. Available partners: %s"
+msgstr ""
+"No se encontró contacto con categoría 'Cliente' para '%s'. Contactos disponibles: %s"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid ""
+"No partner with 'Cliente' category found for CUIT %s. Available partners: %s"
+msgstr ""
+"No se encontró contacto con categoría 'Cliente' para CUIT %s. Contactos disponibles: %s"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "No payment method %s for company %s."
+msgstr "No hay método de pago %s para compañía %s."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "No receiptbook found for company '%s'."
+msgstr "No se encontró talonario para compañía '%s'."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "No related file"
+msgstr "Sin archivo relacionado"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid "No valid records found for '%s' in %s"
+msgstr "No se encontraron registros válidos para '%s' en %s"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__name
+msgid "Nombre"
+msgstr "Nombre"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__file_name
+msgid "Nombre del Archivo en Box"
+msgstr "Nombre del Archivo en Box"
+
+#. module: datareader_customer_receipts
+#: model:ir.actions.act_window,name:datareader_customer_receipts.action_normalized_companies
+msgid "Normalized Companies"
+msgstr "Compañías Normalizadas"
+
+#. module: datareader_customer_receipts
+#: model:ir.actions.act_window,name:datareader_customer_receipts.action_normalized_journals
+msgid "Normalized Journals"
+msgstr "Diarios Normalizados"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/normalized_text.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text_items__normalized_name
+#, python-format
+msgid "Normalized Name"
+msgstr "Nombre Normalizado"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/normalized_text.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_normalized_text_items__normalized_id
+#, python-format
+msgid "Normalized Partner"
+msgstr "Contacto Normalizado"
+
+#. module: datareader_customer_receipts
+#: model:ir.actions.act_window,name:datareader_customer_receipts.action_open_res_partner_normalized
+msgid "Normalized Partners"
+msgstr "Contactos Normalizados"
+
+#. module: datareader_customer_receipts
+#: model:ir.model,name:datareader_customer_receipts.model_normalized_text
+msgid "Normalized Text"
+msgstr "Texto Normalizado"
+
+#. module: datareader_customer_receipts
+#: model:ir.model,name:datareader_customer_receipts.model_normalized_text_items
+msgid "Normalized Text Items"
+msgstr "Items de Texto Normalizado"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "Not all invoices were allocated"
+msgstr "No se asignaron todas las facturas"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "Not downloaded"
+msgstr "No descargado"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_needaction_counter
+msgid "Number of Actions"
+msgstr "Cantidad de Acciones"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_has_error_counter
+msgid "Number of errors"
+msgstr "Cantidad de errores"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,help:datareader_customer_receipts.field_datareader_account_payment_group_log__message_needaction_counter
+msgid "Number of messages which requires an action"
+msgstr "Cantidad de mensajes que requieren una acción"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,help:datareader_customer_receipts.field_datareader_account_payment_group_log__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr "Cantidad de mensajes con error de entrega"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,help:datareader_customer_receipts.field_datareader_account_payment_group_log__message_unread_counter
+msgid "Number of unread messages"
+msgstr "Cantidad de mensajes no leídos"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/normalized_text.py:0
+#, python-format
+msgid "Partner"
+msgstr "Contacto"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_normalized_text_form
+msgid "Partner Normalizado"
+msgstr "Partner Normalizado"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid "Payment method for withholdings not found, process stopped."
+msgstr "Método de pago para retenciones no encontrado, proceso detenido."
+
+#. module: datareader_customer_receipts
+#: model:res.groups,comment:datareader_customer_receipts.group_datareader_edit
+msgid ""
+"Permite lectura y edición de registros de DataReader. No puede conectar con "
+"la API ni modificar configuraciones avanzadas."
+msgstr ""
+"Permite lectura y edición de registros de DataReader. No puede conectar con "
+"la API ni modificar configuraciones avanzadas."
+
+#. module: datareader_customer_receipts
+#: model:res.groups,comment:datareader_customer_receipts.group_datareader_readonly
+msgid ""
+"Permite solo lectura de registros de DataReader. No puede conectar con la "
+"API ni modificar configuraciones."
+msgstr ""
+"Permite solo lectura de registros de DataReader. No puede conectar con la "
+"API ni modificar configuraciones."
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__account_payment_group_item_ids
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+#, python-format
+msgid "Processing Details"
+msgstr "Detalles de Procesamiento"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_config_settings.py:0
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__res_config_settings__datareader_mode__production
+#, python-format
+msgid "Production"
+msgstr "Producción"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__res_config_settings__datareader_mode__testing
+msgid "Prueba"
+msgstr "Prueba"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__payment_group_id
+msgid "Recibo Contable"
+msgstr "Recibo Contable"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_partner__datareader_auto_payment_post
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_res_users__datareader_auto_payment_post
+msgid "Recibo de Pago Listo para Publicar"
+msgstr "Recibo de Pago Listo para Publicar"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__attachment_ret1_id
+msgid "Retención 1"
+msgstr "Retención 1"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__attachment_ret2_id
+msgid "Retención 2"
+msgstr "Retención 2"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__attachment_ret3_id
+msgid "Retención 3"
+msgstr "Retención 3"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__attachment_ret4_id
+msgid "Retención 4"
+msgstr "Retención 4"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_has_sms_error
+msgid "SMS Delivery error"
+msgstr "Error de Entrega SMS"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields.selection,name:datareader_customer_receipts.selection__account_tax__datareader_custom_identifier__suss
+msgid "SUSS"
+msgstr "SUSS"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid "Selected partner %s for '%s' because it has 'Cliente' category"
+msgstr "Contacto seleccionado %s para '%s' porque tiene categoría 'Cliente'"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/utils/cuit_alias.py:0
+#, python-format
+msgid "Selected partner %s for CUIT %s because it has 'Cliente' category"
+msgstr "Contacto seleccionado %s para CUIT %s porque tiene categoría 'Cliente'"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid ""
+"Successful connection.\n"
+"Received %s payment orders."
+msgstr ""
+"Conexión exitosa.\n"
+"Se recibieron %s órdenes de pago."
+
+#. module: datareader_customer_receipts
+#: model:ir.model,name:datareader_customer_receipts.model_account_tax
+msgid "Tax"
+msgstr "Impuesto"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/res_config_settings.py:0
+#, python-format
+msgid "Testing"
+msgstr "Prueba"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_tax.py:0
+#, python-format
+msgid ""
+"There can be only one record with the custom identifier {} for the same "
+"company."
+msgstr ""
+"Solo puede haber un registro con el identificador personalizado {} para la misma "
+"compañía."
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__has_check
+msgid "Tiene Cheques"
+msgstr "Tiene Cheques"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log_item__has_withholding
+msgid "Tiene Retenciones"
+msgstr "Tiene Retenciones"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_unread
+msgid "Unread Messages"
+msgstr "Mensajes No Leídos"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__message_unread_counter
+msgid "Unread Messages Counter"
+msgstr "Contador de Mensajes No Leídos"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+msgid "Update Companies"
+msgstr "Actualizar Compañías"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+msgid "Update Journals"
+msgstr "Actualizar Diarios"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+msgid "Update Partners"
+msgstr "Actualizar Contactos"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+msgid "View Companies"
+msgstr "Ver Compañías"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+msgid "View Journals"
+msgstr "Ver Diarios"
+
+#. module: datareader_customer_receipts
+#: model_terms:ir.ui.view,arch_db:datareader_customer_receipts.view_account_payment_group_log_form
+msgid "View Partners"
+msgstr "Ver Contactos"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,field_description:datareader_customer_receipts.field_datareader_account_payment_group_log__website_message_ids
+msgid "Website Messages"
+msgstr "Mensajes del Sitio Web"
+
+#. module: datareader_customer_receipts
+#: model:ir.model.fields,help:datareader_customer_receipts.field_datareader_account_payment_group_log__website_message_ids
+msgid "Website communication history"
+msgstr "Historial de comunicación del sitio web"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#, python-format
+msgid ""
+"Withholding tax not found for %s, datareader_custom_identifier field may "
+"need to be configured"
+msgstr ""
+"Impuesto de retención no encontrado para %s, el campo datareader_custom_identifier puede "
+"necesitar ser configurado"
+
+#. module: datareader_customer_receipts
+#: code:addons/datareader_customer_receipts/models/account_payment_group_log.py:0
+#: model:ir.model,name:datareader_customer_receipts.model_datareader_connector
+#, python-format
+msgid "Wrapper for DataReaderConnector (external)"
+msgstr "Wrapper para DataReaderConnector (externo)"

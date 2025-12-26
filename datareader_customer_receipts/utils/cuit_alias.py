@@ -89,14 +89,41 @@ def find_record_by_cuit_or_name(env, model_name, name=None, cuit=None, errors=No
             unique_records = list(set(records))
             if unique_records:
                 if model_name == 'res.partner':
-                    real_partners = records.filtered(lambda p: not p.parent_id and p.id == p.commercial_partner_id.id)
+                    real_partners = records.filtered(lambda p: p.id == p.commercial_partner_id.id)
                     if len(real_partners) == 1:
                         record = real_partners[0]
                     else:
-                        record = False
-                        errors.append(
-                            f"Se encontraron múltiples registros distintos para '{name}' en {model_name}: {[r.id for r in real_partners]}"
-                        )
+                        # Buscar coincidencia exacta cuando hay múltiples registros
+                        exact_domain = [
+                            '|',
+                                ('normalized_name', '=', name_norm),
+                                ('normalized_name', '=', name_alt),
+                            (normalize_model_type, '!=', False),
+                        ]
+                        if model_name == 'res.partner':
+                            exact_domain.append((normalize_model_type + '.active', '=', True))
+                        exact_aliases = AliasModel.search(exact_domain) if name_norm != 'na' else False
+                        
+                        if exact_aliases:
+                            # Hay coincidencia exacta, usar ese registro
+                            exact_normalized_ids = exact_aliases.mapped('normalized_id').filtered(lambda n: getattr(n, field_name))
+                            exact_records = exact_normalized_ids.mapped(field_name)
+                            exact_unique_records = list(set(exact_records))
+                            if exact_unique_records:
+                                record = exact_unique_records[0]
+                            else:
+                                record = False
+                                errors.append(
+                                    f"Se encontraron múltiples registros distintos para '{name}' en {model_name}: {[r.id for r in unique_records]}. "
+                                    f"No se encontró coincidencia exacta válida. Se detiene el proceso."
+                                )
+                        else:
+                            # No hay coincidencia exacta, detener el proceso
+                            record = False
+                            errors.append(
+                                f"Se encontraron múltiples registros distintos para '{name}' en {model_name}: {[r.id for r in unique_records]}. "
+                                f"No se encontró coincidencia exacta. Se detiene el proceso."
+                            )
                 else:
                     if len(unique_records) > 1:
                         errors.append(

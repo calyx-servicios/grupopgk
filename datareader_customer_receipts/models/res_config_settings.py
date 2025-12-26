@@ -51,4 +51,7 @@ class ResConfigSettings(models.TransientModel):
         config_parameter="datareader_odoo.download_first_batch",
         help="Si está activado, el proceso de descarga solo obtendrá el primer lote (batch) de registros desde DataReader."
     )
+    datareader_tolerance_enabled = fields.Boolean(related='company_id.datareader_tolerance_enabled', readonly=False)
+    datareader_tolerance_amount = fields.Float(related='company_id.datareader_tolerance_amount', readonly=False)
+    datareader_tolerance_account_id = fields.Many2one(related='company_id.datareader_tolerance_account_id', readonly=False)
     
