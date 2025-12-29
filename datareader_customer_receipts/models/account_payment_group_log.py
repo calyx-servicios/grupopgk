@@ -77,9 +77,13 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         if existing_op:
             errors.append(f"Ya existe un recibo de pago con el número {op_number} (ID {existing_op.id}) .")
             if log_item:
-                log_item.write({'message': "\n".join(errors)})
+                log_item.write({'message': "\n".join(errors), 'op_exists': True})
             return None, errors
 
+        # Si no existe, asegurar que op_exists sea False
+        if log_item:
+            log_item.op_exists = False
+        
         return op_number, errors
 
     def _validate_required_fields(self, data, required_fields):
@@ -335,11 +339,13 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             'partner_id': partner_id.id,
             'commercial_partner_id': partner_id.commercial_partner_id.id,
             'company_id': company_id.id,
-            'payment_date': payment_date_str,
+            'payment_date': fields.Date.today(),
             'receiptbook_id': receiptbook_id.id,
             'state': 'draft',
             'partner_type': 'customer',
             'communication': op_number,
+            'is_datareader_op': True,
+            'datareader_op_date': payment_date_str,
         }
 
         payment_group = self.env['account.payment.group'].sudo().create(vals)
@@ -615,7 +621,69 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             existing_payment_group_ids.add(payment_group.id)
             payment_group_ids_command = [(6, 0, list(existing_payment_group_ids))]
             
-            # Línea en cuenta de tolerancia
+            # Obtener la primera línea contable existente del asiento
+            # Excluir líneas del diario y de tolerancia para ajustar una línea de cuenta por cobrar
+            first_line = payment_move.line_ids.filtered(
+                lambda l: l.account_id != tolerance_account and l.account_id != journal_account
+            )
+            
+            if not first_line:
+                _logger.warning("No se encontró línea contable existente para ajustar")
+                return False
+            
+            # Tomar el primer registro
+            first_line = first_line[0]
+            
+            # Ajustar la primera línea contable con la diferencia (será la contrapartida)
+            current_debit = first_line.debit or 0.0
+            current_credit = first_line.credit or 0.0
+            
+            # Usar contexto para permitir modificar líneas en asiento publicado
+            write_context = {
+                'check_move_validity': False,
+                'skip_account_move_synchronization': True
+            }
+            
+            if difference > 0:
+                if current_debit > 0:
+                    first_line.with_context(**write_context).write({'debit': current_debit + difference})
+                elif current_credit > 0:
+                    new_credit = max(0.0, current_credit - difference)
+                    if new_credit == 0:
+                        # Si el crédito se vuelve cero, convertir a débito
+                        first_line.with_context(**write_context).write({
+                            'debit': difference - current_credit,
+                            'credit': 0.0
+                        })
+                    else:
+                        first_line.with_context(**write_context).write({'credit': new_credit})
+                else:
+                    first_line.with_context(**write_context).write({'debit': difference})
+            else:
+                abs_diff = abs(difference)
+                if current_credit > 0:
+                    first_line.with_context(**write_context).write({'credit': current_credit + abs_diff})
+                elif current_debit > 0:
+                    new_debit = max(0.0, current_debit - abs_diff)
+                    if new_debit == 0:
+                        # Si el débito se vuelve cero, convertir a crédito
+                        first_line.with_context(**write_context).write({
+                            'credit': abs_diff - current_debit,
+                            'debit': 0.0
+                        })
+                    else:
+                        first_line.with_context(**write_context).write({'debit': new_debit})
+                else:
+                    # Si no tiene ni debe ni haber, agregar al haber
+                    first_line.with_context(**write_context).write({'credit': abs_diff})
+            
+            # Agregar payment_group_ids a la línea ajustada
+            if first_line.payment_group_ids:
+                first_line.with_context(**write_context).payment_group_ids = [(4, payment_group.id)]
+            else:
+                first_line.with_context(**write_context).payment_group_ids = payment_group_ids_command
+            
+            # Crear solo la línea de tolerancia (la contrapartida ya está ajustada en first_line)
             tolerance_line_vals = {
                 'move_id': payment_move.id,
                 'account_id': tolerance_account.id,
@@ -630,26 +698,10 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'currency_id': payment_move.currency_id.id if payment_move.currency_id else False,
             }
             
-            # Línea contrapartida en cuenta del diario
-            counterpart_line_vals = {
-                'move_id': payment_move.id,
-                'account_id': journal_account.id,
-                'partner_id': payment_group.partner_id.id,
-                'payment_id': payment.id,
-                'payment_group_ids': payment_group_ids_command,
-                'date': payment_date,
-                'name': 'diferencia entre recibo y op',
-                'debit': difference if difference > 0 else 0.0,  # DEBE si diferencia positiva
-                'credit': abs(difference) if difference < 0 else 0.0,  # HABER si diferencia negativa
-                'company_id': payment_group.company_id.id,
-                'currency_id': payment_move.currency_id.id if payment_move.currency_id else False,
-            }
-            
-            # Crear ambas líneas
+            # Crear solo la línea de tolerancia
             self.env['account.move.line'].sudo().create(tolerance_line_vals)
-            self.env['account.move.line'].sudo().create(counterpart_line_vals)
             
-            _logger.info(f"Líneas contables de tolerancia creadas en el asiento {payment_move.name} por diferencia de {difference}")
+            _logger.info(f"Línea contable {first_line.id} ajustada y línea de tolerancia creada en el asiento {payment_move.name} por diferencia de {difference}")
             return True
             
         except Exception as e:
@@ -740,7 +792,6 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     log_item.json_data = json.dumps(order, ensure_ascii=False)
                     
                     connector.set_payment_order_readed(order.get("id"), True)
-                    log_item.readed = True
                     if not log_item.payment_group_id and not 'Ya existe un recibo de pago' in log_item.message:
                         failed_orders.append(order.get("id"))
 
@@ -777,11 +828,23 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 message += f"\nArchivos descargados: {all_files_downloaded}"
                 _logger.info(message)
                 if download_first_batch:
-                    for order in failed_orders:
-                        connector.set_payment_order_readed(order, False)
+                    for order_id in failed_orders:
+                        connector.set_payment_order_readed(order_id, False)
+                        # Buscar y marcar el log_item correspondiente como no leído
+                        log_item = self.account_payment_group_item_ids.filtered(
+                            lambda l: l.json_data and str(order_id) in l.json_data
+                        )
+                        if log_item:
+                            log_item[0].readed = False
                     break
-            for order in failed_orders:
-                connector.set_payment_order_readed(order, False)
+            for order_id in failed_orders:
+                connector.set_payment_order_readed(order_id, False)
+                # Buscar y marcar el log_item correspondiente como no leído
+                log_item = self.account_payment_group_item_ids.filtered(
+                    lambda l: l.json_data and str(order_id) in l.json_data
+                )
+                if log_item:
+                    log_item[0].readed = False
 
         except Exception as e:
             message = f"Error al conectar u obtener órdenes: {str(e)}"
@@ -930,6 +993,7 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
     invoices_found = fields.Boolean(string="Invoices", default=False)
     json_data = fields.Text(string="Invoices", default=False)
     readed = fields.Boolean(string="Leída", default=False, help="Indica si la orden de pago ha sido marcada como leída")
+    op_exists = fields.Boolean(string="OP Existe", default=False, help="Indica si ya existe un payment_group con el mismo op_number")
 
     def _get_order_by_id_from_connector(self, order_id):
         """
