@@ -62,6 +62,14 @@
                                     <label for="datareader_tolerance_account_id" class="col-lg-4 o_light_label"/>
                                     <field name="datareader_tolerance_account_id" domain="[('company_id', '=', company_id)]" attrs="{'invisible': [('datareader_tolerance_enabled', '=', False)], 'required': [('datareader_tolerance_enabled', '=', True)]}"/>
                                 </div>
+                                <div class="row mt8">
+                                    <label for="datareader_tolerance_journal_id" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_tolerance_journal_id" domain="[('company_id', '=', company_id)]" attrs="{'invisible': [('datareader_tolerance_enabled', '=', False)], 'required': [('datareader_tolerance_enabled', '=', True)]}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_tolerance_analytic_account_id" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_tolerance_analytic_account_id" attrs="{'invisible': [('datareader_tolerance_enabled', '=', False)], 'required': [('datareader_tolerance_enabled', '=', True)]}"/>
+                                </div>
                             </div>
                             <separator/>
                             <span class="o_form_label">Box Client</span>

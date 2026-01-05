@@ -367,7 +367,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             'partner_type': 'customer',
             'partner_id': partner_id.id,
             'amount': amount,
-            'date': payment_date_str,
+            'date': fields.Date.today(),
             'journal_id': journal_id.id,
             'payment_method_line_id': payment_method_line.id if payment_method_line else False,
             'company_id': company_id.id,
@@ -416,7 +416,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'partner_type': 'customer',
                 'partner_id': partner_id.id,
                 'amount': ret_amount,
-                'date': payment_date_str,
+                'date': fields.Date.today(),
                 'journal_id': ret_journal_id.id,
                 'payment_method_line_id': payment_method_withholding_line.id,
                 'company_id': company_id.id,
@@ -441,7 +441,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             
         # Lógica de publicación automática con tolerancia
         if partner_id.datareader_auto_payment_post and payment_method != 'cheque':
-            payment_difference = payment_group.payment_difference
+            payment_difference = payment_group.payment_difference * -1
             company = company_id
             
             # Verificar si está habilitada la tolerancia
@@ -452,12 +452,16 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             # Si no hay diferencia, publicar normalmente
             if abs(payment_difference) == 0.0:
                 payment_group.post()
+                # Marcar como leído cuando el recibo se haya publicado exitosamente
+                if log_item:
+                    log_item.readed = True
+                    _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
             # Si hay diferencia dentro del margen de tolerancia
             elif (tolerance_enabled and 
                   tolerance_amount > 0.0 and 
                   abs(payment_difference) <= tolerance_amount and
                   tolerance_account):
-                # Calcular el monto total que deben cubrir las facturas
+                """ # Calcular el monto total que deben cubrir las facturas
                 matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
                 
                 # Ajustar el monto del pago principal para que cubra exactamente las facturas
@@ -466,24 +470,32 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     # Ajustar el monto del pago para que coincida con el monto de las facturas
                     old_amount = main_payment.amount
                     main_payment.amount = matched_amount
-                    _logger.info(f"Ajustado monto del pago {main_payment.id} de {old_amount} a {matched_amount}")
+                    _logger.info(f"Ajustado monto del pago {main_payment.id} de {old_amount} a {matched_amount}") """
                 
-                # Publicar el payment_group primero (esto reconciliará las facturas)
-                payment_group.post()
+                # Calcular el monto total que deben cubrir las facturas
+                matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
                 
-                # Crear las líneas contables de tolerancia después del post
-                # para manejar la diferencia y asegurar que las facturas queden totalmente pagadas
-                tolerance_created = self._create_tolerance_move_line(
-                    payment_group,
-                    tolerance_account,
-                    payment_difference,
-                    payment_date_str
-                )
+                # Obtener el pago en draft para crear la línea de tolerancia antes del post
+                main_payment = payment_group.payment_ids.filtered(lambda p: p.state == 'draft')
+                tolerance_line = None
                 
-                if tolerance_created:
-                    _logger.info(f"Payment group {payment_group.id} publicado con tolerancia aplicada. Diferencia: {payment_difference}")
-                else:
-                    _logger.warning(f"Payment group {payment_group.id} publicado pero no se pudieron crear líneas de tolerancia")
+                if main_payment:
+                    payment = main_payment[0]
+                    # Crear la línea de tolerancia en el asiento draft si existe
+                    if payment.move_id and payment.move_id.state == 'draft':
+                        tolerance_line = self._create_tolerance_line_before_post(
+                            payment,
+                            payment_group,
+                            tolerance_account,
+                            payment_difference,
+                            fields.Date.today(),
+                            matched_amount,
+                        )
+                
+                # Marcar como leído cuando el recibo se haya publicado exitosamente (con o sin líneas de tolerancia)
+                if log_item:
+                    log_item.readed = True
+                    _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
             # Si hay diferencia fuera de tolerancia, no publicar (dejar en draft)
             else:
                 if payment_difference != 0.0:
@@ -564,24 +576,28 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         else:
             payment_group.to_pay_move_line_ids = [(6, 0, found_moves)] if found_moves else [(6, 0, 0)]
 
-    def _create_tolerance_move_line(self, payment_group, tolerance_account, difference, payment_date):
+    def _adjust_payment_lines_with_tolerance(self, payment_group, tolerance_account, difference, matched_amount, payment_date):
         """
-        Crea una línea contable en el asiento del payment_group para saldar
-        la diferencia de tolerancia. No modifica las facturas.
+        Ajusta las líneas del pago y crea línea de tolerancia.
+        
+        Reglas:
+        - Las líneas del pago real siempre deben ser igual al monto de las facturas
+        - Si el pago es menor: débito = monto del pago, crédito = monto facturas, tolerancia en débito
+        - Si el pago es mayor: débito = monto facturas, crédito = monto facturas, tolerancia en crédito
         
         :param payment_group: account.payment.group - El grupo de pago
         :param tolerance_account: account.account - La cuenta para la diferencia
         :param difference: float - La diferencia (puede ser positiva o negativa)
-        :param payment_date: str - La fecha del pago (formato YYYY-MM-DD)
-        :return: bool - True si se creó la línea correctamente
+        :param matched_amount: float - El monto total de las facturas
+        :param payment_date: str - La fecha del pago
+        :return: bool - True si se ajustó correctamente
         """
-        # Obtener el pago principal del payment_group
+        # Obtener el pago principal publicado
         payments = payment_group.payment_ids.filtered(lambda p: p.state == 'posted')
         if not payments:
             _logger.warning("No hay pagos publicados en el payment_group para aplicar tolerancia")
             return False
         
-        # Tomar el primer pago publicado (o el principal si hay varios)
         payment = payments[0]
         payment_move = payment.move_id
         
@@ -589,31 +605,29 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             _logger.warning("No se pudo obtener el asiento contable del pago")
             return False
         
-        # Verificar que el asiento esté publicado
-        if payment_move.state != 'posted':
-            _logger.warning(f"El asiento {payment_move.name} no está publicado (state: {payment_move.state})")
-            return False
-        
-        # Obtener la cuenta del diario del pago para la contrapartida
+        # Obtener la cuenta del diario
         journal = payment.journal_id
         if not journal:
             _logger.warning("No se pudo obtener el diario del pago")
             return False
         
-        # La cuenta del diario es la contrapartida (cuenta de banco/efectivo)
-        # Normalmente está en payment.journal_id.default_account_id
         journal_account = journal.default_account_id
         if not journal_account:
             _logger.warning(f"No se pudo obtener la cuenta por defecto del diario {journal.name}")
             return False
         
+        # Obtener el diario y la cuenta analítica de la compañía
+        company = payment_group.company_id
+        tolerance_journal = company.datareader_tolerance_journal_id
+        tolerance_analytic_account = company.datareader_tolerance_analytic_account_id
+        
         try:
-            # Lógica para saldar:
-            # Si difference > 0: el recibo es mayor, necesitamos HABER en tolerancia (y DEBE en diario)
-            # Si difference < 0: el recibo es menor, necesitamos DEBE en tolerancia (y HABER en diario)
+            write_context = {
+                'check_move_validity': False,
+                'skip_account_move_synchronization': True
+            }
             
-            # Obtener payment_group_ids existentes de otras líneas del asiento (si las hay)
-            # y agregar el payment_group actual
+            # Obtener payment_group_ids existentes
             existing_move_lines = payment_move.line_ids.filtered(lambda l: l.payment_group_ids)
             existing_payment_group_ids = set()
             for line in existing_move_lines:
@@ -621,91 +635,307 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             existing_payment_group_ids.add(payment_group.id)
             payment_group_ids_command = [(6, 0, list(existing_payment_group_ids))]
             
-            # Obtener la primera línea contable existente del asiento
-            # Excluir líneas del diario y de tolerancia para ajustar una línea de cuenta por cobrar
-            first_line = payment_move.line_ids.filtered(
-                lambda l: l.account_id != tolerance_account and l.account_id != journal_account
+            # Obtener las líneas del asiento
+            # Línea de débito (diario)
+            debit_line = payment_move.line_ids.filtered(
+                lambda l: l.debit > 0
             )
+            credit_line = payment_move.line_ids.filtered(
+                lambda l: l.credit > 0
+            )
+            abs_diff = abs(difference)
+            payment_amount = payment.amount
             
-            if not first_line:
-                _logger.warning("No se encontró línea contable existente para ajustar")
-                return False
+            if difference < 0:
+                if debit_line:
+                    debit_line[0].with_context(**write_context).write({
+                        'debit': payment_amount - difference
+                    })
+                # Crear línea de tolerancia con la diferencia en débito
+                tolerance_line_vals = {
+                    'move_id': payment_move.id,
+                    'account_id': tolerance_account.id,
+                    'partner_id': payment_group.partner_id.id,
+                    'payment_id': payment.id,
+                    'payment_group_ids': payment_group_ids_command,
+                    'date': payment_date,
+                    'name': 'Diferencia entre recibo y op',
+                    'debit': abs_diff,
+                    'credit': 0.0,
+                    'company_id': payment_group.company_id.id,
+                    'currency_id': payment_move.currency_id.id if payment_move.currency_id else False,
+                }
+
+                # Agregar el diario si está configurado
+                if tolerance_journal:
+                    tolerance_line_vals['journal_id'] = tolerance_journal.id
+                
+                # Agregar la cuenta analítica si está configurada
+                if tolerance_analytic_account:
+                    tolerance_line_vals['analytic_account_id'] = tolerance_analytic_account.id
+                
+                if payment_move.currency_id:
+                    tolerance_line_vals['amount_currency'] = abs_diff
+                # Crear línea de tolerancia
+                create_context = {
+                    'skip_account_move_synchronization': True,
+                    'check_move_validity': False,
+                }
+                created_line = self.env['account.move.line'].sudo().with_context(**create_context).create(tolerance_line_vals)
+                
+            else:
+                # Pago menor: débito = monto del pago, crédito = monto facturas, tolerancia en débito
+                if debit_line:
+                    debit_line[0].with_context(**write_context).write({
+                        'debit': payment_amount + difference
+                    })
+
+                tolerance_line_vals = {
+                    'move_id': payment_move.id,
+                    'account_id': tolerance_account.id,
+                    'partner_id': payment_group.partner_id.id,
+                    'payment_id': payment.id,
+                    'payment_group_ids': payment_group_ids_command,
+                    'date': payment_date,
+                    'name': 'Diferencia entre recibo y op',
+                    'debit': 0.0,
+                    'credit': abs_diff,
+                    'company_id': payment_group.company_id.id,
+                    'currency_id': payment_move.currency_id.id if payment_move.currency_id else False,
+                }
+                
+                # Agregar el diario si está configurado
+                #if credit_line[0]:
+                #    tolerance_line_vals_2['account_id'] = credit_line[0].account_id.id
+                
+                # Agregar la cuenta analítica si está configurada
+                if tolerance_analytic_account:
+                    tolerance_line_vals['analytic_account_id'] = tolerance_analytic_account.id
+                
+                if payment_move.currency_id:
+                    #tolerance_line_vals['amount_currency'] = -abs_diff
+                    tolerance_line_vals['amount_currency'] = abs_diff
+
+                # Crear línea de tolerancia
+                create_context = {
+                    'skip_account_move_synchronization': True,
+                    'check_move_validity': False,
+                }
+                created_line = self.env['account.move.line'].sudo().with_context(**create_context).create(tolerance_line_vals)
+                
+            _logger.info(f"Líneas del pago ajustadas y líneas de tolerancia creadas. Diferencia: {difference}")
+            return True
             
-            # Tomar el primer registro
-            first_line = first_line[0]
+        except Exception as e:
+            _logger.error(f"Error al ajustar líneas del pago con tolerancia: {e}")
+            return False
+
+    def _create_tolerance_line_before_post(self, payment, payment_group, tolerance_account, difference, payment_date, matched_amount):
+        """
+        Crea la línea de tolerancia en el asiento draft antes del posteo y ajusta la línea de débito.
+        
+        :param payment: account.payment - El pago en draft
+        :param payment_group: account.payment.group - El grupo de pago
+        :param tolerance_account: account.account - La cuenta para la diferencia
+        :param difference: float - La diferencia (positiva = exceso, negativa = falta)
+        :param payment_date: str - La fecha del pago
+        :param matched_amount: float - El monto total de las facturas
+        :return: account.move.line - La línea de tolerancia creada o None
+        """
+        try:
+            payment_move = payment.move_id
+            if not payment_move or payment_move.state != 'draft':
+                return None
             
-            # Ajustar la primera línea contable con la diferencia (será la contrapartida)
-            current_debit = first_line.debit or 0.0
-            current_credit = first_line.credit or 0.0
+            # Obtener el diario y la cuenta analítica de la compañía
+            company = payment_group.company_id
+            tolerance_journal = company.datareader_tolerance_journal_id
+            tolerance_analytic_account = company.datareader_tolerance_analytic_account_id
             
-            # Usar contexto para permitir modificar líneas en asiento publicado
+            abs_diff = abs(difference)
+            payment_amount = payment.amount
+            
+            # Obtener payment_group_ids
+            existing_payment_group_ids = {payment_group.id}
+            payment_group_ids_command = [(6, 0, list(existing_payment_group_ids))]
+            
             write_context = {
                 'check_move_validity': False,
                 'skip_account_move_synchronization': True
             }
             
-            if difference > 0:
-                if current_debit > 0:
-                    first_line.with_context(**write_context).write({'debit': current_debit + difference})
-                elif current_credit > 0:
-                    new_credit = max(0.0, current_credit - difference)
-                    if new_credit == 0:
-                        # Si el crédito se vuelve cero, convertir a débito
-                        first_line.with_context(**write_context).write({
-                            'debit': difference - current_credit,
-                            'credit': 0.0
-                        })
-                    else:
-                        first_line.with_context(**write_context).write({'credit': new_credit})
-                else:
-                    first_line.with_context(**write_context).write({'debit': difference})
+            # Obtener la línea de débito si existe
+            debit_line = payment_move.line_ids.filtered(
+                lambda l: l.debit > 0 and l.account_id != tolerance_account
+            )
+            credit_line = payment_move.line_ids.filtered(
+                lambda l: l.credit > 0 and l.account_id != tolerance_account
+            )
+            # Ajustar la línea de débito según la diferencia
+            if difference < 0:
+                # Pago menor: ajustar débito a payment_amount - difference (que es payment_amount + abs_diff)
+                if debit_line:
+                    new_debit = payment_amount - difference  # difference es negativo, así que esto suma
+                    debit_line[0].with_context(**write_context).write({
+                        'debit': new_debit
+                    })
+                    _logger.info(f"Línea de débito ajustada antes del post: {debit_line[0].debit} -> {new_debit}")
+                
+                # Crear línea de tolerancia con débito
+                tolerance_line_vals = {
+                    'move_id': payment_move.id,
+                    'account_id': tolerance_account.id,
+                    'partner_id': payment_group.partner_id.id,
+                    'payment_id': payment.id,
+                    'payment_group_ids': payment_group_ids_command,
+                    'date': payment_date,
+                    'name': 'Diferencia entre recibo y op',
+                    'debit': abs_diff,
+                    'credit': 0.0,
+                    'company_id': payment_group.company_id.id,
+                    'currency_id': payment_move.currency_id.id if payment_move.currency_id else False,
+                }
             else:
-                abs_diff = abs(difference)
-                if current_credit > 0:
-                    first_line.with_context(**write_context).write({'credit': current_credit + abs_diff})
-                elif current_debit > 0:
-                    new_debit = max(0.0, current_debit - abs_diff)
-                    if new_debit == 0:
-                        # Si el débito se vuelve cero, convertir a crédito
-                        first_line.with_context(**write_context).write({
-                            'credit': abs_diff - current_debit,
-                            'debit': 0.0
-                        })
-                    else:
-                        first_line.with_context(**write_context).write({'debit': new_debit})
+                # Pago mayor: ajustar débito a matched_amount
+                if credit_line:
+                    new_credit = payment_amount - difference
+                    credit_line[0].with_context(**write_context).write({
+                        'credit': new_credit
+                    })
+                
+                _logger.info(f"Línea de débito ajustada antes del post: {debit_line[0].debit} -> {matched_amount}")
+                
+                # Crear línea de tolerancia con crédito
+                tolerance_line_vals = {
+                    'move_id': payment_move.id,
+                    'account_id': tolerance_account.id,
+                    'partner_id': payment_group.partner_id.id,
+                    'payment_id': payment.id,
+                    'payment_group_ids': payment_group_ids_command,
+                    'date': payment_date,
+                    'name': 'Diferencia entre recibo y op',
+                    'debit': 0.0,
+                    'credit': abs_diff,
+                    'company_id': payment_group.company_id.id,
+                    'currency_id': payment_move.currency_id.id if payment_move.currency_id else False,
+                }
+            
+            # Agregar el diario si está configurado
+            if tolerance_journal:
+                tolerance_line_vals['journal_id'] = tolerance_journal.id
+            
+            # Agregar la cuenta analítica si está configurada
+            if tolerance_analytic_account:
+                tolerance_line_vals['analytic_account_id'] = tolerance_analytic_account.id
+            
+            # Agregar amount_currency si hay moneda
+            if payment_move.currency_id:
+                if difference < 0:
+                    tolerance_line_vals['amount_currency'] = abs_diff
                 else:
-                    # Si no tiene ni debe ni haber, agregar al haber
-                    first_line.with_context(**write_context).write({'credit': abs_diff})
+                    tolerance_line_vals['amount_currency'] = -abs_diff
             
-            # Agregar payment_group_ids a la línea ajustada
-            if first_line.payment_group_ids:
-                first_line.with_context(**write_context).payment_group_ids = [(4, payment_group.id)]
-            else:
-                first_line.with_context(**write_context).payment_group_ids = payment_group_ids_command
-            
-            # Crear solo la línea de tolerancia (la contrapartida ya está ajustada en first_line)
-            tolerance_line_vals = {
-                'move_id': payment_move.id,
-                'account_id': tolerance_account.id,
-                'partner_id': payment_group.partner_id.id,
-                'payment_id': payment.id,
-                'payment_group_ids': payment_group_ids_command,
-                'date': payment_date,
-                'name': 'diferencia entre recibo y op',
-                'debit': abs(difference) if difference < 0 else 0.0,  # DEBE si diferencia negativa
-                'credit': difference if difference > 0 else 0.0,  # HABER si diferencia positiva
-                'company_id': payment_group.company_id.id,
-                'currency_id': payment_move.currency_id.id if payment_move.currency_id else False,
+            create_context = {
+                'skip_account_move_synchronization': True,
+                'check_move_validity': False,
             }
             
-            # Crear solo la línea de tolerancia
-            self.env['account.move.line'].sudo().create(tolerance_line_vals)
+            tolerance_line = self.env['account.move.line'].sudo().with_context(**create_context).create(tolerance_line_vals)
+            _logger.info(f"Línea de tolerancia creada antes del post: {tolerance_line.id} (diferencia: {difference})")
+            return tolerance_line
             
-            _logger.info(f"Línea contable {first_line.id} ajustada y línea de tolerancia creada en el asiento {payment_move.name} por diferencia de {difference}")
+        except Exception as e:
+            _logger.error(f"Error al crear línea de tolerancia antes del post: {e}")
+            return None
+
+    def _adjust_payment_lines_and_reconcile(self, payment_group, tolerance_account, difference, matched_amount, tolerance_line):
+        """
+        Ajusta las líneas del pago y reconcilia con la línea de tolerancia creada antes del post.
+        
+        :param payment_group: account.payment.group - El grupo de pago
+        :param tolerance_account: account.account - La cuenta para la diferencia
+        :param difference: float - La diferencia
+        :param matched_amount: float - El monto total de las facturas
+        :param tolerance_line: account.move.line - La línea de tolerancia ya creada
+        :return: bool - True si se ajustó correctamente
+        """
+        try:
+            # Obtener el pago publicado
+            payments = payment_group.payment_ids.filtered(lambda p: p.state == 'posted')
+            if not payments:
+                return False
+            
+            payment = payments[0]
+            payment_move = payment.move_id
+            if not payment_move:
+                return False
+            
+            write_context = {
+                'check_move_validity': False,
+                'skip_account_move_synchronization': True
+            }
+            
+            # Obtener las líneas del pago (débito y crédito), excluyendo la línea de tolerancia
+            debit_line = payment_move.line_ids.filtered(lambda l: l.debit > 0 and l.account_id != tolerance_account)
+            credit_line = payment_move.line_ids.filtered(lambda l: l.credit > 0 and l.account_id != tolerance_account)
+            
+            payment_amount = payment.amount
+            abs_diff = abs(difference)
+            
+            # Ajustar las líneas según la diferencia
+            if difference < 0:
+                # Pago menor: ajustar débito
+                if debit_line:
+                    debit_line[0].with_context(**write_context).write({
+                        'debit': payment_amount - difference
+                    })
+            else:
+                # Pago mayor: ajustar débito y crédito
+                if debit_line:
+                    debit_line[0].with_context(**write_context).write({
+                        'debit': matched_amount
+                    })
+                if credit_line:
+                    credit_line[0].with_context(**write_context).write({
+                        'credit': matched_amount
+                    })
+            
+            # Reconciliar todas las líneas juntas (las 2 del pago + la de tolerancia)
+            # Primero, desreconciliar las líneas del pago si están reconciliadas
+            lines_to_desreconcile = self.env['account.move.line']
+            if debit_line and debit_line[0].reconciled:
+                lines_to_desreconcile += debit_line[0]
+            if credit_line and credit_line[0].reconciled:
+                lines_to_desreconcile += credit_line[0]
+            
+            if lines_to_desreconcile:
+                try:
+                    lines_to_desreconcile.remove_move_reconcile()
+                    _logger.info(f"Líneas desreconciliadas: {lines_to_desreconcile.ids}")
+                except Exception as e:
+                    _logger.warning(f"No se pudieron desreconciliar las líneas: {e}")
+            
+            # Ahora reconciliar todas juntas
+            lines_to_reconcile = self.env['account.move.line']
+            if debit_line:
+                lines_to_reconcile += debit_line[0]
+            if credit_line:
+                lines_to_reconcile += credit_line[0]
+            if tolerance_line:
+                lines_to_reconcile += tolerance_line
+            
+            if len(lines_to_reconcile) >= 2:
+                try:
+                    lines_to_reconcile.reconcile()
+                    _logger.info(f"Líneas reconciliadas: {lines_to_reconcile.ids}")
+                except Exception as e:
+                    _logger.warning(f"No se pudieron reconciliar las líneas: {e}")
+            
+            _logger.info(f"Líneas del pago ajustadas y reconciliadas con línea de tolerancia. Diferencia: {difference}")
             return True
             
         except Exception as e:
-            _logger.error(f"Error al crear líneas contables de tolerancia: {e}")
+            _logger.error(f"Error al ajustar líneas y reconciliar: {e}")
             return False
 
     def _attach_files_to_payment_group(self, log_item, payment_group):
