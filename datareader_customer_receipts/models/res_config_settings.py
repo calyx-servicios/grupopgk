@@ -54,4 +54,6 @@ class ResConfigSettings(models.TransientModel):
     datareader_tolerance_enabled = fields.Boolean(related='company_id.datareader_tolerance_enabled', readonly=False)
     datareader_tolerance_amount = fields.Float(related='company_id.datareader_tolerance_amount', readonly=False)
     datareader_tolerance_account_id = fields.Many2one(related='company_id.datareader_tolerance_account_id', readonly=False)
+    datareader_tolerance_journal_id = fields.Many2one(related='company_id.datareader_tolerance_journal_id', readonly=False)
+    datareader_tolerance_analytic_account_id = fields.Many2one(related='company_id.datareader_tolerance_analytic_account_id', readonly=False)
     
