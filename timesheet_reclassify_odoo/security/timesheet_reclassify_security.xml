@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_timesheet_reclassify_view_all" model="res.groups">
+        <field name="name">Ver Todas las Reclasificaciones</field>
+        <field name="category_id" ref="base.module_category_human_resources"/>
+        <field name="comment">Permite visualizar y editar todas las reclasificaciones de horas, sin restricción de usuario.</field>
+    </record>
+
+    <!-- Regla permisiva: permite ver TODAS las reclasificaciones sin restricción -->
+    <!-- Se aplica al grupo especial que permite ver todo -->
+    <record id="timesheet_reclassify_rule_view_all" model="ir.rule">
+        <field name="name">Ver Todas las Reclasificaciones</field>
+        <field name="model_id" ref="timesheet_reclassify_odoo.model_timesheet_reclassify"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('timesheet_reclassify_odoo.group_timesheet_reclassify_view_all'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- Regla restrictiva: para usuarios sin el grupo especial, solo ven sus propias reclasificaciones -->
+    <record id="timesheet_reclassify_rule_restricted" model="ir.rule">
+        <field name="name">Reclasificaciones Restringidas</field>
+        <field name="model_id" ref="timesheet_reclassify_odoo.model_timesheet_reclassify"/>
+        <field name="domain_force">['|', ('user_id', '=', user.id), ('approver_ids', 'in', [user.id])]</field>
+        <field name="groups" eval="[(4, ref('timesheet_odoo.group_timesheet_sige_user'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- Regla restrictiva para las líneas: usuarios sin grupo especial solo ven líneas de sus reclasificaciones -->
+    <record id="timesheet_reclassify_line_rule_restricted" model="ir.rule">
+        <field name="name">Líneas de Reclasificación Restringidas</field>
+        <field name="model_id" ref="timesheet_reclassify_odoo.model_timesheet_reclassify_line"/>
+        <field name="domain_force">['|', ('reclassify_id.user_id', '=', user.id), ('reclassify_id.approver_ids', 'in', [user.id])]</field>
+        <field name="groups" eval="[(4, ref('timesheet_odoo.group_timesheet_sige_user'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- Reglas permisivas para las LÍNEAS de reclasificación: grupo especial -->
+    <record id="timesheet_reclassify_line_rule_view_all" model="ir.rule">
+        <field name="name">Ver Todas las Líneas de Reclasificación</field>
+        <field name="model_id" ref="timesheet_reclassify_odoo.model_timesheet_reclassify_line"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('timesheet_reclassify_odoo.group_timesheet_reclassify_view_all'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+</odoo>

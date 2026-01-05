@@ -125,10 +125,12 @@ class TimesheetReclassifyLine(models.Model):
 
     def _compute_can_approve(self):
         user = self.env.user
+        has_group = user.has_group('timesheet_reclassify_odoo.group_timesheet_reclassify_view_all')
         for rec in self:
             rec.can_approve = False
-            if rec.approver_id and rec.approved == False and rec.approver_id.id == user.id:
-                if rec.reclassify_id.state == "pending":
+            # Puede aprobar si está en el grupo especial o si es el aprobador asignado
+            if rec.reclassify_id.state == "pending" and rec.approved == False:
+                if has_group or (rec.approver_id and rec.approver_id.id == user.id):
                     rec.can_approve = True
 
     def approve(self):
