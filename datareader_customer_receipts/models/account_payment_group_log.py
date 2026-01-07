@@ -8,6 +8,7 @@ from odoo.exceptions import UserError
 import os
 import json
 from datetime import datetime
+from pprint import pprint
     
 _logger = logging.getLogger(__name__)
 
@@ -309,6 +310,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         amount = float(data.get('amount_bruto') or 0.0)
         if amount == 0.0:
             errors.append(f"No vino monto en la orden.")
+            log_item.write({'message': "\n".join(errors)})
+            return log_item
         # Método de pago base
         pay_method = data.get('pay_method').lower()
         payment_method_obj = self.env['account.payment.method'].sudo()
@@ -1016,6 +1019,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 all_files_downloaded = []
                 
                 for order in orders:
+                    order_id = order.get("id")
+                    pprint(order_id)
                     log_item = self.create_from_datareader_json(order, connector)
                     # Guardar como JSON string para evitar problemas de parseo
                     import json
