@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record id="datareader_fix_res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.inherit.datareader_fix</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="20"/>
+        <field name="inherit_id" ref="datareader_customer_receipts.odoo_datareader_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//div[@class='row mt8'][field[@name='datareader_tolerance_account_id']]" position="after">
+                <div class="row mt8">
+                    <label for="datareader_tolerance_journal_id" class="col-lg-4 o_light_label"/>
+                    <field name="datareader_tolerance_journal_id" domain="[('company_id', '=', company_id)]" attrs="{'invisible': [('datareader_tolerance_enabled', '=', False)], 'required': [('datareader_tolerance_enabled', '=', True)]}"/>
+                </div>
+                <div class="row mt8">
+                    <label for="datareader_tolerance_analytic_account_id" class="col-lg-4 o_light_label"/>
+                    <field name="datareader_tolerance_analytic_account_id" attrs="{'invisible': [('datareader_tolerance_enabled', '=', False)], 'required': [('datareader_tolerance_enabled', '=', True)]}"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+
