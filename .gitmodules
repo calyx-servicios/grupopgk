@@ -150,3 +150,7 @@
 	path = submodules/OCA/social
 	url = git@github.com:OCA/social.git
 	branch = 15.0
+[submodule "submodules/OCA/server-backend"]
+	path = submodules/OCA/server-backend
+	url = git@github.com:OCA/server-backend.git
+	branch = 15.0
