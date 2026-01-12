@@ -142,3 +142,7 @@
 	path = submodules/OCA/sign
 	url = git@github.com:OCA/sign.git
 	branch = 15.0
+[submodule "submodules/OCA/server-backend"]
+	path = submodules/OCA/server-backend
+	url = git@github.com:OCA/server-backend.git
+	branch = 15.0
