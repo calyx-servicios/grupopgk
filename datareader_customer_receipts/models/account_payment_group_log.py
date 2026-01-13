@@ -1017,6 +1017,16 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 subtype_xmlid='mail.mt_note'
             )
             _logger.info(f"Mensaje publicado en el chatter del recibo {payment_group.id} con {len(attachments_created)} archivo(s)")
+            
+        # Si se agregó un attachment y hay errores, agregarlos al chatter
+        if log_item.message and log_item.payment_group_id:
+            error_message = _("Errores encontrados al procesar la orden de pago:\n\n%s") % log_item.message
+            log_item.payment_group_id.sudo().message_post(
+                body=error_message,
+                message_type='notification',
+                subtype_xmlid='mail.mt_note'
+            )
+            _logger.info(f"Errores de la orden agregados al chatter del recibo {log_item.payment_group_id.id}")
         
         return attachments_created
 
@@ -1333,14 +1343,12 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
             if not order_id:
                 raise UserError(_("No se encontró el ID de la orden en los datos JSON."))
             
-            # Obtener el conector y buscar la orden
-            connector, order = self._get_order_by_id_from_connector(order_id)
+            # Obtener el conector y conectar
+            connector = self.env["datareader.connector"].get_connector()
+            connector.login()
             
             if not connector:
                 raise UserError(_("Error al conectar con el conector."))
-            
-            if not order:
-                raise UserError(_("No se encontró la orden de pago con ID %s en el conector.") % order_id)
             
             # Marcar como leída solo esta orden (las demás se ignoran)
             connector.set_payment_order_readed(order_id, True)
@@ -1361,6 +1369,7 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
                     'message': _('La orden de pago %s ha sido marcada como leída.') % order_id,
                     'type': 'success',
                     'sticky': False,
+                    'next': {'type': 'ir.actions.client', 'tag': 'reload'},
                 }
             }
             
@@ -1423,14 +1432,27 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
             # y copiarlos al actual, luego eliminar el nuevo log_item
             if new_log_item and new_log_item.id != self.id:
                 # Copiar attachments del nuevo al actual si no existen
+                attachment_added = False
                 if new_log_item.attachment_op_id and not self.attachment_op_id:
                     self.attachment_op_id = new_log_item.attachment_op_id.id
+                    attachment_added = True
                 for i in range(1, 5):
                     ret_field = f'attachment_ret{i}_id'
                     new_ret = getattr(new_log_item, ret_field, None)
                     current_ret = getattr(self, ret_field, None)
                     if new_ret and not current_ret:
                         setattr(self, ret_field, new_ret.id)
+                        attachment_added = True
+                
+                # Si se agregó un attachment y hay errores, agregarlos al chatter
+                if attachment_added and new_log_item.message and new_log_item.payment_group_id:
+                    error_message = _("Errores encontrados al procesar la orden de pago:\n\n%s") % new_log_item.message
+                    new_log_item.payment_group_id.sudo().message_post(
+                        body=error_message,
+                        message_type='notification',
+                        subtype_xmlid='mail.mt_note'
+                    )
+                    _logger.info(f"Errores de la orden agregados al chatter del recibo {new_log_item.payment_group_id.id}")
                 
                 # Eliminar el nuevo log_item ya que actualizamos el actual
                 new_log_item.unlink()
@@ -1474,6 +1496,7 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
                     'message': message,
                     'type': 'success' if self.payment_group_id else 'warning',
                     'sticky': False,
+                    'next': {'type': 'ir.actions.client', 'tag': 'reload'},
                 }
             }
             

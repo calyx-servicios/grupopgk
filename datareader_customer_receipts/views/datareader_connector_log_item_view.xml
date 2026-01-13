@@ -6,7 +6,7 @@
             <form string="Detalle de Payment Group">
                 <header>
                     <button name="action_mark_as_read" string="Marcar como Leída" type="object" class="oe_highlight" attrs="{'invisible': [('readed', '=', True)]}" />
-                    <button name="action_reprocess_payment_order" string="Reprocesar Orden de Pago" type="object" attrs="{'invisible': ['|', ('payment_group_id', '!=', False), ('op_exists', '=', True)]}" />
+                    <button name="action_reprocess_payment_order" string="Reprocesar Orden de Pago" type="object" attrs="{'invisible': ['|', '|', ('payment_group_id', '!=', False), ('op_exists', '=', True), ('readed', '=', True)]}" />
                 </header>
                 <sheet>
                     <group>
