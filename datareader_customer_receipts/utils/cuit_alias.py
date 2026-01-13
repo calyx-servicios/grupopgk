@@ -55,17 +55,14 @@ def find_record_by_cuit_or_name(env, model_name, name=None, cuit=None, errors=No
             errors.append(f"No hay CUIT para '{name}'")
         else:
             cuit_normalized = normalize_cuit(cuit)
-            if len(cuit_normalized) != 11:
+            if len(cuit_normalized) != 11 and cuit != 'na':
                 errors.append(f"CUIT inválido para '{name}': {cuit}")
             else:
                 partner_ids = Model.search([('vat', '=', cuit_normalized)])
-                if not partner_ids:
+                if not partner_ids and cuit != 'na':
                     errors.append(f"No se encontró partner para CUIT {cuit}")
                 elif len(partner_ids) > 1:
                     errors.append(f"Se encontraron múltiples partners para CUIT {cuit} (IDs: {partner_ids.ids})")
-                else:
-                    record = partner_ids[0]
-
     # --------------------
     # Validación por nombre si no se encontró por CUIT
     if not record and name:
