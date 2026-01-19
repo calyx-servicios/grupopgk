@@ -95,11 +95,14 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 missing.append(field)
         return missing
 
-    def _create_log_item(self, file_name):
-        return self.env['datareader.account.payment.group.log.item'].create({
+    def _create_log_item(self, file_name, order_id=None):
+        vals = {
             'log_id': self.id,
             'file_name': file_name or 'No hay archivo relacionado'
-        })
+        }
+        if order_id:
+            vals['order_id'] = str(order_id)
+        return self.env['datareader.account.payment.group.log.item'].create(vals)
 
     def _get_company(self, company_name, errors):
         company, errors = cuit_alias.find_record_by_cuit_or_name(
@@ -227,10 +230,14 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         return journal, errors
 
-    def create_from_datareader_json(self, data, connector):
+    def create_from_datareader_json(self, data, connector, log_item=None):
         """
         Crea un recibo (account.payment.group) y sus líneas de pago (account.payment)
         desde un JSON proveniente de DataReader.
+        
+        :param data: Datos JSON de la orden de pago
+        :param connector: Conector DataReader
+        :param log_item: Log item opcional. Si se proporciona, se usa este en lugar de crear uno nuevo.
         """
         ir_config = self.env['ir.config_parameter'].sudo()
         # ver si se utiliza
@@ -238,7 +245,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         apg_post = eval(ir_config.get_param("datareader_odoo.datareader_post_account_payment_group", 'False'))
         
         file_name = data.get("file_name")
-        log_item = self._create_log_item(file_name)
+        order_id = data.get("id")
+        if not log_item:
+            log_item = self._create_log_item(file_name, order_id)
         errors = []
 
         op_number, errors = self._validate_op_number(data, errors, log_item)
@@ -487,13 +496,16 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             tolerance_amount = company.datareader_tolerance_amount or 0.0
             tolerance_account = company.datareader_tolerance_account_id
             
-            # Si no hay diferencia, publicar normalmente
+            # Si no hay diferencia, publicar normalmente (solo si cumple condiciones de retenciones)
             if abs(payment_difference) == 0.0:
-                payment_group.post()
-                # Marcar como leído cuando el recibo se haya publicado exitosamente
-                if log_item:
-                    log_item.readed = True
-                    _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+                if self._should_post_payment_group(log_item):
+                    payment_group.post()
+                    # Marcar como leído cuando el recibo se haya publicado exitosamente
+                    if log_item:
+                        log_item.readed = True
+                        _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+                else:
+                    _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
             # Si hay diferencia dentro del margen de tolerancia
             elif (tolerance_enabled and 
                   tolerance_amount > 0.0 and 
@@ -516,7 +528,13 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 # Obtener el pago en draft para postear y luego ajustar las líneas
                 main_payment = payment_group.payment_ids.filtered(lambda p: p.state == 'draft')
                 
-                payment_group.post()
+                # Postear solo si cumple condiciones de retenciones
+                if self._should_post_payment_group(log_item):
+                    payment_group.post()
+                else:
+                    _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
+                    return log_item
+                
                 if main_payment:
                     payment = main_payment[0]
                     # Ajustar las líneas contables y crear la línea de tolerancia
@@ -543,10 +561,51 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             
         return log_item
 
+    def _has_retention_files(self, log_item):
+        """
+        Verifica si hay archivos de retención descargados en el log_item.
+        Retorna True si hay al menos un archivo de retención (attachment_ret1_id a attachment_ret4_id).
+        """
+        if not log_item:
+            return False
+        for i in range(1, 5):
+            ret_field = f'attachment_ret{i}_id'
+            if getattr(log_item, ret_field, None):
+                return True
+        return False
+
+    def _should_post_payment_group(self, log_item):
+        """
+        Determina si se debe postear el payment_group basado en las reglas de retenciones:
+        - Solo se postea si hay retenciones (has_withholding=True) Y hay al menos un archivo de retención descargado
+        - Si hay archivo de retención pero no hay líneas de retención, no se postea
+        """
+        if not log_item:
+            return True  # Si no hay log_item, se postea normalmente (comportamiento anterior)
+        
+        has_files = self._has_retention_files(log_item)
+        has_withholding = log_item.has_withholding
+        
+        # Si hay archivos de retención pero no hay líneas de retención, no se postea
+        if has_files and not has_withholding:
+            _logger.info(f"Payment group no se postea: hay archivos de retención pero no hay líneas de retención")
+            return False
+        
+        # Si hay retenciones, verificar que también haya archivos de retención
+        if has_withholding:
+            if not has_files:
+                _logger.info(f"Payment group no se postea: hay retenciones pero no hay archivos de retención descargados")
+                return False
+            return True
+        
+        # Si no hay retenciones ni archivos, se postea normalmente
+        return True
+
     def _normalize_invoice_number(self, number):
         """
         Normaliza números de factura/comprobante:
         - Si tiene más de 8 dígitos, separa punto de venta y número (últimos 8 dígitos siempre)
+        - Si el punto de venta es 0, se omite y solo retorna el número de factura
         - Si tiene 8 dígitos o menos, rellena ceros a la izquierda
         """
         if not number:
@@ -556,8 +615,11 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         number = number.replace('-', '')
 
         if len(number) > 8:
-            point_of_sale = number[:-8].lstrip('0') or '0'
+            point_of_sale = number[:-8].lstrip('0')
             invoice_number = number[-8:].zfill(8)
+            # Si el punto de venta es 0 (todos ceros), omitirlo y retornar solo el número
+            if not point_of_sale:
+                return invoice_number
             return f"{point_of_sale}-{invoice_number}"
         else:
             return number.zfill(8)
@@ -1055,17 +1117,14 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 for order in orders:
                     order_id = order.get("id")
                     pprint(order_id)
-                    log_item = self.create_from_datareader_json(order, connector)
-                    # Guardar como JSON string para evitar problemas de parseo
-                    import json
-                    log_item.json_data = json.dumps(order, ensure_ascii=False)
-                    
-                    connector.set_payment_order_readed(order.get("id"), True)
-                    if not log_item.payment_group_id and not 'Ya existe un recibo de pago' in log_item.message:
-                        failed_orders.append(order.get("id"))
-
                     file_name = order.get("file_name")
                     
+                    # Crear log_item primero para poder descargar archivos antes del procesamiento
+                    import json
+                    log_item = self._create_log_item(file_name, order_id)
+                    log_item.json_data = json.dumps(order, ensure_ascii=False)
+                    
+                    # Descargar archivos ANTES del procesamiento
                     attachment_status = "No descargado"
                     if download_files and file_name:
                         try:
@@ -1076,21 +1135,28 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                                 ret_attachments = box.download_and_attach_retentions(log_item, file_name, folder_field='box_folder_id_withholding')
                                 if ret_attachments:
                                     attachment_status += f" | Retenciones: {[a.name for a in ret_attachments]}"
-                                
-                                # Adjuntar archivos al payment_group (recibo) si existe
-                                if log_item.payment_group_id:
-                                    try:
-                                        pg_attachments = self._attach_files_to_payment_group(log_item, log_item.payment_group_id)
-                                        if pg_attachments:
-                                            attachment_status += f" | Adjuntados al recibo: {len(pg_attachments)} archivo(s)"
-                                            _logger.info(f"Archivos adjuntados al recibo {log_item.payment_group_id.id}: {len(pg_attachments)} archivo(s)")
-                                    except Exception as e:
-                                        _logger.error(f"Error adjuntando archivos al recibo: {e}")
                             else:
                                 attachment_status = "No se encontró el archivo de OP en Box"
                         except Exception as e:
                             attachment_status = f"Error descargando: {str(e)}"
                             _logger.error(f"Error descargando y adjuntando {file_name}: {e}")
+                    
+                    # Procesar la orden usando el log_item ya creado
+                    log_item = self.create_from_datareader_json(order, connector, log_item=log_item)
+                    
+                    connector.set_payment_order_readed(order.get("id"), True)
+                    if not log_item.payment_group_id and not 'Ya existe un recibo de pago' in log_item.message:
+                        failed_orders.append(order.get("id"))
+                    
+                    # Adjuntar archivos al payment_group (recibo) si existe
+                    if log_item.payment_group_id:
+                        try:
+                            pg_attachments = self._attach_files_to_payment_group(log_item, log_item.payment_group_id)
+                            if pg_attachments:
+                                attachment_status += f" | Adjuntados al recibo: {len(pg_attachments)} archivo(s)"
+                                _logger.info(f"Archivos adjuntados al recibo {log_item.payment_group_id.id}: {len(pg_attachments)} archivo(s)")
+                        except Exception as e:
+                            _logger.error(f"Error adjuntando archivos al recibo: {e}")
 
                     all_files_downloaded.append(f"{file_name}: {attachment_status}")
                         
@@ -1263,6 +1329,8 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
     json_data = fields.Text(string="Invoices", default=False)
     readed = fields.Boolean(string="Leída", default=False, help="Indica si la orden de pago ha sido marcada como leída")
     op_exists = fields.Boolean(string="OP Existe", default=False, help="Indica si ya existe un payment_group con el mismo op_number")
+    reprocessed = fields.Boolean(string="Reprocesada", default=False, help="Indica si la orden de pago fue reprocesada mediante el botón de reprocesamiento")
+    order_id = fields.Char(string="ID Orden", help="ID de la orden de pago en el conector DataReader")
 
     def _get_order_by_id_from_connector(self, order_id):
         """
@@ -1417,7 +1485,11 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
             update_vals = {
                 'message': new_log_item.message if new_log_item else self.message,
                 'json_data': json.dumps(order, ensure_ascii=False) if isinstance(order, dict) else order,
+                'reprocessed': True,
             }
+            # Solo actualizar order_id si no existe
+            if not self.order_id:
+                update_vals['order_id'] = str(order_id)
             
             if new_log_item and new_log_item.payment_group_id:
                 update_vals.update({

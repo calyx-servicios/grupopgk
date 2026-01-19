@@ -19,7 +19,7 @@
                             <field name="account_payment_group_item_ids">
                                 <tree>
                                     <field name="payment_group_id" widget="many2one" options="{'no_create': True}"/>
-                                    <field name="file_name"/>
+                                    <field name="order_id"/>
                                     <field name="attachment_op_id" widget="many2one" options="{'no_create': True}"/>
                                     <field name="state" widget="badge"/>
                                     <field name="has_withholding" invisible="1"/>
