@@ -15,6 +15,8 @@
                         <field name="readed" invisible="1"/>
                         <field name="op_exists" invisible="1"/>
                         <field name="state"/>
+                        <field name="order_id" readonly="1"/>
+                        <field name="reprocessed" readonly="1"/>
                         <field name="message" widget="text" readonly="1"/>
                         <field name="has_withholding" readonly="1"/>
                         <field name="has_check" readonly="1"/>
