@@ -67,11 +67,14 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 missing.append(field)
         return missing
 
-    def _create_log_item(self, file_name):
-        return self.env['datareader.account.payment.group.log.item'].create({
+    def _create_log_item(self, file_name, order_id=None):
+        vals = {
             'log_id': self.id,
             'file_name': file_name or _('No related file')
-        })
+        }
+        if order_id:
+            vals['order_id'] = str(order_id)
+        return self.env['datareader.account.payment.group.log.item'].create(vals)
 
     def _get_company(self, company_name, errors):
         company, errors = cuit_alias.find_record_by_cuit_or_name(
@@ -219,7 +222,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         apg_post = eval(ir_config.get_param("datareader_odoo.datareader_post_account_payment_group", 'False'))
         
         file_name = data.get("file_name")
-        log_item = self._create_log_item(file_name)
+        order_id = data.get("id")
+        log_item = self._create_log_item(file_name, order_id)
         errors = []
 
         op_number, errors = self._validate_op_number(data, errors, log_item)
@@ -736,3 +740,4 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
     attachment_ret4_id = fields.Many2one('ir.attachment', string="Retención 4")
     invoices_found = fields.Boolean(string="Invoices", default=False)
     json_data = fields.Text(string="Invoices", default=False)
+    order_id = fields.Char(string="ID Orden", help="ID de la orden de pago en el conector DataReader")

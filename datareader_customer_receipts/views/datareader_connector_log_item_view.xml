@@ -9,6 +9,7 @@
                         <field name="payment_group_id" widget="many2one" readonly="1"/>
                         <field name="log_id" readonly="1" invisible="1"/>
                         <field name="state"/>
+                        <field name="order_id"/>
                         <field name="message" widget="text" readonly="1"/>
                         <field name="has_withholding" readonly="1"/>
                         <field name="has_check" readonly="1"/>
