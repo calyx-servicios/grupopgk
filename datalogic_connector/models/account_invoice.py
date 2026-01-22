@@ -163,9 +163,9 @@ class AccountMove(models.Model):
                         test = r.text.split("CDATA[")[1].split("]]")[0]
                         self.descargar = test
                 else:
-                        self.descargar= "0"
+                        self.descargar = False
         else:
-                self.descargar= "0"
+                self.descargar = False
 
     @api.model
     def compute_estado(self):
