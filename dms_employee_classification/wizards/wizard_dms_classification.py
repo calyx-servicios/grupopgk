@@ -91,3 +91,15 @@ class WizardDmsClassificationDetail(models.TransientModel):
         for item in self:
             if item.new_filename:
                 item.file_name = item.new_filename
+
+    def _create_dms_file(self):
+        """Override to create hr.employee.document after creating dms.file."""
+        res = super()._create_dms_file()
+        # Si hay empleado asociado, crear el registro de documento
+        if self.employee_id and self.file_id:
+            self.env['hr.employee.document'].create({
+                'employee_id': self.employee_id.id,
+                'classification_date': self.parent_id.classification_date,
+                'dms_file_id': self.file_id.id,
+            })
+        return res

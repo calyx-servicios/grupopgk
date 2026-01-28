@@ -7,15 +7,18 @@
     "website": "https://www.grupopgk.com.ar/",
     "license": "AGPL-3",
     "category": "Document Management",
-    "version": "15.0.1.0.0",
+    "version": "15.0.1.1.0",
     "application": False,
     "installable": True,
     "auto_install": False,
     "depends": [
         "hr",
+        "hr_dms_field",
         "dms_auto_classification",
     ],
     "data": [
+        "security/ir.model.access.csv",
+        "views/hr_employee_document_views.xml",
         "wizards/wizard_dms_classification_views.xml",
     ],
 }
