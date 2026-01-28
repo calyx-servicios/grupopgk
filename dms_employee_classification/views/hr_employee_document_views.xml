@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_employee_form_dms_documents" model="ir.ui.view">
+        <field name="name">hr.employee.form.dms.documents</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='dms']" position="replace">
+                <page name="dms" string="Documentos" attrs="{'invisible': [('id', '=', False)]}">
+                    <field name="employee_document_ids">
+                        <tree editable="bottom" create="false" delete="false">
+                            <field name="classification_date" readonly="1"/>
+                            <field name="receipt_name" readonly="1"/>
+                            <button name="action_download" string="Descargar" type="object" icon="fa-download" class="oe_stat_button"/>
+                            <field name="viewed" readonly="1"/>
+                            <field name="signed" readonly="1"/>
+                            <button name="action_sign" string="Firmar" type="object" icon="fa-pencil" class="oe_stat_button"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
