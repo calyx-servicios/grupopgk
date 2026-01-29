@@ -7,7 +7,7 @@
     "website": "https://www.grupopgk.com.ar/",
     "license": "AGPL-3",
     "category": "Document Management",
-    "version": "15.0.1.3.0",
+    "version": "15.0.1.3.1",
     "application": False,
     "installable": True,
     "auto_install": False,

@@ -18,6 +18,7 @@
         </field>
     </record>
 
+    <!-- Heredar de dms_field_auto_classification para reemplazar record_ref -->
     <record id="view_wizard_dms_classification_form_record_ref" model="ir.ui.view">
         <field name="model">wizard.dms.classification</field>
         <field name="inherit_id" ref="dms_field_auto_classification.view_wizard_dms_classification_form"/>
