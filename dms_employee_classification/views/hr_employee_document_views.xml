@@ -18,6 +18,14 @@
                         </tree>
                     </field>
                 </page>
+                <page name="digital_signature" string="Firma digital">
+                    <group name="digital_signature_group" string="Firma digital">
+                        <group>
+                            <field name="digital_signature" widget="signature"/>
+                        </group>
+                        <group/>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>

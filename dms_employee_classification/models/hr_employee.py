@@ -11,3 +11,6 @@ class HrEmployee(models.Model):
         inverse_name="employee_id",
         string="Documentos",
     )
+    digital_signature = fields.Binary(
+        string="Firma",
+    )
