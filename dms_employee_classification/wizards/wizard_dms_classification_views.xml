@@ -17,4 +17,17 @@
             </xpath>
         </field>
     </record>
+
+    <record id="view_wizard_dms_classification_form_record_ref" model="ir.ui.view">
+        <field name="model">wizard.dms.classification</field>
+        <field name="inherit_id" ref="dms_field_auto_classification.view_wizard_dms_classification_form"/>
+        <field name="arch" type="xml">
+            <field name="record_ref" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <field name="record_ref" position="after">
+                <field name="display_record_ref" string="Registro Referenciado"/>
+            </field>
+        </field>
+    </record>
 </odoo>
