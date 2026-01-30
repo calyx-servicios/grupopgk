@@ -1,7 +1,6 @@
 import re
 import unicodedata
 from pprint import pprint
-from odoo import _
 
 def preprocess_siglas(name):
     name = name or ''
@@ -53,31 +52,17 @@ def find_record_by_cuit_or_name(env, model_name, name=None, cuit=None, errors=No
     # Validación por CUIT (solo para Contactos, campo cuit en la OP)
     if model_name == 'res.partner':
         if not cuit:
-            errors.append(_("No CUIT for '%s'") % name)
+            errors.append(f"No hay CUIT para '{name}'")
         else:
             cuit_normalized = normalize_cuit(cuit)
-            if len(cuit_normalized) != 11:
-                errors.append(_("Invalid CUIT for '%s': %s") % (name, cuit))
+            if len(cuit_normalized) != 11 and cuit != 'na':
+                errors.append(f"CUIT inválido para '{name}': {cuit}")
             else:
                 partner_ids = Model.search([('vat', '=', cuit_normalized)])
-                if not partner_ids:
-                    errors.append(_("No partner found for CUIT %s") % cuit)
+                if not partner_ids and cuit != 'na':
+                    errors.append(f"No se encontró partner para CUIT {cuit}")
                 elif len(partner_ids) > 1:
-                    # Buscar si hay algún partner con categoría 'Cliente'
-                    client_partners = partner_ids.filtered(lambda p: 'Cliente' in p.category_id.mapped('name'))
-                    if len(client_partners) == 1:
-                        record = client_partners[0]
-                        errors.append(_("Selected partner %s for CUIT %s because it has 'Cliente' category") % (record.id, cuit))
-                        errors.append(_("Multiple partners found for CUIT %s: %s") % (cuit, [p.id for p in partner_ids]))
-                    else:
-                        record = False
-                        if client_partners:
-                            errors.append(_("Multiple partners with 'Cliente' category found for CUIT %s: %s") % (cuit, [p.id for p in client_partners]))
-                        else:
-                            errors.append(_("No partner with 'Cliente' category found for CUIT %s. Available partners: %s") % (cuit, [p.id for p in partner_ids]))
-                else:
-                    record = partner_ids[0]
-
+                    errors.append(f"Se encontraron múltiples partners para CUIT {cuit} (IDs: {partner_ids.ids})")
     # --------------------
     # Validación por nombre si no se encontró por CUIT
     if not record and name:
@@ -96,41 +81,56 @@ def find_record_by_cuit_or_name(env, model_name, name=None, cuit=None, errors=No
         aliases = AliasModel.search(domain) if name_norm != 'na' else False
         
         if aliases:
-            # Obtener normalized_ids como recordset, filtrando los que tienen el field_name
-            all_normalized = aliases.mapped('normalized_id')
-            normalized_ids = all_normalized.filtered(lambda n: getattr(n, field_name, False))
+            normalized_ids = aliases.mapped('normalized_id').filtered(lambda n: getattr(n, field_name))                    
             records = normalized_ids.mapped(field_name)
-            # Convertir a lista para eliminar duplicados, luego volver a recordset
-            unique_ids = list(set(records.ids))
-            unique_records = records.browse(unique_ids)
-            
+            unique_records = list(set(records))
             if unique_records:
                 if model_name == 'res.partner':
-                    #real_partners = records.filtered(lambda p: not p.parent_id and p.id == p.commercial_partner_id.id)
-                    if len(unique_records) == 1:
-                        record = unique_records[0]
+                    real_partners = records.filtered(lambda p: p.id == p.commercial_partner_id.id)
+                    if len(real_partners) == 1:
+                        record = real_partners[0]
                     else:
-                        # Buscar si hay algún partner con categoría 'Cliente'
-                        # unique_records ahora es un recordset, podemos usar .filtered()
-                        client_partners = unique_records.filtered(lambda p: 'Cliente' in p.category_id.mapped('name'))
-                        if len(client_partners) == 1:
-                            record = client_partners[0]
-                            errors.append(_("Selected partner %s for '%s' because it has 'Cliente' category") % (record.id, name))
-                        else:
-                            record = False
-                            if client_partners:
-                                errors.append(_("Multiple partners with 'Cliente' category found for '%s': %s") % (name, client_partners.ids))
+                        # Buscar coincidencia exacta cuando hay múltiples registros
+                        exact_domain = [
+                            '|',
+                                ('normalized_name', '=', name_norm),
+                                ('normalized_name', '=', name_alt),
+                            (normalize_model_type, '!=', False),
+                        ]
+                        if model_name == 'res.partner':
+                            exact_domain.append((normalize_model_type + '.active', '=', True))
+                        exact_aliases = AliasModel.search(exact_domain) if name_norm != 'na' else False
+                        
+                        if exact_aliases:
+                            # Hay coincidencia exacta, usar ese registro
+                            exact_normalized_ids = exact_aliases.mapped('normalized_id').filtered(lambda n: getattr(n, field_name))
+                            exact_records = exact_normalized_ids.mapped(field_name)
+                            exact_unique_records = list(set(exact_records))
+                            if exact_unique_records:
+                                record = exact_unique_records[0]
                             else:
-                                errors.append(_("No partner with 'Cliente' category found for '%s'. Available partners: %s") % (name, unique_records.ids))
+                                record = False
+                                errors.append(
+                                    f"Se encontraron múltiples registros distintos para '{name}' en {model_name}: {[r.id for r in unique_records]}. "
+                                    f"No se encontró coincidencia exacta válida. Se detiene el proceso."
+                                )
+                        else:
+                            # No hay coincidencia exacta, detener el proceso
+                            record = False
+                            errors.append(
+                                f"Se encontraron múltiples registros distintos para '{name}' en {model_name}: {[r.id for r in unique_records]}. "
+                                f"No se encontró coincidencia exacta. Se detiene el proceso."
+                            )
                 else:
                     if len(unique_records) > 1:
                         errors.append(
-                            _("Multiple distinct records found for '%s' in %s: %s. Process stopped.") % (name, model_name, unique_records.ids)
+                            f"Se encontraron múltiples registros distintos para '{name}' en {model_name}: {[r.id for r in unique_records]}"
+                            f"Se detiene el proceso."
                         )
                     record = unique_records[0]
             else:
-                errors.append(_("No valid records found for '%s' in %s") % (name, model_name))
+                errors.append(f"No se encontraron registros válidos para '{name}' en {model_name}")
         else:
             if model_name != 'account.journal':
-                errors.append(_("No alias found for '%s' in %s") % (name, model_name))
+                errors.append(f"No se encontró alias para '{name}' en {model_name}")
     return record, errors

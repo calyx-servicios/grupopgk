@@ -1,4 +1,4 @@
-from odoo import models, fields, api, _
+from odoo import models, fields, api
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -19,36 +19,41 @@ class ResConfigSettings(models.TransientModel):
     box_subject_type = fields.Char(string="Box Subject Type", config_parameter="datareader_odoo.box_subject_type")
     box_subject_id = fields.Char(string="Box Subject ID", config_parameter="datareader_odoo.box_subject_id")
     box_folder_id_op = fields.Char(
-        string=_("Box Folder ID (OP)"),
-        help=_("Base folder ID in Box for payment orders"),
+        string="Box Folder ID (OP)",
+        help="ID de la carpeta base en Box para las órdenes de pago",
         config_parameter="datareader_odoo.box_folder_id_op"
     )
     box_folder_id_withholding = fields.Char(
-        string=_("Box Folder ID (RET)"),
-        help=_("Base folder ID in Box for withholding files"),
+        string="Box Folder ID (RET)",
+        help="ID de la carpeta base en Box para los archivos de retenciones",
         config_parameter="datareader_odoo.box_folder_id_withholding"
     )
 
     datareader_mode = fields.Selection(
         [
-            ('production', _('Production')),
-            ('testing', _('Testing'))
+            ('production', 'Producción'),
+            ('testing', 'Testing')
         ],
-        string=_('DataReader Mode'),
+        string="Modo DataReader",
         default='production',
         config_parameter="datareader_odoo.mode",
-        help=_('Define if DataReader operates in production or testing mode.')
+        help="Define si DataReader opera en modo producción o testing."
     )
     datareader_download_files = fields.Boolean(
-        string=_("Download PDF Files"),
+        string="Descargar Archivos PDF",
         default=False,
         config_parameter="datareader_odoo.download_files",
-        help=_("If enabled and mode is Testing, it will download files from Box; otherwise, it is omitted to speed up the process.")
+        help="Si está activado y el modo es Testing, descargará los archivos de Box; de lo contrario, se omite para acelerar el proceso."
     )
     datareader_download_first_batch = fields.Boolean(
-        string=_("Download Only First Batch"),
+        string="Descargar Solo el Primer Lote",
         default=False,
         config_parameter="datareader_odoo.download_first_batch",
-        help=_("If enabled, the download process will only get the first batch of records from DataReader.")
+        help="Si está activado, el proceso de descarga solo obtendrá el primer lote (batch) de registros desde DataReader."
     )
+    datareader_tolerance_enabled = fields.Boolean(related='company_id.datareader_tolerance_enabled', readonly=False)
+    datareader_tolerance_amount = fields.Float(related='company_id.datareader_tolerance_amount', readonly=False)
+    datareader_tolerance_account_id = fields.Many2one(related='company_id.datareader_tolerance_account_id', readonly=False)
+    datareader_tolerance_journal_id = fields.Many2one(related='company_id.datareader_tolerance_journal_id', readonly=False)
+    datareader_tolerance_analytic_account_id = fields.Many2one(related='company_id.datareader_tolerance_analytic_account_id', readonly=False)
     
