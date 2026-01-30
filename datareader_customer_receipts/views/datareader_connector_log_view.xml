@@ -82,7 +82,8 @@
         <field name="name">datareader.account.payment.group.log.tree</field>
         <field name="model">datareader.account.payment.group.log</field>
         <field name="arch" type="xml">
-            <tree string="Customer Receipts Connector Processes" default_order="create_date desc">                <field name="name"/>
+            <tree string="Customer Receipts Connector Processes" default_order="create_date desc">
+                <field name="name"/>
                 <field name="last_connection"/>
                 <field name="create_date"/>
                 <field name="last_token"/>
