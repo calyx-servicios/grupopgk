@@ -103,7 +103,7 @@ class ResPartner(models.Model):
             })
 
         else:
-            self.env['normalized.text.items'].create({
+            self.env['normalized.text.alias'].create({
                 'name': name,
                 'is_real_name': True,
                 'normalized_id': normalized.id,

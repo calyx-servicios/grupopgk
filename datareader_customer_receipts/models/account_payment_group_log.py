@@ -8,43 +8,67 @@ from odoo.exceptions import UserError
 import os
 import json
 from datetime import datetime
+from pprint import pprint
     
 _logger = logging.getLogger(__name__)
 
 
 class DataReaderConnectorWrapper(models.AbstractModel):
     _name = "datareader.connector"
-    _description = _("Wrapper for DataReaderConnector (external)")
+    _description = "Wrapper para DataReaderConnector (externo)"
 
     def get_connector(self):
         return datareader_conn.DatareaderConnector.create_from_environment(self.env)
 
 class DataReaderAccountPaymentGroupLog(models.Model):
     _name = "datareader.account.payment.group.log"
-    _description = _("DataReader Connector to Process Json")
+    _description = "Conector DataReader para Procesar Json"
     _inherit = ['mail.thread']
         
-    name = fields.Char(string=_("Name"), default=_("DataReader Connector"), readonly=True)
-    last_token = fields.Char(string=_("Last Token"), readonly=True)
-    last_connection = fields.Datetime(string=_("Last Connection"), readonly=True)
+    name = fields.Char(string="Nombre", default="Conector DataReader", readonly=True)
+    last_token = fields.Char(string="Último Token", readonly=True)
+    last_connection = fields.Datetime(string="Última conexión", readonly=True)
     account_payment_group_item_ids = fields.One2many(
         'datareader.account.payment.group.log.item',
         'log_id',
-        string=_("Processing Details")
+        string="Detalles de Procesamiento"
     )
 
     def _validate_op_number(self, data, errors, log_item=None):
         """
-        Validates that operation number comes and is not duplicated.
-        Returns the operation number or None if there is an error.
+        Valida que venga número de operación y que no esté duplicado.
+        Si no viene op_number, intenta usar user_id-amount_neto del JSON.
+        Devuelve el número de operación o None si hay error.
         """
         op_number = data.get('op_number')
 
+        # Si no viene op_number o es 'na', intentar usar user_id-amount_neto
         if not op_number or str(op_number).lower() == 'na':
-            errors.append(_("No operation number came in the order."))
-            if log_item:
-                log_item.write({'message': "\n".join(errors)})
-            return None, errors
+            user_id_data = data.get('user_id')
+            amount_neto = data.get('amount_neto')
+            
+            # Construir op_number como user_id-amount_neto
+            if user_id_data and amount_neto is not None:
+                if isinstance(user_id_data, dict):
+                    user_id = user_id_data.get('id', '')
+                else:
+                    user_id = str(user_id_data) if user_id_data else ''
+                
+                amount_neto_str = str(amount_neto) if amount_neto else ''
+                op_number = f"{user_id}-{amount_neto_str}"
+            elif user_id_data:
+                # Si solo hay user_id, usar solo ese
+                if isinstance(user_id_data, dict):
+                    op_number = str(user_id_data.get('id', ''))
+                else:
+                    op_number = str(user_id_data)
+            
+            # Si aún no hay op_number, reportar error
+            if not op_number or op_number == '-':
+                errors.append("No vino número de operación en la orden y no se pudo generar desde user_id y amount_neto.")
+                if log_item:
+                    log_item.write({'message': "\n".join(errors)})
+                return None, errors
 
         # Validar duplicado en payment.group
         existing_op = self.env['account.payment.group'].sudo().search(
@@ -52,11 +76,15 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             limit=1
         )
         if existing_op:
-            errors.append(_("A payment receipt with number %s (ID %s) already exists.") % (op_number, existing_op.id))
+            errors.append(f"Ya existe un recibo de pago con el número {op_number} (ID {existing_op.id}) .")
             if log_item:
-                log_item.write({'message': "\n".join(errors)})
+                log_item.write({'message': "\n".join(errors), 'op_exists': True})
             return None, errors
 
+        # Si no existe, asegurar que op_exists sea False
+        if log_item:
+            log_item.op_exists = False
+        
         return op_number, errors
 
     def _validate_required_fields(self, data, required_fields):
@@ -70,7 +98,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
     def _create_log_item(self, file_name, order_id=None):
         vals = {
             'log_id': self.id,
-            'file_name': file_name or _('No related file')
+            'file_name': file_name or 'No hay archivo relacionado'
         }
         if order_id:
             vals['order_id'] = str(order_id)
@@ -81,7 +109,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             self.env, 'res.company', name=company_name, errors=errors
         )
         if not company:
-            errors.append(_("Company '%s' not found, process stopped.") % company_name)
+            errors.append(f"No se encontró compañía '{company_name}', se detiene el proceso.")
         return company, errors
 
     def _get_partner(self, cuit, name, errors):
@@ -98,14 +126,14 @@ class DataReaderAccountPaymentGroupLog(models.Model):
     
     def _parse_payment_date(self, date_str, errors):
         """
-        Converts a string to date in Odoo format (YYYY-MM-DD).
-        If the date is invalid or does not come, uses today's date.
+        Convierte un string a fecha en formato Odoo (YYYY-MM-DD).
+        Si la fecha es inválida o no viene, usa la fecha de hoy.
         """
         if date_str and str(date_str).lower() != 'na':
             try:
                 payment_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             except ValueError:
-                errors.append(_("Malformed date '%s', today's date will be used.") % date_str)
+                errors.append(f"Fecha malformada '{date_str}', se usará fecha de hoy.")
                 payment_date = datetime.today().date()
         else:
             payment_date = datetime.today().date()
@@ -114,33 +142,24 @@ class DataReaderAccountPaymentGroupLog(models.Model):
     
     def _get_receiptbook(self, company, errors, log_item=None):
         """
-        Searches for the company's receiptbook.
-        First tries with the DataReader one, then automatic one, if not found searches for any.
+        Busca el receiptbook de la compañía. 
+        Primero intenta con el automático, si no lo encuentra busca cualquiera.
         """
-        # First try to find DataReader receiptbook
         receiptbook = self.env['account.payment.receiptbook'].sudo().search([
-            ('is_datareader_receiptbook', '=', True),
+            ('is_automatic_receiptbook', '=', True),
             ('company_id', '=', company.id),
             ('partner_type', '=', 'customer')
         ], limit=1)
 
         if not receiptbook:
-            # If no DataReader receiptbook, try automatic one
-            receiptbook = self.env['account.payment.receiptbook'].sudo().search([
-                ('is_automatic_receiptbook', '=', True),
-                ('company_id', '=', company.id),
-                ('partner_type', '=', 'customer')
-            ], limit=1)
-
-        if not receiptbook:
-            errors.append(_("No DataReader or automatic receiptbook found for company '%s'.") % company.name)
+            errors.append(f"No se encontró receiptbook automático para la compañía '{company.name}'.")
             receiptbook = self.env['account.payment.receiptbook'].sudo().search([
                 ('company_id', '=', company.id),
                 ('partner_type', '=', 'customer')
             ], limit=1)
 
             if not receiptbook:
-                errors.append(_("No receiptbook found for company '%s'.") % company.name)
+                errors.append(f"No se encontró ningún receiptbook para la compañía '{company.name}'.")
                 if log_item:
                     log_item.write({'message': "\n".join(errors)})
                 return None, errors
@@ -149,18 +168,18 @@ class DataReaderAccountPaymentGroupLog(models.Model):
     
     def _get_default_withholding_journal(self, data, partner, company, journal_name, errors, log_item=None):
         """
-        Searches for a default journal in the partner and, if not found, in the company.
-        Uses the currency to decide which journal corresponds.
-        If none is found, returns None and accumulates errors.
+        Busca un diario por defecto en el partner y, si no lo encuentra, en la compañía.
+        Usa la moneda para decidir cuál diario corresponde.
+        Si no encuentra ninguno, devuelve None y acumula errores.
         """
         journal = partner.with_company(company).datareader_default_partner_withholding_journal_id or False
         if not journal:
-            errors.append(_("No default journal found for withholdings in contact '%s' for company '%s'.") % (partner.name, company.name))
+            errors.append(f"No se encontró diario predeterminado para retenciones en el contacto '{partner.name}' para la compañía '{company.name}'.")
             if log_item:
                 log_item.write({'message': "\n".join(errors)})
             journal = company.datareader_default_withholding_journal_id or False
             if not journal:
-                errors.append(_("No default journal found for withholdings in company settings either."))
+                errors.append("Tampoco se encontró diario predeterminado para retenciones en las configuraciones de la compañia.")
                 if log_item:
                     log_item.write({'message': "\n".join(errors)})
                     return None, errors
@@ -169,9 +188,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 
     def _get_default_journal(self, data, partner, company, journal_name, errors, log_item=None):
         """
-        Searches for a default journal in the partner and, if not found, in the company.
-        Uses the currency to decide which journal corresponds.
-        If none is found, returns None and accumulates errors.
+        Busca un diario por defecto en el partner y, si no lo encuentra, en la compañía.
+        Usa la moneda para decidir cuál diario corresponde.
+        Si no encuentra ninguno, devuelve None y acumula errores.
         """
         currency = data.get('currency')
         journal= False
@@ -179,42 +198,46 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         if pay_method == 'cheque':
             journal = partner.with_company(company).datareader_default_partner_check_journal_id or False
             if not journal:
-                errors.append(_("No default journal found for checks in contact '%s' for company '%s'.") % (partner.name, company.name))
+                errors.append(f"No se encontró diario Predeterminado para cheques en el contacto '{partner.name}' para la compañía '{company.name}'.")
                 if log_item:
                     log_item.write({'message': "\n".join(errors)})
                 journal = company.datareader_default_check_journal_id or False
         elif currency == 'ARS':
             journal = partner.with_company(company).datareader_default_partner_transfer_journal_id or False
             if not journal:
-                errors.append(_("No default journal found (Pesos) in contact '%s' for company '%s'.") % (partner.name, company.name))
+                errors.append(f"No se encontró diario Predeterminado (Pesos) en el contacto '{partner.name}' para la compañía '{company.name}'.")
                 if log_item:
                     log_item.write({'message': "\n".join(errors)})
                 journal = company.datareader_default_transfer_journal_id or False
         elif currency == 'USD':
             journal = partner.with_company(company).datareader_default_partner_transfer_usd_journal_id or False
             if not journal:
-                errors.append(_("No default journal found (Dollars) in contact '%s' for company '%s'.") % (partner.name, company.name))
+                errors.append(f"No se encontró diario Predeterminado (Dólares) en el contacto '{partner.name}' para la compañía '{company.name}'.")
                 if log_item:
                     log_item.write({'message': "\n".join(errors)})
                 journal = company.datareader_default_transfer_usd_journal_id or False
         else:
-            errors.append(_("No currency type found in DataReader."))
+            errors.append("No se encontró tipo de moneda en DataReader.")
             if log_item:
                 log_item.write({'message': "\n".join(errors)})
                 return None, errors
 
         if not journal:
-            errors.append(_("No default journal found (%s) in contact or company, (%s, %s), process stopped.") % (pay_method, partner.name, company.name))
+            errors.append(f"No se encontró ningún diario predeterminado ({pay_method}) en el contacto ni en compañía, ({partner.name}, {company.name}), se detiene el proceso.")
             if log_item:
                 log_item.write({'message': "\n".join(errors)})
             return None, errors
 
         return journal, errors
 
-    def create_from_datareader_json(self, data, connector):
+    def create_from_datareader_json(self, data, connector, log_item=None):
         """
-        Creates a receipt (account.payment.group) and its payment lines (account.payment)
-        from a JSON coming from DataReader.
+        Crea un recibo (account.payment.group) y sus líneas de pago (account.payment)
+        desde un JSON proveniente de DataReader.
+        
+        :param data: Datos JSON de la orden de pago
+        :param connector: Conector DataReader
+        :param log_item: Log item opcional. Si se proporciona, se usa este en lugar de crear uno nuevo.
         """
         ir_config = self.env['ir.config_parameter'].sudo()
         # ver si se utiliza
@@ -223,12 +246,14 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         
         file_name = data.get("file_name")
         order_id = data.get("id")
-        log_item = self._create_log_item(file_name, order_id)
+        if not log_item:
+            log_item = self._create_log_item(file_name, order_id)
         errors = []
 
         op_number, errors = self._validate_op_number(data, errors, log_item)
         if not op_number:
             connector.set_payment_order_readed(data.get("id"), True)
+            log_item.readed = True
             return log_item
 
         company_name = data['society']
@@ -264,7 +289,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'account_withholding.account_payment_method_in_withholding', raise_if_not_found=False
             )
             if not payment_method_withholding:
-                errors.append(_("Payment method for withholdings not found, process stopped."))
+                errors.append("No se encontró el método de pago para retenciones, se detiene el proceso.")
                 log_item.write({'message': "\n".join(errors)})
                 return log_item
             
@@ -279,7 +304,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
             if not payment_method_withholding_line:
                 errors.append(
-                    _("Journal '%s' does not have a line for withholding payment method.") % ret_journal_id.display_name
+                    f"El diario '{ret_journal_id.display_name}' "
+                    f"no tiene línea para el método de pago de retenciones."
                 )
                 log_item.write({'message': "\n".join(errors)})
                 return log_item
@@ -290,9 +316,11 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         if not receiptbook_id:
             return log_item
 
-        amount = float(data.get('amount_neto') or 0.0)
+        amount = float(data.get('amount_bruto') or 0.0)
         if amount == 0.0:
-            errors.append(_("No amount came in the order."))
+            errors.append(f"No vino monto en la orden.")
+            log_item.write({'message': "\n".join(errors)})
+            return log_item
         # Método de pago base
         pay_method = data.get('pay_method').lower()
         payment_method_obj = self.env['account.payment.method'].sudo()
@@ -301,7 +329,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             ('payment_type', '=', 'inbound')
         ], limit=1)
         if not payment_method:
-            errors.append(_("No payment method %s for company %s.") % ('Check' if pay_method == 'cheque' else 'Manual', company_id.name))
+            errors.append(f"No hay método de pago {'Cheque' if pay_method == 'cheque' else 'Manual'} para la compañia {company_id.name}."
+            )
             log_item.write({'message': "\n".join(errors)})
             return log_item
             
@@ -312,7 +341,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         if not payment_method_line:
             errors.append(
-                _("Journal '%s' does not have a line configured for payment method '%s'.") % (journal_id.display_name, payment_method.name)
+                f"El diario '{journal_id.display_name}' "
+                f"no tiene línea configurada para el método de pago '{payment_method.name}'."
             )
             log_item.write({'message': "\n".join(errors)})
             return log_item
@@ -321,11 +351,13 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             'partner_id': partner_id.id,
             'commercial_partner_id': partner_id.commercial_partner_id.id,
             'company_id': company_id.id,
-            'payment_date': payment_date_str,
+            'payment_date': fields.Date.today(),
             'receiptbook_id': receiptbook_id.id,
             'state': 'draft',
             'partner_type': 'customer',
             'communication': op_number,
+            'is_datareader_op': True,
+            'datareader_op_date': payment_date_str,
         }
 
         payment_group = self.env['account.payment.group'].sudo().create(vals)
@@ -342,12 +374,42 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             'message': "\n".join(errors)
         })
         
+        # Calcular el monto ajustado si hay tolerancia aplicable (antes de crear el pago)
+        adjusted_amount = amount
+        tolerance_applied = False
+        original_payment_difference = None  # Guardar la diferencia original antes del ajuste
+        
+        if partner_id.datareader_auto_payment_post and pay_method != 'cheque':
+            # Calcular la diferencia original (antes de ajustar el monto)
+            matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
+            original_payment_difference = (amount - matched_amount) * -1  # Invertir para la lógica de tolerancia
+            
+            # Verificar si está habilitada la tolerancia
+            tolerance_enabled = company_id.datareader_tolerance_enabled
+            tolerance_amount = company_id.datareader_tolerance_amount or 0.0
+            tolerance_account = company_id.datareader_tolerance_account_id
+            
+            # Si hay diferencia dentro del margen de tolerancia, ajustar el monto
+            if (tolerance_enabled and 
+                tolerance_amount > 0.0 and 
+                abs(original_payment_difference) <= tolerance_amount and
+                tolerance_account and
+                matched_amount > 0):
+                # Ajustar el monto: payment.amount - payment_difference = matched_amount
+                adjusted_amount = amount + original_payment_difference
+                if adjusted_amount > 0:
+                    tolerance_applied = True
+                    _logger.info(f"Ajustando monto del pago antes de crearlo: {amount} -> {adjusted_amount} (matched_amount: {matched_amount}, diferencia: {original_payment_difference})")
+                else:
+                    _logger.warning(f"El monto ajustado sería {adjusted_amount}, usando monto original")
+                    adjusted_amount = amount
+        
         payment_vals = {
             'payment_type': 'inbound',
             'partner_type': 'customer',
             'partner_id': partner_id.id,
-            'amount': amount,
-            'date': payment_date_str,
+            'amount': adjusted_amount,
+            'date': fields.Date.today(),
             'journal_id': journal_id.id,
             'payment_method_line_id': payment_method_line.id if payment_method_line else False,
             'company_id': company_id.id,
@@ -361,6 +423,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             payment_vals['check_number'] = data['nro_cheque']
 
         total_payment_line = self.env['account.payment'].sudo().create(payment_vals)
+        # No postear si se aplicó tolerancia, porque luego se ajustarán las líneas en draft
         if ap_post:
             total_payment_line.action_post()            
 
@@ -387,7 +450,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
             # Si no existe impuesto, registra error y corta el proceso ya que es requerido
             if not withholding_tax:
-                errors.append(_("Withholding tax not found for %s, datareader_custom_identifier field may need to be configured") % ret_name)
+                errors.append(f"No se encontró el impuesto de Retención para {ret_name}, puede que se deba configurar el campo datareader_custom_identifier")
                 log_item.write({'message': "\n".join(errors)})
                 return log_item
 
@@ -396,7 +459,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'partner_type': 'customer',
                 'partner_id': partner_id.id,
                 'amount': ret_amount,
-                'date': payment_date_str,
+                'date': fields.Date.today(),
                 'journal_id': ret_journal_id.id,
                 'payment_method_line_id': payment_method_withholding_line.id,
                 'company_id': company_id.id,
@@ -406,6 +469,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'payment_group_id': payment_group.id,
             }
 
+            total_payment_line.amount -= ret_amount
             missings = self._validate_required_fields(
                 ret_payment_vals,
                 ['partner_id', 'amount', 'date', 'journal_id', 'payment_method_line_id', 'tax_withholding_id', 'withholding_number']
@@ -414,20 +478,135 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 ret_account_payment = ret_account_payment_obj.create(ret_payment_vals)
                 log_item.write({'message': "\n".join(errors)})
             else:
-                errors.append(_("Missing required fields for withholding: %s") % ', '.join(missings))
+                errors.append(f"Faltan campos obligatorios para la retención: {', '.join(missings)}")
                 log_item.write({'message': "\n".join(errors)})
                 return log_item
             
-        if partner_id.datareader_auto_payment_post and payment_method != 'cheque' and payment_group.payment_difference == 0:
-            payment_group.post()
+        # Lógica de publicación automática con tolerancia
+        if partner_id.datareader_auto_payment_post and pay_method != 'cheque':
+            # Usar la diferencia original guardada antes del ajuste, o calcularla si no se guardó
+            if original_payment_difference is not None:
+                payment_difference = original_payment_difference
+            else:
+                payment_difference = payment_group.payment_difference * -1
+            company = company_id
+            
+            # Verificar si está habilitada la tolerancia
+            tolerance_enabled = company.datareader_tolerance_enabled
+            tolerance_amount = company.datareader_tolerance_amount or 0.0
+            tolerance_account = company.datareader_tolerance_account_id
+            
+            # Si no hay diferencia, publicar normalmente (solo si cumple condiciones de retenciones)
+            if abs(payment_difference) == 0.0:
+                if self._should_post_payment_group(log_item):
+                    payment_group.post()
+                    # Marcar como leído cuando el recibo se haya publicado exitosamente
+                    if log_item:
+                        log_item.readed = True
+                        _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+                else:
+                    _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
+            # Si hay diferencia dentro del margen de tolerancia
+            elif (tolerance_enabled and 
+                  tolerance_amount > 0.0 and 
+                  abs(payment_difference) <= tolerance_amount and
+                  tolerance_account):
+                """ # Calcular el monto total que deben cubrir las facturas
+                matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
+                
+                # Ajustar el monto del pago principal para que cubra exactamente las facturas
+                main_payment = payment_group.payment_ids.filtered(lambda p: p.state == 'draft')[0] if payment_group.payment_ids else None
+                if main_payment and matched_amount > 0:
+                    # Ajustar el monto del pago para que coincida con el monto de las facturas
+                    old_amount = main_payment.amount
+                    main_payment.amount = matched_amount
+                    _logger.info(f"Ajustado monto del pago {main_payment.id} de {old_amount} a {matched_amount}") """
+                
+                # Calcular el monto total que deben cubrir las facturas
+                matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
+                
+                # Obtener el pago en draft para postear y luego ajustar las líneas
+                main_payment = payment_group.payment_ids.filtered(lambda p: p.state == 'draft')
+                
+                # Postear solo si cumple condiciones de retenciones
+                if self._should_post_payment_group(log_item):
+                    payment_group.post()
+                else:
+                    _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
+                    return log_item
+                
+                if main_payment:
+                    payment = main_payment[0]
+                    # Ajustar las líneas contables y crear la línea de tolerancia
+                    self._adjust_payment_lines_with_tolerance(
+                        payment,
+                        payment_group,
+                        tolerance_account,
+                        payment_difference,
+                        matched_amount,
+                        fields.Date.today(),
+                    )
+                
+                # Postear el grupo de pagos después de ajustar las líneas con tolerancia
+                
+                # Marcar como leído cuando el recibo se haya publicado exitosamente (con o sin líneas de tolerancia)
+                if log_item:
+                    log_item.readed = True
+                    _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+            
+            # Si hay diferencia fuera de tolerancia, no publicar (dejar en draft)
+            else:
+                if payment_difference != 0.0:
+                    _logger.info(f"Payment group {payment_group.id} no publicado. Diferencia {payment_difference} fuera de tolerancia ({tolerance_amount})")
             
         return log_item
 
+    def _has_retention_files(self, log_item):
+        """
+        Verifica si hay archivos de retención descargados en el log_item.
+        Retorna True si hay al menos un archivo de retención (attachment_ret1_id a attachment_ret4_id).
+        """
+        if not log_item:
+            return False
+        for i in range(1, 5):
+            ret_field = f'attachment_ret{i}_id'
+            if getattr(log_item, ret_field, None):
+                return True
+        return False
+
+    def _should_post_payment_group(self, log_item):
+        """
+        Determina si se debe postear el payment_group basado en las reglas de retenciones:
+        - Solo se postea si hay retenciones (has_withholding=True) Y hay al menos un archivo de retención descargado
+        - Si hay archivo de retención pero no hay líneas de retención, no se postea
+        """
+        if not log_item:
+            return True  # Si no hay log_item, se postea normalmente (comportamiento anterior)
+        
+        has_files = self._has_retention_files(log_item)
+        has_withholding = log_item.has_withholding
+        
+        # Si hay archivos de retención pero no hay líneas de retención, no se postea
+        if has_files and not has_withholding:
+            _logger.info(f"Payment group no se postea: hay archivos de retención pero no hay líneas de retención")
+            return False
+        
+        # Si hay retenciones, verificar que también haya archivos de retención
+        if has_withholding:
+            if not has_files:
+                _logger.info(f"Payment group no se postea: hay retenciones pero no hay archivos de retención descargados")
+                return False
+            return True
+        
+        # Si no hay retenciones ni archivos, se postea normalmente
+        return True
+
     def _normalize_invoice_number(self, number):
         """
-        Normalizes invoice/receipt numbers:
-        - If it has more than 8 digits, separates point of sale and number (last 8 digits always)
-        - If it has 8 digits or less, fills with zeros on the left
+        Normaliza números de factura/comprobante:
+        - Si tiene más de 8 dígitos, separa punto de venta y número (últimos 8 dígitos siempre)
+        - Si el punto de venta es 0, se omite y solo retorna el número de factura
+        - Si tiene 8 dígitos o menos, rellena ceros a la izquierda
         """
         if not number:
             return None
@@ -436,18 +615,21 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         number = number.replace('-', '')
 
         if len(number) > 8:
-            point_of_sale = number[:-8].lstrip('0') or '0'
+            point_of_sale = number[:-8].lstrip('0')
             invoice_number = number[-8:].zfill(8)
+            # Si el punto de venta es 0 (todos ceros), omitirlo y retornar solo el número
+            if not point_of_sale:
+                return invoice_number
             return f"{point_of_sale}-{invoice_number}"
         else:
             return number.zfill(8)
 
     def _find_and_attach_invoices(self, payment_group, lines, errors):
         """
-        Searches and links the corresponding invoices to the payment lines.
-        - Normalizes invoice numbers using _normalize_invoice_number
-        - Matches exactly if point of sale comes, can be 1-12345678 or 00001-12345678
-        - If only brings the number (8 digits), makes comparison with the last 8 digits of the customer's invoices to pay
+        Busca y vincula las facturas correspondientes a las líneas de pago.
+        - Normaliza los números de factura usando _normalize_invoice_number
+        - Coincide exactamente si viene punto de venta, puede ser 1-12345678 ó 00001-12345678
+        - Si solo trae el número (8 dígitos), hace comparación con los últimos 8 dígitos de las facturas del cliente a pagar
         """
         domain = [
             ('partner_id.commercial_partner_id', '=', payment_group.commercial_partner_id.id),
@@ -482,19 +664,433 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 found_moves.append(matches[0].id)
             else:
                 errors.append(
-                    _("Invoice %s not found for partner %s - invoice in odoo format (%s)") %
+                    _("No se encontró la factura %s para el partner %s - factura en formato odoo (%s)") %
                     (line.get('number'), payment_group.commercial_partner_id.name, norm_line_number)
                 )
                 missing_found = True
         if missing_found:
             if len(found_moves) > 0:
                 errors.append(
-                    _("Not all invoices were allocated")
+                    _("No se imputaron todas las facturas")
                 )
                 payment_group.to_pay_move_line_ids = [(6, 0, found_moves)]
                 payment_group.state = 'draft'
         else:
             payment_group.to_pay_move_line_ids = [(6, 0, found_moves)] if found_moves else [(6, 0, 0)]
+            
+            
+    def _create_tolerance_line_before_post(self, payment, payment_group, tolerance_account, difference, payment_date):
+        """
+        Crea la línea de tolerancia en el asiento draft antes del posteo.
+        El monto del pago ya fue ajustado previamente, así que solo creamos la línea de tolerancia.
+        
+        :param payment: account.payment - El pago en draft
+        :param payment_group: account.payment.group - El grupo de pago
+        :param tolerance_account: account.account - La cuenta para la diferencia
+        :param difference: float - La diferencia (positiva = exceso, negativa = falta)
+        :param payment_date: str - La fecha del pago
+        :return: account.move.line - La línea de tolerancia creada o None
+        """
+        try:
+            payment_move = payment.move_id
+            if not payment_move or payment_move.state != 'draft':
+                return None
+            
+            # Obtener el diario y la cuenta analítica de la compañía
+            company = payment_group.company_id
+            tolerance_journal = company.datareader_tolerance_journal_id
+            tolerance_analytic_account = company.datareader_tolerance_analytic_account_id
+            
+            abs_diff = abs(difference)
+            
+            # Obtener payment_group_ids
+            existing_payment_group_ids = {payment_group.id}
+            payment_group_ids_command = [(6, 0, list(existing_payment_group_ids))]
+            
+            # Crear línea de tolerancia
+            # Si difference > 0 (pago mayor): tolerancia en crédito para balancear
+            # Si difference < 0 (pago menor): tolerancia en débito para balancear
+            tolerance_line_vals = {
+                'move_id': payment_move.id,
+                'account_id': tolerance_account.id,
+                'partner_id': payment_group.partner_id.id,
+                'payment_id': payment.id,
+                'payment_group_ids': payment_group_ids_command,
+                'date': payment_date,
+                'name': 'Diferencia entre recibo y op',
+                'debit': abs_diff if difference < 0 else 0.0,  # Débito si falta dinero
+                'credit': abs_diff if difference > 0 else 0.0,  # Crédito si sobra dinero
+                'company_id': payment_group.company_id.id,
+                'currency_id': payment_move.currency_id.id if payment_move.currency_id else False,
+            }
+            
+            # Agregar el diario si está configurado
+            if tolerance_journal:
+                tolerance_line_vals['journal_id'] = tolerance_journal.id
+            
+            # Agregar la cuenta analítica si está configurada
+            if tolerance_analytic_account:
+                tolerance_line_vals['analytic_account_id'] = tolerance_analytic_account.id
+            
+            # Agregar amount_currency si hay moneda
+            if payment_move.currency_id:
+                if difference < 0:
+                    tolerance_line_vals['amount_currency'] = abs_diff
+                else:
+                    tolerance_line_vals['amount_currency'] = -abs_diff
+            
+            create_context = {
+                'skip_account_move_synchronization': True,
+                'check_move_validity': False,
+            }
+            
+            tolerance_line = self.env['account.move.line'].sudo().with_context(**create_context).create(tolerance_line_vals)
+            _logger.info(f"Línea de tolerancia creada antes del post: {tolerance_line.id} (diferencia: {difference})")
+            return tolerance_line
+            
+        except Exception as e:
+            _logger.error(f"Error al crear línea de tolerancia antes del post: {e}")
+            return None
+
+    def _adjust_payment_lines_with_tolerance(self, payment, payment_group, tolerance_account, difference, matched_amount, payment_date):
+        """
+        Ajusta las líneas contables del pago y crea la línea de tolerancia en draft.
+        
+        Reglas:
+        - Si diferencia > 0 (pago mayor): ajustar la primera línea de débito restando la diferencia, tolerancia en crédito
+        - Si diferencia < 0 (pago menor): ajustar la primera línea de débito sumando la diferencia, tolerancia en crédito
+        
+        :param payment: account.payment - El pago en draft
+        :param payment_group: account.payment.group - El grupo de pago
+        :param tolerance_account: account.account - La cuenta para la diferencia
+        :param difference: float - La diferencia (positiva = exceso, negativa = falta)
+        :param matched_amount: float - El monto total de las facturas
+        :param payment_date: str - La fecha del pago
+        :return: bool - True si se ajustó correctamente
+        """
+        try:
+            payment_move = payment.move_id
+            if not payment_move:
+                _logger.warning("El pago no está en draft, no se pueden ajustar las líneas")
+                return False
+            
+            # Obtener el diario y la cuenta analítica de la compañía
+            company = payment_group.company_id
+            tolerance_journal = company.datareader_tolerance_journal_id
+            tolerance_analytic_account = company.datareader_tolerance_analytic_account_id
+            
+            write_context = {
+                'check_move_validity': False,
+                'skip_account_move_synchronization': True
+            }
+            
+            # Obtener la cuenta del diario
+            journal = payment.journal_id
+            if not journal:
+                _logger.warning("No se pudo obtener el diario del pago")
+                return False
+            
+            journal_account = journal.default_account_id
+            if not journal_account:
+                _logger.warning(f"No se pudo obtener la cuenta por defecto del diario {journal.name}")
+                return False
+            
+            # Obtener payment_group_ids
+            existing_payment_group_ids = {payment_group.id}
+            payment_group_ids_command = [(6, 0, list(existing_payment_group_ids))]
+            
+            # Obtener la primera línea contable existente del asiento
+            # Excluir líneas del diario y de tolerancia para ajustar una línea de cuenta por cobrar
+            first_line = payment_move.line_ids.filtered(
+                lambda l: l.account_id != tolerance_account and l.account_id != journal_account
+            )
+            
+            _logger.info(f"Buscando primera línea. Líneas encontradas: {len(first_line)}, diferencia: {difference}")
+            _logger.info(f"Todas las líneas del asiento: {[(l.id, l.account_id.code, l.debit, l.credit) for l in payment_move.line_ids]}")
+            _logger.info(f"Cuenta de tolerancia: {tolerance_account.code if tolerance_account else 'None'}, Cuenta diario: {journal_account.code if journal_account else 'None'}")
+            
+            if not first_line:
+                _logger.warning("No se encontró línea contable existente para ajustar")
+                return False
+            
+            # Tomar el primer registro
+            first_line = first_line[0]
+            
+            _logger.info(f"Ajustando primera línea {first_line.id}, cuenta: {first_line.account_id.code}, débito actual: {first_line.debit}, crédito actual: {first_line.credit}")
+            
+            # Ajustar la primera línea contable con la diferencia (será la contrapartida)
+            current_debit = first_line.debit or 0.0
+            
+            abs_diff = abs(difference)
+            
+            if difference < 0:
+                if current_debit > 0:
+                    new_debit = current_debit + abs_diff
+                    first_line.with_context(**write_context).write({'debit': new_debit})
+
+            else:
+                if current_debit > 0:
+                    new_debit = current_debit - abs_diff
+                    first_line.with_context(**write_context).write({'debit': new_debit})
+            
+            # Agregar payment_group_ids a la línea ajustada
+            if first_line.payment_group_ids:
+                first_line.with_context(**write_context).payment_group_ids = [(4, payment_group.id)]
+            else:
+                first_line.with_context(**write_context).payment_group_ids = payment_group_ids_command
+            
+            # Crear línea de tolerancia en crédito (según lo solicitado)
+            tolerance_line_vals = {
+                'move_id': payment_move.id,
+                'account_id': tolerance_account.id,
+                'partner_id': payment_group.partner_id.id,
+                'payment_id': payment.id,
+                'payment_group_ids': payment_group_ids_command,
+                'date': payment_date,
+                'name': 'Diferencia entre recibo y op',
+                'debit': 0.0,
+                'credit': abs_diff,
+                'company_id': payment_group.company_id.id,
+                'currency_id': payment_move.currency_id.id if payment_move.currency_id else False,
+            }
+            
+            # Agregar el diario si está configurado
+            if tolerance_journal:
+                tolerance_line_vals['journal_id'] = tolerance_journal.id
+            
+            # Agregar la cuenta analítica si está configurada
+            if tolerance_analytic_account:
+                tolerance_line_vals['analytic_account_id'] = tolerance_analytic_account.id
+            
+            # Agregar amount_currency si hay moneda
+            if payment_move.currency_id:
+                # amount_currency debe tener el signo opuesto al balance (debit - credit)
+                if tolerance_line_vals['credit'] > 0:
+                    tolerance_line_vals['amount_currency'] = -abs_diff
+                else:
+                    tolerance_line_vals['amount_currency'] = abs_diff
+            
+            create_context = {
+                'skip_account_move_synchronization': True,
+                'check_move_validity': False,
+            }
+            
+            tolerance_line = self.env['account.move.line'].sudo().with_context(**create_context).create(tolerance_line_vals)
+            _logger.info(f"Línea de tolerancia creada después del post: {tolerance_line.id} (diferencia: {difference})")
+            
+            # Si la cuenta de tolerancia es reconciliable, buscar líneas pendientes para conciliar
+            if tolerance_account.reconcile:
+                # Buscar líneas de débito pendientes en la cuenta de tolerancia del mismo partner
+                domain = [
+                    ('account_id', '=', tolerance_account.id),
+                    ('partner_id', '=', payment_group.partner_id.id),
+                    ('reconciled', '=', False),
+                    ('debit', '>', 0),
+                    ('company_id', '=', payment_group.company_id.id),
+                    ('id', '!=', tolerance_line.id),
+                ]
+                pending_debit_lines = self.env['account.move.line'].sudo().search(domain, limit=1)
+                
+                if pending_debit_lines:
+                    try:
+                        (tolerance_line + pending_debit_lines).reconcile()
+                        _logger.info(f"Línea de tolerancia conciliada con línea pendiente: {tolerance_line.id} y {pending_debit_lines.id}")
+                    except Exception as e:
+                        _logger.warning(f"No se pudo conciliar la línea de tolerancia: {e}")
+                else:
+                    # Si no hay líneas pendientes, crear una línea de débito para conciliar
+                    tolerance_debit_line_vals = {
+                        'move_id': payment_move.id,
+                        'account_id': tolerance_account.id,
+                        'partner_id': payment_group.partner_id.id,
+                        'payment_id': payment.id,
+                        'payment_group_ids': payment_group_ids_command,
+                        'date': payment_date,
+                        'name': 'Diferencia entre recibo y op (contrapartida)',
+                        'debit': abs_diff,
+                        'credit': 0.0,
+                        'company_id': payment_group.company_id.id,
+                        'currency_id': payment_move.currency_id.id if payment_move.currency_id else False,
+                    }
+                    
+                    if tolerance_journal:
+                        tolerance_debit_line_vals['journal_id'] = tolerance_journal.id
+                    
+                    if tolerance_analytic_account:
+                        tolerance_debit_line_vals['analytic_account_id'] = tolerance_analytic_account.id
+                    
+                    if payment_move.currency_id:
+                        tolerance_debit_line_vals['amount_currency'] = abs_diff
+                    
+                    tolerance_debit_line = self.env['account.move.line'].sudo().with_context(**create_context).create(tolerance_debit_line_vals)
+                    _logger.info(f"Línea de débito de tolerancia creada: {tolerance_debit_line.id}")
+                    
+                    try:
+                        (tolerance_line + tolerance_debit_line).reconcile()
+                        _logger.info(f"Líneas de tolerancia conciliadas: {tolerance_line.id} y {tolerance_debit_line.id}")
+                    except Exception as e:
+                        _logger.warning(f"No se pudieron conciliar las líneas de tolerancia: {e}")
+            
+            return True
+
+        except Exception as e:
+            _logger.error(f"Error al ajustar líneas del pago con tolerancia: {e}")
+            return False
+
+    def _adjust_payment_lines_and_reconcile(self, payment_group, tolerance_account, difference, matched_amount, tolerance_line):
+        """
+        Ajusta las líneas del pago y reconcilia con la línea de tolerancia creada antes del post.
+        
+        :param payment_group: account.payment.group - El grupo de pago
+        :param tolerance_account: account.account - La cuenta para la diferencia
+        :param difference: float - La diferencia
+        :param matched_amount: float - El monto total de las facturas
+        :param tolerance_line: account.move.line - La línea de tolerancia ya creada
+        :return: bool - True si se ajustó correctamente
+        """
+        try:
+            # Obtener el pago publicado
+            payments = payment_group.payment_ids.filtered(lambda p: p.state == 'posted')
+            if not payments:
+                return False
+            
+            payment = payments[0]
+            payment_move = payment.move_id
+            if not payment_move:
+                return False
+
+            write_context = {
+                'check_move_validity': False,
+                'skip_account_move_synchronization': True
+            }
+
+            # Obtener las líneas del pago (débito y crédito), excluyendo la línea de tolerancia
+            debit_line = payment_move.line_ids.filtered(lambda l: l.debit > 0 and l.account_id != tolerance_account)
+            credit_line = payment_move.line_ids.filtered(lambda l: l.credit > 0 and l.account_id != tolerance_account)
+
+            payment_amount = payment.amount
+            abs_diff = abs(difference)
+
+            # Ajustar las líneas según la diferencia
+            if difference < 0:
+                # Pago menor: ajustar débito
+                if debit_line:
+                    debit_line[0].with_context(**write_context).write({
+                        'debit': payment_amount - difference
+                    })
+            else:
+                # Pago mayor: ajustar débito y crédito
+                if debit_line:
+                    debit_line[0].with_context(**write_context).write({
+                        'debit': matched_amount
+                    })
+                if credit_line:
+                    credit_line[0].with_context(**write_context).write({
+                        'credit': matched_amount
+                    })
+            
+            # Reconciliar todas las líneas juntas (las 2 del pago + la de tolerancia)
+            # Primero, desreconciliar las líneas del pago si están reconciliadas
+            lines_to_desreconcile = self.env['account.move.line']
+            if debit_line and debit_line[0].reconciled:
+                lines_to_desreconcile += debit_line[0]
+            if credit_line and credit_line[0].reconciled:
+                lines_to_desreconcile += credit_line[0]
+            
+            if lines_to_desreconcile:
+                try:
+                    lines_to_desreconcile.remove_move_reconcile()
+                    _logger.info(f"Líneas desreconciliadas: {lines_to_desreconcile.ids}")
+                except Exception as e:
+                    _logger.warning(f"No se pudieron desreconciliar las líneas: {e}")
+            
+            # Ahora reconciliar todas juntas
+            lines_to_reconcile = self.env['account.move.line']
+            if debit_line:
+                lines_to_reconcile += debit_line[0]
+            if credit_line:
+                lines_to_reconcile += credit_line[0]
+            if tolerance_line:
+                lines_to_reconcile += tolerance_line
+            
+            if len(lines_to_reconcile) >= 2:
+                try:
+                    lines_to_reconcile.reconcile()
+                    _logger.info(f"Líneas reconciliadas: {lines_to_reconcile.ids}")
+                except Exception as e:
+                    _logger.warning(f"No se pudieron reconciliar las líneas: {e}")
+            
+            _logger.info(f"Líneas del pago ajustadas y reconciliadas con línea de tolerancia. Diferencia: {difference}")
+            return True
+            
+        except Exception as e:
+            _logger.error(f"Error al ajustar líneas y reconciliar: {e}")
+            return False
+
+    def _attach_files_to_payment_group(self, log_item, payment_group):
+        """
+        Adjunta los archivos de pago y retenciones del log_item al payment_group (recibo).
+        Crea nuevos attachments vinculados al payment_group.
+        """
+        if not payment_group or not log_item:
+            return []
+        
+        attachments_created = []
+        attachment_names = []
+        
+        # Adjuntar archivo de OP (Orden de Pago)
+        if log_item.attachment_op_id:
+            attachment_op = self.env['ir.attachment'].sudo().create({
+                'name': log_item.attachment_op_id.name,
+                'type': 'binary',
+                'datas': log_item.attachment_op_id.datas,
+                'res_model': 'account.payment.group',
+                'res_id': payment_group.id,
+                'mimetype': log_item.attachment_op_id.mimetype or 'application/pdf',
+            })
+            attachments_created.append(attachment_op)
+            attachment_names.append(f"• {attachment_op.name} (Orden de Pago)")
+            _logger.info(f"Archivo OP adjuntado al recibo {payment_group.id}: {attachment_op.name}")
+        
+        # Adjuntar archivos de retenciones
+        for i in range(1, 5):
+            ret_field = f'attachment_ret{i}_id'
+            ret_attachment = getattr(log_item, ret_field, None)
+            if ret_attachment:
+                attachment_ret = self.env['ir.attachment'].sudo().create({
+                    'name': ret_attachment.name,
+                    'type': 'binary',
+                    'datas': ret_attachment.datas,
+                    'res_model': 'account.payment.group',
+                    'res_id': payment_group.id,
+                    'mimetype': ret_attachment.mimetype or 'application/pdf',
+                })
+                attachments_created.append(attachment_ret)
+                attachment_names.append(f"• {attachment_ret.name} (Retención {i})")
+                _logger.info(f"Retención {i} adjuntada al recibo {payment_group.id}: {attachment_ret.name}")
+        
+        # Publicar mensaje en el chatter del recibo
+        if attachments_created:
+            message_body = _("Se adjuntaron los siguientes archivos al recibo:\n\n%s") % "\n".join(attachment_names)
+            payment_group.sudo().message_post(
+                body=message_body,
+                attachment_ids=[att.id for att in attachments_created],
+                message_type='notification',
+                subtype_xmlid='mail.mt_note'
+            )
+            _logger.info(f"Mensaje publicado en el chatter del recibo {payment_group.id} con {len(attachments_created)} archivo(s)")
+            
+        # Si se agregó un attachment y hay errores, agregarlos al chatter
+        if log_item.message and log_item.payment_group_id:
+            error_message = _("Errores encontrados al procesar la orden de pago:\n\n%s") % log_item.message
+            log_item.payment_group_id.sudo().message_post(
+                body=error_message,
+                message_type='notification',
+                subtype_xmlid='mail.mt_note'
+            )
+            _logger.info(f"Errores de la orden agregados al chatter del recibo {log_item.payment_group_id.id}")
+        
+        return attachments_created
 
     def action_connect(self):
         ir_config = self.env['ir.config_parameter'].sudo()
@@ -502,11 +1098,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         download_first_batch = eval(ir_config.get_param("datareader_odoo.download_first_batch", 'False'))
         connector = self.env["datareader.connector"].get_connector()
 
-        processed_orders = []  # Lista para trackear órdenes procesadas
-        failed_orders = []
-        
         try:
             connector.login()
+            failed_orders = []
             while True:
                 orders = connector.get_payment_orders()
                 if not orders:
@@ -517,87 +1111,80 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     "last_connection": fields.Datetime.now(),
                 })
 
-                message = _("Successful connection.\nReceived %s payment orders.") % len(orders)
+                message = f"Conexión exitosa.\nSe recibieron {len(orders)} órdenes de pago."
                 all_files_downloaded = []
                 
                 for order in orders:
                     order_id = order.get("id")
-                    try:
-                        log_item = self.create_from_datareader_json(order, connector)
-                        log_item.json_data = order
-                        
-                        # Marcar como leída solo si se procesó exitosamente
-                        connector.set_payment_order_readed(order_id, True)
-                        processed_orders.append(order_id)
-                        
-                        if not log_item.payment_group_id and not 'Ya existe un recibo de pago' in log_item.message:
-                            failed_orders.append(order_id)
-
-                        file_name = order.get("file_name")
-                        
-                        attachment_status = _("Not downloaded")
-                        if download_files and file_name:
-                            try:
-                                attachment = box.download_and_attach_file(log_item, file_name, folder_field='box_folder_id_op')
-                                if attachment:
-                                    attachment_status = _("Attached OP: %s") % attachment.name
-                                    _logger.info(f"Archivo OP adjuntado: {attachment.name}")
-                                    ret_attachments = box.download_and_attach_retentions(log_item, file_name, folder_field='box_folder_id_withholding')
-                                    if ret_attachments:
-                                        attachment_status += _(" | Withholdings: %s") % [a.name for a in ret_attachments]
-                                else:
-                                    attachment_status = "No se encontró el archivo de OP en Box"
-                            except Exception as e:
-                                attachment_status = f"Error descargando: {str(e)}"
-                                _logger.error(f"Error descargando y adjuntando {file_name}: {e}")
-
-                        all_files_downloaded.append(f"{file_name}: {attachment_status}")
-                        
-                    except Exception as e:
-                        # Si hay error procesando una orden, agregar a failed_orders y revertir
-                        failed_orders.append(order_id)
-                        error_msg = f"Error procesando orden {order_id}: {str(e)}"
-                        _logger.error(error_msg)
-                        
-                        # Revertir la orden marcada como leída
+                    pprint(order_id)
+                    file_name = order.get("file_name")
+                    
+                    # Crear log_item primero para poder descargar archivos antes del procesamiento
+                    import json
+                    log_item = self._create_log_item(file_name, order_id)
+                    log_item.json_data = json.dumps(order, ensure_ascii=False)
+                    
+                    # Descargar archivos ANTES del procesamiento
+                    attachment_status = "No descargado"
+                    if download_files and file_name:
                         try:
-                            connector.set_payment_order_readed(order_id, False)
-                            processed_orders.remove(order_id) if order_id in processed_orders else None
-                        except:
-                            pass
-                        
-                        # Mostrar error en chatter
-                        self.message_post(body=error_msg, message_type='notification')
+                            attachment = box.download_and_attach_file(log_item, file_name, folder_field='box_folder_id_op')
+                            if attachment:
+                                attachment_status = f"Adjuntado OP: {attachment.name}"
+                                _logger.info(f"Archivo OP adjuntado: {attachment.name}")
+                                ret_attachments = box.download_and_attach_retentions(log_item, file_name, folder_field='box_folder_id_withholding')
+                                if ret_attachments:
+                                    attachment_status += f" | Retenciones: {[a.name for a in ret_attachments]}"
+                            else:
+                                attachment_status = "No se encontró el archivo de OP en Box"
+                        except Exception as e:
+                            attachment_status = f"Error descargando: {str(e)}"
+                            _logger.error(f"Error descargando y adjuntando {file_name}: {e}")
+                    
+                    # Procesar la orden usando el log_item ya creado
+                    log_item = self.create_from_datareader_json(order, connector, log_item=log_item)
+                    
+                    connector.set_payment_order_readed(order.get("id"), True)
+                    if not log_item.payment_group_id and not 'Ya existe un recibo de pago' in log_item.message:
+                        failed_orders.append(order.get("id"))
+                    
+                    # Adjuntar archivos al payment_group (recibo) si existe
+                    if log_item.payment_group_id:
+                        try:
+                            pg_attachments = self._attach_files_to_payment_group(log_item, log_item.payment_group_id)
+                            if pg_attachments:
+                                attachment_status += f" | Adjuntados al recibo: {len(pg_attachments)} archivo(s)"
+                                _logger.info(f"Archivos adjuntados al recibo {log_item.payment_group_id.id}: {len(pg_attachments)} archivo(s)")
+                        except Exception as e:
+                            _logger.error(f"Error adjuntando archivos al recibo: {e}")
+
+                    all_files_downloaded.append(f"{file_name}: {attachment_status}")
                         
                 message += f"\nArchivos descargados: {all_files_downloaded}"
                 _logger.info(message)
-                
                 if download_first_batch:
+                    for order_id in failed_orders:
+                        connector.set_payment_order_readed(order_id, False)
+                        # Buscar y marcar el log_item correspondiente como no leído
+                        log_item = self.account_payment_group_item_ids.filtered(
+                            lambda l: l.json_data and str(order_id) in l.json_data
+                        )
+                        if log_item:
+                            log_item[0].readed = False
                     break
-                    
-            # Revertir órdenes fallidas
             for order_id in failed_orders:
-                try:
-                    connector.set_payment_order_readed(order_id, False)
-                except:
-                    pass
+                connector.set_payment_order_readed(order_id, False)
+                # Buscar y marcar el log_item correspondiente como no leído
+                log_item = self.account_payment_group_item_ids.filtered(
+                    lambda l: l.json_data and str(order_id) in l.json_data
+                )
+                if log_item:
+                    log_item[0].readed = False
 
         except Exception as e:
-            # En caso de error general, revertir TODAS las órdenes procesadas
-            error_message = f"Error al conectar u obtener órdenes: {str(e)}"
-            _logger.error(error_message)
-            
-            # Revertir todas las órdenes que se marcaron como leídas
-            for order_id in processed_orders:
-                try:
-                    connector.set_payment_order_readed(order_id, False)
-                except:
-                    pass
-            
-            # Mostrar error en chatter
-            self.message_post(body=error_message, message_type='notification')
-            
-            raise UserError(error_message)
+            message = f"Error al conectar u obtener órdenes: {str(e)}"
+            _logger.error(message)
+            raise UserError(f"Error al conectar u obtener órdenes: {str(e)}")
 
     def action_sync_normalized_partners(self):
         partners = self.env['res.partner'].sudo().search([
@@ -740,4 +1327,253 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
     attachment_ret4_id = fields.Many2one('ir.attachment', string="Retención 4")
     invoices_found = fields.Boolean(string="Invoices", default=False)
     json_data = fields.Text(string="Invoices", default=False)
+    readed = fields.Boolean(string="Leída", default=False, help="Indica si la orden de pago ha sido marcada como leída")
+    op_exists = fields.Boolean(string="OP Existe", default=False, help="Indica si ya existe un payment_group con el mismo op_number")
+    reprocessed = fields.Boolean(string="Reprocesada", default=False, help="Indica si la orden de pago fue reprocesada mediante el botón de reprocesamiento")
     order_id = fields.Char(string="ID Orden", help="ID de la orden de pago en el conector DataReader")
+
+    def _get_order_by_id_from_connector(self, order_id):
+        """
+        Método base que obtiene el conector, hace login y busca la orden específica por ID.
+        Retorna (connector, order) o (None, None) si no se encuentra.
+        """
+        if not order_id:
+            return None, None
+        
+        try:
+            connector = self.env["datareader.connector"].get_connector()
+            connector.login()
+            
+            # Buscar la orden en los lotes (el conector trae de a 20)
+            while True:
+                orders = connector.get_payment_orders()
+                if not orders:
+                    break
+                
+                # Buscar la orden con el ID específico
+                for order in orders:
+                    if order.get("id") == order_id:
+                        return connector, order
+            
+            # Si no se encontró en ningún lote
+            return connector, None
+            
+        except Exception as e:
+            _logger.error(f"Error obteniendo orden {order_id} del conector: {e}")
+            return None, None
+
+    def _parse_json_data(self, json_data):
+        """
+        Parsea json_data que puede estar en diferentes formatos:
+        - String JSON válido
+        - String con representación de diccionario Python (repr)
+        - Diccionario Python
+        """
+        import json
+        import ast
+        
+        if not json_data:
+            return None
+        
+        # Si ya es un diccionario, retornarlo directamente
+        if isinstance(json_data, dict):
+            return json_data
+        
+        # Si es string, intentar parsear
+        if isinstance(json_data, str):
+            # Primero intentar como JSON válido
+            try:
+                return json.loads(json_data)
+            except (json.JSONDecodeError, ValueError):
+                # Si falla, intentar como literal de Python (dict con comillas simples)
+                try:
+                    return ast.literal_eval(json_data)
+                except (ValueError, SyntaxError) as e:
+                    _logger.warning(f"Error parseando json_data con ast.literal_eval: {e}")
+                    _logger.debug(f"Contenido json_data (primeros 200 chars): {json_data[:200]}")
+                    raise UserError(_("Error al parsear los datos JSON. El formato no es válido. Por favor, contacte al administrador."))
+        
+        return None
+
+    def action_mark_as_read(self):
+        """Marca la orden de pago como leída en el conector."""
+        if not self.json_data:
+            raise UserError(_("No hay datos JSON para procesar."))
+        
+        try:
+            # Parsear el json_data usando el método helper
+            order_data = self._parse_json_data(self.json_data)
+            if not order_data:
+                raise UserError(_("No se pudieron parsear los datos JSON."))
+            
+            order_id = order_data.get("id")
+            
+            if not order_id:
+                raise UserError(_("No se encontró el ID de la orden en los datos JSON."))
+            
+            # Obtener el conector y conectar
+            connector = self.env["datareader.connector"].get_connector()
+            connector.login()
+            
+            if not connector:
+                raise UserError(_("Error al conectar con el conector."))
+            
+            # Marcar como leída solo esta orden (las demás se ignoran)
+            connector.set_payment_order_readed(order_id, True)
+            
+            # Actualizar el campo readed del modelo
+            self.readed = True
+            
+            # Actualizar el json_data para reflejar que está leída
+            import json
+            order_data['readed'] = True
+            self.json_data = json.dumps(order_data, ensure_ascii=False)
+            
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Éxito'),
+                    'message': _('La orden de pago %s ha sido marcada como leída.') % order_id,
+                    'type': 'success',
+                    'sticky': False,
+                    'next': {'type': 'ir.actions.client', 'tag': 'reload'},
+                }
+            }
+            
+        except UserError:
+            raise
+        except Exception as e:
+            _logger.error(f"Error marcando orden como leída: {e}")
+            raise UserError(_("Error al marcar la orden como leída: %s") % str(e))
+
+    def action_reprocess_payment_order(self):
+        """Reprocesa completamente la orden de pago."""
+        if not self.json_data:
+            raise UserError(_("No hay datos JSON para procesar."))
+        
+        try:
+            # Parsear el json_data usando el método helper
+            order_data = self._parse_json_data(self.json_data)
+            if not order_data:
+                raise UserError(_("No se pudieron parsear los datos JSON."))
+            
+            order_id = order_data.get("id")
+            
+            if not order_id:
+                raise UserError(_("No se encontró el ID de la orden en los datos JSON."))
+            
+            # Obtener el conector y buscar la orden
+            connector, order = self._get_order_by_id_from_connector(order_id)
+            
+            if not connector:
+                raise UserError(_("Error al conectar con el conector."))
+            
+            if not order:
+                raise UserError(_("No se encontró la orden de pago con ID %s en el conector.") % order_id)
+            
+            # Obtener configuración
+            ir_config = self.env['ir.config_parameter'].sudo()
+            download_files = eval(ir_config.get_param("datareader_odoo.download_files", 'True'))
+            
+            # Reprocesar la orden completa usando el método del log principal
+            # Esto creará un nuevo log_item, pero actualizaremos el actual
+            new_log_item = self.log_id.create_from_datareader_json(order, connector)
+            
+            # Actualizar este log_item con los datos del nuevo procesamiento
+            import json
+            update_vals = {
+                'message': new_log_item.message if new_log_item else self.message,
+                'json_data': json.dumps(order, ensure_ascii=False) if isinstance(order, dict) else order,
+                'reprocessed': True,
+            }
+            # Solo actualizar order_id si no existe
+            if not self.order_id:
+                update_vals['order_id'] = str(order_id)
+            
+            if new_log_item and new_log_item.payment_group_id:
+                update_vals.update({
+                    'payment_group_id': new_log_item.payment_group_id.id,
+                    'has_withholding': new_log_item.has_withholding,
+                    'has_check': new_log_item.has_check,
+                })
+            
+            self.write(update_vals)
+            
+            # Si se creó un nuevo log_item diferente, eliminar los attachments del nuevo
+            # y copiarlos al actual, luego eliminar el nuevo log_item
+            if new_log_item and new_log_item.id != self.id:
+                # Copiar attachments del nuevo al actual si no existen
+                attachment_added = False
+                if new_log_item.attachment_op_id and not self.attachment_op_id:
+                    self.attachment_op_id = new_log_item.attachment_op_id.id
+                    attachment_added = True
+                for i in range(1, 5):
+                    ret_field = f'attachment_ret{i}_id'
+                    new_ret = getattr(new_log_item, ret_field, None)
+                    current_ret = getattr(self, ret_field, None)
+                    if new_ret and not current_ret:
+                        setattr(self, ret_field, new_ret.id)
+                        attachment_added = True
+                
+                # Si se agregó un attachment y hay errores, agregarlos al chatter
+                if attachment_added and new_log_item.message and new_log_item.payment_group_id:
+                    error_message = _("Errores encontrados al procesar la orden de pago:\n\n%s") % new_log_item.message
+                    new_log_item.payment_group_id.sudo().message_post(
+                        body=error_message,
+                        message_type='notification',
+                        subtype_xmlid='mail.mt_note'
+                    )
+                    _logger.info(f"Errores de la orden agregados al chatter del recibo {new_log_item.payment_group_id.id}")
+                
+                # Eliminar el nuevo log_item ya que actualizamos el actual
+                new_log_item.unlink()
+            
+            # Usar este log_item para descargar archivos
+            log_item = self
+
+            # Descargar y adjuntar archivos si está configurado
+            file_name = order.get("file_name")
+            if download_files and file_name and log_item:
+                try:
+                    attachment = box.download_and_attach_file(log_item, file_name, folder_field='box_folder_id_op')
+                    if attachment:
+                        _logger.info(f"Archivo OP adjuntado: {attachment.name}")
+                        ret_attachments = box.download_and_attach_retentions(log_item, file_name, folder_field='box_folder_id_withholding')
+                        
+                        # Adjuntar archivos al payment_group (recibo) si existe
+                        if log_item.payment_group_id:
+                            try:
+                                pg_attachments = self.log_id._attach_files_to_payment_group(log_item, log_item.payment_group_id)
+                                if pg_attachments:
+                                    _logger.info(f"Archivos adjuntados al recibo {log_item.payment_group_id.id}: {len(pg_attachments)} archivo(s)")
+                            except Exception as e:
+                                _logger.error(f"Error adjuntando archivos al recibo: {e}")
+                except Exception as e:
+                    _logger.error(f"Error descargando y adjuntando {file_name}: {e}")
+            
+            # Marcar como leída solo si se generó el recibo (payment_group_id)
+            if self.payment_group_id:
+                connector.set_payment_order_readed(order_id, True)
+                self.readed = True
+                message = _('La orden de pago %s ha sido reprocesada correctamente y marcada como leída.') % order_id
+            else:
+                message = _('La orden de pago %s fue procesada pero no se generó recibo. No se marcó como leída.') % order_id
+            
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Éxito'),
+                    'message': message,
+                    'type': 'success' if self.payment_group_id else 'warning',
+                    'sticky': False,
+                    'next': {'type': 'ir.actions.client', 'tag': 'reload'},
+                }
+            }
+            
+        except UserError:
+            raise
+        except Exception as e:
+            _logger.error(f"Error reprocesando orden: {e}")
+            raise UserError(_("Error al reprocesar la orden: %s") % str(e))

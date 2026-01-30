@@ -13,7 +13,7 @@
                         <div class="o_setting_left_pane"/>
                         <div class="o_setting_right_pane">
                             <span class="o_form_label">DataReader API Settings</span>
-                            <div class="content-group" groups="datareader_customer_receipts.group_datareader_admin">
+                            <div class="content-group">
                                 <div class="row mt8">
                                     <label for="datareader_api_host" class="col-lg-4 o_light_label"/>
                                     <field name="datareader_api_host"/>
@@ -29,7 +29,7 @@
                             </div>
                             <separator/>
                             <span class="o_form_label">Default Journals (DataReader)</span>
-                            <div class="content-group" groups="datareader_customer_receipts.group_datareader_admin">
+                            <div class="content-group">
                                 <div class="row mt8">
                                     <label for="datareader_default_transfer_journal_id" class="col-lg-4 o_light_label"/>
                                     <field name="datareader_default_transfer_journal_id" domain="[('company_id', '=', company_id)]"/>
@@ -45,6 +45,30 @@
                                 <div class="row mt8">
                                     <label for="datareader_default_withholding_journal_id" class="col-lg-4 o_light_label"/>
                                     <field name="datareader_default_withholding_journal_id" domain="[('company_id', '=', company_id)]"/>
+                                </div>
+                            </div>
+                            <separator/>
+                            <span class="o_form_label">Margen de Tolerancia</span>
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="datareader_tolerance_enabled" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_tolerance_enabled"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_tolerance_amount" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_tolerance_amount" attrs="{'invisible': [('datareader_tolerance_enabled', '=', False)], 'required': [('datareader_tolerance_enabled', '=', True)]}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_tolerance_account_id" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_tolerance_account_id" domain="[('company_id', '=', company_id)]" attrs="{'invisible': [('datareader_tolerance_enabled', '=', False)], 'required': [('datareader_tolerance_enabled', '=', True)]}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_tolerance_journal_id" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_tolerance_journal_id" domain="[('company_id', '=', company_id)]" attrs="{'invisible': [('datareader_tolerance_enabled', '=', False)], 'required': [('datareader_tolerance_enabled', '=', True)]}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_tolerance_analytic_account_id" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_tolerance_analytic_account_id" attrs="{'invisible': [('datareader_tolerance_enabled', '=', False)], 'required': [('datareader_tolerance_enabled', '=', True)]}"/>
                                 </div>
                             </div>
                             <separator/>
