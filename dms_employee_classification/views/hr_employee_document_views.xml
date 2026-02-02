@@ -14,7 +14,10 @@
                             <button name="action_download" string="Descargar" type="object" icon="fa-download" class="oe_stat_button"/>
                             <field name="viewed" readonly="1"/>
                             <field name="signed" readonly="1"/>
-                            <button name="action_sign" string="Firmar" type="object" icon="fa-pencil" class="oe_stat_button"/>
+                            <field name="sign_request_id" invisible="1"/>
+                            <field name="can_sign" invisible="1"/>
+                            <field name="sign_request_state" readonly="1" invisible="1" string="Estado Firma"/>
+                            <button name="action_sign" string="Firmar" type="object" icon="fa-pencil" class="oe_stat_button" attrs="{'invisible': ['|', ('sign_request_id', '=', False), ('can_sign', '=', False)]}"/>
                         </tree>
                     </field>
                 </page>
