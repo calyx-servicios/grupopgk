@@ -1,7 +1,8 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 import re
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class WizardDmsClassification(models.TransientModel):
@@ -82,14 +83,23 @@ class WizardDmsClassification(models.TransientModel):
             return False
 
     def _action_classify(self):
-        """Override para permitir clasificar archivos con attachment sin directory_id previo."""
-        # Para attachment: permitir clasificar aunque directory_id esté vacío
-        # (se creará en _create_dms_file)
-        if self.global_directory_id and self.global_directory_id.storage_id.save_type == 'attachment':
-            for detail in self.detail_ids.filtered(lambda x: x.state == "to_classify"):
+        """Override to validate template and create signature requests."""
+        # Validar que haya plantilla de firma configurada
+        if (self.template_id and
+                not self.template_id.signature_template_id):
+            raise UserError(
+                "La plantilla de clasificación no tiene configurada "
+                "una plantilla de firma. Por favor configure la plantilla "
+                "de firma en la plantilla de clasificación."
+            )
+
+        # Clasificar archivos normalmente
+        if (self.global_directory_id and
+                self.global_directory_id.storage_id.save_type == 'attachment'):
+            for detail in self.detail_ids.filtered(
+                    lambda x: x.state == "to_classify"):
                 detail._create_dms_file()
         else:
-            # Para otros casos: usar el comportamiento normal
             super()._action_classify()
 
     def _prepare_detail_vals(self, full_path, data_file):
@@ -231,9 +241,57 @@ class WizardDmsClassificationDetail(models.TransientModel):
 
         # Si hay empleado asociado, crear el registro de documento
         if self.employee_id and self.file_id:
+            # Crear solicitud de firma primero
+            sign_request = self._create_signature_request()
+
+            # Crear el documento del empleado con la referencia a la solicitud
             self.env['hr.employee.document'].create({
                 'employee_id': self.employee_id.id,
                 'classification_date': self.parent_id.classification_date,
                 'dms_file_id': self.file_id.id,
+                'sign_request_id': sign_request.id if sign_request else False,
             })
+
         return res
+
+    def _create_signature_request(self):
+        """Create signature request for the employee document."""
+        self.ensure_one()
+
+        # Obtener plantilla desde la plantilla de clasificación
+        template = self.parent_id.template_id.signature_template_id
+        if not template or not template.exists():
+            return
+
+        # Obtener usuario del empleado
+        user = self.employee_id.user_id
+        if not user:
+            return
+
+        # Obtener TODOS los roles (sin filtrar por partner_type)
+        roles = template.item_ids.mapped('role_id')
+        if not roles:
+            return
+
+        # Crear solicitud de firma
+        request_vals = {
+            'name': f"{self.employee_id.name} - {self.parent_id.classification_date}",
+            'template_id': template.id,
+            'data': self.data_file,  # PDF del recibo del empleado
+            'record_ref': f'hr.employee,{self.employee_id.id}',
+            'signatory_data': template._get_signatory_data(),
+            'user_id': user.id,  # Responsable = el empleado
+            'signer_ids': [
+                (0, 0, {
+                    'partner_id': user.partner_id.id,  # Firmante = partner del empleado
+                    'role_id': role.id,
+                })
+                for role in roles
+            ],
+        }
+
+        request = self.env['sign.oca.request'].create(request_vals)
+        # Enviar solicitud automáticamente
+        request.action_send()
+
+        return request
