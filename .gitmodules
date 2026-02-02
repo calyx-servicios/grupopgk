@@ -146,3 +146,7 @@
 	path = submodules/OCA/server-backend
 	url = git@github.com:OCA/server-backend.git
 	branch = 15.0
+[submodule "submodules/OCA/crm"]
+	path = submodules/OCA/crm
+	url = git@github.com:OCA/crm.git
+	branch = 15.0
