@@ -35,14 +35,15 @@
         <field name="target">new</field>
     </record>
 
-    <!-- Parent Menu: Reportes -->
+    <!-- Reportes -->
     <menuitem
         id="menu_dms_hr_reports"
         name="Reportes"
         parent="hr.menu_hr_root"
-        sequence="96"/>
+        sequence="96"
+        groups="hr.group_hr_manager"/>
 
-    <!-- Child Menu: Control de firmas -->
+    <!-- Control de firmas -->
     <menuitem
         id="menu_signature_control"
         name="Control de firmas"
