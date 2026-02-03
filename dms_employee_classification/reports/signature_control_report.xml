@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="signature_control_report" model="ir.actions.report">
+        <field name="name">Control de Firmas</field>
+        <field name="model">wizard.signature.control</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">dms_employee_classification.signature_control_xlsx</field>
+        <field name="report_file">dms_employee_classification.signature_control_xlsx</field>
+        <field name="binding_model_id" ref="model_wizard_signature_control"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>
