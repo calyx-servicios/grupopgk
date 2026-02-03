@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Grupo 1: Solo Lectura -->
+        <record id="group_datareader_readonly" model="res.groups">
+            <field name="name">DataReader - Solo Lectura</field>
+            <field name="category_id" ref="base.module_category_accounting"/>
+            <field name="comment">Permite solo lectura de registros de DataReader. No puede conectar con la API ni modificar configuraciones.</field>
+        </record>
+
+        <!-- Grupo 2: Edición (sin conexión API) -->
+        <record id="group_datareader_edit" model="res.groups">
+            <field name="name">DataReader - Edición</field>
+            <field name="category_id" ref="base.module_category_accounting"/>
+            <field name="comment">Permite lectura y edición de registros de DataReader. No puede conectar con la API ni modificar configuraciones avanzadas.</field>
+        </record>
+
+        <!-- Grupo 3: Administrador Completo -->
+        <record id="group_datareader_admin" model="res.groups">
+            <field name="name">DataReader - Administrador</field>
+            <field name="category_id" ref="base.module_category_accounting"/>
+            <field name="comment">Acceso completo a DataReader incluyendo conexión API y configuración de diarios.</field>
+        </record>
+
+    </data>
+</odoo>

@@ -112,9 +112,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             errors.append(f"No se encontró compañía '{company_name}', se detiene el proceso.")
         return company, errors
 
-    def _get_partner(self, cuit, name, errors):
+    def _get_partner(self, cuit, name, errors, journal_id=None):
         partner, errors = cuit_alias.find_record_by_cuit_or_name(
-            self.env, 'res.partner', cuit=cuit, name=name, errors=errors
+            self.env, 'res.partner', cuit=cuit, name=name, journal_id=journal_id, errors=errors
         )
         return partner, errors
 
@@ -266,14 +266,25 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         
         partner_cuit = data.get('client_cuit')
         partner_name = data.get('client_name')
-        partner_id, errors = self._get_partner(partner_cuit, partner_name, errors)
+        
+        # Intentar obtener el journal primero para usarlo en la búsqueda del partner
+        journal_name = data.get('journal')
+        journal_id_preliminar = None
+        if journal_name:
+            journal_id_preliminar, _ = self._get_journal(journal_name, [])
+            # Si hay múltiples journals, no usar para priorización
+            if journal_id_preliminar and not isinstance(journal_id_preliminar, list):
+                journal_id_preliminar = journal_id_preliminar if hasattr(journal_id_preliminar, 'id') else None
+        
+        partner_id, errors = self._get_partner(partner_cuit, partner_name, errors, journal_id=journal_id_preliminar)
         if not partner_id:
             log_item.write({'message': "\n".join(errors)})
             return log_item
-        elif len(partner_id) > 1:
+        elif hasattr(partner_id, '__len__') and len(partner_id) > 1:
+            log_item.write({'message': "\n".join(errors)})
             return log_item
 
-        journal_name = data.get('journal')
+        # Obtener el journal definitivo (puede ser el mismo o uno por defecto)
         journal_id, errors = self._get_journal(journal_name, errors)
 
         if not journal_id:
@@ -1097,7 +1108,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         download_files = eval(ir_config.get_param("datareader_odoo.download_files", 'True'))
         download_first_batch = eval(ir_config.get_param("datareader_odoo.download_first_batch", 'False'))
         connector = self.env["datareader.connector"].get_connector()
-
+        pprint(download_files)
         try:
             connector.login()
             failed_orders = []
@@ -1126,7 +1137,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     
                     # Descargar archivos ANTES del procesamiento
                     attachment_status = "No descargado"
-                    if download_files and file_name:
+                    if download_files == True and file_name:
                         try:
                             attachment = box.download_and_attach_file(log_item, file_name, folder_field='box_folder_id_op')
                             if attachment:
@@ -1149,7 +1160,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         failed_orders.append(order.get("id"))
                     
                     # Adjuntar archivos al payment_group (recibo) si existe
-                    if log_item.payment_group_id:
+                    # Solo intentar adjuntar si los archivos fueron descargados (download_files=True)
+                    if log_item.payment_group_id and download_files:
                         try:
                             pg_attachments = self._attach_files_to_payment_group(log_item, log_item.payment_group_id)
                             if pg_attachments:
@@ -1157,6 +1169,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                                 _logger.info(f"Archivos adjuntados al recibo {log_item.payment_group_id.id}: {len(pg_attachments)} archivo(s)")
                         except Exception as e:
                             _logger.error(f"Error adjuntando archivos al recibo: {e}")
+                    elif log_item.payment_group_id and not download_files:
+                        _logger.info(f"Archivos no adjuntados al recibo {log_item.payment_group_id.id}: download_files está deshabilitado")
 
                     all_files_downloaded.append(f"{file_name}: {attachment_status}")
                         
