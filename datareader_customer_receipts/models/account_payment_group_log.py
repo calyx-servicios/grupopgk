@@ -385,41 +385,12 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             'message': "\n".join(errors)
         })
         
-        # Calcular el monto ajustado si hay tolerancia aplicable (antes de crear el pago)
-        adjusted_amount = amount
-        tolerance_applied = False
-        original_payment_difference = None  # Guardar la diferencia original antes del ajuste
-        
-        if partner_id.datareader_auto_payment_post and pay_method != 'cheque':
-            # Calcular la diferencia original (antes de ajustar el monto)
-            matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
-            original_payment_difference = (amount - matched_amount) * -1  # Invertir para la lógica de tolerancia
-            
-            # Verificar si está habilitada la tolerancia
-            tolerance_enabled = company_id.datareader_tolerance_enabled
-            tolerance_amount = company_id.datareader_tolerance_amount or 0.0
-            tolerance_account = company_id.datareader_tolerance_account_id
-            
-            # Si hay diferencia dentro del margen de tolerancia, ajustar el monto
-            if (tolerance_enabled and 
-                tolerance_amount > 0.0 and 
-                abs(original_payment_difference) <= tolerance_amount and
-                tolerance_account and
-                matched_amount > 0):
-                # Ajustar el monto: payment.amount - payment_difference = matched_amount
-                adjusted_amount = amount + original_payment_difference
-                if adjusted_amount > 0:
-                    tolerance_applied = True
-                    _logger.info(f"Ajustando monto del pago antes de crearlo: {amount} -> {adjusted_amount} (matched_amount: {matched_amount}, diferencia: {original_payment_difference})")
-                else:
-                    _logger.warning(f"El monto ajustado sería {adjusted_amount}, usando monto original")
-                    adjusted_amount = amount
-        
+        # Crear el pago con el monto original del JSON (sin ajustar)
         payment_vals = {
             'payment_type': 'inbound',
             'partner_type': 'customer',
             'partner_id': partner_id.id,
-            'amount': adjusted_amount,
+            'amount': amount,  # Usar el monto original del JSON
             'date': fields.Date.today(),
             'journal_id': journal_id.id,
             'payment_method_line_id': payment_method_line.id if payment_method_line else False,
@@ -434,8 +405,28 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             payment_vals['check_number'] = data['nro_cheque']
 
         total_payment_line = self.env['account.payment'].sudo().create(payment_vals)
-        # No postear si se aplicó tolerancia, porque luego se ajustarán las líneas en draft
-        if ap_post:
+        
+        # Verificar si hay tolerancia aplicable antes de postear
+        # Si hay tolerancia y publicación automática, no postear el pago individual
+        # porque se publicará el payment_group completo después de aplicar tolerancia
+        should_post_individual_payment = ap_post
+        if partner_id.datareader_auto_payment_post and pay_method != 'cheque':
+            tolerance_enabled = company_id.datareader_tolerance_enabled
+            if tolerance_enabled:
+                # Calcular diferencia para ver si está dentro de tolerancia
+                matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
+                total_payment_amount = sum(payment_group.payment_ids.mapped('amount'))
+                payment_difference = total_payment_amount - matched_amount
+                tolerance_amount = company_id.datareader_tolerance_amount or 0.0
+                tolerance_account = company_id.datareader_tolerance_account_id
+                
+                # Si está dentro de tolerancia, no postear individualmente
+                if (tolerance_amount > 0.0 and 
+                    abs(payment_difference) <= tolerance_amount and
+                    tolerance_account):
+                    should_post_individual_payment = False
+        
+        if should_post_individual_payment:
             total_payment_line.action_post()            
 
         withholdings = data.get('retentions', [])
@@ -494,21 +485,42 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 return log_item
             
         # Lógica de publicación automática con tolerancia
+        _logger.info(f"=== INICIO PROCESO TOLERANCIA - Payment Group {payment_group.id} ===")
+        _logger.info(f"partner_id.datareader_auto_payment_post: {partner_id.datareader_auto_payment_post}")
+        _logger.info(f"pay_method: {pay_method}")
+        
         if partner_id.datareader_auto_payment_post and pay_method != 'cheque':
-            # Usar la diferencia original guardada antes del ajuste, o calcularla si no se guardó
-            if original_payment_difference is not None:
-                payment_difference = original_payment_difference
-            else:
-                payment_difference = payment_group.payment_difference * -1
+            # Calcular la diferencia: monto del JSON vs monto total de la deuda seleccionada
+            # payment_difference positivo = pago mayor, negativo = pago menor
+            # Usar el monto original del JSON (amount_bruto)
+            amount_from_json = amount
+            
+            # Calcular el monto total de la deuda seleccionada (monto original de las facturas)
+            # Agrupar por factura para obtener el monto total de cada factura única
+            invoices = payment_group.to_pay_move_line_ids.mapped('move_id')
+            total_debt = sum(invoices.mapped('amount_total'))
+            
+            payment_difference = amount_from_json - total_debt
             company = company_id
+            
+            _logger.info(f"amount_from_json (del JSON): {amount_from_json}")
+            _logger.info(f"total_debt (deuda original): {total_debt}")
+            _logger.info(f"payment_difference: {payment_difference}")
             
             # Verificar si está habilitada la tolerancia
             tolerance_enabled = company.datareader_tolerance_enabled
             tolerance_amount = company.datareader_tolerance_amount or 0.0
             tolerance_account = company.datareader_tolerance_account_id
             
+            _logger.info(f"tolerance_enabled: {tolerance_enabled}")
+            _logger.info(f"tolerance_amount: {tolerance_amount}")
+            _logger.info(f"tolerance_account: {tolerance_account.name if tolerance_account else 'None'}")
+            _logger.info(f"abs(payment_difference): {abs(payment_difference)}")
+            _logger.info(f"abs(payment_difference) <= tolerance_amount: {abs(payment_difference) <= tolerance_amount if tolerance_amount > 0 else False}")
+            
             # Si no hay diferencia, publicar normalmente (solo si cumple condiciones de retenciones)
             if abs(payment_difference) == 0.0:
+                _logger.info(f"Sin diferencia - publicando normalmente")
                 if self._should_post_payment_group(log_item):
                     payment_group.post()
                     # Marcar como leído cuando el recibo se haya publicado exitosamente
@@ -522,22 +534,56 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                   tolerance_amount > 0.0 and 
                   abs(payment_difference) <= tolerance_amount and
                   tolerance_account):
-                """ # Calcular el monto total que deben cubrir las facturas
-                matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
-                
-                # Ajustar el monto del pago principal para que cubra exactamente las facturas
-                main_payment = payment_group.payment_ids.filtered(lambda p: p.state == 'draft')[0] if payment_group.payment_ids else None
-                if main_payment and matched_amount > 0:
-                    # Ajustar el monto del pago para que coincida con el monto de las facturas
-                    old_amount = main_payment.amount
-                    main_payment.amount = matched_amount
-                    _logger.info(f"Ajustado monto del pago {main_payment.id} de {old_amount} a {matched_amount}") """
+                _logger.info(f"=== DIFERENCIA DENTRO DE TOLERANCIA - Creando nota ===")
                 
                 # Calcular el monto total que deben cubrir las facturas
                 matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
                 
-                # Obtener el pago en draft para postear y luego ajustar las líneas
+                # Obtener el pago principal para usar su diario y método de pago
                 main_payment = payment_group.payment_ids.filtered(lambda p: p.state == 'draft')
+                if not main_payment:
+                    main_payment = payment_group.payment_ids[0] if payment_group.payment_ids else None
+                
+                if not main_payment:
+                    _logger.error(f"No se encontró pago en el payment_group {payment_group.id}")
+                    return log_item
+                
+                # Si la diferencia es negativa (pago menor), crear nota de crédito
+                if payment_difference < 0:
+                    _logger.info(f"Pago menor detectado. Diferencia: {payment_difference}. Creando nota de crédito...")
+                    # Crear nota de crédito para reducir la deuda por la diferencia
+                    credit_note = self._create_credit_note_for_tolerance(
+                        payment_group,
+                        payment_difference,
+                        payment_date_str,
+                        company
+                    )
+                    
+                    if credit_note:
+                        _logger.info(f"Nota de crédito creada para tolerancia: {credit_note.name}")
+                        # Recalcular matched_amount después de agregar la nota de crédito
+                        matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
+                    else:
+                        _logger.warning(f"No se pudo crear la nota de crédito para tolerancia")
+                        return log_item
+                
+                # Si la diferencia es positiva (pago mayor), crear nota de débito por la diferencia
+                elif payment_difference > 0:
+                    # Crear nota de débito por la diferencia y agregarla a la deuda
+                    debit_note = self._create_invoice_for_tolerance(
+                        payment_group,
+                        payment_difference,
+                        payment_date_str,
+                        company
+                    )
+                    
+                    if debit_note:
+                        _logger.info(f"Nota de débito creada para tolerancia: {debit_note.name}")
+                        # Recalcular matched_amount después de agregar la nota de débito
+                        matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
+                    else:
+                        _logger.warning(f"No se pudo crear la nota de débito para tolerancia")
+                        return log_item
                 
                 # Postear solo si cumple condiciones de retenciones
                 if self._should_post_payment_group(log_item):
@@ -546,21 +592,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
                     return log_item
                 
-                if main_payment:
-                    payment = main_payment[0]
-                    # Ajustar las líneas contables y crear la línea de tolerancia
-                    self._adjust_payment_lines_with_tolerance(
-                        payment,
-                        payment_group,
-                        tolerance_account,
-                        payment_difference,
-                        matched_amount,
-                        fields.Date.today(),
-                    )
-                
-                # Postear el grupo de pagos después de ajustar las líneas con tolerancia
-                
-                # Marcar como leído cuando el recibo se haya publicado exitosamente (con o sin líneas de tolerancia)
+                # Marcar como leído cuando el recibo se haya publicado exitosamente
                 if log_item:
                     log_item.readed = True
                     _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
@@ -569,7 +601,11 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             else:
                 if payment_difference != 0.0:
                     _logger.info(f"Payment group {payment_group.id} no publicado. Diferencia {payment_difference} fuera de tolerancia ({tolerance_amount})")
-            
+                    _logger.info(f"Condiciones: tolerance_enabled={tolerance_enabled}, tolerance_amount={tolerance_amount}, abs_diff={abs(payment_difference)}, tolerance_account={bool(tolerance_account)}")
+        else:
+            _logger.info(f"No se procesa tolerancia: datareader_auto_payment_post={partner_id.datareader_auto_payment_post}, pay_method={pay_method}")
+        
+        _logger.info(f"=== FIN PROCESO TOLERANCIA - Payment Group {payment_group.id} ===")
         return log_item
 
     def _has_retention_files(self, log_item):
@@ -1037,6 +1073,371 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         except Exception as e:
             _logger.error(f"Error al ajustar líneas y reconciliar: {e}")
             return False
+
+    def _get_tolerance_product(self, company):
+        """
+        Obtiene el producto para notas de débito de tolerancia.
+        
+        :param company: res.company - La compañía
+        :return: product.product - El producto de tolerancia o None si no está configurado
+        """
+        if company.datareader_tolerance_product_id:
+            return company.datareader_tolerance_product_id
+        return None
+
+    def _create_credit_note_for_tolerance(self, payment_group, difference, payment_date, company):
+        """
+        Crea una nota de crédito por la diferencia cuando el pago es menor y está dentro de la tolerancia.
+        La nota de crédito reduce la deuda del payment_group.
+        
+        :param payment_group: account.payment.group - El grupo de pago
+        :param difference: float - La diferencia (debe ser negativa, pago menor)
+        :param payment_date: str - La fecha del pago (no se usa, se usa fecha de hoy)
+        :param company: res.company - La compañía
+        :return: account.move - La nota de crédito creada o None
+        """
+        try:
+            if difference >= 0:
+                _logger.warning(f"No se crea nota de crédito porque la diferencia es positiva: {difference}")
+                return None
+            
+            abs_diff = abs(difference)
+            partner = payment_group.partner_id
+            
+            # Obtener el producto de tolerancia
+            product = self._get_tolerance_product(company)
+            
+            if not product:
+                _logger.error(f"No se encontró producto de tolerancia configurado para la compañía {company.name}")
+                return None
+            
+            # Obtener el diario para la nota de crédito
+            # Usar el diario de tolerancia si está configurado, sino buscar un diario de ventas
+            journal = company.datareader_tolerance_journal_id
+            if not journal:
+                journal = self.env['account.journal'].sudo().search([
+                    ('company_id', '=', company.id),
+                    ('type', '=', 'sale'),
+                    ('active', '=', True)
+                ], limit=1)
+            
+            if not journal:
+                _logger.error(f"No se encontró diario para crear la nota de crédito en la compañía {company.name}")
+                return None
+            
+            # Obtener la cuenta de ingresos del producto
+            income_account = product.property_account_income_id
+            if not income_account:
+                income_account = product.categ_id.property_account_income_categ_id
+            if not income_account:
+                income_account = company.datareader_tolerance_account_id
+            
+            if not income_account:
+                _logger.error(f"No se encontró cuenta de ingresos para el producto de tolerancia")
+                return None
+            
+            # Obtener la cuenta por cobrar del partner
+            receivable_account = partner.property_account_receivable_id
+            if not receivable_account:
+                receivable_account = self.env['account.account'].sudo().search([
+                    ('company_id', '=', company.id),
+                    ('internal_type', '=', 'receivable'),
+                    ('deprecated', '=', False)
+                ], limit=1)
+            
+            if not receivable_account:
+                _logger.error(f"No se encontró cuenta por cobrar para el partner {partner.name}")
+                return None
+            
+            # Obtener el tipo de documento desde el diario (código 43 para nota de crédito)
+            document_type = False
+            if hasattr(journal, 'l10n_ar_document_type_ids') and journal.l10n_ar_document_type_ids:
+                document_type = journal.l10n_ar_document_type_ids.filtered(lambda d: d.code == '43')
+                if not document_type:
+                    document_type = journal.l10n_ar_document_type_ids[0] if journal.l10n_ar_document_type_ids else False
+            
+            # Crear la nota de crédito (out_refund - disminuye la deuda)
+            move_vals = {
+                'move_type': 'out_refund',
+                'partner_id': partner.id,
+                'journal_id': journal.id,
+                'company_id': company.id,
+                'currency_id': company.currency_id.id,
+                'date': fields.Date.today(),  # Usar fecha de hoy
+                'invoice_date': fields.Date.today(),
+                'invoice_origin': f'Nota de Crédito - Diferencia de Tolerancia - Recibo {payment_group.communication or payment_group.id}',
+                'ref': f'Nota de Crédito - Diferencia de Tolerancia - Recibo {payment_group.communication or payment_group.id}',
+            }
+            
+            # Agregar tipo de documento si existe
+            if document_type:
+                move_vals['l10n_latam_document_type_id'] = document_type.id
+            
+            credit_note = self.env['account.move'].sudo().create(move_vals)
+            
+            # Obtener los impuestos del producto
+            taxes = product.taxes_id.filtered(lambda t: t.company_id == company)
+            if not taxes:
+                # Si el producto no tiene impuestos, buscar impuestos por defecto de venta
+                taxes = self.env['account.tax'].sudo().search([
+                    ('type_tax_use', '=', 'sale'),
+                    ('company_id', '=', company.id),
+                    ('active', '=', True)
+                ], limit=1)
+            
+            # Crear la línea de producto usando invoice_line_ids
+            line_vals = {
+                'product_id': product.id,
+                'name': f'Diferencia de Tolerancia - Recibo {payment_group.communication or payment_group.id}',
+                'quantity': 1.0,
+                'price_unit': abs_diff,
+                'account_id': income_account.id,
+            }
+            
+            # Agregar impuestos si existen
+            if taxes:
+                line_vals['tax_ids'] = [(6, 0, taxes.ids)]
+            
+            # Agregar cuenta analítica si está configurada
+            if company.datareader_tolerance_analytic_account_id:
+                line_vals['analytic_account_id'] = company.datareader_tolerance_analytic_account_id.id
+            
+            credit_note.with_context(check_move_validity=False).write({
+                'invoice_line_ids': [(0, 0, line_vals)]
+            })
+            
+            # Publicar la nota de crédito
+            credit_note.action_post()
+            
+            _logger.info(f"Nota de crédito creada para tolerancia: {credit_note.name} (ID: {credit_note.id}), monto: {abs_diff}")
+            
+            # La nota de crédito tiene una línea de cuenta por cobrar con saldo negativo (crédito)
+            # Esto reduce automáticamente la deuda cuando se reconcilia
+            # Buscar la línea de cuenta por cobrar de la nota de crédito
+            credit_note.refresh()
+            credit_note_line = credit_note.line_ids.filtered(
+                lambda l: l.account_id.internal_type == 'receivable' and not l.reconciled
+            )
+            
+            _logger.info(f"Líneas de la nota de crédito: {[(l.id, l.account_id.code, l.account_id.internal_type, l.debit, l.credit) for l in credit_note.line_ids]}")
+            _logger.info(f"Línea de cuenta por cobrar encontrada: {credit_note_line.ids if credit_note_line else 'None'}")
+            
+            if credit_note_line:
+                receivable_line = credit_note_line[0]
+                line_id = receivable_line.id
+                _logger.info(f"ID de línea a agregar: {line_id}")
+                
+                # Agregar cuenta analítica a la línea de cuenta por cobrar si está configurada
+                if company.datareader_tolerance_analytic_account_id:
+                    receivable_line.sudo().write({
+                        'analytic_account_id': company.datareader_tolerance_analytic_account_id.id
+                    })
+                    _logger.info(f"Cuenta analítica {company.datareader_tolerance_analytic_account_id.name} agregada a la línea de cuenta por cobrar {line_id}")
+                
+                # Agregar la línea al payment_group usando el comando (4, id) para agregar directamente
+                payment_group.refresh()
+                current_lines = list(payment_group.to_pay_move_line_ids.ids)
+                _logger.info(f"Líneas actuales del payment_group: {current_lines}")
+                
+                if line_id not in current_lines:
+                    # Usar comando (4, id) para agregar la línea directamente
+                    payment_group.sudo().write({
+                        'to_pay_move_line_ids': [(4, line_id)]
+                    })
+                    payment_group.refresh()
+                    _logger.info(f"Línea de nota de crédito {line_id} agregada al payment_group {payment_group.id} usando comando (4, id)")
+                    _logger.info(f"Líneas actualizadas del payment_group: {payment_group.to_pay_move_line_ids.ids}")
+                else:
+                    _logger.info(f"La línea {line_id} ya estaba en el payment_group")
+            else:
+                _logger.warning(f"No se encontró línea de cuenta por cobrar en la nota de crédito {credit_note.id}")
+                _logger.warning(f"Todas las líneas: {[(l.id, l.account_id.code, l.account_id.internal_type) for l in credit_note.line_ids]}")
+            
+            return credit_note
+            
+        except Exception as e:
+            _logger.error(f"Error al crear nota de crédito para tolerancia: {e}")
+            return None
+
+    def _create_invoice_for_tolerance(self, payment_group, difference, payment_date, company):
+        """
+        Crea una nota de débito por la diferencia cuando el pago es mayor y está dentro de la tolerancia.
+        La nota de débito se agrega a la deuda del payment_group.
+        
+        :param payment_group: account.payment.group - El grupo de pago
+        :param difference: float - La diferencia (debe ser positiva, pago mayor)
+        :param payment_date: str - La fecha del pago (no se usa, se usa fecha de hoy)
+        :param company: res.company - La compañía
+        :return: account.move - La nota de débito creada o None
+        """
+        try:
+            if difference <= 0:
+                _logger.warning(f"No se crea nota de débito porque la diferencia es negativa: {difference}")
+                return None
+            
+            abs_diff = abs(difference)
+            partner = payment_group.partner_id
+            
+            # Obtener el producto de tolerancia
+            product = self._get_tolerance_product(company)
+            
+            if not product:
+                _logger.error(f"No se encontró producto de tolerancia configurado para la compañía {company.name}")
+                return None
+            
+            # Obtener el diario para la nota de débito
+            # Usar el diario de tolerancia si está configurado, sino buscar un diario de ventas
+            journal = company.datareader_tolerance_journal_id
+            if not journal:
+                journal = self.env['account.journal'].sudo().search([
+                    ('company_id', '=', company.id),
+                    ('type', '=', 'sale'),
+                    ('active', '=', True)
+                ], limit=1)
+            
+            if not journal:
+                _logger.error(f"No se encontró diario para crear la nota de débito en la compañía {company.name}")
+                return None
+            
+            # Obtener la cuenta de ingresos del producto
+            income_account = product.property_account_income_id
+            if not income_account:
+                income_account = product.categ_id.property_account_income_categ_id
+            if not income_account:
+                income_account = company.datareader_tolerance_account_id
+            
+            if not income_account:
+                _logger.error(f"No se encontró cuenta de ingresos para el producto de tolerancia")
+                return None
+            
+            # Obtener la cuenta por cobrar del partner
+            receivable_account = partner.property_account_receivable_id
+            if not receivable_account:
+                receivable_account = self.env['account.account'].sudo().search([
+                    ('company_id', '=', company.id),
+                    ('internal_type', '=', 'receivable'),
+                    ('deprecated', '=', False)
+                ], limit=1)
+            
+            if not receivable_account:
+                _logger.error(f"No se encontró cuenta por cobrar para el partner {partner.name}")
+                return None
+            
+            # Obtener el tipo de documento desde el diario (código 46 para nota de débito)
+            document_type = False
+            if hasattr(journal, 'l10n_ar_document_type_ids') and journal.l10n_ar_document_type_ids:
+                document_type = journal.l10n_ar_document_type_ids.filtered(lambda d: d.code == '46')
+                if not document_type:
+                    document_type = journal.l10n_ar_document_type_ids[0] if journal.l10n_ar_document_type_ids else False
+            
+            # Crear la nota de débito (out_invoice - aumenta la deuda)
+            # En Odoo, las notas de débito de venta se crean como out_invoice
+            move_vals = {
+                'move_type': 'out_invoice',
+                'partner_id': partner.id,
+                'journal_id': journal.id,
+                'company_id': company.id,
+                'currency_id': company.currency_id.id,
+                'date': fields.Date.today(),  # Usar fecha de hoy
+                'invoice_date': fields.Date.today(),
+                'invoice_origin': f'Nota de Débito - Diferencia de Tolerancia - Recibo {payment_group.communication or payment_group.id}',
+                'ref': f'Nota de Débito - Diferencia de Tolerancia - Recibo {payment_group.communication or payment_group.id}',
+            }
+            
+            # Agregar tipo de documento si existe
+            if document_type:
+                move_vals['l10n_latam_document_type_id'] = document_type.id
+            
+            # Si existe el campo debit_origin_id (módulo l10n_ar_ux o account_ux), 
+            # se puede usar para identificar como nota de débito, pero como no hay factura original, se deja vacío
+            if 'debit_origin_id' in self.env['account.move']._fields:
+                # Nota de débito standalone (sin factura original)
+                move_vals['debit_origin_id'] = False
+            
+            debit_note = self.env['account.move'].sudo().create(move_vals)
+            
+            # Obtener los impuestos del producto
+            taxes = product.taxes_id.filtered(lambda t: t.company_id == company)
+            if not taxes:
+                # Si el producto no tiene impuestos, buscar impuestos por defecto de venta
+                taxes = self.env['account.tax'].sudo().search([
+                    ('type_tax_use', '=', 'sale'),
+                    ('company_id', '=', company.id),
+                    ('active', '=', True)
+                ], limit=1)
+            
+            # Crear la línea de producto usando invoice_line_ids
+            line_vals = {
+                'product_id': product.id,
+                'name': f'Diferencia de Tolerancia - Recibo {payment_group.communication or payment_group.id}',
+                'quantity': 1.0,
+                'price_unit': abs_diff,
+                'account_id': income_account.id,
+            }
+            
+            # Agregar impuestos si existen
+            if taxes:
+                line_vals['tax_ids'] = [(6, 0, taxes.ids)]
+            
+            # Agregar cuenta analítica si está configurada
+            if company.datareader_tolerance_analytic_account_id:
+                line_vals['analytic_account_id'] = company.datareader_tolerance_analytic_account_id.id
+            
+            debit_note.with_context(check_move_validity=False).write({
+                'invoice_line_ids': [(0, 0, line_vals)]
+            })
+            
+            # Publicar la nota de débito
+            debit_note.action_post()
+            
+            _logger.info(f"Nota de débito creada para tolerancia: {debit_note.name} (ID: {debit_note.id}), monto: {abs_diff}")
+            
+            # Agregar la línea de la nota de débito al payment_group (agregar a la deuda)
+            # Buscar la línea de cuenta por cobrar de la nota de débito
+            debit_note.refresh()
+            debit_note_line = debit_note.line_ids.filtered(
+                lambda l: l.account_id.internal_type == 'receivable' and not l.reconciled
+            )
+            
+            _logger.info(f"Líneas de la nota de débito: {[(l.id, l.account_id.code, l.account_id.internal_type, l.debit, l.credit) for l in debit_note.line_ids]}")
+            _logger.info(f"Línea de cuenta por cobrar encontrada: {debit_note_line.ids if debit_note_line else 'None'}")
+            
+            if debit_note_line:
+                receivable_line = debit_note_line[0]
+                line_id = receivable_line.id
+                _logger.info(f"ID de línea a agregar: {line_id}")
+                
+                # Agregar cuenta analítica a la línea de cuenta por cobrar si está configurada
+                if company.datareader_tolerance_analytic_account_id:
+                    receivable_line.sudo().write({
+                        'analytic_account_id': company.datareader_tolerance_analytic_account_id.id
+                    })
+                    _logger.info(f"Cuenta analítica {company.datareader_tolerance_analytic_account_id.name} agregada a la línea de cuenta por cobrar {line_id}")
+                
+                # Agregar la línea al payment_group usando el comando (4, id) para agregar directamente
+                payment_group.refresh()
+                current_lines = list(payment_group.to_pay_move_line_ids.ids)
+                _logger.info(f"Líneas actuales del payment_group: {current_lines}")
+                
+                if line_id not in current_lines:
+                    # Usar comando (4, id) para agregar la línea directamente
+                    payment_group.sudo().write({
+                        'to_pay_move_line_ids': [(4, line_id)]
+                    })
+                    payment_group.refresh()
+                    _logger.info(f"Línea de nota de débito {line_id} agregada al payment_group {payment_group.id} usando comando (4, id)")
+                    _logger.info(f"Líneas actualizadas del payment_group: {payment_group.to_pay_move_line_ids.ids}")
+                else:
+                    _logger.info(f"La línea {line_id} ya estaba en el payment_group")
+            else:
+                _logger.warning(f"No se encontró línea de cuenta por cobrar en la nota de débito {debit_note.id}")
+                _logger.warning(f"Todas las líneas: {[(l.id, l.account_id.code, l.account_id.internal_type) for l in debit_note.line_ids]}")
+            
+            return debit_note
+            
+        except Exception as e:
+            _logger.error(f"Error al crear nota de débito para tolerancia: {e}")
+            return None
 
     def _attach_files_to_payment_group(self, log_item, payment_group):
         """
