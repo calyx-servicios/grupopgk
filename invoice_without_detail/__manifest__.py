@@ -8,9 +8,9 @@
     "website": "http://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Custom",
-    "version": "15.0.2.0.2",
+    "version": "15.0.2.0.3",
     "development_status": "Production/Stable",
-    "depends": ['account','l10n_ar','sale_ux','l10n_latam_invoice_document','mail'],
+    "depends": ['account', 'account_tax_totals_fix', 'l10n_ar', 'sale_ux', 'l10n_latam_invoice_document', 'mail'],
     "data": [
         "views/template.xml",
         "data/mail_template_data_without_detail.xml",

@@ -9,14 +9,15 @@ class AccountMove(models.Model):
 
     invoice_send_ids = fields.Many2many('account.invoice.send', 'account_move_account_invoice_send_rel', string='Invoice Sends')
 
-    # En version 16 con este metodo toma por default el template de la factura sin detalles para enviar por mail
-    
-    #def action_invoice_sent(self):
-    #    res = super().action_invoice_sent()
-    #    template_id = self.env.ref('invoice_without_detail.email_template_invoice_without_detail')
-    #    if template_id:
-    #        res['context']['default_template_id'] = template_id.id
-    #    return res
+    def _get_mail_template(self):
+        """Usar template de factura sin detalles por defecto para envío e impresión."""
+        template = self.env.ref(
+            'invoice_without_detail.email_template_invoice_without_detail',
+            raise_if_not_found=False
+        )
+        if template:
+            return 'invoice_without_detail.email_template_invoice_without_detail'
+        return super()._get_mail_template()
 
     def create_template_report_invoice(self):
         return self.env.ref('invoice_without_detail.action_invoce_without_details').report_action(self)

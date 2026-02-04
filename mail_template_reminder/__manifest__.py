@@ -5,13 +5,14 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "LGPL-3",
     "category": "Mail",
-    "version": "15.0.1.0.0",
+    "version": "15.0.1.0.1",
     "application": False,
     "installable": True,
     "depends": [
         "base",
         "mail",
         "account_invoice_overdue_reminder",
+        "invoice_without_detail",
     ],
     "data": [
         "views/res_partner_views.xml",
