@@ -1,8 +1,9 @@
-from odoo import models, fields, api,_
+from odoo import models, fields, api, _
+from odoo.exceptions import AccessError
+
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
-
 
     has_profile_admin = fields.Boolean(string="Has administrator profile?", compute="_compute_has_profile_access", store=False, default=False)
     has_profile_manager = fields.Boolean(string="Has manager profile?", compute="_compute_has_profile_access", store=False, default=False)
@@ -18,3 +19,12 @@ class SaleOrder(models.Model):
             for group_name, field_name in group_names.items():
                 has_group = user.has_group(group_name)
                 setattr(order, field_name, has_group)
+
+    def action_confirm(self):
+        for order in self:
+            if order.opportunity_id and not order.has_profile_admin:
+                raise AccessError(_(
+                    "No tiene permisos para confirmar cotizaciones creadas desde CRM. "
+                    "Solo usuarios con perfil Administrador pueden realizar esta acción."
+                ))
+        return super().action_confirm()

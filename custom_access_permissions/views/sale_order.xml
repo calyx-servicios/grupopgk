@@ -8,7 +8,14 @@
             <field name="sales_order_with_detail" position="after">
                 <field name="has_profile_admin" invisible="1"/>
                 <field name="has_profile_manager" invisible="1"/>
+                <field name="opportunity_id" invisible="1"/>
             </field>
+            <xpath expr="//button[@name='action_confirm'][1]" position="attributes">
+                <attribute name="attrs">{'invisible': ['|', ('state', 'not in', ['sent']), '&amp;', ('opportunity_id', '!=', False), ('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_confirm'][2]" position="attributes">
+                <attribute name="attrs">{'invisible': ['|', ('state', 'not in', ['draft']), '&amp;', ('opportunity_id', '!=', False), ('has_profile_admin', '=', False)]}</attribute>
+            </xpath>
             <page name="optional_products" position="attributes">
                 <attribute name="groups">custom_access_permissions.group_profile_administrator</attribute>
             </page>
