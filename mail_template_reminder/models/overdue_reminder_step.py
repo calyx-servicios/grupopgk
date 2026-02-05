@@ -306,9 +306,7 @@ class OverdueReminderStep(models.TransientModel):
         
         mail = self.env["mail.mail"].create(mvals)
         
-        inv_report = self.env["ir.actions.report"]._get_report_from_name(
-            "account.report_invoice_with_payments"
-        )
+        inv_report = self.env.ref("invoice_without_detail.action_invoce_without_details")
         
         if self.company_id.overdue_reminder_attach_invoice:
             try:
