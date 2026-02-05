@@ -137,6 +137,16 @@ msgid "You do not have access to create this type of move."
 msgstr "No tienes acceso para crear este tipo de movimiento."
 
 #. module: custom_access_permissions
+#: code:addons/custom_access_permissions/models/sale_order.py:0
+#, python-format
+msgid ""
+"No tiene permisos para confirmar cotizaciones creadas desde CRM. "
+"Solo usuarios con perfil Administrador pueden realizar esta acción."
+msgstr ""
+"No tiene permisos para confirmar cotizaciones creadas desde CRM. "
+"Solo usuarios con perfil Administrador pueden realizar esta acción."
+
+#. module: custom_access_permissions
 #: code:addons/custom_access_permissions/models/project_project.py:0
 #, python-format
 msgid ""
