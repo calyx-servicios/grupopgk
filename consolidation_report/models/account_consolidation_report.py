@@ -4,7 +4,7 @@ import base64, xlsxwriter
 from io import BytesIO
 from odoo.exceptions import UserError
 import logging
-from datetime import date
+from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 
 _logger = logging.getLogger(__name__)
@@ -13,11 +13,12 @@ _logger = logging.getLogger(__name__)
 class AccountConsolidationReport(models.Model):
     _name = "account.consolidation.report"
     _description = "Export consolidation report"
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
-    name = fields.Char(string="Name")
+    name = fields.Char(string="Name", tracking=True)
     period = fields.Char(compute="_compute_period", string="Period")
     consolidation_period = fields.Many2one(
-        "account.consolidation.period", string="Select a period"
+        "account.consolidation.period", string="Select a period", tracking=True
     )
     export_consolidation_data = fields.Text("File content")
     export_consolidation_file = fields.Binary(
@@ -310,7 +311,7 @@ class AccountConsolidationReport(models.Model):
             consolidation_period = (
                 self.consolidation_period.consolidation_companies.filtered(
                     lambda x: x.company_id == analytic_line.move_id.company_id
-                )
+                )[:1]  # Toma solo el primer registro si hay múltiples
             )
             currency_origin = (
                 consolidation_period.currency_id.symbol
@@ -576,6 +577,15 @@ class AccountConsolidationReport(models.Model):
         }
 
     def generate_consolidation_report_view(self):
+        # Mensaje de prueba en el chatter
+        self.message_post(
+            body=f"Inicio de generación del reporte de consolidación - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            subject="Inicio del proceso"
+        )
+        
+        # Diccionario para rastrear cuentas analíticas ya registradas en el chatter
+        logged_multiple_projects_main = set()
+        
         # Validar empleados y departamentos antes de continuar
         validation_result = self.validate_employees_departments()
         
@@ -605,6 +615,7 @@ class AccountConsolidationReport(models.Model):
         )
 
         consolidation_data_vals = []
+        
         for analytic_line in analytic_lines:
             if analytic_line.debit == 0 and analytic_line.credit == 0:
                 _logger.info(f"Línea descartada, ID {analytic_line.id}") 
@@ -630,7 +641,7 @@ class AccountConsolidationReport(models.Model):
             consolidation_period = (
                 self.consolidation_period.consolidation_companies.filtered(
                     lambda x: x.company_id == analytic_line.move_id.company_id
-                )
+                )[:1]  # Toma solo el primer registro si hay múltiples
             )
             currency_origin = analytic_line.currency_id.id
             new_currency = (
@@ -652,6 +663,16 @@ class AccountConsolidationReport(models.Model):
                     ("analytic_account_id", "=", analytic_line.account_id.id),
                 ]
             )
+            
+            # Si hay múltiples proyectos, registrar en el chatter (solo una vez por cuenta analítica)
+            if len(project_ids) > 1:
+                if analytic_line.account_id.id not in logged_multiple_projects_main:
+                    logged_multiple_projects_main.add(analytic_line.account_id.id)
+                    project_names = ", ".join([f"{p.name} (ID: {p.id})" for p in project_ids])
+                    line_description = analytic_line.name or f"Línea analítica ID: {analytic_line.id}"
+                    message = f"⚠️ Múltiples proyectos encontrados para la cuenta analítica '{analytic_line.account_id.name}' (ID: {analytic_line.account_id.id}). Línea analítica: {line_description} (ID: {analytic_line.id}). Se seleccionó el primero: {project_ids[0].name} (ID: {project_ids[0].id}). Proyectos encontrados: {project_names}"
+                    self.message_post(body=message, subject="Múltiples proyectos para cuenta analítica")
+            
             project_id = False if not project_ids else project_ids[0].id
 
             consolidation_data_vals.append(
@@ -679,9 +700,11 @@ class AccountConsolidationReport(models.Model):
         consolidation_data_vals_cost = self.cost_to_project(
             percentage_for_project, total_amount_cost
         )
+        
         account_analytic_line_cost = self.analytic_line_cost(
             consolidation_data_vals_cost
         )
+        
         consolidation_data = self.env["account.consolidation.data"]
         consolidation_data.create(consolidation_data_vals)
         consolidation_data.create(consolidation_data_vals_cost)
@@ -757,11 +780,22 @@ class AccountConsolidationReport(models.Model):
         )
 
         # Procesa las líneas analíticas para Calyx
+        multiple_projects_logged = set()  # Para evitar logs repetidos
         for line in analytic_lines_calyx:
             line.update_currency_id()
-            project = all_projects.filtered(
+            projects = all_projects.filtered(
                 lambda p: p.analytic_account_id.id == line.account_id.id
             )
+            project = projects[:1] if projects else self.env["project.project"]
+            
+            # Si hay múltiples proyectos, registrar en el chatter
+            if len(projects) > 1 and line.account_id.id not in multiple_projects_logged:
+                multiple_projects_logged.add(line.account_id.id)
+                project_names = ", ".join([f"{p.name} (ID: {p.id})" for p in projects])
+                line_description = line.name or f"Línea analítica ID: {line.id}"
+                message = f"⚠️ Múltiples proyectos encontrados para la cuenta analítica '{line.account_id.name}' (ID: {line.account_id.id}). Línea analítica: {line_description} (ID: {line.id}). Se seleccionó el primero: {projects[0].name} (ID: {projects[0].id}). Proyectos encontrados: {project_names}"
+                self.message_post(body=message, subject="Múltiples proyectos para cuenta analítica")
+            
             amount = self._convert_amount(line)
             total_sales_calyx += amount
             if project and amount != 0.0:
@@ -773,9 +807,19 @@ class AccountConsolidationReport(models.Model):
         # Procesa las líneas analíticas para otras empresas
         for line in analytic_lines_otros:
             line.update_currency_id()
-            project = all_projects.filtered(
+            projects = all_projects.filtered(
                 lambda p: p.analytic_account_id.id == line.account_id.id
             )
+            project = projects[:1] if projects else self.env["project.project"]
+            
+            # Si hay múltiples proyectos, registrar en el chatter
+            if len(projects) > 1 and line.account_id.id not in multiple_projects_logged:
+                multiple_projects_logged.add(line.account_id.id)
+                project_names = ", ".join([f"{p.name} (ID: {p.id})" for p in projects])
+                line_description = line.name or f"Línea analítica ID: {line.id}"
+                message = f"⚠️ Múltiples proyectos encontrados para la cuenta analítica '{line.account_id.name}' (ID: {line.account_id.id}). Línea analítica: {line_description} (ID: {line.id}). Se seleccionó el primero: {projects[0].name} (ID: {projects[0].id}). Proyectos encontrados: {project_names}"
+                self.message_post(body=message, subject="Múltiples proyectos para cuenta analítica")
+            
             amount = self._convert_amount(line)
             total_sales_otros += amount
             if project and amount != 0.0:
@@ -1160,7 +1204,7 @@ class AccountConsolidationReport(models.Model):
         consolidation_period = (
                 self.consolidation_period.consolidation_companies.filtered(
                     lambda x: x.company_id == analytic_line.move_id.company_id
-                )
+                )[:1]  # Toma solo el primer registro si hay múltiples
             )
 
         if consolidation_period and not consolidation_period.historical_rate:
