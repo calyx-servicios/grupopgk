@@ -549,6 +549,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     return log_item
                 
                 # Si la diferencia es negativa (pago menor), crear nota de crédito
+                credit_note_created = False
                 if payment_difference < 0:
                     _logger.info(f"Pago menor detectado. Diferencia: {payment_difference}. Creando nota de crédito...")
                     # Crear nota de crédito para reducir la deuda por la diferencia
@@ -563,6 +564,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         _logger.info(f"Nota de crédito creada para tolerancia: {credit_note.name}")
                         # Recalcular matched_amount después de agregar la nota de crédito
                         matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
+                        credit_note_created = True
                     else:
                         _logger.warning(f"No se pudo crear la nota de crédito para tolerancia")
                         return log_item
@@ -585,8 +587,12 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         _logger.warning(f"No se pudo crear la nota de débito para tolerancia")
                         return log_item
                 
-                # Postear solo si cumple condiciones de retenciones
-                if self._should_post_payment_group(log_item):
+                # Si se creó una nota de crédito, postear el pago automáticamente
+                if credit_note_created:
+                    _logger.info(f"Nota de crédito creada. Posteando payment group {payment_group.id} automáticamente...")
+                    payment_group.post()
+                # Si no se creó nota de crédito, postear solo si cumple condiciones de retenciones
+                elif self._should_post_payment_group(log_item):
                     payment_group.post()
                 else:
                     _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
@@ -1104,6 +1110,22 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             abs_diff = abs(difference)
             partner = payment_group.partner_id
             
+            # Obtener el partner de la factura asociada que va a imputar
+            invoice_partner = None
+            invoice_user = None  # res.users del campo partner de la factura
+            if payment_group.to_pay_move_line_ids:
+                # Tomar el partner de la primera factura asociada
+                first_invoice_line = payment_group.to_pay_move_line_ids[0]
+                if first_invoice_line.move_id:
+                    if first_invoice_line.move_id.partner_id:
+                        invoice_partner = first_invoice_line.move_id.partner_id
+                        _logger.info(f"Partner obtenido de factura asociada: {invoice_partner.name} (ID: {invoice_partner.id})")
+                    
+                    # Obtener el usuario comercial (res.users) del campo 'partner' de la factura
+                    if hasattr(first_invoice_line.move_id, 'partner') and first_invoice_line.move_id.partner:
+                        invoice_user = first_invoice_line.move_id.partner
+                        _logger.info(f"Usuario comercial obtenido de factura: {invoice_user.name} (ID: {invoice_user.id})")
+            
             # Obtener el producto de tolerancia
             product = self._get_tolerance_product(company)
             
@@ -1155,6 +1177,15 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 document_type = journal.l10n_ar_document_type_ids.filtered(lambda d: d.code == '43')
                 if not document_type:
                     document_type = journal.l10n_ar_document_type_ids[0] if journal.l10n_ar_document_type_ids else False
+                # Asegurarse de que document_type sea un solo registro (no un recordset)
+                if document_type:
+                    if len(document_type) > 1:
+                        document_type = document_type[0]
+                    elif len(document_type) == 0:
+                        document_type = False
+                    # Si es un solo registro, asegurarse de que tenga ID válido
+                    elif not document_type.id:
+                        document_type = False
             
             # Crear la nota de crédito (out_refund - disminuye la deuda)
             move_vals = {
@@ -1168,9 +1199,12 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'invoice_origin': f'Nota de Crédito - Diferencia de Tolerancia - Recibo {payment_group.communication or payment_group.id}',
                 'ref': f'Nota de Crédito - Diferencia de Tolerancia - Recibo {payment_group.communication or payment_group.id}',
             }
+            # Agregar usuario comercial (res.users) de la factura original si existe
+            if invoice_user:
+                move_vals['partner'] = invoice_user.id
             
             # Agregar tipo de documento si existe
-            if document_type:
+            if document_type and document_type.id:
                 move_vals['l10n_latam_document_type_id'] = document_type.id
             
             credit_note = self.env['account.move'].sudo().create(move_vals)
@@ -1193,6 +1227,11 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'price_unit': abs_diff,
                 'account_id': income_account.id,
             }
+            
+            # Agregar el partner de la factura asociada a la línea de producto
+            if invoice_partner:
+                line_vals['partner_id'] = invoice_partner.id
+                _logger.info(f"Partner agregado a línea de nota de crédito: {invoice_partner.name} (ID: {invoice_partner.id})")
             
             # Agregar impuestos si existen
             if taxes:
@@ -1278,6 +1317,22 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             abs_diff = abs(difference)
             partner = payment_group.partner_id
             
+            # Obtener el partner de la factura asociada que va a imputar
+            invoice_partner = None
+            invoice_user = None  # res.users del campo partner de la factura
+            if payment_group.to_pay_move_line_ids:
+                # Tomar el partner de la primera factura asociada
+                first_invoice_line = payment_group.to_pay_move_line_ids[0]
+                if first_invoice_line.move_id:
+                    if first_invoice_line.move_id.partner_id:
+                        invoice_partner = first_invoice_line.move_id.partner_id
+                        _logger.info(f"Partner obtenido de factura asociada: {invoice_partner.name} (ID: {invoice_partner.id})")
+                    
+                    # Obtener el usuario comercial (res.users) del campo 'partner' de la factura
+                    if hasattr(first_invoice_line.move_id, 'partner') and first_invoice_line.move_id.partner:
+                        invoice_user = first_invoice_line.move_id.partner
+                        _logger.info(f"Usuario comercial obtenido de factura: {invoice_user.name} (ID: {invoice_user.id})")
+            
             # Obtener el producto de tolerancia
             product = self._get_tolerance_product(company)
             
@@ -1329,6 +1384,15 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 document_type = journal.l10n_ar_document_type_ids.filtered(lambda d: d.code == '46')
                 if not document_type:
                     document_type = journal.l10n_ar_document_type_ids[0] if journal.l10n_ar_document_type_ids else False
+                # Asegurarse de que document_type sea un solo registro (no un recordset)
+                if document_type:
+                    if len(document_type) > 1:
+                        document_type = document_type[0]
+                    elif len(document_type) == 0:
+                        document_type = False
+                    # Si es un solo registro, asegurarse de que tenga ID válido
+                    elif not document_type.id:
+                        document_type = False
             
             # Crear la nota de débito (out_invoice - aumenta la deuda)
             # En Odoo, las notas de débito de venta se crean como out_invoice
@@ -1343,9 +1407,12 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'invoice_origin': f'Nota de Débito - Diferencia de Tolerancia - Recibo {payment_group.communication or payment_group.id}',
                 'ref': f'Nota de Débito - Diferencia de Tolerancia - Recibo {payment_group.communication or payment_group.id}',
             }
+            # Agregar usuario comercial (res.users) de la factura original si existe
+            if invoice_user:
+                move_vals['partner'] = invoice_user.id
             
             # Agregar tipo de documento si existe
-            if document_type:
+            if document_type and document_type.id:
                 move_vals['l10n_latam_document_type_id'] = document_type.id
             
             # Si existe el campo debit_origin_id (módulo l10n_ar_ux o account_ux), 
@@ -1374,6 +1441,11 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'price_unit': abs_diff,
                 'account_id': income_account.id,
             }
+            
+            # Agregar el partner de la factura asociada a la línea de producto
+            if invoice_partner:
+                line_vals['partner_id'] = invoice_partner.id
+                _logger.info(f"Partner agregado a línea de nota de débito: {invoice_partner.name} (ID: {invoice_partner.id})")
             
             # Agregar impuestos si existen
             if taxes:
