@@ -18,6 +18,7 @@
         "analytic",
         "hr_timesheet_multi_company",
         "associated_partner_employee",
+        "mail",
     ],
     "data": [
         "security/permissions.xml",
