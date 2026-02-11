@@ -27,9 +27,10 @@
 
             </xpath>
             <xpath expr="//field[@name='tag_ids']" position="after">
+                <field name="project_manager"/>
+                <field name="area"/>
                 <field name="total_timesheet_time" string="Actual consumed hours"/>
                 <field name="service_area_id"/>
-                <field name="project_manager" attrs="{'invisible': [('visible_fields_project', '=', False)]}"/>
                 <field name="reference_month" attrs="{'invisible': [('visible_fields_project', '=', False)]}"/>
                 <field name="action_suggested" attrs="{'invisible': [('visible_fields_project', '=', False)]}"/>
                 <field name="comment" attrs="{'invisible': [('visible_fields_project', '=', False)]}"/>
