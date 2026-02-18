@@ -47,13 +47,18 @@ class ResCompany(models.Model):
     datareader_tolerance_journal_id = fields.Many2one(
         'account.journal',
         string=_('Diario para Tolerancia'),
-        domain="[('company_id', '=', id), ('active', '=', True)]",
+        domain="[('company_id', '=', id), ('type', '=', 'sale'), ('active', '=', True)]",
         help=_('Diario usado para registrar las diferencias de tolerancia')
     )
     datareader_tolerance_analytic_account_id = fields.Many2one(
         'account.analytic.account',
         string=_('Cuenta Analítica para Tolerancia'),
         help=_('Cuenta analítica donde se registrará la diferencia cuando se aplique la tolerancia')
+    )
+    datareader_tolerance_product_id = fields.Many2one(
+        'product.product',
+        string=_('Producto para Tolerancia'),
+        help=_('Producto a usar en la nota de crédito y débito cuando el pago está dentro de la tolerancia. Si no se especifica, se creará automáticamente.')
     )
 
     @staticmethod
