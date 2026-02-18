@@ -55,7 +55,7 @@
                                     class="btn-secondary"
                                     groups="datareader_customer_receipts.group_datareader_admin"/>
                             </group>
-                            <group name="Journals" string="Alternative Journal Names">
+                            <!-- <group name="Journals" string="Alternative Journal Names">
                                 <button name="action_open_normalized_journals"
                                     type="object"
                                     string="View Journals"
@@ -66,7 +66,7 @@
                                     string="Update Journals"
                                     class="btn-secondary"
                                     groups="datareader_customer_receipts.group_datareader_admin"/>
-                            </group>
+                            </group> -->
                         </page>
                     </notebook>
                 </sheet>

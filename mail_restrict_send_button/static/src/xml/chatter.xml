@@ -1,0 +1,28 @@
+<templates xml:space="preserve">
+    <t
+        t-name="mail_restrict_send_button.ChatterTopbar"
+        t-inherit="mail.ChatterTopbar"
+        t-inherit-mode="extension"
+    >
+        <xpath
+            expr="//button[contains(@class, 'o_ChatterTopbar_buttonSendMessage')]"
+            position="replace"
+        >
+            <t t-if="isSendMessage">
+                <button class="btn btn-link o_ChatterTopbar_button o_ChatterTopbar_buttonSendMessage"
+                    type="button"
+                    t-att-class="{
+                        'o-active': chatter.composerView and !chatter.composerView.composer.isLog,
+                        'o-bordered': chatter.hasExternalBorder,
+                    }"
+                    t-att-disabled="chatter.isDisabled"
+                    title="Send a message"
+                    data-hotkey="m"
+                    t-on-click="chatter.onClickSendMessage"
+                >
+                    Send message
+                </button>
+            </t>
+        </xpath>
+    </t>
+</templates>

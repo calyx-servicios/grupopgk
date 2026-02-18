@@ -56,4 +56,5 @@ class ResConfigSettings(models.TransientModel):
     datareader_tolerance_account_id = fields.Many2one(related='company_id.datareader_tolerance_account_id', readonly=False)
     datareader_tolerance_journal_id = fields.Many2one(related='company_id.datareader_tolerance_journal_id', readonly=False)
     datareader_tolerance_analytic_account_id = fields.Many2one(related='company_id.datareader_tolerance_analytic_account_id', readonly=False)
+    datareader_tolerance_product_id = fields.Many2one(related='company_id.datareader_tolerance_product_id', readonly=False)
     
