@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vista Formulario: Campo debajo de 'Creado el' (create_date) -->
+    <record id="helpdesk_ticket_view_form_estimated_delivery" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.view.form.estimated.delivery</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk_mgmt.ticket_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='create_date']" position="after">
+                <field name="estimated_delivery_date"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Vista Lista: Campo a la derecha de 'Creado el' -->
+    <record id="helpdesk_ticket_view_tree_estimated_delivery" model="ir.ui.view">
+        <field name="name">helpdesk.ticket.view.tree.estimated.delivery</field>
+        <field name="model">helpdesk.ticket</field>
+        <field name="inherit_id" ref="helpdesk_mgmt.ticket_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='create_date']" position="after">
+                <field 
+                    name="estimated_delivery_date" 
+                    widget="remaining_days" 
+                    optional="show"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>
