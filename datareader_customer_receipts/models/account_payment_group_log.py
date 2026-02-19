@@ -1207,7 +1207,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             if document_type and document_type.id:
                 move_vals['l10n_latam_document_type_id'] = document_type.id
             
-            credit_note = self.env['account.move'].sudo().create(move_vals)
+            credit_note = self.env['account.move'].sudo().with_context(datareader=True).create(move_vals)
             
             # Obtener los impuestos del producto
             taxes = product.taxes_id.filtered(lambda t: t.company_id == company)
@@ -1246,7 +1246,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             })
             
             # Publicar la nota de crédito
-            credit_note.action_post()
+            credit_note.with_context(datareader=True).action_post()
             
             _logger.info(f"Nota de crédito creada para tolerancia: {credit_note.name} (ID: {credit_note.id}), monto: {abs_diff}")
             
