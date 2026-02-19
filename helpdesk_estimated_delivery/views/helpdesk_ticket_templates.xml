@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Sobrescribir template de lista de tickets para agregar columna -->
+    <template id="portal_ticket_list" inherit_id="helpdesk_mgmt.portal_ticket_list" 
+              name="Ticket List with Estimated Delivery">
+        <xpath expr="." position="replace">
+            <t t-if="grouped_tickets">
+                <t t-call="portal.portal_table">
+                    <t t-foreach="grouped_tickets" t-as="tickets">
+                        <thead>
+                            <tr t-attf-class="{{'thead-light' if not groupby == 'none' else ''}}">
+                                <th class="text-left">Contacto</th>
+                                <th class="text-left">Número</th>
+                                <th t-if="groupby == 'none'">Título</th>
+                                <th t-if="groupby == 'category'">
+                                    <em class="font-weight-normal text-muted">Tickets en categoría:</em>
+                                    <span class="text-truncate" t-field="tickets[0].sudo().category_id.name"/>
+                                </th>
+                                <th t-if="groupby == 'stage'">
+                                    <em class="font-weight-normal text-muted">Tickets en etapa:</em>
+                                    <span class="text-truncate" t-field="tickets[0].sudo().stage_id.name"/>
+                                </th>
+                                <th t-if="groupby != 'category'">Categoría</th>
+                                <th t-if="groupby != 'stage'">Etapa</th>
+                                <th>Fecha de creación</th>
+                                <th>Fecha de entrega estimada</th>
+                                <th>Última actualización de etapa</th>
+                                <th>Fecha de cierre</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="tickets" t-as="ticket">
+                                <tr>
+                                    <td class="text-left">
+                                        <span t-field="ticket.partner_id"/>
+                                    </td>
+                                    <td class="text-left">
+                                        <span t-esc="ticket.number"/>
+                                    </td>
+                                    <td>
+                                        <a t-attf-href="/my/ticket/#{ticket.id}?{{ keep_query() }}">
+                                            <span t-field="ticket.name"/>
+                                        </a>
+                                    </td>
+                                    <td t-if="groupby != 'category'">
+                                        <span t-esc="ticket.category_id.name"/>
+                                    </td>
+                                    <td t-if="groupby != 'stage'">
+                                        <span class="badge badge-pill badge-info" 
+                                              title="Etapa actual del ticket" 
+                                              t-esc="ticket.stage_id.name"/>
+                                    </td>
+                                    <td>
+                                        <span t-field="ticket.create_date"/>
+                                    </td>
+                                    <td>
+                                        <span t-field="ticket.estimated_delivery_date"/>
+                                    </td>
+                                    <td>
+                                        <span t-field="ticket.last_stage_update"/>
+                                    </td>
+                                    <td>
+                                        <span t-field="ticket.closed_date"/>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </t>
+                </t>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Detalle del ticket en portal: Agregar campo debajo de Date -->
+    <template 
+        id="portal_helpdesk_ticket_page_estimated_delivery" 
+        inherit_id="helpdesk_mgmt.portal_helpdesk_ticket_page"
+    >
+        <xpath expr="//div[@name='portal_ticket_col_0']/div[1]" position="after">
+            <div t-if="ticket.estimated_delivery_date">
+                <strong>Fecha de entrega estimada:</strong> 
+                <span 
+                    t-field="ticket.estimated_delivery_date" 
+                    t-options='{"widget": "date"}'
+                />
+            </div>
+        </xpath>
+    </template>
+</odoo>
