@@ -60,6 +60,11 @@ class AccountMove(models.Model):
     
     def action_post(self):
         for move in self:
+            # Verificar si viene del contexto datareader para evitar el bloqueo
+            if self.env.context.get('datareader'):
+                # Si viene de datareader, saltar la validación del partner
+                continue
+                
             # Obtener el usuario actual
             current_user = self.env.user
             # Chequear si el move_type es 'out_refund'
