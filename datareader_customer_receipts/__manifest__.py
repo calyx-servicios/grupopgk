@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Accounting",
-    "version": "15.0.1.5.2",
+    "version": "15.0.1.6.2",
     "application": False,
     "installable": True,
     "development_status": "Production/Stable",
@@ -26,6 +26,7 @@
     "data": [
         "security/datareader_security.xml",
         "security/ir_model_access.xml",
+        "data/ir_config_parameter_data.xml",
         "data/l10n_latam_document_type.xml",
         "views/normalized_text.xml",
         "views/res_config_settings.xml",

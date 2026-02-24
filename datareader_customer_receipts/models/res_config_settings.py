@@ -57,4 +57,11 @@ class ResConfigSettings(models.TransientModel):
     datareader_tolerance_journal_id = fields.Many2one(related='company_id.datareader_tolerance_journal_id', readonly=False)
     datareader_tolerance_analytic_account_id = fields.Many2one(related='company_id.datareader_tolerance_analytic_account_id', readonly=False)
     datareader_tolerance_product_id = fields.Many2one(related='company_id.datareader_tolerance_product_id', readonly=False)
-    
+    datareader_bank_reconciliation_journal_id = fields.Many2one(related='company_id.datareader_bank_reconciliation_journal_id', readonly=False)
+    datareader_bank_reconciliation_account_id = fields.Many2one(related='company_id.datareader_bank_reconciliation_account_id', readonly=False)
+    datareader_bank_reconciliation_lookback_days = fields.Integer(
+        string='Días atrás para conciliación bancaria',
+        default=30,
+        config_parameter='datareader_odoo.bank_reconciliation_lookback_days',
+        help='Cantidad de días hacia atrás para buscar líneas de pago bancario en plan de cuentas (conciliación).'
+    )
