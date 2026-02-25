@@ -12,6 +12,10 @@ class ResPartner(models.Model):
     @api.constrains("vat", "l10n_latam_identification_type_id")
     def _check_identification_number_required(self):
         for partner in self:
+            if partner.user_ids:
+                continue
+            if self.env.context.get("partner_identification_required_skip"):
+                continue
             id_type = partner.l10n_latam_identification_type_id
             if not id_type:
                 continue
