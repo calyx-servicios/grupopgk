@@ -5,7 +5,7 @@
     "author": "Calyx Servicios S.A.",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.1.0.0",
-    "depends": ["l10n_latam_base"],
+    "version": "15.0.1.0.1",
+    "depends": ["base", "l10n_latam_base"],
     "installable": True,
 }
