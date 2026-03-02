@@ -371,7 +371,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         domain_bank = [
             ('account_id', '=', reconciliation_account.id),
-            ('journal_id', '=', reconciliation_journal.id),
+            #('journal_id', '=', reconciliation_journal.id),
             ('partner_id', '=', commercial_partner_id),
             ('move_id.state', '=', 'posted'),
             ('date', '>=', date_from_str),
