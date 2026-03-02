@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="dms_classification_template_form_view" model="ir.ui.view">
+        <field name="name">dms.classification.template.form.inherit.employee.signature</field>
+        <field name="model">dms.classification.template</field>
+        <field name="inherit_id" ref="dms_auto_classification.view_dms_classification_template_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field name="signature_template_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

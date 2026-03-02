@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_wizard_dms_classification_form" model="ir.ui.view">
+        <field name="model">wizard.dms.classification</field>
+        <field name="inherit_id" ref="dms_auto_classification.view_wizard_dms_classification_form"/>
+        <field name="arch" type="xml">
+            <field name="data_file" position="after">
+                <field name="classification_date" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                <field name="global_directory_id" attrs="{'invisible': [('state', '=', 'draft')]}"/>
+            </field>
+            <xpath expr="//field[@name='detail_ids']/tree/field[@name='full_path']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='detail_ids']/tree/field[@name='full_path']" position="after">
+                <field name="employee_id" invisible="1" />
+                <field name="new_filename"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Heredar de dms_field_auto_classification para reemplazar record_ref -->
+    <record id="view_wizard_dms_classification_form_record_ref" model="ir.ui.view">
+        <field name="model">wizard.dms.classification</field>
+        <field name="inherit_id" ref="dms_field_auto_classification.view_wizard_dms_classification_form"/>
+        <field name="arch" type="xml">
+            <field name="record_ref" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
+            <field name="record_ref" position="after">
+                <field name="display_record_ref" string="Registro Referenciado"/>
+            </field>
+        </field>
+    </record>
+</odoo>
