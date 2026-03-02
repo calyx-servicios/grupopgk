@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- Wizard Form View -->
+    <record id="view_wizard_signature_control_form" model="ir.ui.view">
+        <field name="name">wizard.signature.control.form</field>
+        <field name="model">wizard.signature.control</field>
+        <field name="arch" type="xml">
+            <form string="Exportar Firma">
+                <group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group/>
+                </group>
+                <footer>
+                    <button name="action_export_excel" 
+                            string="Exportar Excel" 
+                            type="object" 
+                            class="btn-primary"
+                            icon="fa-download"/>
+                    <button string="Cancelar" 
+                            class="btn-secondary" 
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Wizard Action -->
+    <record id="action_wizard_signature_control" model="ir.actions.act_window">
+        <field name="name">Exportar Firma</field>
+        <field name="res_model">wizard.signature.control</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Reportes -->
+    <menuitem
+        id="menu_dms_hr_reports"
+        name="Reportes"
+        parent="hr.menu_hr_root"
+        sequence="96"
+        groups="hr.group_hr_manager"/>
+
+    <!-- Control de firmas -->
+    <menuitem
+        id="menu_signature_control"
+        name="Control de firmas"
+        parent="menu_dms_hr_reports"
+        action="action_wizard_signature_control"
+        sequence="1"/>
+</odoo>
