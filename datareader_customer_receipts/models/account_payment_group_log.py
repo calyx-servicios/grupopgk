@@ -511,14 +511,24 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         receiptbook_id, errors = self._get_receiptbook(company_id, errors, log_item)
         if not receiptbook_id:
             return log_item
-
+        
+        post_neto = False
+        
         amount = float(data.get('amount_bruto') or 0.0)
         if amount == 0.0:
             amount = float(data.get('amount_neto') or 0.0)
             errors.append(f"No vino monto bruto. Se toma el monto neto")
             log_item.write({'message': "\n".join(errors)})
-            return log_item
-        # Método de pago base
+            if amount > 0.0:
+                post_neto = True
+                errors.append(f"El monto neto ({amount}). Validar que sea correcto.")
+                log_item.write({'message': "\n".join(errors)})
+            else:
+                errors.append(f"El monto neto es 0. Se detiene el proceso.")
+                log_item.write({'message': "\n".join(errors)})
+                return log_item
+            
+        # Método de pago bas
         pay_method = data.get('pay_method').lower()
         payment_method_obj = self.env['account.payment.method'].sudo()
         payment_method = payment_method_obj.search([
@@ -561,8 +571,16 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         self.env.cr.flush()
         log_item.payment_group_id = payment_group
-
-        invoices_found = self._find_and_attach_invoices(payment_group, data.get('lines', []), errors=errors)
+        
+        json_lines = data.get('lines', [])
+        
+        if not json_lines:
+            errors.append("No se encontraron líneas en el JSON.")
+            log_item.write({'message': "\n".join(errors)})
+            invoices_found = False
+        else:
+            invoices_found = self._find_and_attach_invoices(payment_group, amount, json_lines, errors=errors)
+        
         if invoices_found:
             log_item.write({
                 'invoices_found': True
@@ -704,7 +722,10 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     current = (log_item.message or "").strip()
                     log_item.write({'message': f"{current}\n{msg}".strip() if current else msg})
         
-        if partner_id.datareader_auto_payment_post and pay_method != 'cheque':
+        if post_neto == True:
+            return log_item
+        
+        elif partner_id.datareader_auto_payment_post and pay_method != 'cheque':
             amount_from_json = amount
             invoices = payment_group.to_pay_move_line_ids.mapped('move_id')
             total_debt = sum(invoices.mapped('amount_total'))
