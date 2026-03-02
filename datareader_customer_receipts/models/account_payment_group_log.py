@@ -514,7 +514,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         amount = float(data.get('amount_bruto') or 0.0)
         if amount == 0.0:
-            errors.append(f"No vino monto en la orden.")
+            amount = float(data.get('amount_neto') or 0.0)
+            errors.append(f"No vino monto bruto. Se toma el monto neto")
             log_item.write({'message': "\n".join(errors)})
             return log_item
         # Método de pago base
