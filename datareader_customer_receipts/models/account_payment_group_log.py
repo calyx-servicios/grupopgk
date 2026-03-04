@@ -579,7 +579,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             log_item.write({'message': "\n".join(errors)})
             invoices_found = False
         else:
-            invoices_found = self._find_and_attach_invoices(payment_group, amount, json_lines, errors=errors)
+            invoices_found = self._find_and_attach_invoices(payment_group, json_lines, errors=errors)
         
         if invoices_found:
             log_item.write({
