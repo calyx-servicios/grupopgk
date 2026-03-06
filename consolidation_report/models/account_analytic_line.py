@@ -10,7 +10,6 @@ class AccountAnalyticLine(models.Model):
     is_sector_group = fields.Boolean(string="Is Sector Group", related='account_id.is_sector_group')
     consolidation_line = fields.Boolean(string='Consolidation line', default=False)
     source_analytic_line_id = fields.Many2one('account.analytic.line', string="Línea Analítica Origen")
-    consolidation_rate = fields.Float(string='Tasa consolidación', help='Rate aplicado al monto en líneas de consolidación')
 
     @api.depends('account_id')
     def _compute_managment_account_id(self):
