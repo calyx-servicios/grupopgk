@@ -1059,10 +1059,12 @@ class AccountConsolidationReport(models.Model):
                     #self.catch_possible_error(analytic_line, False, True)
                     sum += analytic_line.amount
                     not_project_ids.append(analytic_line.amount)
+                    continue
                 elif not project.allow_billable:
                     not_billable_list_ids.append(analytic_line.id)
                     if analytic_line.amount != 0:
                         sum += analytic_line.amount
+                    continue
                 self.create_consolidation_analytic_line(analytic_line, timesheet=True)
         total_not_billable = timesheets.timesheet_ids.filtered(lambda l: not l.project_id.allow_billable and l.amount != 0).mapped('amount')
         _logger.info(f"Total no facturable:{total_not_billable}")
