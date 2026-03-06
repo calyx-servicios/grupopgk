@@ -367,33 +367,12 @@ class AccountConsolidationReport(models.Model):
                 False
             )
             account_id = account.id if account else False
-
-        # Rate y monto con rate de consolidación (igual criterio que el reporte)
-        if analytic_line.move_id:
-            consolidation_period = (
-                self.consolidation_period.consolidation_companies.filtered(
-                    lambda x: x.company_id == analytic_line.move_id.company_id
-                )[:1]
-            )
-        else:
-            consolidation_period = (
-                self.consolidation_period.consolidation_companies.filtered(
-                    lambda x: x.company_id == analytic_line.company_id
-                )[:1]
-            )
-        rate = (
-            consolidation_period.rate
-            if consolidation_period and not getattr(consolidation_period, 'historical_rate', True)
-            else 1.0
-        )
-        amount_converted = analytic_line.amount * rate
-
+    
         vals = {
             "name": f"Costo laboral - {analytic_line.name} - Línea consolidación" if timesheet else f"{analytic_line.name} - Línea consolidación",
             "account_id": analytic_line.account_id.id if not timesheet else account_id,            
             "managment_account_id": analytic_line.account_id.id if not timesheet else account_id,            
-            "amount": sign * amount_converted,
-            "consolidation_rate": rate,
+            "amount": sign * analytic_line.amount,
             "unit_amount": analytic_line.unit_amount,
             "product_id": analytic_line.product_id.id if analytic_line.product_id else False,
             "date": analytic_line.date,
@@ -606,32 +585,25 @@ class AccountConsolidationReport(models.Model):
         
         # Diccionario para rastrear cuentas analíticas ya registradas en el chatter
         logged_multiple_projects_main = set()
-        from pprint import pprint 
-        pprint('1')
+        
         # Validar empleados y departamentos antes de continuar
         validation_result = self.validate_employees_departments()
-        pprint('2')
+        
         # Elimino si es que existen lineas analiticas de redistribucion de gastos indirectos creadas anteriormente (en caso que el informe se pide mas de una vez) y lineas de account consolidation data por el mismo motivo
         self.delete_entries()
-        pprint('3')
+
         # Creacion de lineas analiticas que surgen de asientos contables automaticos y no se crearon
         self.create_missing_analytic_lines()
-        pprint('4')
+
         # Calculo el monto total de las lineas de 'Gastos Indirectos'
         total_amount_cost = self.calculate_total_amount_cost()
-        pprint('5')
+
         # Crear diccionario facturacion por proyecto
         total_sales_for_project = self.sales_by_project()
-        pprint('6')
-        # ----- Lógica stg: management y sector derivados de sales_by_project -----
-        #total_sales_for_management = self.build_management_from_project_sales(total_sales_for_project)
-        #percentage_for_management = self.calculate_percentage_management(total_sales_for_management)
-        #total_sales_for_sector = self.build_sector_from_project_sales(total_sales_for_project)
-        #percentage_for_sector = self.calculate_percentage_sector(total_sales_for_sector)
 
         # Calculo el porcentaje de facturacion de cada projecto
         percentage_for_project = self.calculate_percentage(total_sales_for_project)
-        pprint('7')
+
         # Crear lineas analiticas a partir del parte de horas excluyendo las no facturables que luego se redistribuiran a los proyectos a partir de su porcentaje en el metodo anterior
         self.create_analytic_lines_from_timesheets()
 
@@ -666,33 +638,22 @@ class AccountConsolidationReport(models.Model):
             if sector_account:
                 analytic_line.sector_account_id = sector_account
 
-            # Rate: por move_id o por company_id (líneas de consolidación no tienen move_id)
-            if analytic_line.move_id:
-                consolidation_period = (
-                    self.consolidation_period.consolidation_companies.filtered(
-                        lambda x: x.company_id == analytic_line.move_id.company_id
-                    )[:1]
-                )
-            else:
-                consolidation_period = (
-                    self.consolidation_period.consolidation_companies.filtered(
-                        lambda x: x.company_id == analytic_line.company_id
-                    )[:1]
-                )
+            consolidation_period = (
+                self.consolidation_period.consolidation_companies.filtered(
+                    lambda x: x.company_id == analytic_line.move_id.company_id
+                )[:1]  # Toma solo el primer registro si hay múltiples
+            )
             currency_origin = analytic_line.currency_id.id
             new_currency = (
                 consolidation_period.new_currency.id
                 if consolidation_period
                 else analytic_line.currency_id.id
             )
-            if analytic_line.consolidation_line and getattr(analytic_line, 'consolidation_rate', None):
-                rate = analytic_line.consolidation_rate
-            else:
-                rate = (
-                    consolidation_period.rate
-                    if consolidation_period and not consolidation_period.historical_rate
-                    else 1
-                )
+            rate = (
+                consolidation_period.rate
+                if consolidation_period and not consolidation_period.historical_rate
+                else 1
+            )
             # Busca el proyecto para cada linea analitica y permitir la agrupacion
             project_ids = self.env["project.project"].search(
                 [
@@ -714,8 +675,6 @@ class AccountConsolidationReport(models.Model):
             
             project_id = False if not project_ids else project_ids[0].id
 
-            # Monto: líneas de consolidación ya traen amount convertido; el resto amount * rate
-            amount_for_data = analytic_line.amount if analytic_line.consolidation_line else (analytic_line.amount * rate)
             consolidation_data_vals.append(
                 {
                     "name": self.name,
@@ -733,7 +692,7 @@ class AccountConsolidationReport(models.Model):
                     "currency_origin": currency_origin if currency_origin else "",
                     "currency": new_currency if new_currency else "",
                     "rate": rate,
-                    "amount": amount_for_data
+                    "amount": analytic_line.amount * rate
                 }
             )
 
@@ -788,27 +747,25 @@ class AccountConsolidationReport(models.Model):
         lines_to_delete.unlink()
 
     def sales_by_project(self):
-        # Filtra las líneas analíticas para Calyx (excluye líneas de consolidación)
+        # Filtra las líneas analíticas para Calyx
         analytic_lines_calyx = self.env["account.analytic.line"].search(
             [
                 ("date", ">=", self.consolidation_period.date_from),
                 ("date", "<=", self.consolidation_period.date_to),
                 ("general_account_id.code", "like", "4.1%"),
                 ("general_account_id.user_type_id.name", "=", "Ingreso"),
-                ("bussines_group_id.id", "=", 22),  # ID Negocio Consolidacion / Tecnologia
-                ("consolidation_line", "=", False),
+                ("bussines_group_id.id", "=", 22) # ID Negocio Consolidacion / Tecnologia
             ]
         )
 
-        # Filtra las líneas analíticas para las demas empresas (excluye líneas de consolidación)
+        # Filtra las líneas analíticas para las demas empresas
         analytic_lines_otros = self.env["account.analytic.line"].search(
             [
                 ("date", ">=", self.consolidation_period.date_from),
                 ("date", "<=", self.consolidation_period.date_to),
                 ("general_account_id.code", "like", "4.1%"),
                 ("general_account_id.user_type_id.name", "=", "Ingreso"),
-                ("bussines_group_id.id", "=", 21),  # ID Negocio Consolidacion / Servicios Profesionales
-                ("consolidation_line", "=", False),
+                ("bussines_group_id.id", "=", 21) # ID Negocio Consolidacion / Servicios Profesionales
             ]
         )
 
@@ -882,198 +839,6 @@ class AccountConsolidationReport(models.Model):
         }
 
         return project_sales
-
-    def build_management_from_project_sales(self, project_sales):
-        """Construye ventas por gerencia a partir de ventas por proyecto (misma fuente que sales_by_project)."""
-        all_projects = self.env["project.project"].search(
-            ["|", ("active", "=", False), ("active", "=", True)]
-        )
-        management_sales_calyx = {}
-        management_sales_otros = {}
-        total_sales_calyx = project_sales["calyx"].get("total_sales_calyx", 0.0)
-        total_sales_otros = project_sales["otros"].get("total_sales_otros", 0.0)
-
-        for key, total_key, mgmt_dict in [
-            ("calyx", "total_sales_calyx", management_sales_calyx),
-            ("otros", "total_sales_otros", management_sales_otros),
-        ]:
-            data = project_sales.get(key, {})
-            for k, v in data.items():
-                if k == total_key:
-                    continue
-                if not isinstance(v, (int, float)):
-                    continue
-                project_id = k
-                amount = float(v)
-                project = all_projects.filtered(lambda p: p.id == project_id)
-                if not project or not project.analytic_account_id or not project.analytic_account_id.parent_id:
-                    continue
-                management_id = project.analytic_account_id.parent_id.id
-                management_account = project.analytic_account_id.parent_id
-                management_name = management_account.name or ""
-                if management_id not in mgmt_dict:
-                    mgmt_dict[management_id] = {"total": 0.0, "management_name": management_name, "projects": {}}
-                mgmt_dict[management_id]["total"] += amount
-                mgmt_dict[management_id]["projects"][project_id] = mgmt_dict[management_id]["projects"].get(project_id, 0.0) + amount
-
-        for d in (management_sales_calyx, management_sales_otros):
-            for v in d.values():
-                v["total"] = round(v["total"], 2)
-        return {
-            "calyx": {"total_sales_calyx": round(total_sales_calyx, 2), **management_sales_calyx},
-            "otros": {"total_sales_otros": round(total_sales_otros, 2), **management_sales_otros},
-        }
-
-    def build_sector_from_project_sales(self, project_sales):
-        """Construye ventas por sector a partir de ventas por proyecto (misma fuente que sales_by_project)."""
-        all_projects = self.env["project.project"].search(
-            ["|", ("active", "=", False), ("active", "=", True)]
-        )
-        sector_sales_calyx = {}
-        sector_sales_otros = {}
-        total_sales_calyx = project_sales["calyx"].get("total_sales_calyx", 0.0)
-        total_sales_otros = project_sales["otros"].get("total_sales_otros", 0.0)
-
-        for key, total_key, sec_dict in [
-            ("calyx", "total_sales_calyx", sector_sales_calyx),
-            ("otros", "total_sales_otros", sector_sales_otros),
-        ]:
-            data = project_sales.get(key, {})
-            for k, v in data.items():
-                if k == total_key:
-                    continue
-                if not isinstance(v, (int, float)):
-                    continue
-                project_id = k
-                amount = float(v)
-                project = all_projects.filtered(lambda p: p.id == project_id)
-                if not project or not project.analytic_account_id:
-                    continue
-                sector_id = self.get_sector_id(project)
-                if not sector_id:
-                    continue
-                sector_account = self.env["account.analytic.account"].browse(sector_id)
-                sector_name = sector_account.name or ""
-                if sector_id not in sec_dict:
-                    sec_dict[sector_id] = {"total": 0.0, "sector_name": sector_name, "projects": {}}
-                sec_dict[sector_id]["total"] += amount
-                sec_dict[sector_id]["projects"][project_id] = sec_dict[sector_id]["projects"].get(project_id, 0.0) + amount
-
-        for d in (sector_sales_calyx, sector_sales_otros):
-            for v in d.values():
-                v["total"] = round(v["total"], 2)
-        return {
-            "calyx": {"total_sales_calyx": round(total_sales_calyx, 2), **sector_sales_calyx},
-            "otros": {"total_sales_otros": round(total_sales_otros, 2), **sector_sales_otros},
-        }
-
-    def calculate_percentage_management(self, sales_dict):
-        """Porcentaje de facturación por proyecto dentro de cada gerencia (sobre el total de esa gerencia)."""
-        percentages = {"calyx": [], "otros": []}
-        for key, total_key in [("calyx", "total_sales_calyx"), ("otros", "total_sales_otros")]:
-            data = sales_dict[key]
-            for k, v in data.items():
-                if k in (total_key,):
-                    continue
-                if not isinstance(v, dict) or "total" not in v or "projects" not in v:
-                    continue
-                total_management = round(v["total"], 6)
-                if total_management == 0:
-                    continue
-                management_name = v.get("management_name", "")
-                for project_id, sales in v["projects"].items():
-                    sales_rounded = round(sales, 6)
-                    percentage = round((sales_rounded / total_management) * 100, 6)
-                    if percentage != 0.0:
-                        percentages[key].append({
-                            "management_id": k,
-                            "management_name": management_name,
-                            "project_id": project_id,
-                            "sales": sales_rounded,
-                            "percentage": percentage,
-                            "total_management": total_management,
-                        })
-        return percentages
-
-    def calculate_percentage_sector(self, sales_dict):
-        """Porcentaje de facturación por proyecto dentro de cada sector (sobre el total de ese sector)."""
-        percentages = {"calyx": [], "otros": []}
-        for key, total_key in [("calyx", "total_sales_calyx"), ("otros", "total_sales_otros")]:
-            data = sales_dict[key]
-            for k, v in data.items():
-                if k in (total_key,):
-                    continue
-                if not isinstance(v, dict) or "total" not in v or "projects" not in v:
-                    continue
-                total_sector = round(v["total"], 6)
-                if total_sector == 0:
-                    continue
-                sector_name = v.get("sector_name", "")
-                for project_id, sales in v["projects"].items():
-                    sales_rounded = round(sales, 6)
-                    percentage = round((sales_rounded / total_sector) * 100, 6)
-                    if percentage != 0.0:
-                        percentages[key].append({
-                            "sector_id": k,
-                            "sector_name": sector_name,
-                            "project_id": project_id,
-                            "sales": sales_rounded,
-                            "percentage": percentage,
-                            "total_sector": total_sector,
-                        })
-        return percentages
-
-    def _format_management_check_message(self, percentage_for_management, limit=None):
-        """Formatea ítems de management para mostrar en aviso al usuario. limit=None muestra todos."""
-        lines = ["=== MANAGEMENT (todos) ===\n" if not limit else "=== MANAGEMENT (primeros %s) ===\n" % limit]
-        for key, label in [("calyx", "Calyx"), ("otros", "Otros")]:
-            items = percentage_for_management.get(key, [])
-            if limit:
-                items = items[:limit]
-            lines.append("[%s]" % label)
-            if not items:
-                lines.append("  (sin datos)")
-            for i, it in enumerate(items, 1):
-                lines.append(
-                    "  %s. gerencia_id=%s | %s | project_id=%s | ventas=%s | %%=%s | total_gerencia=%s"
-                    % (
-                        i,
-                        it.get("management_id"),
-                        (it.get("management_name") or "")[:40],
-                        it.get("project_id"),
-                        it.get("sales"),
-                        it.get("percentage"),
-                        it.get("total_management"),
-                    )
-                )
-            lines.append("")
-        return "\n".join(lines)
-
-    def _format_sector_check_message(self, percentage_for_sector, limit=None):
-        """Formatea ítems de sector para mostrar en aviso al usuario. limit=None muestra todos."""
-        lines = ["=== SECTOR (todos) ===\n" if not limit else "=== SECTOR (primeros %s) ===\n" % limit]
-        for key, label in [("calyx", "Calyx"), ("otros", "Otros")]:
-            items = percentage_for_sector.get(key, [])
-            if limit:
-                items = items[:limit]
-            lines.append("[%s]" % label)
-            if not items:
-                lines.append("  (sin datos)")
-            for i, it in enumerate(items, 1):
-                lines.append(
-                    "  %s. sector_id=%s | %s | project_id=%s | ventas=%s | %%=%s | total_sector=%s"
-                    % (
-                        i,
-                        it.get("sector_id"),
-                        (it.get("sector_name") or "")[:40],
-                        it.get("project_id"),
-                        it.get("sales"),
-                        it.get("percentage"),
-                        it.get("total_sector"),
-                    )
-                )
-            lines.append("")
-        return "\n".join(lines)
 
     def catch_possible_error(self, line, consolidation_line, unknow_project=False):
         ListErrors = self.env['consolidation.analytic.line.error']
@@ -1294,12 +1059,10 @@ class AccountConsolidationReport(models.Model):
                     #self.catch_possible_error(analytic_line, False, True)
                     sum += analytic_line.amount
                     not_project_ids.append(analytic_line.amount)
-                    continue
                 elif not project.allow_billable:
                     not_billable_list_ids.append(analytic_line.id)
                     if analytic_line.amount != 0:
                         sum += analytic_line.amount
-                    continue
                 self.create_consolidation_analytic_line(analytic_line, timesheet=True)
         total_not_billable = timesheets.timesheet_ids.filtered(lambda l: not l.project_id.allow_billable and l.amount != 0).mapped('amount')
         _logger.info(f"Total no facturable:{total_not_billable}")
@@ -1346,12 +1109,7 @@ class AccountConsolidationReport(models.Model):
                 # Calcula el monto a asignar basado en el porcentaje y el costo total
                 amount = (percentage / 100.0) * total_amount_cost_calyx
 
-                # Rate de consolidación por compañía del proyecto
-                cp = self.consolidation_period.consolidation_companies.filtered(
-                    lambda x: x.company_id == project.company_id
-                )[:1]
-                rate = cp.rate if cp and not getattr(cp, 'historical_rate', True) else 1.0
-
+                # Crea un nuevo elemento consolidation data para ser visto en el informe
                 consolidation_data_vals_cost.append(
                     {
                         "name": self.name,
@@ -1364,7 +1122,7 @@ class AccountConsolidationReport(models.Model):
                         "description": f"Porcentaje = (Facturacion proyecto: {sales_project} *100 / Total facturacion: {total_sales}) Total GI = {total_amount_cost_calyx}",
                         "amount": -abs(amount),
                         "currency": 19,
-                        "rate": rate,
+                        "rate": 1 
                     }
                 )
 
@@ -1383,12 +1141,7 @@ class AccountConsolidationReport(models.Model):
                 # Calcula el monto a asignar basado en el porcentaje y el costo total
                 amount = (percentage / 100.0) * total_amount_cost_otros
 
-                # Rate de consolidación por compañía del proyecto
-                cp = self.consolidation_period.consolidation_companies.filtered(
-                    lambda x: x.company_id == project.company_id
-                )[:1]
-                rate = cp.rate if cp and not getattr(cp, 'historical_rate', True) else 1.0
-
+                # Crea un nuevo elemento consolidation data para ser visto en el informe
                 consolidation_data_vals_cost.append(
                     {
                         "name": self.name,
@@ -1401,7 +1154,7 @@ class AccountConsolidationReport(models.Model):
                         "description": f"Porcentaje = (Facturacion proyecto: {sales_project} *100 / Total facturacion: {total_sales}) Total GI = {total_amount_cost_otros}",
                         "amount": -abs(amount),
                         "currency": 19,
-                        "rate": rate,
+                        "rate": 1 
                     }
                 )
 
