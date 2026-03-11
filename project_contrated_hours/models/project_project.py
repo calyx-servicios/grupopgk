@@ -140,7 +140,7 @@ class ProjectProject(models.Model):
             rec.achievement_rate = 0.0
             if rec.real_billing and rec.cost:
                 rec.overbilling_cost_rate = rec.cost / rec.real_billing
-                rec.achievement_rate = (0.45 / rec.overbilling_cost_rate)
+                rec.achievement_rate = (0.55 / rec.overbilling_cost_rate)
 
     def _compute_cost(self):
         """ 
