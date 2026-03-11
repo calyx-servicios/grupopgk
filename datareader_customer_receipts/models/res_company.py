@@ -60,6 +60,19 @@ class ResCompany(models.Model):
         string=_('Producto para Tolerancia'),
         help=_('Producto a usar en la nota de crédito y débito cuando el pago está dentro de la tolerancia. Si no se especifica, se creará automáticamente.')
     )
+    # Conciliación de pagos bancarios
+    datareader_bank_reconciliation_journal_id = fields.Many2one(
+        'account.journal',
+        string=_('Diario para conciliación de pagos bancarios'),
+        domain="[('type', '=', 'bank'), ('company_id', '=', id), ('active', '=', True)]",
+        help=_('Diario usado para conciliar pagos bancarios')
+    )
+    datareader_bank_reconciliation_account_id = fields.Many2one(
+        'account.account',
+        string=_('Cuenta para conciliación de pagos bancarios'),
+        domain="[('company_id', '=', id)]",
+        help=_('Cuenta contable usada para conciliar pagos bancarios')
+    )
 
     @staticmethod
     def preprocess_siglas(name):
