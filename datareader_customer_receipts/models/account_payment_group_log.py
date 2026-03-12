@@ -7,7 +7,7 @@ import re
 from odoo.exceptions import UserError
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pprint import pprint
     
 _logger = logging.getLogger(__name__)
@@ -230,6 +230,191 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         return journal, errors
 
+    def _get_bank_reconciliation_payment_line(self, payment_group, partner_id, company_id, amount, payment_date=None, force_create=False):
+        """
+        Devuelve una línea de pago (account.payment) como la normal pero usando el diario
+        de conciliación bancaria, si existe una línea de pago bancario en plan de cuentas
+        en los últimos X días (configurable en ir.config_parameter), para el mismo partner,
+        y la diferencia (crédito - débito) es igual o mayor al monto indicado (ej. nota de
+        débito dentro del pago). Más tarde se ajusta la lógica de comparación.
+
+        :param payment_group: account.payment.group
+        :param partner_id: res.partner
+        :param company_id: res.company
+        :param amount: float - monto a comparar (ej. importe de nota de débito en el pago)
+        :param payment_date: str (YYYY-MM-DD) o date - fecha del pago (default: hoy)
+        :param force_create: bool - si True, crea la línea sin comprobar balance (cuando ya hubo match con factura)
+        :return: account.payment o recordset vacío
+        """
+        if not amount or amount <= 0:
+            return self.env['account.payment']
+
+        ir_config = self.env['ir.config_parameter'].sudo()
+        lookback_days = int(ir_config.get_param('datareader_odoo.bank_reconciliation_lookback_days', '30') or '30')
+        reconciliation_account = company_id.datareader_bank_reconciliation_account_id
+        reconciliation_journal = company_id.datareader_bank_reconciliation_journal_id
+
+        if not reconciliation_account or not reconciliation_journal:
+            _logger.debug("Conciliación bancaria: falta cuenta o diario configurado en la compañía.")
+            return self.env['account.payment']
+
+        payment_date = payment_date or fields.Date.today()
+        if isinstance(payment_date, str):
+            payment_dt = datetime.strptime(payment_date, '%Y-%m-%d').date()
+        else:
+            payment_dt = payment_date
+        date_from = payment_dt - timedelta(days=lookback_days)
+        date_from_str = date_from.strftime('%Y-%m-%d')
+        payment_date_str = payment_dt.strftime('%Y-%m-%d') if hasattr(payment_dt, 'strftime') else str(payment_date)
+
+        if not force_create:
+            commercial_partner_id = partner_id.commercial_partner_id.id
+            domain = [
+                ('account_id', '=', reconciliation_account.id),
+                ('partner_id', '=', commercial_partner_id),
+                ('move_id.state', '=', 'posted'),
+                ('date', '>=', date_from_str),
+                ('date', '<=', payment_date_str),
+                ('company_id', '=', company_id.id),
+            ]
+            bank_lines = self.env['account.move.line'].sudo().search(domain)
+            balance = sum((l.credit or 0.0) - (l.debit or 0.0) for l in bank_lines)
+
+            if balance < amount:
+                _logger.debug(
+                    "Conciliación bancaria: balance (%.2f) menor que monto (%.2f), no se crea línea con diario conciliación.",
+                    balance, amount
+                )
+                return self.env['account.payment']
+
+        payment_method = self.env['account.payment.method'].sudo().search([
+            ('code', '=', 'manual'),
+            ('payment_type', '=', 'inbound'),
+        ], limit=1)
+        if not payment_method:
+            _logger.warning("Conciliación bancaria: no se encontró método de pago manual inbound.")
+            return self.env['account.payment']
+
+        payment_method_line = self.env['account.payment.method.line'].sudo().search([
+            ('payment_method_id', '=', payment_method.id),
+            ('journal_id', '=', reconciliation_journal.id),
+        ], limit=1)
+        if not payment_method_line:
+            _logger.warning(
+                "Conciliación bancaria: el diario %s no tiene método manual inbound.",
+                reconciliation_journal.display_name
+            )
+            return self.env['account.payment']
+
+        payment_vals = {
+            'payment_type': 'inbound',
+            'partner_type': 'customer',
+            'partner_id': partner_id.id,
+            'amount': amount,
+            'date': payment_date_str,
+            'journal_id': reconciliation_journal.id,
+            'payment_method_line_id': payment_method_line.id,
+            'company_id': company_id.id,
+            'currency_id': company_id.currency_id.id,
+            'state': 'draft',
+            'payment_group_id': payment_group.id,
+        }
+        payment_line = self.env['account.payment'].sudo().create(payment_vals)
+        _logger.info(
+            "Conciliación bancaria: creada línea de pago %s (diario %s) para payment_group %s, monto %.2f.",
+            payment_line.id, reconciliation_journal.name, payment_group.id, amount
+        )
+        return payment_line
+
+    def _get_bank_line_amount_matching_invoice(self, debt_lines, log_item=None):
+        """
+        Busca apuntes contables en el diario y cuenta de conciliación del partner.
+        Si existe una línea bancaria no conciliada y su monto coincide con el total
+        de alguna factura en las líneas a pagar, devuelve ese monto para restarlo
+        de la línea de pago y crear una línea en el diario de conciliación.
+
+        Si hay línea(s) bancaria(s) pero ningún monto coincide con una factura,
+        escribe en log_item el mensaje de detalle/error y devuelve None.
+
+        :param debt_lines: account.move.line recordset - Líneas a pagar (ej. to_pay_move_line_ids)
+        :param log_item: datareader.account.payment.group.log.item opcional
+        :return: float o None - Monto que coincide con una factura, o None
+        """
+        if not debt_lines:
+            return None
+
+        company = debt_lines.company_id
+        if len(company) != 1:
+            company = company[:1]
+        company = company.sudo()
+        commercial_partner_id = debt_lines.mapped('partner_id.commercial_partner_id')
+        if len(commercial_partner_id) != 1:
+            commercial_partner_id = commercial_partner_id[:1]
+        commercial_partner_id = commercial_partner_id.id
+
+        reconciliation_account = company.datareader_bank_reconciliation_account_id
+        reconciliation_journal = company.datareader_bank_reconciliation_journal_id
+        if not reconciliation_account or not reconciliation_journal:
+            _logger.debug("_get_bank_line_amount_matching_invoice: sin cuenta o diario de conciliación configurado.")
+            return None
+
+        ir_config = self.env['ir.config_parameter'].sudo()
+        lookback_days = int(ir_config.get_param('datareader_odoo.bank_reconciliation_lookback_days', '30') or '30')
+        date_to_str = fields.Date.today()
+        if isinstance(date_to_str, str):
+            date_to = datetime.strptime(date_to_str, '%Y-%m-%d').date()
+        else:
+            date_to = date_to_str
+            date_to_str = date_to.strftime('%Y-%m-%d') if hasattr(date_to, 'strftime') else str(date_to)
+        date_from = date_to - timedelta(days=lookback_days)
+        date_from_str = date_from.strftime('%Y-%m-%d')
+
+        domain_bank = [
+            ('account_id', '=', reconciliation_account.id),
+            #('journal_id', '=', reconciliation_journal.id),
+            ('partner_id', '=', commercial_partner_id),
+            ('move_id.state', '=', 'posted'),
+            ('date', '>=', date_from_str),
+            ('date', '<=', date_to_str),
+            ('company_id', '=', company.id),
+            ('reconciled', '=', False),
+        ]
+        bank_lines = self.env['account.move.line'].sudo().search(domain_bank)
+        if not bank_lines:
+            _logger.debug("_get_bank_line_amount_matching_invoice: no hay líneas bancarias no conciliadas en el período.")
+            return None
+        bank_lines = list(bank_lines)
+
+        # Montos de facturas a pagar (por move_id) - amount_total redondeado a 2 decimales
+        moves = debt_lines.mapped('move_id')
+        moves = list(moves) if moves else []
+        invoice_totals = {round(m.amount_total, 2) for m in moves}
+
+        for aml in bank_lines:
+            # Usar débito/crédito en lugar de balance (compatible Odoo 15)
+            balance = (aml.debit or 0.0) - (aml.credit or 0.0)
+            line_amount = round(abs(balance), 2)
+            if line_amount <= 0:
+                continue
+            if line_amount in invoice_totals:
+                _logger.info(
+                    "_get_bank_line_amount_matching_invoice: monto %.2f coincide con factura (partner %s).",
+                    line_amount, commercial_partner_id
+                )
+                # Devolver el monto de la factura que hizo match (mismo valor, desde factura)
+                return line_amount
+
+        # Hay líneas bancarias pero ningún monto coincide con una factura
+        _logger.info(
+            "_get_bank_line_amount_matching_invoice: hay línea(s) bancaria(s) pero ningún monto coincide con factura (partner %s).",
+            commercial_partner_id
+        )
+        if log_item:
+            msg = _("Existió un pago antes del cierre de mes para conciliar pero que el monto no corresponde.")
+            current = (log_item.message or "").strip()
+            log_item.write({'message': f"{current}\n{msg}".strip() if current else msg})
+        return None
+
     def create_from_datareader_json(self, data, connector, log_item=None):
         """
         Crea un recibo (account.payment.group) y sus líneas de pago (account.payment)
@@ -271,7 +456,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         journal_name = data.get('journal')
         journal_id_preliminar = None
         if journal_name:
-            journal_id_preliminar, _ = self._get_journal(journal_name, [])
+            journal_id_preliminar, _j_errors = self._get_journal(journal_name, [])
             # Si hay múltiples journals, no usar para priorización
             if journal_id_preliminar and not isinstance(journal_id_preliminar, list):
                 journal_id_preliminar = journal_id_preliminar if hasattr(journal_id_preliminar, 'id') else None
@@ -326,13 +511,24 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         receiptbook_id, errors = self._get_receiptbook(company_id, errors, log_item)
         if not receiptbook_id:
             return log_item
-
+        
+        post_neto = False
+        
         amount = float(data.get('amount_bruto') or 0.0)
         if amount == 0.0:
-            errors.append(f"No vino monto en la orden.")
+            amount = float(data.get('amount_neto') or 0.0)
+            errors.append(f"No vino monto bruto. Se toma el monto neto")
             log_item.write({'message': "\n".join(errors)})
-            return log_item
-        # Método de pago base
+            if amount > 0.0:
+                post_neto = True
+                errors.append(f"El monto neto ({amount}). Validar que sea correcto.")
+                log_item.write({'message': "\n".join(errors)})
+            else:
+                errors.append(f"El monto neto es 0. Se detiene el proceso.")
+                log_item.write({'message': "\n".join(errors)})
+                return log_item
+            
+        # Método de pago bas
         pay_method = data.get('pay_method').lower()
         payment_method_obj = self.env['account.payment.method'].sudo()
         payment_method = payment_method_obj.search([
@@ -375,8 +571,16 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         self.env.cr.flush()
         log_item.payment_group_id = payment_group
-
-        invoices_found = self._find_and_attach_invoices(payment_group, data.get('lines', []), errors=errors)
+        
+        json_lines = data.get('lines', [])
+        
+        if not json_lines:
+            errors.append("No se encontraron líneas en el JSON.")
+            log_item.write({'message': "\n".join(errors)})
+            invoices_found = False
+        else:
+            invoices_found = self._find_and_attach_invoices(payment_group, json_lines, errors=errors)
+        
         if invoices_found:
             log_item.write({
                 'invoices_found': True
@@ -425,8 +629,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     abs(payment_difference) <= tolerance_amount and
                     tolerance_account):
                     should_post_individual_payment = False
-        
-        if should_post_individual_payment:
+
+        if should_post_individual_payment and total_payment_line:
             total_payment_line.action_post()            
 
         withholdings = data.get('retentions', [])
@@ -471,7 +675,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 'payment_group_id': payment_group.id,
             }
 
-            total_payment_line.amount -= ret_amount
+            if total_payment_line:
+                total_payment_line.amount -= ret_amount
             missings = self._validate_required_fields(
                 ret_payment_vals,
                 ['partner_id', 'amount', 'date', 'journal_id', 'payment_method_line_id', 'tax_withholding_id', 'withholding_number']
@@ -489,17 +694,41 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         _logger.info(f"partner_id.datareader_auto_payment_post: {partner_id.datareader_auto_payment_post}")
         _logger.info(f"pay_method: {pay_method}")
         
-        if partner_id.datareader_auto_payment_post and pay_method != 'cheque':
-            # Calcular la diferencia: monto del JSON vs monto total de la deuda seleccionada
-            # payment_difference positivo = pago mayor, negativo = pago menor
-            # Usar el monto original del JSON (amount_bruto)
+        # Conciliación bancaria (antes del post): crear línea con diario de ajustes y descontar de la línea principal
+        had_reconciliation_match = False
+        reconciliation_payment_created = None
+        reconciliation_matched_amount = None
+        if payment_group.to_pay_move_line_ids:
+            matched_amount = self._get_bank_line_amount_matching_invoice(
+                payment_group.to_pay_move_line_ids, log_item=log_item
+            )
+            if matched_amount is not None and matched_amount > 0:
+                main_payment = payment_group.payment_ids.filtered(lambda p: not p.tax_withholding_id)[:1]
+                if main_payment and main_payment.amount >= matched_amount:
+                    reconciliation_payment_created = self._get_bank_reconciliation_payment_line(
+                        payment_group, partner_id, company_id, matched_amount, payment_date_str, force_create=True
+                    )
+                    reconciliation_matched_amount = matched_amount
+                    main_payment.amount -= matched_amount
+                    if main_payment.amount == 0:
+                        main_payment.unlink()
+                    had_reconciliation_match = True
+                    if log_item:
+                        msg = _("Se concilió un pago anterior al cierre de mes por %s.") % matched_amount
+                        current = (log_item.message or "").strip()
+                        log_item.write({'message': f"{current}\n{msg}".strip() if current else msg})
+                elif main_payment and log_item:
+                    msg = _("Existió un pago antes del cierre de mes para conciliar pero que el monto no corresponde.")
+                    current = (log_item.message or "").strip()
+                    log_item.write({'message': f"{current}\n{msg}".strip() if current else msg})
+        
+        if post_neto == True:
+            return log_item
+        
+        elif partner_id.datareader_auto_payment_post and pay_method != 'cheque':
             amount_from_json = amount
-            
-            # Calcular el monto total de la deuda seleccionada (monto original de las facturas)
-            # Agrupar por factura para obtener el monto total de cada factura única
             invoices = payment_group.to_pay_move_line_ids.mapped('move_id')
             total_debt = sum(invoices.mapped('amount_total'))
-            
             payment_difference = amount_from_json - total_debt
             company = company_id
             
@@ -507,107 +736,133 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             _logger.info(f"total_debt (deuda original): {total_debt}")
             _logger.info(f"payment_difference: {payment_difference}")
             
-            # Verificar si está habilitada la tolerancia
-            tolerance_enabled = company.datareader_tolerance_enabled
-            tolerance_amount = company.datareader_tolerance_amount or 0.0
-            tolerance_account = company.datareader_tolerance_account_id
-            
-            _logger.info(f"tolerance_enabled: {tolerance_enabled}")
-            _logger.info(f"tolerance_amount: {tolerance_amount}")
-            _logger.info(f"tolerance_account: {tolerance_account.name if tolerance_account else 'None'}")
-            _logger.info(f"abs(payment_difference): {abs(payment_difference)}")
-            _logger.info(f"abs(payment_difference) <= tolerance_amount: {abs(payment_difference) <= tolerance_amount if tolerance_amount > 0 else False}")
-            
-            # Si no hay diferencia, publicar normalmente (solo si cumple condiciones de retenciones)
-            if abs(payment_difference) == 0.0:
-                _logger.info(f"Sin diferencia - publicando normalmente")
-                if self._should_post_payment_group(log_item):
-                    payment_group.post()
+            # Si hubo match de conciliación: no aplicar lógica de tolerancia; solo postear si diferencia = 0
+            if had_reconciliation_match:
+                if abs(payment_difference) == 0.0:
+                    _logger.info(f"Hubo conciliación bancaria y diferencia = 0 - publicando.")
+                    # Antes de postear: buscar la línea del apunte con débito = monto del match y poner account_id de la conf
+                    reconciliation_account = company_id.datareader_bank_reconciliation_account_id
+                    if reconciliation_payment_created and reconciliation_matched_amount and reconciliation_account:
+                        move = reconciliation_payment_created.move_id
+                        if move and move.line_ids:
+                            for line in move.line_ids:
+                                if line.debit and abs((line.debit or 0) - reconciliation_matched_amount) < 0.01:
+                                    line.sudo().write({'account_id': reconciliation_account.id})
+                                    _logger.info(
+                                        "Conciliación: línea con débito %.2f actualizada a cuenta %s.",
+                                        reconciliation_matched_amount, reconciliation_account.code
+                                    )
+                                    break
+                    try:
+                        payment_group.post()
+                        if log_item:
+                            log_item.readed = True
+                            _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+                    except Exception as e:
+                        _logger.exception(f"Error al postear payment group {payment_group.id} tras conciliación: {e}")
+                else:
+                    _logger.info(f"Hubo conciliación pero diferencia != 0 ({payment_difference}) - no se publica.")
+            else:
+                # Sin conciliación: lógica normal de tolerancia
+                tolerance_enabled = company.datareader_tolerance_enabled
+                tolerance_amount = company.datareader_tolerance_amount or 0.0
+                tolerance_account = company.datareader_tolerance_account_id
+                
+                _logger.info(f"tolerance_enabled: {tolerance_enabled}")
+                _logger.info(f"tolerance_amount: {tolerance_amount}")
+                _logger.info(f"tolerance_account: {tolerance_account.name if tolerance_account else 'None'}")
+                _logger.info(f"abs(payment_difference): {abs(payment_difference)}")
+                _logger.info(f"abs(payment_difference) <= tolerance_amount: {abs(payment_difference) <= tolerance_amount if tolerance_amount > 0 else False}")
+                
+                # Si no hay diferencia, publicar normalmente (solo si cumple condiciones de retenciones)
+                if abs(payment_difference) == 0.0:
+                    _logger.info(f"Sin diferencia - publicando normalmente")
+                    if self._should_post_payment_group(log_item):
+                        payment_group.post()
+                        # Marcar como leído cuando el recibo se haya publicado exitosamente
+                        if log_item:
+                            log_item.readed = True
+                            _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+                    else:
+                        _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
+                # Si hay diferencia dentro del margen de tolerancia
+                elif (tolerance_enabled and 
+                      tolerance_amount > 0.0 and 
+                      abs(payment_difference) <= tolerance_amount and
+                      tolerance_account):
+                    _logger.info(f"=== DIFERENCIA DENTRO DE TOLERANCIA - Creando nota ===")
+                    
+                    # Calcular el monto total que deben cubrir las facturas
+                    matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
+                    
+                    # Obtener el pago principal para usar su diario y método de pago
+                    main_payment = payment_group.payment_ids.filtered(lambda p: p.state == 'draft')
+                    if not main_payment:
+                        main_payment = payment_group.payment_ids[0] if payment_group.payment_ids else None
+                    
+                    if not main_payment:
+                        _logger.error(f"No se encontró pago en el payment_group {payment_group.id}")
+                        return log_item
+                    
+                    # Si la diferencia es negativa (pago menor), crear nota de crédito
+                    credit_note_created = False
+                    if payment_difference < 0:
+                        _logger.info(f"Pago menor detectado. Diferencia: {payment_difference}. Creando nota de crédito...")
+                        # Crear nota de crédito para reducir la deuda por la diferencia
+                        credit_note = self._create_credit_note_for_tolerance(
+                            payment_group,
+                            payment_difference,
+                            payment_date_str,
+                            company
+                        )
+                        
+                        if credit_note:
+                            _logger.info(f"Nota de crédito creada para tolerancia: {credit_note.name}")
+                            # Recalcular matched_amount después de agregar la nota de crédito
+                            matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
+                            credit_note_created = True
+                        else:
+                            _logger.warning(f"No se pudo crear la nota de crédito para tolerancia")
+                            return log_item
+                    
+                    # Si la diferencia es positiva (pago mayor), crear nota de débito por la diferencia
+                    elif payment_difference > 0:
+                        # Crear nota de débito por la diferencia y agregarla a la deuda
+                        debit_note = self._create_invoice_for_tolerance(
+                            payment_group,
+                            payment_difference,
+                            payment_date_str,
+                            company
+                        )
+                        
+                        if debit_note:
+                            _logger.info(f"Nota de débito creada para tolerancia: {debit_note.name}")
+                            # Recalcular matched_amount después de agregar la nota de débito
+                            matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
+                        else:
+                            _logger.warning(f"No se pudo crear la nota de débito para tolerancia")
+                            return log_item
+                    
+                    # Si se creó una nota de crédito, postear el pago automáticamente
+                    if credit_note_created:
+                        _logger.info(f"Nota de crédito creada. Posteando payment group {payment_group.id} automáticamente...")
+                        payment_group.post()
+                    # Si no se creó nota de crédito, postear solo si cumple condiciones de retenciones
+                    elif self._should_post_payment_group(log_item):
+                        payment_group.post()
+                    else:
+                        _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
+                        return log_item
+                    
                     # Marcar como leído cuando el recibo se haya publicado exitosamente
                     if log_item:
                         log_item.readed = True
                         _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+                # Si hay diferencia fuera de tolerancia, no publicar (dejar en draft)
                 else:
-                    _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
-            # Si hay diferencia dentro del margen de tolerancia
-            elif (tolerance_enabled and 
-                  tolerance_amount > 0.0 and 
-                  abs(payment_difference) <= tolerance_amount and
-                  tolerance_account):
-                _logger.info(f"=== DIFERENCIA DENTRO DE TOLERANCIA - Creando nota ===")
-                
-                # Calcular el monto total que deben cubrir las facturas
-                matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
-                
-                # Obtener el pago principal para usar su diario y método de pago
-                main_payment = payment_group.payment_ids.filtered(lambda p: p.state == 'draft')
-                if not main_payment:
-                    main_payment = payment_group.payment_ids[0] if payment_group.payment_ids else None
-                
-                if not main_payment:
-                    _logger.error(f"No se encontró pago en el payment_group {payment_group.id}")
-                    return log_item
-                
-                # Si la diferencia es negativa (pago menor), crear nota de crédito
-                credit_note_created = False
-                if payment_difference < 0:
-                    _logger.info(f"Pago menor detectado. Diferencia: {payment_difference}. Creando nota de crédito...")
-                    # Crear nota de crédito para reducir la deuda por la diferencia
-                    credit_note = self._create_credit_note_for_tolerance(
-                        payment_group,
-                        payment_difference,
-                        payment_date_str,
-                        company
-                    )
-                    
-                    if credit_note:
-                        _logger.info(f"Nota de crédito creada para tolerancia: {credit_note.name}")
-                        # Recalcular matched_amount después de agregar la nota de crédito
-                        matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
-                        credit_note_created = True
-                    else:
-                        _logger.warning(f"No se pudo crear la nota de crédito para tolerancia")
-                        return log_item
-                
-                # Si la diferencia es positiva (pago mayor), crear nota de débito por la diferencia
-                elif payment_difference > 0:
-                    # Crear nota de débito por la diferencia y agregarla a la deuda
-                    debit_note = self._create_invoice_for_tolerance(
-                        payment_group,
-                        payment_difference,
-                        payment_date_str,
-                        company
-                    )
-                    
-                    if debit_note:
-                        _logger.info(f"Nota de débito creada para tolerancia: {debit_note.name}")
-                        # Recalcular matched_amount después de agregar la nota de débito
-                        matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
-                    else:
-                        _logger.warning(f"No se pudo crear la nota de débito para tolerancia")
-                        return log_item
-                
-                # Si se creó una nota de crédito, postear el pago automáticamente
-                if credit_note_created:
-                    _logger.info(f"Nota de crédito creada. Posteando payment group {payment_group.id} automáticamente...")
-                    payment_group.post()
-                # Si no se creó nota de crédito, postear solo si cumple condiciones de retenciones
-                elif self._should_post_payment_group(log_item):
-                    payment_group.post()
-                else:
-                    _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
-                    return log_item
-                
-                # Marcar como leído cuando el recibo se haya publicado exitosamente
-                if log_item:
-                    log_item.readed = True
-                    _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
-            
-            # Si hay diferencia fuera de tolerancia, no publicar (dejar en draft)
-            else:
-                if payment_difference != 0.0:
-                    _logger.info(f"Payment group {payment_group.id} no publicado. Diferencia {payment_difference} fuera de tolerancia ({tolerance_amount})")
-                    _logger.info(f"Condiciones: tolerance_enabled={tolerance_enabled}, tolerance_amount={tolerance_amount}, abs_diff={abs(payment_difference)}, tolerance_account={bool(tolerance_account)}")
+                    if payment_difference != 0.0:
+                        _logger.info(f"Payment group {payment_group.id} no publicado. Diferencia {payment_difference} fuera de tolerancia ({tolerance_amount})")
+                        _logger.info(f"Condiciones: tolerance_enabled={tolerance_enabled}, tolerance_amount={tolerance_amount}, abs_diff={abs(payment_difference)}, tolerance_account={bool(tolerance_account)}")
         else:
             _logger.info(f"No se procesa tolerancia: datareader_auto_payment_post={partner_id.datareader_auto_payment_post}, pay_method={pay_method}")
         

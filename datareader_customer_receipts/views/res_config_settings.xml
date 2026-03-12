@@ -76,6 +76,22 @@
                                 </div>
                             </div>
                             <separator/>
+                            <span class="o_form_label">Conciliación de pagos bancarios</span>
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="datareader_bank_reconciliation_journal_id" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_bank_reconciliation_journal_id" domain="[('company_id', '=', company_id)]"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_bank_reconciliation_account_id" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_bank_reconciliation_account_id" domain="[('company_id', '=', company_id)]"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="datareader_bank_reconciliation_lookback_days" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_bank_reconciliation_lookback_days"/>
+                                </div>
+                            </div>
+                            <separator/>
                             <span class="o_form_label">Box Client</span>
                             <div class="content-group">
                                 <div class="row mt8">
