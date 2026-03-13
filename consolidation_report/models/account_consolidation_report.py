@@ -684,41 +684,6 @@ class AccountConsolidationReport(models.Model):
             if analytic_line.move_id and analytic_line.move_id.move_type == "out_refund":
                 line_amount = abs(line_amount)
 
-            # Debug: info completa de la línea analítica
-            move = analytic_line.move_id
-            pprint({
-                "linea_analitica_id": analytic_line.id,
-                "linea_analitica_name": analytic_line.name,
-                "date": str(analytic_line.date),
-                "amount": analytic_line.amount,
-                "debit": analytic_line.debit,
-                "credit": analytic_line.credit,
-                "unit_amount": analytic_line.unit_amount,
-                "account_id": analytic_line.account_id.id,
-                "account_name": analytic_line.account_id.name,
-                "general_account_id": analytic_line.general_account_id.id if analytic_line.general_account_id else None,
-                "general_account_code": analytic_line.general_account_id.code if analytic_line.general_account_id else None,
-                "company_id": analytic_line.company_id.id,
-                "company_name": analytic_line.company_id.name,
-                "currency_id": analytic_line.currency_id.id,
-                "consolidation_line": analytic_line.consolidation_line,
-                "move_id": move.id if move else None,
-                "move_name": move.name if move else None,
-                "move_type": move.move_type if move else None,
-                "move_state": move.state if move else None,
-                "move_date": str(move.date) if move else None,
-                "move_debit": getattr(move, "debit", None),
-                "move_credit": getattr(move, "credit", None),
-                "parent_prin_group_id": analytic_line.parent_prin_group_id.id if analytic_line.parent_prin_group_id else None,
-                "parent_prin_group_name": analytic_line.parent_prin_group_id.name if analytic_line.parent_prin_group_id else None,
-                "bussines_group_id": analytic_line.bussines_group_id.id if analytic_line.bussines_group_id else None,
-                "sector_account_id": analytic_line.sector_account_id.id if analytic_line.sector_account_id else None,
-                "managment_account_id": analytic_line.managment_account_id.id if analytic_line.managment_account_id else None,
-                "rate_aplicado": rate,
-                "line_amount_final": line_amount,
-                "project_id": project_id,
-            })
-
             consolidation_data_vals.append(
                 {
                     "name": self.name,
