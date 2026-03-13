@@ -1,4 +1,5 @@
 from re import A
+from pprint import pprint
 from odoo import api, fields, models, _
 import base64, xlsxwriter
 from io import BytesIO
@@ -338,6 +339,15 @@ class AccountConsolidationReport(models.Model):
                 .setdefault(daughter_account_key, [])
             )
 
+            raw_amount = (
+                analytic_line.amount * rate
+                if not consolidation_period
+                or not consolidation_period.historical_rate
+                else analytic_line.amount
+            )
+            # Notas de crédito: mostrar monto positivo en el reporte
+            if analytic_line.move_id and analytic_line.move_id.move_type == "out_refund":
+                raw_amount = abs(raw_amount)
             daughter_account.append(
                 {
                     "account_id": analytic_line.general_account_id.code,
@@ -346,12 +356,7 @@ class AccountConsolidationReport(models.Model):
                     "currency": new_currency if new_currency else "",
                     "rate": rate,
                     "description": analytic_line.name or "",
-                    "amount": (
-                        analytic_line.amount * rate
-                        if not consolidation_period
-                        or not consolidation_period.historical_rate
-                        else analytic_line.amount
-                    ),
+                    "amount": raw_amount,
                 }
             )
 
@@ -675,6 +680,45 @@ class AccountConsolidationReport(models.Model):
             
             project_id = False if not project_ids else project_ids[0].id
 
+            line_amount = analytic_line.amount * rate
+            if analytic_line.move_id and analytic_line.move_id.move_type == "out_refund":
+                line_amount = abs(line_amount)
+
+            # Debug: info completa de la línea analítica
+            move = analytic_line.move_id
+            pprint({
+                "linea_analitica_id": analytic_line.id,
+                "linea_analitica_name": analytic_line.name,
+                "date": str(analytic_line.date),
+                "amount": analytic_line.amount,
+                "debit": analytic_line.debit,
+                "credit": analytic_line.credit,
+                "unit_amount": analytic_line.unit_amount,
+                "account_id": analytic_line.account_id.id,
+                "account_name": analytic_line.account_id.name,
+                "general_account_id": analytic_line.general_account_id.id if analytic_line.general_account_id else None,
+                "general_account_code": analytic_line.general_account_id.code if analytic_line.general_account_id else None,
+                "company_id": analytic_line.company_id.id,
+                "company_name": analytic_line.company_id.name,
+                "currency_id": analytic_line.currency_id.id,
+                "consolidation_line": analytic_line.consolidation_line,
+                "move_id": move.id if move else None,
+                "move_name": move.name if move else None,
+                "move_type": move.move_type if move else None,
+                "move_state": move.state if move else None,
+                "move_date": str(move.date) if move else None,
+                "move_debit": getattr(move, "debit", None),
+                "move_credit": getattr(move, "credit", None),
+                "parent_prin_group_id": analytic_line.parent_prin_group_id.id if analytic_line.parent_prin_group_id else None,
+                "parent_prin_group_name": analytic_line.parent_prin_group_id.name if analytic_line.parent_prin_group_id else None,
+                "bussines_group_id": analytic_line.bussines_group_id.id if analytic_line.bussines_group_id else None,
+                "sector_account_id": analytic_line.sector_account_id.id if analytic_line.sector_account_id else None,
+                "managment_account_id": analytic_line.managment_account_id.id if analytic_line.managment_account_id else None,
+                "rate_aplicado": rate,
+                "line_amount_final": line_amount,
+                "project_id": project_id,
+            })
+
             consolidation_data_vals.append(
                 {
                     "name": self.name,
@@ -692,7 +736,7 @@ class AccountConsolidationReport(models.Model):
                     "currency_origin": currency_origin if currency_origin else "",
                     "currency": new_currency if new_currency else "",
                     "rate": rate,
-                    "amount": analytic_line.amount * rate
+                    "amount": line_amount
                 }
             )
 
@@ -828,9 +872,9 @@ class AccountConsolidationReport(models.Model):
                 else:
                     project_sales_otros[project.id] = amount
 
-        # Incluye los totales en los diccionarios
-        project_sales_calyx["total_sales_calyx"] = round(total_sales_calyx, 2)
-        project_sales_otros["total_sales_otros"] = round(total_sales_otros, 2)
+        # Incluye los totales en los diccionarios sin redondeo
+        project_sales_calyx["total_sales_calyx"] = total_sales_calyx
+        project_sales_otros["total_sales_otros"] = total_sales_otros
 
         # Combina ambos diccionarios en uno solo
         project_sales = {
@@ -989,11 +1033,7 @@ class AccountConsolidationReport(models.Model):
             other_line = self.create_consolidation_analytic_line(analytic_line) 
             #self.catch_possible_error(analytic_line, other_line)
                 
-        # Redondea los totales a dos decimales
-        total_amount_cost_calyx = round(total_amount_cost_calyx, 2)
-        total_amount_cost_otros = round(total_amount_cost_otros, 2)
-    
-        # Devuelve un diccionario con los montos totales
+        # Devuelve un diccionario con los montos totales sin redondeo
         return {
             "total_amount_cost_calyx": total_amount_cost_calyx,
             "total_amount_cost_otros": total_amount_cost_otros
@@ -1006,12 +1046,12 @@ class AccountConsolidationReport(models.Model):
             "otros": []
         }
 
-        # Calcular los porcentajes para Calyx
-        total_sales_calyx = round(sales_dict["calyx"]["total_sales_calyx"], 6)
+        # Calcular los porcentajes para Calyx (sin redondeo en los cálculos)
+        total_sales_calyx = sales_dict["calyx"]["total_sales_calyx"]
         for project, sales in sales_dict["calyx"].items():
             if project != "total_sales_calyx":  # Ignorar la clave 'total_sales_calyx'
-                sales_rounded = round(sales, 6)
-                percentage = round((sales_rounded / total_sales_calyx) * 100, 6)
+                sales_rounded = sales
+                percentage = (sales_rounded / total_sales_calyx) * 100 if total_sales_calyx else 0.0
                 if percentage != 0.00:
                     percentages["calyx"].append(
                         {
@@ -1022,12 +1062,12 @@ class AccountConsolidationReport(models.Model):
                         }
                     )
 
-        # Calcular los porcentajes para Otros
-        total_sales_otros = round(sales_dict["otros"]["total_sales_otros"], 2)
+        # Calcular los porcentajes para Otros (sin redondeo en los cálculos)
+        total_sales_otros = sales_dict["otros"]["total_sales_otros"]
         for project, sales in sales_dict["otros"].items():
             if project != "total_sales_otros":  # Ignorar la clave 'total_sales_otros'
-                sales_rounded = round(sales, 2)
-                percentage = round((sales_rounded / total_sales_otros) * 100, 2)
+                sales_rounded = sales
+                percentage = (sales_rounded / total_sales_otros) * 100 if total_sales_otros else 0.0
                 if percentage != 0.00:
                     percentages["otros"].append(
                         {

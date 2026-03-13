@@ -513,22 +513,31 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             return log_item
         
         post_neto = False
-        
-        amount = float(data.get('amount_bruto') or 0.0)
-        if amount == 0.0:
-            amount = float(data.get('amount_neto') or 0.0)
-            errors.append(f"No vino monto bruto. Se toma el monto neto")
+
+        bruto = float(data.get('amount_bruto') or 0.0)
+        neto = float(data.get('amount_neto') or 0.0)
+
+        # Regla:
+        # - Si no hay bruto (>0), usar neto.
+        # - Si hay bruto (>0) pero el neto es MAYOR, usar el neto (caso donde el bruto viene mal informado).
+        # - En el resto de casos, usar el bruto.
+        if bruto <= 0.0:
+            amount = neto
+            errors.append(f"No vino monto bruto. Se toma el monto neto ({neto}).")
             log_item.write({'message': "\n".join(errors)})
-            if amount > 0.0:
-                post_neto = True
-                errors.append(f"El monto neto ({amount}). Validar que sea correcto.")
-                log_item.write({'message': "\n".join(errors)})
-            else:
-                errors.append(f"El monto neto es 0. Se detiene el proceso.")
-                log_item.write({'message': "\n".join(errors)})
-                return log_item
+        elif neto > bruto:
+            amount = neto
+            errors.append(f"El monto neto ({neto}) es mayor que el bruto ({bruto}). Se toma el neto.")
+            log_item.write({'message': "\n".join(errors)})
+        else:
+            amount = bruto
+
+        if amount <= 0.0:
+            errors.append(f"El monto calculado (bruto/neto) es 0 o negativo. Se detiene el proceso.")
+            log_item.write({'message': "\n".join(errors)})
+            return log_item
             
-        # Método de pago bas
+        # Método de pago base
         pay_method = data.get('pay_method').lower()
         payment_method_obj = self.env['account.payment.method'].sudo()
         payment_method = payment_method_obj.search([
@@ -635,6 +644,19 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         withholdings = data.get('retentions', [])
         
+        if total_payment_line and withholdings:
+            total_retentions = sum(float(w.get('amount') or 0.0) for w in withholdings)
+            if total_payment_line.amount < total_retentions:
+                errors.append(
+                    _(
+                        "El monto bruto de la orden (%s) es menor al total de retenciones (%s). "
+                        "No se crean pagos de retención ni se descuenta del pago principal."
+                    )
+                    % (total_payment_line.amount, total_retentions)
+                )
+                log_item.write({'message': "\n".join(errors)})
+                return log_item
+        
         for withholding in withholdings:
             ret_account_payment_obj = self.env['account.payment'].sudo()
             ret_amount = float(withholding.get('amount') or 0.0)
@@ -676,7 +698,20 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             }
 
             if total_payment_line:
-                total_payment_line.amount -= ret_amount
+                # Evitar que la línea de pago principal quede en negativo por restar retenciones
+                new_amount = (total_payment_line.amount or 0.0) - ret_amount
+                if new_amount < 0:
+                    errors.append(
+                        _(
+                            "La retención (%s) dejaría el pago principal en negativo "
+                            "(monto actual %s, retención %s). "
+                            "Revise los montos de bruto y retenciones en la orden."
+                        )
+                        % (ret_name or ret_number, total_payment_line.amount, ret_amount)
+                    )
+                    log_item.write({'message': "\n".join(errors)})
+                    return log_item
+                total_payment_line.amount = new_amount
             missings = self._validate_required_fields(
                 ret_payment_vals,
                 ['partner_id', 'amount', 'date', 'journal_id', 'payment_method_line_id', 'tax_withholding_id', 'withholding_number']
