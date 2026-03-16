@@ -31,6 +31,10 @@
                     <attribute name="attrs">{'invisible': [('reminder_type', '!=', 'mail')]}</attribute>
                     <attribute name="force_save">1</attribute>
                 </xpath>
+
+                <xpath expr="//field[@name='mail_cc_partner_ids']" position="attributes">
+                    <attribute name="domain">[('email', '!=', False)]</attribute>
+                </xpath>
             </field>
         </record>
 
