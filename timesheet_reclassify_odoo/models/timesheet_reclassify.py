@@ -138,8 +138,12 @@ class TimesheetReclassifyLine(models.Model):
         reclassify_ids = self.mapped("reclassify_id")
         for reclassify in reclassify_ids:
             approve_lines = reclassify.line_ids.filtered(lambda l: l.approver_id)
-            if set(approve_lines.mapped("approved")) == {True}:
-                reclassify.state = "done"
+            if approve_lines:
+                if set(approve_lines.mapped("approved")) == {True}:
+                    reclassify.state = "done"
+            else:
+                if set(reclassify.line_ids.mapped("approved")) == {True}:
+                    reclassify.state = "done"
 
     @api.constrains("project_id")
     def _compute_approver_id(self):
