@@ -12,7 +12,24 @@
                 <field name="managment_account_id" invisible="1"/>
                 <field name="consolidation_line" invisible="1"/>
                 <field name="source_analytic_line_id" attrs="{'invisible': [('consolidation_line', '=', False)]}"/>
+                <field name="has_consolidation_data_lines" invisible="1"/>
             </field>
+            <xpath expr="//sheet" position="inside">
+                <notebook>
+                    <page string="Líneas de consolidación" name="consolidation_data_lines" attrs="{'invisible': [('has_consolidation_data_lines', '=', False)]}">
+                        <field name="consolidation_data_line_ids" nolabel="1" readonly="1">
+                            <tree create="0" delete="0">
+                                <field name="name"/>
+                                <field name="amount"/>
+                                <field name="currency"/>
+                                <field name="rate"/>
+                                <field name="daughter_account"/>
+                                <field name="source_analytic_line_id"/>
+                            </tree>
+                        </field>
+                    </page>
+                </notebook>
+            </xpath>
         </field>
     </record>
 
