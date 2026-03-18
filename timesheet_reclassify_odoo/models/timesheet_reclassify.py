@@ -1,4 +1,5 @@
 from odoo import fields, models, api, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class TimesheetReclassify(models.Model):
@@ -58,6 +59,33 @@ class TimesheetReclassify(models.Model):
         for rec in self:
             if rec.can_cancel:
                 rec.state = "cancel"
+
+    def action_force_done(self):
+        """
+        Forzar el paso de `pending` a `done` para registros que ya están aprobados,
+        evitando que se queden destrabados por inconsistencias de interfaz/estado.
+        Solo el Administrador puede ejecutarlo.
+        """
+        if not self.env.user.has_group('base.group_system'):
+            raise UserError(_("Solo el Administrador puede ejecutar esta acción."))
+
+        for rec in self:
+            if rec.state != "pending":
+                continue
+
+            approve_lines = rec.line_ids.filtered(lambda l: l.approver_id)
+            required_lines = approve_lines if approve_lines else rec.line_ids
+
+            if not required_lines:
+                raise ValidationError(_("No existen líneas para validar en esta reclasificación."))
+
+            not_approved = required_lines.filtered(lambda l: not l.approved)
+            if not_approved:
+                raise ValidationError(_(
+                    "No se puede forzar 'Done'. Hay líneas sin aprobar (%s)."
+                ) % len(not_approved))
+
+            rec.state = "done"
 
     @api.constrains("state")
     def _onchange_state(self):
@@ -125,13 +153,24 @@ class TimesheetReclassifyLine(models.Model):
 
     def _compute_can_approve(self):
         user = self.env.user
-        has_group = user.has_group('timesheet_reclassify_odoo.group_timesheet_reclassify_view_all')
+        # Permite aprobar cuando la línea no tiene `approver_id`:
+        # - normalmente lo haría el usuario solicitante (`reclassify_id.user_id`)
+        # - pero para facilitar pruebas/admin, también se permite a quien tiene
+        #   "Ver Todas las Reclasificaciones".
+        can_approve_view_all = user.has_group('timesheet_reclassify_odoo.group_timesheet_reclassify_view_all')
         for rec in self:
             rec.can_approve = False
-            # Puede aprobar si está en el grupo especial o si es el aprobador asignado
-            if rec.reclassify_id.state == "pending" and rec.approved == False:
-                if has_group or (rec.approver_id and rec.approver_id.id == user.id):
-                    rec.can_approve = True
+            if rec.approved:
+                continue
+            if rec.reclassify_id.state != "pending":
+                continue
+
+            if rec.approver_id:
+                rec.can_approve = rec.approver_id.id == user.id
+            else:
+                rec.can_approve = bool(
+                    (rec.reclassify_id.user_id and rec.reclassify_id.user_id.id == user.id) or can_approve_view_all
+                )
 
     def approve(self):
         self = self.sudo()
@@ -140,8 +179,37 @@ class TimesheetReclassifyLine(models.Model):
         reclassify_ids = self.mapped("reclassify_id")
         for reclassify in reclassify_ids:
             approve_lines = reclassify.line_ids.filtered(lambda l: l.approver_id)
-            if set(approve_lines.mapped("approved")) == {True}:
-                reclassify.state = "done"
+            if approve_lines:
+                if set(approve_lines.mapped("approved")) == {True}:
+                    reclassify.state = "done"
+            else:
+                if reclassify.line_ids and set(reclassify.line_ids.mapped("approved")) == {True}:
+                    reclassify.state = "done"
+
+    def write(self, vals):
+        """
+        Si se marca manualmente el checkbox `approved`, asegurar que el
+        `state` del registro padre se recalcula también (Pending -> Done).
+        """
+        res = super().write(vals)
+        if "approved" not in vals:
+            return res
+
+        reclassify_ids = self.mapped("reclassify_id")
+        for reclassify in reclassify_ids:
+            reclassify_sudo = reclassify.sudo()
+            if reclassify_sudo.state != "pending":
+                continue
+
+            approve_lines = reclassify_sudo.line_ids.filtered(lambda l: l.approver_id)
+            if approve_lines:
+                if set(approve_lines.mapped("approved")) == {True}:
+                    reclassify_sudo.state = "done"
+            else:
+                if reclassify_sudo.line_ids and set(reclassify_sudo.line_ids.mapped("approved")) == {True}:
+                    reclassify_sudo.state = "done"
+
+        return res
 
     @api.constrains("project_id")
     def _compute_approver_id(self):
