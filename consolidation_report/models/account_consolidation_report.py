@@ -1,5 +1,4 @@
 from re import A
-from pprint import pprint
 from odoo import api, fields, models, _
 import base64, xlsxwriter
 from io import BytesIO
@@ -654,11 +653,20 @@ class AccountConsolidationReport(models.Model):
                 if consolidation_period
                 else analytic_line.currency_id.id
             )
-            rate = (
-                consolidation_period.rate
-                if consolidation_period and not consolidation_period.historical_rate
-                else 1
-            )
+            new_currency_obj = consolidation_period.new_currency if consolidation_period else None
+            if consolidation_period:
+                move_line = analytic_line.move_id
+                move = move_line.move_id if move_line else None
+                # Si la factura está en otra moneda que el informe (pesos), rate = de la factura si existe, sino del período
+                if move and move.currency_id and new_currency_obj and move.currency_id != new_currency_obj:
+                    rate = getattr(move, "l10n_ar_currency_rate", None) or consolidation_period.rate or 1
+                else:
+                    if not consolidation_period.historical_rate:
+                        rate = consolidation_period.rate
+                    else:
+                        rate = 1
+            else:
+                rate = 1
             # Busca el proyecto para cada linea analitica y permitir la agrupacion
             project_ids = self.env["project.project"].search(
                 [
@@ -681,7 +689,11 @@ class AccountConsolidationReport(models.Model):
             project_id = False if not project_ids else project_ids[0].id
 
             line_amount = analytic_line.amount * rate
-            if analytic_line.move_id and analytic_line.move_id.move_type == "out_refund":
+            if (
+                analytic_line.move_id
+                and analytic_line.move_id.move_id
+                and analytic_line.move_id.move_id.move_type == "out_refund"
+            ):
                 line_amount = abs(line_amount)
 
             consolidation_data_vals.append(
@@ -695,6 +707,11 @@ class AccountConsolidationReport(models.Model):
                     # si es linea consolidada que no muestre compañias
                     "company": analytic_line.company_id.ids if analytic_line.consolidation_line else False,
                     "daughter_account": analytic_line.id,
+                    "source_analytic_line_id": (
+                        analytic_line.source_analytic_line_id.id
+                        if (analytic_line.consolidation_line and analytic_line.source_analytic_line_id)
+                        else analytic_line.id
+                    ),
                     "description": analytic_line.name or "",
                     # si es linea consolidada que no la muestre
                     "account_id": analytic_line.general_account_id.code if analytic_line.consolidation_line else False,
@@ -1209,19 +1226,29 @@ class AccountConsolidationReport(models.Model):
 
     def _convert_amount(self, analytic_line):
         consolidation_period = (
-                self.consolidation_period.consolidation_companies.filtered(
-                    lambda x: x.company_id == analytic_line.move_id.company_id
-                )[:1]  # Toma solo el primer registro si hay múltiples
-            )
+            self.consolidation_period.consolidation_companies.filtered(
+                lambda x: analytic_line.move_id
+                and x.company_id == analytic_line.move_id.company_id
+            )[:1]  # Toma solo el primer registro si hay múltiples
+        )
 
-        if consolidation_period and not consolidation_period.historical_rate:
-            rate = consolidation_period.rate
-        
+        new_currency_obj = consolidation_period.new_currency if consolidation_period else None
+        if consolidation_period:
+            move_line = analytic_line.move_id
+            move = move_line.move_id if move_line else None
+            # Si la factura está en otra moneda que el informe (pesos), rate = de la factura si existe, sino del período
+            if move and move.currency_id and new_currency_obj and move.currency_id != new_currency_obj:
+                rate = getattr(move, "l10n_ar_currency_rate", None) or consolidation_period.rate or 1
+            else:
+                if not consolidation_period.historical_rate:
+                    rate = consolidation_period.rate
+                else:
+                    rate = 1
         else:
             rate = 1
-        
+
         total = analytic_line.amount * rate
-        
+
         return total
 
     def create_missing_analytic_lines(self):

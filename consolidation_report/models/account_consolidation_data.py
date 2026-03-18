@@ -13,6 +13,26 @@ class AccountConsolidationData(models.Model):
     managment_account_group = fields.Many2one('account.analytic.account', string='Managment ID')
     company = fields.Many2many('res.company', string='Company')
     daughter_account = fields.Many2one('account.analytic.line', string='Analytic Account Line')
+    daughter_account_id = fields.Integer(
+        related='daughter_account.id',
+        string='ID Línea',
+        store=True,
+        readonly=True,
+        help='ID de la línea analítica mostrada (para pruebas).',
+    )
+    source_analytic_line_id = fields.Many2one(
+        'account.analytic.line',
+        string='Línea analítica origen',
+        ondelete='set null',
+        help='Línea analítica de la que proviene esta fila del informe (para filtros).',
+    )
+    origin_line_id = fields.Integer(
+        related='source_analytic_line_id.id',
+        string='ID Origen',
+        store=True,
+        readonly=True,
+        help='ID de la línea analítica de origen (para pruebas).',
+    )
     description = fields.Char(string='Description')
     account_id = fields.Char(string='Account ID')
     currency_origin = fields.Many2one('res.currency', string='Target Currency')
