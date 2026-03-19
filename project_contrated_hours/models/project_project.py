@@ -63,9 +63,6 @@ class ProjectProject(models.Model):
         comodel_name="account.analytic.group",
         string="Service Area"
     )
-    area = fields.Char(
-        string="Area"
-    )
     project_manager = fields.Char(
         string="PM"
     )
