@@ -346,7 +346,9 @@ class AccountConsolidationReport(models.Model):
             )
             # Notas de crédito: mostrar monto positivo en el reporte
             if analytic_line.move_id and analytic_line.move_id.move_type == "out_refund":
-                raw_amount = abs(raw_amount)
+                raw_amount = -raw_amount
+            elif analytic_line.source_analytic_line_id and analytic_line.source_analytic_line_id.move_id and analytic_line.source_analytic_line_id.move_id.move_type == "out_refund":
+                raw_amount = -raw_amount
             daughter_account.append(
                 {
                     "account_id": analytic_line.general_account_id.code,
@@ -654,11 +656,13 @@ class AccountConsolidationReport(models.Model):
                 else analytic_line.currency_id.id
             )
             new_currency_obj = consolidation_period.new_currency if consolidation_period else None
+            is_historical = False
             if consolidation_period:
                 move_line = analytic_line.move_id
                 move = move_line.move_id if move_line else None
                 # Si la factura está en otra moneda que el informe (pesos), rate = de la factura si existe, sino del período
                 if move and move.currency_id and new_currency_obj and move.currency_id != new_currency_obj:
+                    is_historical = True
                     rate = getattr(move, "l10n_ar_currency_rate", None) or consolidation_period.rate or 1
                 else:
                     if not consolidation_period.historical_rate:
@@ -688,7 +692,7 @@ class AccountConsolidationReport(models.Model):
             
             project_id = False if not project_ids else project_ids[0].id
 
-            line_amount = analytic_line.amount * rate
+            line_amount = analytic_line.amount * rate if not is_historical else analytic_line.amount
             if (
                 analytic_line.move_id
                 and analytic_line.move_id.move_id
@@ -1233,11 +1237,13 @@ class AccountConsolidationReport(models.Model):
         )
 
         new_currency_obj = consolidation_period.new_currency if consolidation_period else None
+        is_historical = False
         if consolidation_period:
             move_line = analytic_line.move_id
             move = move_line.move_id if move_line else None
             # Si la factura está en otra moneda que el informe (pesos), rate = de la factura si existe, sino del período
             if move and move.currency_id and new_currency_obj and move.currency_id != new_currency_obj:
+                is_historical = True
                 rate = getattr(move, "l10n_ar_currency_rate", None) or consolidation_period.rate or 1
             else:
                 if not consolidation_period.historical_rate:
@@ -1247,7 +1253,7 @@ class AccountConsolidationReport(models.Model):
         else:
             rate = 1
 
-        total = analytic_line.amount * rate
+        total = analytic_line.amount * rate if not is_historical else analytic_line.amount
 
         return total
 
