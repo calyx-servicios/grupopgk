@@ -63,6 +63,9 @@ class ProjectProject(models.Model):
         comodel_name="account.analytic.group",
         string="Service Area"
     )
+    area = fields.Char(
+        string="Area"
+    )
     project_manager = fields.Char(
         string="PM"
     )
@@ -133,14 +136,32 @@ class ProjectProject(models.Model):
     @api.depends('real_billing', 'cost')
     def _compute_overbilling_cost(self):
         """ 
-        Calcular el porcentaje de costos sobre ingresos en función del costo y la facturación real
+        Calcular:
+        - overbilling_cost_rate = % de costos sobre ingresos
+        - achievement_rate según regla de negocio:
+          * Si % de costos = 0  -> 100%
+          * Si % de costos > 0  -> 55% / % de costos
         """
         for rec in self:
             rec.overbilling_cost_rate = 0.0
             rec.achievement_rate = 0.0
-            if rec.real_billing and rec.cost:
+
+            # Si no hay facturación real, no podemos calcular el % de costos
+            if not rec.real_billing:
+                continue
+
+            # % de costos sobre ingresos
+            if rec.cost:
                 rec.overbilling_cost_rate = rec.cost / rec.real_billing
-                rec.achievement_rate = (0.55 / rec.overbilling_cost_rate)
+            else:
+                rec.overbilling_cost_rate = 0.0
+
+            # Regla solicitada
+            if rec.overbilling_cost_rate == 0:
+                # 100% (1.0 en float, el widget percentage lo mostrará como 100%)
+                rec.achievement_rate = 1.0
+            else:
+                rec.achievement_rate = 0.55 / rec.overbilling_cost_rate
 
     def _compute_cost(self):
         """ 
@@ -312,6 +333,6 @@ class ProjectProject(models.Model):
 
     @api.depends('billing_multyply_advance', 'real_billing')
     def _compute_teorical_billing(self):
-        # Desvío de facturación - PGK = Facturación por avance - Facturación realizada
+        # Desvío de facturación - PGK = Facturación realizada - Facturación por avance
         for rec in self:
-            rec.teorical_billing = rec.billing_multyply_advance - rec.real_billing
+            rec.teorical_billing = rec.real_billing - rec.billing_multyply_advance
