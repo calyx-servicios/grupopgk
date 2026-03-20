@@ -326,7 +326,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         )
         return payment_line
 
-    def _get_bank_line_amount_matching_invoice(self, debt_lines, log_item=None):
+    def _get_bank_line_amount_matching_invoice(self, debt_lines, total_payment_line, log_item=None):
         """
         Busca apuntes contables en el diario y cuenta de conciliación del partner.
         Si existe una línea bancaria no conciliada y su monto coincide con el total
@@ -340,8 +340,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         :param log_item: datareader.account.payment.group.log.item opcional
         :return: float o None - Monto que coincide con una factura, o None
         """
-        if not debt_lines:
-            return None
+        total_payment = total_payment_line.amount if total_payment_line else 0.0
 
         company = debt_lines.company_id
         if len(company) != 1:
@@ -386,9 +385,12 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         bank_lines = list(bank_lines)
 
         # Montos de facturas a pagar (por move_id) - amount_total redondeado a 2 decimales
-        moves = debt_lines.mapped('move_id')
-        moves = list(moves) if moves else []
-        invoice_totals = {round(m.amount_total, 2) for m in moves}
+        if debt_lines:
+            moves = debt_lines.mapped('move_id')
+            moves = list(moves) if moves else []
+            invoice_totals = {round(m.amount_total, 2) for m in moves}
+        else:
+            invoice_totals = {round(total_payment, 2)}
 
         for aml in bank_lines:
             # Usar débito/crédito en lugar de balance (compatible Odoo 15)
@@ -396,7 +398,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             line_amount = round(abs(balance), 2)
             if line_amount <= 0:
                 continue
-            if line_amount in invoice_totals:
+            if line_amount in invoice_totals or line_amount == total_payment:
                 _logger.info(
                     "_get_bank_line_amount_matching_invoice: monto %.2f coincide con factura (partner %s).",
                     line_amount, commercial_partner_id
@@ -428,6 +430,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         # ver si se utiliza
         ap_post = eval(ir_config.get_param("datareader_odoo.datareader_post_account_payment", 'False'))
         apg_post = eval(ir_config.get_param("datareader_odoo.datareader_post_account_payment_group", 'False'))
+        post_when_missing_invoice = ir_config.get_param(
+            "datareader_odoo.post_when_missing_invoice", 'no'
+        )
         
         file_name = data.get("file_name")
         order_id = data.get("id")
@@ -513,22 +518,31 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             return log_item
         
         post_neto = False
-        
-        amount = float(data.get('amount_bruto') or 0.0)
-        if amount == 0.0:
-            amount = float(data.get('amount_neto') or 0.0)
-            errors.append(f"No vino monto bruto. Se toma el monto neto")
+
+        bruto = float(data.get('amount_bruto') or 0.0)
+        neto = float(data.get('amount_neto') or 0.0)
+
+        # Regla:
+        # - Si no hay bruto (>0), usar neto.
+        # - Si hay bruto (>0) pero el neto es MAYOR, usar el neto (caso donde el bruto viene mal informado).
+        # - En el resto de casos, usar el bruto.
+        if bruto <= 0.0:
+            amount = neto
+            errors.append(f"No vino monto bruto. Se toma el monto neto ({neto}).")
             log_item.write({'message': "\n".join(errors)})
-            if amount > 0.0:
-                post_neto = True
-                errors.append(f"El monto neto ({amount}). Validar que sea correcto.")
-                log_item.write({'message': "\n".join(errors)})
-            else:
-                errors.append(f"El monto neto es 0. Se detiene el proceso.")
-                log_item.write({'message': "\n".join(errors)})
-                return log_item
+        elif neto > bruto:
+            amount = neto
+            errors.append(f"El monto neto ({neto}) es mayor que el bruto ({bruto}). Se toma el neto.")
+            log_item.write({'message': "\n".join(errors)})
+        else:
+            amount = bruto
+
+        if amount <= 0.0:
+            errors.append(f"El monto calculado (bruto/neto) es 0 o negativo. Se detiene el proceso.")
+            log_item.write({'message': "\n".join(errors)})
+            return log_item
             
-        # Método de pago bas
+        # Método de pago base
         pay_method = data.get('pay_method').lower()
         payment_method_obj = self.env['account.payment.method'].sudo()
         payment_method = payment_method_obj.search([
@@ -573,18 +587,21 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         log_item.payment_group_id = payment_group
         
         json_lines = data.get('lines', [])
+        missing_found = False
         
         if not json_lines:
             errors.append("No se encontraron líneas en el JSON.")
             log_item.write({'message': "\n".join(errors)})
-            invoices_found = False
         else:
-            invoices_found = self._find_and_attach_invoices(payment_group, json_lines, errors=errors)
+            missing_found = self._find_and_attach_invoices(
+                payment_group, json_lines, errors=errors
+            )
         
-        if invoices_found:
+        """ if invoice_found:
             log_item.write({
                 'invoices_found': True
-            })
+            }) """
+            
         log_item.write({
             'message': "\n".join(errors)
         })
@@ -635,6 +652,19 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         withholdings = data.get('retentions', [])
         
+        if total_payment_line and withholdings:
+            total_retentions = sum(float(w.get('amount') or 0.0) for w in withholdings)
+            if total_payment_line.amount < total_retentions:
+                errors.append(
+                    _(
+                        "El monto bruto de la orden (%s) es menor al total de retenciones (%s). "
+                        "No se crean pagos de retención ni se descuenta del pago principal."
+                    )
+                    % (total_payment_line.amount, total_retentions)
+                )
+                log_item.write({'message': "\n".join(errors)})
+                return log_item
+        
         for withholding in withholdings:
             ret_account_payment_obj = self.env['account.payment'].sudo()
             ret_amount = float(withholding.get('amount') or 0.0)
@@ -676,7 +706,20 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             }
 
             if total_payment_line:
-                total_payment_line.amount -= ret_amount
+                # Evitar que la línea de pago principal quede en negativo por restar retenciones
+                new_amount = (total_payment_line.amount or 0.0) - ret_amount
+                if new_amount < 0:
+                    errors.append(
+                        _(
+                            "La retención (%s) dejaría el pago principal en negativo "
+                            "(monto actual %s, retención %s). "
+                            "Revise los montos de bruto y retenciones en la orden."
+                        )
+                        % (ret_name or ret_number, total_payment_line.amount, ret_amount)
+                    )
+                    log_item.write({'message': "\n".join(errors)})
+                    return log_item
+                total_payment_line.amount = new_amount
             missings = self._validate_required_fields(
                 ret_payment_vals,
                 ['partner_id', 'amount', 'date', 'journal_id', 'payment_method_line_id', 'tax_withholding_id', 'withholding_number']
@@ -700,7 +743,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         reconciliation_matched_amount = None
         if payment_group.to_pay_move_line_ids:
             matched_amount = self._get_bank_line_amount_matching_invoice(
-                payment_group.to_pay_move_line_ids, log_item=log_item
+                payment_group.to_pay_move_line_ids, total_payment_line, log_item=log_item
             )
             if matched_amount is not None and matched_amount > 0:
                 main_payment = payment_group.payment_ids.filtered(lambda p: not p.tax_withholding_id)[:1]
@@ -865,6 +908,26 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         _logger.info(f"Condiciones: tolerance_enabled={tolerance_enabled}, tolerance_amount={tolerance_amount}, abs_diff={abs(payment_difference)}, tolerance_account={bool(tolerance_account)}")
         else:
             _logger.info(f"No se procesa tolerancia: datareader_auto_payment_post={partner_id.datareader_auto_payment_post}, pay_method={pay_method}")
+
+        # Publicar al final si faltó alguna/ninguna factura y la configuración lo permite.
+        if (
+            missing_found
+            and post_when_missing_invoice == 'yes'
+            and payment_group.state == 'draft'
+        ):
+            try:
+                payment_group.post()
+                if log_item:
+                    log_item.readed = True
+                    _logger.info(
+                        "Payment group %s publicado por configuración de faltante de facturas.",
+                        payment_group.id
+                    )
+            except Exception as e:
+                _logger.exception(
+                    "Error al postear payment group %s por faltante de facturas: %s",
+                    payment_group.id, e
+                )
         
         _logger.info(f"=== FIN PROCESO TOLERANCIA - Payment Group {payment_group.id} ===")
         return log_item
@@ -983,8 +1046,13 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 )
                 payment_group.to_pay_move_line_ids = [(6, 0, found_moves)]
                 payment_group.state = 'draft'
+            else:
+                # Si no se encontró ninguna factura, limpiar líneas automáticas del payment group
+                payment_group.to_pay_move_line_ids = [(6, 0, [])]
+                payment_group.state = 'draft'
         else:
-            payment_group.to_pay_move_line_ids = [(6, 0, found_moves)] if found_moves else [(6, 0, 0)]
+            payment_group.to_pay_move_line_ids = [(6, 0, found_moves)] if found_moves else [(6, 0, [])]
+        return missing_found
             
             
     def _create_tolerance_line_before_post(self, payment, payment_group, tolerance_account, difference, payment_date):

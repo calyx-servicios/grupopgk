@@ -130,6 +130,10 @@
                                     <label for="datareader_download_first_batch" class="col-lg-4 o_light_label"/>
                                     <field name="datareader_download_first_batch"/>
                                 </div>
+                                <div class="row mt8">
+                                    <label for="datareader_post_when_missing_invoice" class="col-lg-4 o_light_label"/>
+                                    <field name="datareader_post_when_missing_invoice"/>
+                                </div>
                             </div>
                         </div>
                     </div>
