@@ -65,3 +65,10 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='datareader_odoo.bank_reconciliation_lookback_days',
         help='Cantidad de días hacia atrás para buscar líneas de pago bancario en plan de cuentas (conciliación).'
     )
+    datareader_post_when_missing_invoice = fields.Selection(
+        [('no', 'No'), ('yes', 'Sí')],
+        string='Postear si faltan facturas',
+        default='yes',
+        config_parameter='datareader_odoo.post_when_missing_invoice',
+        help='Si está en Sí, se postea el recibo aunque falte alguna o ninguna factura por imputar.'
+    )
