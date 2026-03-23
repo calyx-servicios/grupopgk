@@ -656,15 +656,25 @@ class AccountConsolidationReport(models.Model):
             )
             new_currency_obj = consolidation_period.new_currency if consolidation_period else None
             is_historical = False
+            amount = analytic_line.amount
+            a_name = analytic_line.name
+            original_move_line = analytic_line.source_analytic_line_id.move_id if analytic_line.source_analytic_line_id else None
+            original_move = original_move_line.move_id if original_move_line else None
+            original_move_company = original_move.company_id if original_move else None
+            
             if consolidation_period:
                 move_line = analytic_line.move_id
                 move = move_line.move_id if move_line else None
                 move_company = move.company_id if move else None
+                
                 if move_company:
                     consolidation_period = self.consolidation_period.consolidation_companies.filtered(
                         lambda x: x.company_id == move_company
                     )[:1]
-                    
+                elif original_move_company:
+                    consolidation_period = self.consolidation_period.consolidation_companies.filtered(
+                        lambda x: x.company_id == original_move_company
+                    )[:1]
                 if not consolidation_period.historical_rate:
                     rate = consolidation_period.rate
                 # Si la factura está en otra moneda que el informe (pesos), rate = de la factura si existe, sino del período
@@ -675,12 +685,18 @@ class AccountConsolidationReport(models.Model):
                     elif getattr(move, "computed_currency_rate", None):
                         rate = getattr(move, "computed_currency_rate", None)
                     else:
-                        rate = 1
+                        rate = 1          
                 else:
                     is_historical = True
                     rate = 1
-            else:
-                rate = 1
+            elif original_move_company:
+                consolidation_period = self.consolidation_period.consolidation_companies.filtered(
+                    lambda x: x.company_id == original_move_company
+                )[:1]
+                if not consolidation_period.historical_rate:
+                    rate = consolidation_period.rate
+                else:
+                    rate = 1
             # Busca el proyecto para cada linea analitica y permitir la agrupacion
             project_ids = self.env["project.project"].search(
                 [
@@ -703,12 +719,6 @@ class AccountConsolidationReport(models.Model):
             project_id = False if not project_ids else project_ids[0].id
 
             line_amount = analytic_line.amount * rate if not is_historical else analytic_line.amount
-            """ if analytic_line.move_id and analytic_line.move_id.move_id and analytic_line.move_id.move_id.move_type == "out_refund":
-                from pprint import pprint
-                pprint(analytic_line.move_id.move_id.move_type)
-                pprint(line_amount)
-                line_amount = -line_amount
-                pprint(line_amount) """
 
             consolidation_data_vals.append(
                 {
@@ -822,6 +832,8 @@ class AccountConsolidationReport(models.Model):
         # Procesa las líneas analíticas para Calyx
         multiple_projects_logged = set()  # Para evitar logs repetidos
         for line in analytic_lines_calyx:
+        
+            
             line.update_currency_id()
             projects = all_projects.filtered(
                 lambda p: p.analytic_account_id.id == line.account_id.id
@@ -1146,7 +1158,8 @@ class AccountConsolidationReport(models.Model):
             if project.exists() and project.analytic_account_id:
                 # Calcula el monto a asignar basado en el porcentaje y el costo total
                 amount = (percentage / 100.0) * total_amount_cost_calyx
-
+            
+                
                 # Crea un nuevo elemento consolidation data para ser visto en el informe
                 consolidation_data_vals_cost.append(
                     {
@@ -1158,7 +1171,7 @@ class AccountConsolidationReport(models.Model):
                         "project_id": project_id,
                         "company": project.company_id.ids or "",
                         "description": f"Porcentaje = (Facturacion proyecto: {sales_project} *100 / Total facturacion: {total_sales}) Total GI = {total_amount_cost_calyx}",
-                        "amount": -abs(amount),
+                        "amount": amount,
                         "currency": 19,
                         "rate": 1 
                     }
@@ -1190,7 +1203,7 @@ class AccountConsolidationReport(models.Model):
                         "project_id": project_id,
                         "company": project.company_id.ids or "",
                         "description": f"Porcentaje = (Facturacion proyecto: {sales_project} *100 / Total facturacion: {total_sales}) Total GI = {total_amount_cost_otros}",
-                        "amount": -abs(amount),
+                        "amount": amount,
                         "currency": 19,
                         "rate": 1 
                     }
@@ -1248,23 +1261,47 @@ class AccountConsolidationReport(models.Model):
 
         new_currency_obj = consolidation_period.new_currency if consolidation_period else None
         is_historical = False
+        original_move_line = analytic_line.source_analytic_line_id.move_id if analytic_line.source_analytic_line_id else None
+        original_move = original_move_line.move_id if original_move_line else None
+        original_move_company = original_move.company_id if original_move else None
+            
         if consolidation_period:
+            amount = analytic_line.amount
+            a_name = analytic_line.name
             move_line = analytic_line.move_id
             move = move_line.move_id if move_line else None
             move_company = move.company_id if move else None
+            
             if move_company:
                 consolidation_period = self.consolidation_period.consolidation_companies.filtered(
                     lambda x: x.company_id == move_company
                 )[:1]
-                
-            if not consolidation_period.historical_rate:
-                rate = consolidation_period.rate
-            # Si la factura está en otra moneda que el informe (pesos), rate = de la factura si existe, sino del período
-            elif move and move.currency_id and new_currency_obj and move.currency_id != new_currency_obj:
+            elif move and (move.currency_id != move_company.currency_id):
                 is_historical = True
-                rate = getattr(move, "l10n_ar_currency_rate", None) or consolidation_period.rate or 1
+                if getattr(move, "l10n_ar_currency_rate", None):
+                    rate = getattr(move, "l10n_ar_currency_rate", None)
+                elif getattr(move, "computed_currency_rate", None):
+                    rate = getattr(move, "computed_currency_rate", None)
+                else:
+                    rate = 1
+                """ elif original_move and (original_move.currency_id == original_move_company.currency_id):
+                is_historical = True
+                if getattr(original_move, "l10n_ar_currency_rate", None):
+                    rate = getattr(original_move, "l10n_ar_currency_rate", None)
+                elif getattr(original_move, "computed_currency_rate", None):
+                    rate = getattr(original_move, "computed_currency_rate", None)
+                else:
+                    rate = 1  """               
             else:
                 is_historical = True
+                rate = 1
+        elif original_move_company:
+            consolidation_period = self.consolidation_period.consolidation_companies.filtered(
+                lambda x: x.company_id == original_move_company
+            )[:1]
+            if not consolidation_period.historical_rate:
+                rate = consolidation_period.rate
+            else:
                 rate = 1
         else:
             rate = 1
