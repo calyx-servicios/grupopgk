@@ -661,7 +661,7 @@ class AccountConsolidationReport(models.Model):
             original_move_line = analytic_line.source_analytic_line_id.move_id if analytic_line.source_analytic_line_id else None
             original_move = original_move_line.move_id if original_move_line else None
             original_move_company = original_move.company_id if original_move else None
-            
+            rate = 1
             if consolidation_period:
                 move_line = analytic_line.move_id
                 move = move_line.move_id if move_line else None
@@ -697,6 +697,8 @@ class AccountConsolidationReport(models.Model):
                     rate = consolidation_period.rate
                 else:
                     rate = 1
+            else:
+                rate = 1
             # Busca el proyecto para cada linea analitica y permitir la agrupacion
             project_ids = self.env["project.project"].search(
                 [
@@ -1261,6 +1263,7 @@ class AccountConsolidationReport(models.Model):
 
         new_currency_obj = consolidation_period.new_currency if consolidation_period else None
         is_historical = False
+        rate = 1
         original_move_line = analytic_line.source_analytic_line_id.move_id if analytic_line.source_analytic_line_id else None
         original_move = original_move_line.move_id if original_move_line else None
         original_move_company = original_move.company_id if original_move else None
@@ -1276,6 +1279,8 @@ class AccountConsolidationReport(models.Model):
                 consolidation_period = self.consolidation_period.consolidation_companies.filtered(
                     lambda x: x.company_id == move_company
                 )[:1]
+            if not consolidation_period.historical_rate:
+                    rate = consolidation_period.rate
             elif move and (move.currency_id != move_company.currency_id):
                 is_historical = True
                 if getattr(move, "l10n_ar_currency_rate", None):
