@@ -326,7 +326,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         )
         return payment_line
 
-    def _get_bank_line_amount_matching_invoice(self, debt_lines, total_payment_line, log_item=None):
+    def _get_bank_line_amount_matching_invoice(self, debt_lines, total_payment_line, log_item=None, company_id=None, commercial_partner_id=None):
         """
         Busca apuntes contables en el diario y cuenta de conciliación del partner.
         Si existe una línea bancaria no conciliada y su monto coincide con el total
@@ -342,15 +342,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         """
         total_payment = total_payment_line.amount if total_payment_line else 0.0
 
-        company = debt_lines.company_id
-        if len(company) != 1:
-            company = company[:1]
-        company = company.sudo()
-        commercial_partner_id = debt_lines.mapped('partner_id.commercial_partner_id')
-        if len(commercial_partner_id) != 1:
-            commercial_partner_id = commercial_partner_id[:1]
-        commercial_partner_id = commercial_partner_id.id
-
+        company = company_id if company_id else None
+        commercial_partner_id = commercial_partner_id if commercial_partner_id else None
         reconciliation_account = company.datareader_bank_reconciliation_account_id
         reconciliation_journal = company.datareader_bank_reconciliation_journal_id
         if not reconciliation_account or not reconciliation_journal:
@@ -741,29 +734,29 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         had_reconciliation_match = False
         reconciliation_payment_created = None
         reconciliation_matched_amount = None
-        if payment_group.to_pay_move_line_ids:
-            matched_amount = self._get_bank_line_amount_matching_invoice(
-                payment_group.to_pay_move_line_ids, total_payment_line, log_item=log_item
-            )
-            if matched_amount is not None and matched_amount > 0:
-                main_payment = payment_group.payment_ids.filtered(lambda p: not p.tax_withholding_id)[:1]
-                if main_payment and main_payment.amount >= matched_amount:
-                    reconciliation_payment_created = self._get_bank_reconciliation_payment_line(
-                        payment_group, partner_id, company_id, matched_amount, payment_date_str, force_create=True
-                    )
-                    reconciliation_matched_amount = matched_amount
-                    main_payment.amount -= matched_amount
-                    if main_payment.amount == 0:
-                        main_payment.unlink()
-                    had_reconciliation_match = True
-                    if log_item:
-                        msg = _("Se concilió un pago anterior al cierre de mes por %s.") % matched_amount
-                        current = (log_item.message or "").strip()
-                        log_item.write({'message': f"{current}\n{msg}".strip() if current else msg})
-                elif main_payment and log_item:
-                    msg = _("Existió un pago antes del cierre de mes para conciliar pero que el monto no corresponde.")
+        
+        matched_amount = self._get_bank_line_amount_matching_invoice(
+            payment_group.to_pay_move_line_ids, total_payment_line, log_item=log_item, company_id=company_id, commercial_partner_id=partner_id.id
+        )
+        if matched_amount is not None and matched_amount > 0:
+            main_payment = payment_group.payment_ids.filtered(lambda p: not p.tax_withholding_id)[:1]
+            if main_payment and main_payment.amount >= matched_amount:
+                reconciliation_payment_created = self._get_bank_reconciliation_payment_line(
+                    payment_group, partner_id, company_id, matched_amount, payment_date_str, force_create=True
+                )
+                reconciliation_matched_amount = matched_amount
+                main_payment.amount -= matched_amount
+                if main_payment.amount == 0:
+                    main_payment.unlink()
+                had_reconciliation_match = True
+                if log_item:
+                    msg = _("Se concilió un pago anterior al cierre de mes por %s.") % matched_amount
                     current = (log_item.message or "").strip()
                     log_item.write({'message': f"{current}\n{msg}".strip() if current else msg})
+            elif main_payment and log_item:
+                msg = _("Existió un pago antes del cierre de mes para conciliar pero que el monto no corresponde.")
+                current = (log_item.message or "").strip()
+                log_item.write({'message': f"{current}\n{msg}".strip() if current else msg})
         
         if post_neto == True:
             return log_item
