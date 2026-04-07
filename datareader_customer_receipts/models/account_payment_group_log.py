@@ -581,12 +581,14 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         
         json_lines = data.get('lines', [])
         missing_found = False
+        paid_invoice_found = False
+        partial_invoice_found = False
         
         if not json_lines:
             errors.append("No se encontraron líneas en el JSON.")
             log_item.write({'message': "\n".join(errors)})
         else:
-            missing_found = self._find_and_attach_invoices(
+            missing_found, paid_invoice_found, partial_invoice_found = self._find_and_attach_invoices(
                 payment_group, json_lines, errors=errors
             )
         
@@ -628,9 +630,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             tolerance_enabled = company_id.datareader_tolerance_enabled
             if tolerance_enabled:
                 # Calcular diferencia para ver si está dentro de tolerancia
-                matched_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
-                total_payment_amount = sum(payment_group.payment_ids.mapped('amount'))
-                payment_difference = total_payment_amount - matched_amount
+                # Usar la diferencia calculada por payment_group para contemplar
+                # correctamente ajustes internos (ej. diferencias del propio grupo).
+                payment_difference = payment_group.payment_difference
                 tolerance_amount = company_id.datareader_tolerance_amount or 0.0
                 tolerance_account = company_id.datareader_tolerance_account_id
                 
@@ -765,7 +767,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             amount_from_json = amount
             invoices = payment_group.to_pay_move_line_ids.mapped('move_id')
             total_debt = sum(invoices.mapped('amount_total'))
-            payment_difference = amount_from_json - total_debt
+            payment_difference = payment_group.payment_difference
             company = company_id
             
             _logger.info(f"amount_from_json (del JSON): {amount_from_json}")
@@ -798,6 +800,15 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         _logger.exception(f"Error al postear payment group {payment_group.id} tras conciliación: {e}")
                 else:
                     _logger.info(f"Hubo conciliación pero diferencia != 0 ({payment_difference}) - no se publica.")
+                    residual_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
+                    diff_msg = _(
+                        "El recibo no se publicó porque existe diferencia entre el pago y el monto residual de la deuda. "
+                        "Monto pago: %s | Residual deuda: %s | Diferencia: %s."
+                    ) % (amount_from_json, residual_amount, payment_difference)
+                    errors.append(diff_msg)
+                    if log_item:
+                        current = (log_item.message or "").strip()
+                        log_item.write({'message': f"{current}\n{diff_msg}".strip() if current else diff_msg})
             else:
                 # Sin conciliación: lógica normal de tolerancia
                 tolerance_enabled = company.datareader_tolerance_enabled
@@ -899,12 +910,41 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     if payment_difference != 0.0:
                         _logger.info(f"Payment group {payment_group.id} no publicado. Diferencia {payment_difference} fuera de tolerancia ({tolerance_amount})")
                         _logger.info(f"Condiciones: tolerance_enabled={tolerance_enabled}, tolerance_amount={tolerance_amount}, abs_diff={abs(payment_difference)}, tolerance_account={bool(tolerance_account)}")
+                        residual_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
+                        move_lines = payment_group.to_pay_move_line_ids
+                        has_partial_residual = any(
+                            (line.amount_residual or 0.0) > 0.0 and
+                            (line.amount_residual or 0.0) < (line.move_id.amount_total or 0.0)
+                            for line in move_lines
+                        )
+                        has_withholdings = bool(payment_group.payment_ids.filtered(lambda p: p.tax_withholding_id))
+                        if has_partial_residual:
+                            diff_msg = _(
+                                "El recibo quedó en borrador porque hay facturas con pago parcial en las líneas a pagar "
+                                "y los montos no cierran con la OP (puede incluir retenciones). "
+                                "Monto pago: %s | Residual deuda: %s | Diferencia: %s."
+                            ) % (amount_from_json, residual_amount, payment_difference)
+                        elif has_withholdings:
+                            diff_msg = _(
+                                "El recibo quedó en borrador porque los montos de pago y retenciones no coinciden con la deuda residual "
+                                "informada en la OP. Monto pago: %s | Residual deuda: %s | Diferencia: %s | Tolerancia: %s."
+                            ) % (amount_from_json, residual_amount, payment_difference, tolerance_amount)
+                        else:
+                            diff_msg = _(
+                                "El recibo quedó en borrador por diferencia fuera de tolerancia entre pago y residual de deuda. "
+                                "Monto pago: %s | Residual deuda: %s | Diferencia: %s | Tolerancia: %s."
+                            ) % (amount_from_json, residual_amount, payment_difference, tolerance_amount)
+                        errors.append(diff_msg)
+                        if log_item:
+                            current = (log_item.message or "").strip()
+                            log_item.write({'message': f"{current}\n{diff_msg}".strip() if current else diff_msg})
         else:
             _logger.info(f"No se procesa tolerancia: datareader_auto_payment_post={partner_id.datareader_auto_payment_post}, pay_method={pay_method}")
 
-        # Publicar al final si faltó alguna/ninguna factura y la configuración lo permite.
+        # Publicar al final por faltante de facturas solo si no hubo facturas ya pagas.
         if (
             missing_found
+            and not paid_invoice_found
             and post_when_missing_invoice == 'yes'
             and payment_group.state == 'draft'
         ):
@@ -921,6 +961,29 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     "Error al postear payment group %s por faltante de facturas: %s",
                     payment_group.id, e
                 )
+        elif (
+            missing_found
+            and paid_invoice_found
+            and payment_group.state == 'draft'
+        ):
+            if partial_invoice_found:
+                partial_paid_msg = _(
+                    "El recibo quedó en borrador porque se detectaron facturas con pago parcial, "
+                    "por lo que no se publicará automáticamente."
+                )
+            else:
+                partial_paid_msg = _(
+                    "El recibo quedó en borrador porque se detectaron facturas ya pagadas/canceladas, "
+                    "por lo que no se publicará automáticamente."
+                )
+            errors.append(partial_paid_msg)
+            if log_item:
+                current = (log_item.message or "").strip()
+                log_item.write({'message': f"{current}\n{partial_paid_msg}".strip() if current else partial_paid_msg})
+            _logger.info(
+                "Payment group %s no publicado por facturas parcialmente pagas/ya canceladas.",
+                payment_group.id
+            )
         
         _logger.info(f"=== FIN PROCESO TOLERANCIA - Payment Group {payment_group.id} ===")
         return log_item
@@ -1013,24 +1076,67 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 if norm_number not in pending_by_number:
                     pending_by_number[norm_number] = []
                 pending_by_number[norm_number].append(l)
+
+        customer_invoices_domain = [
+            ('partner_id.commercial_partner_id', '=', payment_group.commercial_partner_id.id),
+            ('company_id', '=', payment_group.company_id.id),
+            ('state', '=', 'posted'),
+            ('move_type', 'in', ('out_invoice', 'out_refund')) if payment_group.partner_type == 'customer'
+            else ('move_type', 'in', ('in_invoice', 'in_refund')),
+        ]
+        customer_invoices = self.env['account.move'].sudo().search(customer_invoices_domain)
+        invoices_by_number = {}
+        for invoice in customer_invoices:
+            norm_number = self._normalize_invoice_number(invoice.name) or self._normalize_invoice_number(invoice.ref)
+            if norm_number and norm_number not in invoices_by_number:
+                invoices_by_number[norm_number] = invoice
+
         found_moves = []
         missing_found = False
+        paid_invoice_found = False
+        partial_invoice_found = False
         for line in lines:
             norm_line_number = self._normalize_invoice_number(line.get('number'))
             matches = None
-            for key, lines in pending_by_number.items():
-                if norm_line_number in key:
-                    matches = lines
+            for key, pending_match_lines in pending_by_number.items():
+                if norm_line_number and norm_line_number in key:
+                    matches = pending_match_lines
                     break
 
 
             if matches:
                 found_moves.append(matches[0].id)
             else:
-                errors.append(
-                    _("No se encontró la factura %s para el partner %s - factura en formato odoo (%s)") %
-                    (line.get('number'), payment_group.commercial_partner_id.name, norm_line_number)
-                )
+                paid_invoice = None
+                for key, invoice in invoices_by_number.items():
+                    if norm_line_number and norm_line_number in key:
+                        paid_invoice = invoice
+                        break
+
+                if paid_invoice:
+                    paid_invoice_found = True
+                    invoice_total = paid_invoice.amount_total or 0.0
+                    invoice_residual = paid_invoice.amount_residual or 0.0
+                    if 0.0 < invoice_residual < invoice_total:
+                        partial_invoice_found = True
+                        errors.append(
+                            _(
+                                "La factura %s del partner %s tiene pago parcial y no está disponible para imputar en deudas del recibo. "
+                                "Total: %s | Residual: %s."
+                            ) % (line.get('number'), payment_group.commercial_partner_id.name, invoice_total, invoice_residual)
+                        )
+                    else:
+                        errors.append(
+                            _(
+                                "Se encontró la factura %s para el partner %s, pero no está disponible para imputar en deudas del recibo "
+                                "(ya pagada/cancelada). Total: %s | Residual: %s."
+                            ) % (line.get('number'), payment_group.commercial_partner_id.name, invoice_total, invoice_residual)
+                        )
+                else:
+                    errors.append(
+                        _("No se encontró la factura %s para el partner %s - factura en formato odoo (%s)") %
+                        (line.get('number'), payment_group.commercial_partner_id.name, norm_line_number)
+                    )
                 missing_found = True
         if missing_found:
             if len(found_moves) > 0:
@@ -1045,7 +1151,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 payment_group.state = 'draft'
         else:
             payment_group.to_pay_move_line_ids = [(6, 0, found_moves)] if found_moves else [(6, 0, [])]
-        return missing_found
+        return missing_found, paid_invoice_found, partial_invoice_found
             
             
     def _create_tolerance_line_before_post(self, payment, payment_group, tolerance_account, difference, payment_date):
