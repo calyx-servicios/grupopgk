@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_product_template_form_quoter_range_rate" model="ir.ui.view">
+        <field name="name">product.template.form.quoter.range.rate</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Tarifa cotizador (hora)"
+                      name="quoter_range_rate"
+                      attrs="{'invisible': [('is_quoter_range_rate_product', '=', False)]}">
+                    <group>
+                        <field name="is_quoter_range_rate_product" readonly="1"/>
+                        <field name="quoter_range_rate_area_id" readonly="1"/>
+                        <field name="quoter_range_rate_range_id" readonly="1"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_product_tree_quoter_inherit" model="ir.ui.view">
+        <field name="name">product.product.tree.quoter.inherit</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_product_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="product_tmpl_id" string="Plantilla" optional="hide"/>
+                <field name="categ_id" string="Categoría" optional="show"/>
+                <field name="quoter_area_id" string="Área" optional="show"/>
+                <field name="complexity_level_id" optional="show"/>
+                <field name="is_default_quoter_product" optional="show"/>
+                <field name="is_quoter_range_rate_product" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_product_form_quoter_inherit" model="ir.ui.view">
+        <field name="name">product.product.form.quoter.inherit</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='barcode']" position="after">
+                <field name="complexity_level_id" readonly="1"/>
+                <field name="is_default_quoter_product"/>
+                <field name="related_variant_ids"
+                       widget="many2many_tags"
+                       readonly="1"
+                       options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_product_search_quoter_inherit" model="ir.ui.view">
+        <field name="name">product.product.search.quoter.inherit</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_search_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="categ_id" string="Categoría"/>
+                <field name="quoter_area_id" string="Área"/>
+                <field name="complexity_level_id"/>
+                <field name="is_default_quoter_product"/>
+                <filter name="group_by_product_category"
+                        string="Categoría"
+                        context="{'group_by': 'categ_id'}"/>
+                <filter name="group_by_quoter_area"
+                        string="Área"
+                        context="{'group_by': 'quoter_area_id'}"/>
+                <filter name="group_by_complexity_level"
+                        string="Nivel"
+                        context="{'group_by': 'complexity_level_id'}"/>
+                <filter name="filter_default_quoter_product"
+                        string="Predeterminado"
+                        domain="[('is_default_quoter_product', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

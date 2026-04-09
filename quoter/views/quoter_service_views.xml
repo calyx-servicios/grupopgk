@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Áreas profesionales -->
+    <record id="view_quoter_professional_area_tree" model="ir.ui.view">
+        <field name="name">quoter.professional.area.tree</field>
+        <field name="model">quoter.professional.area</field>
+        <field name="arch" type="xml">
+            <tree string="Áreas profesionales">
+                <field name="sequence" optional="show"/>
+                <field name="name"/>
+                <field name="group_id" optional="show"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_quoter_professional_area_form" model="ir.ui.view">
+        <field name="name">quoter.professional.area.form</field>
+        <field name="model">quoter.professional.area</field>
+        <field name="arch" type="xml">
+            <form string="Área profesional">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_quoter_lines" type="object" class="oe_stat_button" icon="fa-list">
+                            <field name="line_count" widget="statinfo" string="Líneas"/>
+                        </button>
+                        <button name="action_open_quoter_products" type="object" class="oe_stat_button" icon="fa-cubes">
+                            <field name="quoter_product_count" widget="statinfo" string="Productos"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1 class="d-flex align-items-center flex-wrap">
+                            <field name="name"
+                                   nolabel="1"
+                                   class="oe_inline text-break"
+                                   placeholder="Nombre del área"
+                                   required="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="group_id"/>
+                            <field name="pricelist_id" options="{'no_create': True}"/>
+                            <field name="area_range_ids"
+                                   widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                            <field name="product_category_id" options="{'no_create': True}" required="1"/>
+                        </group>
+                        <group>
+                            <field name="active"/>
+                            <field name="quoter_config_complete" invisible="1"/>
+                            <field name="cerrado" groups="base.group_system"
+                                   attrs="{'invisible': [('quoter_config_complete', '=', False)]}"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Niveles de complejidad">
+                            <field name="complexity_level_ids"
+                                   widget="many2many_tags"
+                                   options="{'color_field': 'color'}"
+                                   nolabel="1"
+                                   colspan="2"
+                                   placeholder="Defina los niveles (bajo / medio / alto, etc.) para variantes y colores en el pedido…"/>
+                        </group>
+                        <group string="Etiquetas">
+                            <field name="separator_tag_ids"
+                                   widget="many2many_tags"
+                                   options="{'color_field': 'color'}"
+                                   nolabel="1"
+                                   colspan="2"
+                                   placeholder="Etiquetas separador para líneas de esta área…"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Líneas cotizador" name="area_tab_lines">
+                            <field name="line_ids"
+                                   context="{'default_area_id': active_id}"
+                                   mode="tree,form">
+                                <tree string="Líneas" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="separator_tag_id" optional="show"/>
+                                    <field name="name"/>
+                                    <field name="is_default_product" optional="show"/>
+                                    <field name="product_tmpl_id" readonly="1" optional="show"/>
+                                    <field name="quoter_active" readonly="1"/>
+                                    <field name="total_hours" readonly="1"/>
+                                    <button name="action_open_level_ranges"
+                                            type="object"
+                                            string=" "
+                                            icon="fa-clock-o"
+                                            title="Horas por nivel (hasta 4 rangos del área)"/>
+                                </tree>
+                                <form string="Línea">
+                                    <field name="area_id" invisible="1"/>
+                                    <group>
+                                        <group>
+                                            <field name="sequence"/>
+                                            <field name="name"/>
+                                            <field name="separator_tag_id"/>
+                                            <field name="is_default_product"/>
+                                            <field name="product_tmpl_id" readonly="1"/>
+                                            <field name="quoter_active" readonly="1"/>
+                                            <field name="total_hours" readonly="1"/>
+                                        </group>
+                                    </group>
+                                    <group string="Referencia (no alimenta el cotizador)">
+                                        <p class="text-muted" colspan="2">
+                                            Las horas que usa el pedido al elegir el nivel están en
+                                            <strong>Horas por nivel (rangos del área)</strong> (botón siguiente).
+                                        </p>
+                                        <field name="range_hour_ids" nolabel="1" colspan="2">
+                                            <tree editable="bottom" create="0" delete="0">
+                                                <field name="area_range_id" force_save="1" readonly="1" string="Rango"/>
+                                                <field name="hours"/>
+                                            </tree>
+                                        </field>
+                                    </group>
+                                    <group>
+                                        <button name="action_open_level_ranges" type="object"
+                                                string="Horas por nivel (rangos del área)" icon="fa-clock-o" class="btn-primary"/>
+                                        <button name="action_open_product_variant" type="object"
+                                                string="Plantilla producto (técnico)" icon="fa-cube"
+                                                groups="base.group_system"/>
+                                    </group>
+                                </form>
+                            </field>
+                        </page>
+                    </notebook>
+                    <p class="text-muted">
+                        Si asigna un grupo, solo los usuarios con ese grupo verán esta área,
+                        sus líneas del cotizador y productos asociados. Solo administradores Odoo pueden modificar
+                        el indicador «Cerrado».
+                    </p>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quoter_professional_area" model="ir.actions.act_window">
+        <field name="name">Áreas profesionales</field>
+        <field name="res_model">quoter.professional.area</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_quoter_area_complexity_range_tree" model="ir.ui.view">
+        <field name="name">quoter.area.complexity.range.tree</field>
+        <field name="model">quoter.area.complexity.range</field>
+        <field name="arch" type="xml">
+            <tree string="Rangos por área">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_quoter_area_complexity_range_form" model="ir.ui.view">
+        <field name="name">quoter.area.complexity.range.form</field>
+        <field name="model">quoter.area.complexity.range</field>
+        <field name="arch" type="xml">
+            <form string="Rango del área">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quoter_area_complexity_range" model="ir.actions.act_window">
+        <field name="name">Rangos por área</field>
+        <field name="res_model">quoter.area.complexity.range</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Etiquetas separador -->
+    <record id="view_quoter_line_separator_tag_tree" model="ir.ui.view">
+        <field name="name">quoter.line.separator.tag.tree</field>
+        <field name="model">quoter.line.separator.tag</field>
+        <field name="arch" type="xml">
+            <tree string="Etiquetas separador">
+                <field name="name"/>
+                <field name="color" widget="color_picker"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_quoter_line_separator_tag_form" model="ir.ui.view">
+        <field name="name">quoter.line.separator.tag.form</field>
+        <field name="model">quoter.line.separator.tag</field>
+        <field name="arch" type="xml">
+            <form string="Etiqueta">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="color" widget="color_picker"/>
+                    </group>
+                    <group string="Compartida en áreas">
+                        <field name="area_ids" widget="many2many_tags" nolabel="1" colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quoter_line_separator_tag" model="ir.actions.act_window">
+        <field name="name">Etiquetas separador</field>
+        <field name="res_model">quoter.line.separator.tag</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Niveles de complejidad (catálogo compartido) -->
+    <record id="view_quoter_complexity_level_tree" model="ir.ui.view">
+        <field name="name">quoter.complexity.level.tree</field>
+        <field name="model">quoter.complexity.level</field>
+        <field name="arch" type="xml">
+            <tree string="Niveles de complejidad">
+                <field name="name"/>
+                <field name="color" widget="color_picker"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_quoter_complexity_level_form" model="ir.ui.view">
+        <field name="name">quoter.complexity.level.form</field>
+        <field name="model">quoter.complexity.level</field>
+        <field name="arch" type="xml">
+            <form string="Nivel de complejidad">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="color" widget="color_picker"/>
+                    </group>
+                    <group string="Áreas que usan este nivel">
+                        <field name="area_ids" widget="many2many_tags" nolabel="1" colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quoter_complexity_level" model="ir.actions.act_window">
+        <field name="name">Niveles de complejidad</field>
+        <field name="res_model">quoter.complexity.level</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Líneas: acceso directo -->
+    <record id="view_quoter_service_line_tree" model="ir.ui.view">
+        <field name="name">quoter.service.line.tree</field>
+        <field name="model">quoter.service.line</field>
+        <field name="arch" type="xml">
+            <tree string="Líneas de servicio">
+                <field name="area_id"/>
+                <field name="name"/>
+                <field name="separator_tag_id" optional="hide"/>
+                <field name="is_default_product" optional="show"/>
+                <field name="product_tmpl_id" optional="show"/>
+                <field name="quoter_active"/>
+                <field name="total_hours"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_quoter_service_line_form" model="ir.ui.view">
+        <field name="name">quoter.service.line.form</field>
+        <field name="model">quoter.service.line</field>
+        <field name="arch" type="xml">
+            <form string="Línea de servicio">
+                <sheet>
+                    <group>
+                        <field name="area_id"/>
+                        <field name="name"/>
+                        <field name="separator_tag_id"/>
+                        <field name="is_default_product"/>
+                        <field name="product_tmpl_id" readonly="1"/>
+                        <field name="quoter_active" readonly="1"/>
+                        <field name="total_hours" readonly="1"/>
+                    </group>
+                    <group string="Referencia interna (opcional)">
+                        <field name="range_hour_ids" nolabel="1">
+                            <tree editable="bottom" create="0" delete="0">
+                                <field name="area_range_id" force_save="1" readonly="1" string="Rango"/>
+                                <field name="hours"/>
+                            </tree>
+                        </field>
+                    </group>
+                    <group>
+                        <button name="action_open_level_ranges" type="object"
+                                string="Horas por nivel (rangos del área)" class="btn-primary" icon="fa-clock-o"/>
+                        <button name="action_open_product_variant" type="object"
+                                string="Plantilla producto (técnico)" class="oe_link" icon="fa-cube"
+                                groups="base.group_system"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quoter_service_line" model="ir.actions.act_window">
+        <field name="name">Líneas de servicio</field>
+        <field name="res_model">quoter.service.line</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

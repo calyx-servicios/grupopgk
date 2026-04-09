@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="quoter_rule_professional_area_visibility" model="ir.rule">
+            <field name="name">Quoter: áreas visibles por grupo</field>
+            <field name="model_id" ref="model_quoter_professional_area"/>
+            <field name="domain_force">['|', ('group_id', '=', False), ('group_id', 'in', user.groups_id.ids)]</field>
+        </record>
+
+        <record id="quoter_rule_professional_area_system_all" model="ir.rule">
+            <field name="name">Quoter: administradores ven todas las áreas</field>
+            <field name="model_id" ref="model_quoter_professional_area"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+        </record>
+
+        <record id="quoter_rule_service_line_visibility" model="ir.rule">
+            <field name="name">Quoter: líneas según grupo del área</field>
+            <field name="model_id" ref="model_quoter_service_line"/>
+            <field name="domain_force">['|', ('area_id.group_id', '=', False), ('area_id.group_id', 'in', user.groups_id.ids)]</field>
+        </record>
+
+        <record id="quoter_rule_service_line_range_hour_visibility" model="ir.rule">
+            <field name="name">Quoter: horas por rango según grupo del área</field>
+            <field name="model_id" ref="model_quoter_service_line_range_hour"/>
+            <field name="domain_force">['|', ('line_id.area_id.group_id', '=', False), ('line_id.area_id.group_id', 'in', user.groups_id.ids)]</field>
+        </record>
+
+        <record id="quoter_rule_area_complexity_range_visibility" model="ir.rule">
+            <field name="name">Quoter: rangos por área según visibilidad del área</field>
+            <field name="model_id" ref="model_quoter_area_complexity_range"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+        </record>
+
+        <record id="quoter_rule_complexity_level_visibility" model="ir.rule">
+            <field name="name">Quoter: niveles enlazados a áreas visibles</field>
+            <field name="model_id" ref="model_quoter_complexity_level"/>
+            <field name="domain_force">['|', ('area_ids', '=', False), '|', ('area_ids.group_id', '=', False), ('area_ids.group_id', 'in', user.groups_id.ids)]</field>
+        </record>
+    </data>
+</odoo>

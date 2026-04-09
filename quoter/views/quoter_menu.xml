@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_quoter_pricelists" model="ir.actions.act_window">
+        <field name="name">Tarifas</field>
+        <field name="res_model">product.pricelist</field>
+        <field name="view_mode">tree,form</field>
+        <!-- Sobreescribe dominios viejos en BD que usaban is_quoter_pricelist (campo eliminado). -->
+        <field name="domain">[]</field>
+    </record>
+
+    <!-- App principal: Cotizador -->
+    <menuitem id="menu_quoter_root"
+              name="Cotizador"
+              sequence="15"
+              web_icon="quoter,static/description/icon.png"
+              groups="base.group_system"/>
+
+    <menuitem id="menu_quoter_quotations"
+              name="Cotizador"
+              parent="menu_quoter_root"
+              action="action_quotations_quoter"
+              sequence="5"/>
+
+    <menuitem id="menu_quoter_products_root"
+              name="Productos"
+              parent="menu_quoter_root"
+              sequence="20"/>
+
+    <menuitem id="menu_quoter_products_templates"
+              name="Productos"
+              parent="menu_quoter_products_root"
+              action="action_quoter_products_templates"
+              sequence="1"/>
+
+    <menuitem id="menu_quoter_products_variants"
+              name="Variantes"
+              parent="menu_quoter_products_root"
+              action="action_quoter_products_variants"
+              sequence="2"/>
+
+    <menuitem id="menu_quoter_products_pricing"
+              name="Tarifa"
+              parent="menu_quoter_products_root"
+              action="action_quoter_pricelists"
+              sequence="3"
+              groups="base.group_system"/>
+
+    <menuitem id="menu_quoter_configuration"
+              name="Configuración"
+              parent="menu_quoter_root"
+              groups="base.group_system"
+              sequence="100"/>
+
+    <record id="action_quoter_security_groups" model="ir.actions.act_window">
+        <field name="name">Ajustes de grupos</field>
+        <field name="res_model">res.groups</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain" eval="[('id', 'in', [ref('quoter.group_quoter_manager'), ref('quoter.group_quoter_partner'), ref('quoter.group_quoter_tax'), ref('quoter.group_quoter_auditoria'), ref('quoter.group_quoter_bpo'), ref('quoter.group_quoter_payroll')])]"/>
+        <field name="context">{}</field>
+    </record>
+
+    <menuitem id="menu_quoter_settings"
+              name="Ajustes"
+              parent="menu_quoter_configuration"
+              action="action_quoter_res_config_settings"
+              sequence="1"
+              groups="base.group_system"/>
+
+    <menuitem id="menu_quoter_professional_area"
+              name="Áreas profesionales"
+              parent="menu_quoter_configuration"
+              action="action_quoter_professional_area"
+              sequence="5"/>
+
+    <menuitem id="menu_quoter_area_complexity_range"
+              name="Rangos por área"
+              parent="menu_quoter_configuration"
+              action="action_quoter_area_complexity_range"
+              sequence="6"
+              groups="base.group_system"/>
+
+    <menuitem id="menu_quoter_line_separator_tag"
+              name="Etiquetas separador"
+              parent="menu_quoter_configuration"
+              action="action_quoter_line_separator_tag"
+              sequence="8"/>
+
+    <menuitem id="menu_quoter_complexity_level"
+              name="Niveles de complejidad"
+              parent="menu_quoter_configuration"
+              action="action_quoter_complexity_level"
+              sequence="9"/>
+
+    <menuitem id="menu_quoter_service_line"
+              name="Líneas de servicio"
+              parent="menu_quoter_configuration"
+              action="action_quoter_service_line"
+              sequence="25"/>
+
+</odoo>

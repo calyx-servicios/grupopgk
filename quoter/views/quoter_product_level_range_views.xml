@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quoter_product_level_range_tree" model="ir.ui.view">
+        <field name="name">quoter.product.level.range.tree</field>
+        <field name="model">quoter.product.level.range</field>
+        <field name="arch" type="xml">
+            <tree string="Horas por nivel" create="0" delete="0" editable="top">
+                <field name="product_tmpl_id" readonly="1" optional="show"/>
+                <field name="canonical_product_id" readonly="1" optional="show"/>
+                <field name="area_id" readonly="1" optional="hide"/>
+                <field name="complexity_level_id" readonly="1"/>
+                <field name="slot_1_range_name" readonly="1" optional="show"/>
+                <field name="slot_1_hours"/>
+                <field name="slot_2_range_name" readonly="1" optional="show"/>
+                <field name="slot_2_hours"/>
+                <field name="slot_3_range_name" readonly="1" optional="show"/>
+                <field name="slot_3_hours"/>
+                <field name="slot_4_range_name" readonly="1" optional="show"/>
+                <field name="slot_4_hours"/>
+                <field name="total_hours" readonly="1" sum="Total horas"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_quoter_product_level_range_form" model="ir.ui.view">
+        <field name="name">quoter.product.level.range.form</field>
+        <field name="model">quoter.product.level.range</field>
+        <field name="arch" type="xml">
+            <form string="Horas por nivel y rango">
+                <sheet>
+                    <group>
+                        <group string="Producto y nivel">
+                            <field name="product_tmpl_id" readonly="1"/>
+                            <field name="canonical_product_id" readonly="1"/>
+                            <field name="area_id" readonly="1"/>
+                            <field name="complexity_level_id" readonly="1"/>
+                        </group>
+                        <group string="Resumen">
+                            <field name="total_hours" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Horas por cada rango del área (máx. 4)">
+                        <p class="text-muted" colspan="2">
+                            Una fila por cada rango definido en el área del producto. Estas horas se copian
+                            al cotizador cuando se elige este nivel en el bloque del pedido.
+                        </p>
+                        <field name="range_hour_ids" nolabel="1" colspan="2">
+                            <tree editable="bottom" create="0" delete="0">
+                                <field name="area_range_id" force_save="1" readonly="1" string="Rango"/>
+                                <field name="hours"/>
+                            </tree>
+                        </field>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>
