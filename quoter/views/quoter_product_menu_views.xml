@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Productos (plantillas) del Cotizador -->
+    <record id="action_quoter_products_templates" model="ir.actions.act_window">
+        <field name="name">Productos</field>
+        <field name="res_model">product.template</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('is_quoter_product', '=', True)]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Variantes (product.product) del Cotizador -->
+    <record id="action_quoter_products_variants" model="ir.actions.act_window">
+        <field name="name">Variantes</field>
+        <field name="res_model">product.product</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('is_quoter_product', '=', True)]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <!-- Search view para plantillas: nombre, categoría, área -->
+    <record id="view_product_template_search_quoter" model="ir.ui.view">
+        <field name="name">product.template.search.quoter</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="categ_id" string="Categoría"/>
+                <field name="quoter_area_id" string="Área"/>
+                <filter name="filter_quoter_product" string="Cotizador"
+                        domain="[('is_quoter_product', '=', True)]"/>
+                <filter name="group_by_product_category" string="Categoría"
+                        context="{'group_by': 'categ_id'}"/>
+                <filter name="group_by_quoter_area" string="Área"
+                        context="{'group_by': 'quoter_area_id'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Tree view para plantillas: categoría, área -->
+    <record id="view_product_template_tree_quoter" model="ir.ui.view">
+        <field name="name">product.template.tree.quoter</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="categ_id" string="Categoría" optional="show"/>
+                <field name="quoter_area_id" string="Área" optional="show"/>
+                <field name="is_default_quoter_product" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+
