@@ -497,31 +497,6 @@ class SaleOrder(models.Model):
         currency_field="currency_id",
         compute="_compute_quoter_slot_area_totals_untaxed",
     )
-    quoter_slot_1_subtotal_before_discount = fields.Monetary(
-        string="Subtotal antes descuento (área 1)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_2_subtotal_before_discount = fields.Monetary(
-        string="Subtotal antes descuento (área 2)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_3_subtotal_before_discount = fields.Monetary(
-        string="Subtotal antes descuento (área 3)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_4_subtotal_before_discount = fields.Monetary(
-        string="Subtotal antes descuento (área 4)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_5_subtotal_before_discount = fields.Monetary(
-        string="Subtotal antes descuento (área 5)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
     quoter_slot_1_discount_line = fields.Monetary(
         string="Descuento global (área 1)",
         currency_field="currency_id",
@@ -790,13 +765,11 @@ class SaleOrder(models.Model):
                 block = getattr(order, "quoter_block_slot_%d_id" % n)
                 pname = "quoter_slot_%d_product_untaxed" % n
                 aname = "quoter_slot_%d_adjustment_untaxed" % n
-                sname = "quoter_slot_%d_subtotal_before_discount" % n
                 dname = "quoter_slot_%d_discount_line" % n
                 tname = "quoter_slot_%d_total_untaxed" % n
                 if not area:
                     order[pname] = 0.0
                     order[aname] = 0.0
-                    order[sname] = 0.0
                     order[dname] = 0.0
                     order[tname] = 0.0
                     continue
@@ -810,7 +783,6 @@ class SaleOrder(models.Model):
                 total = sub - disc
                 order[pname] = prod
                 order[aname] = adj
-                order[sname] = sub
                 order[dname] = disc
                 order[tname] = total
 

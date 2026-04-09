@@ -1,13 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="action_quoter_res_config_settings" model="ir.actions.act_window">
-        <field name="name">Ajustes Cotizador</field>
-        <field name="res_model">res.config.settings</field>
-        <field name="view_mode">form</field>
-        <field name="target">inline</field>
-        <field name="context">{'module': 'quoter'}</field>
-    </record>
-
     <record id="res_config_settings_view_form_quoter" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.quoter</field>
         <field name="model">res.config.settings</field>
