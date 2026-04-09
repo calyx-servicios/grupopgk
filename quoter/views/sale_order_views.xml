@@ -684,30 +684,6 @@
         </field>
     </record>
     
-    <!-- Action for Quotations (Cliente > Cotizador) -->
-    <record id="action_quotations_quoter" model="ir.actions.act_window">
-        <field name="name">Cotizaciones</field>
-        <field name="type">ir.actions.act_window</field>
-        <field name="res_model">sale.order</field>
-        <field name="view_mode">tree,kanban,form,calendar,pivot,graph,activity</field>
-        <field name="context">{
-            'default_is_quotation': True,
-            'quoter_use_cot_sequence': True,
-        }</field>
-        <field name="domain">[('is_quotation', '=', True)]</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                Crear una nueva cotización profesional
-            </p>
-            <p>
-                Las cotizaciones profesionales permiten configurar servicios por área,
-                categoría de producto y nivel en cada bloque del cotizador.
-            </p>
-        </field>
-    </record>
-    
-    <!-- Menú Cotizador: quoter/views/quoter_menu.xml -->
-
     <!-- Pedidos / presupuestos estándar: sin cotizaciones profesionales (is_quotation) -->
     <record id="sale.action_orders" model="ir.actions.act_window">
         <field name="domain" eval="[('state', 'not in', ('draft', 'sent', 'cancel')), ('is_quotation', '=', False)]"/>

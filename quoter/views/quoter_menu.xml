@@ -1,5 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="action_quoter_res_config_settings" model="ir.actions.act_window">
+        <field name="name">Ajustes Cotizador</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'quoter'}</field>
+    </record>
+
+    <!-- Action for Quotations (Cliente > Cotizador) -->
+    <record id="action_quotations_quoter" model="ir.actions.act_window">
+        <field name="name">Cotizaciones</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree,kanban,form,calendar,pivot,graph,activity</field>
+        <field name="context">{
+            'default_is_quotation': True,
+            'quoter_use_cot_sequence': True,
+        }</field>
+        <field name="domain">[('is_quotation', '=', True)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear una nueva cotización profesional
+            </p>
+            <p>
+                Las cotizaciones profesionales permiten configurar servicios por área,
+                categoría de producto y nivel en cada bloque del cotizador.
+            </p>
+        </field>
+    </record>
+
     <record id="action_quoter_pricelists" model="ir.actions.act_window">
         <field name="name">Tarifas</field>
         <field name="res_model">product.pricelist</field>
