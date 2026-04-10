@@ -5,7 +5,58 @@ import datetime
 
 class SubscriptionPackage(models.Model):
     _inherit = 'subscription.package'
-    
+
+    def _get_related_sale_orders(self, subscription):
+        return self.env['sale.order'].sudo().search([('subscription_id', '=', subscription.id)])
+
+    def _get_related_invoice(self, subscription, today_date=False):
+        domain = [
+            ('move_type', '=', 'out_invoice'),
+            ('state', '!=', 'cancel'),
+            ('subscription_id', '=', subscription.id),
+        ]
+        if today_date:
+            domain.append(('invoice_date', '=', today_date))
+        return self.env['account.move'].sudo().search(domain, order='invoice_date desc, id desc', limit=1)
+
+    def _already_invoiced_current_period(self, subscription, today_date):
+        return bool(self._get_related_invoice(subscription, today_date=today_date))
+
+    def _link_invoice_to_subscription(self, subscription, invoice):
+        values = {}
+        if not invoice.subscription_id:
+            values['subscription_id'] = subscription.id
+        if not invoice.invoice_origin:
+            sale_orders = self._get_related_sale_orders(subscription)
+            if sale_orders:
+                values['invoice_origin'] = ', '.join(sale_orders.mapped('name'))
+        if values:
+            invoice.sudo().write(values)
+
+    def _set_next_invoice_date(self, subscription, invoice_date):
+        if invoice_date:
+            subscription.sudo().write({
+                'next_invoice_date': invoice_date + relativedelta(days=30)
+            })
+
+    def _create_and_sync_invoice(self, subscription, today_date):
+        before_invoice = self._get_related_invoice(subscription)
+        before_invoice_id = before_invoice.id if before_invoice else 0
+        subscription.create_invoice_forced()
+
+        latest_invoice = self._get_related_invoice(subscription)
+        if latest_invoice and latest_invoice.id != before_invoice_id:
+            self._link_invoice_to_subscription(subscription, latest_invoice)
+            self._set_next_invoice_date(subscription, latest_invoice.invoice_date or today_date)
+            return latest_invoice
+
+        # Evita avanzar sin actualizar campos si la factura ya existia para el periodo.
+        latest_today_invoice = self._get_related_invoice(subscription, today_date=today_date)
+        if latest_today_invoice:
+            self._set_next_invoice_date(subscription, latest_today_invoice.invoice_date or today_date)
+            return latest_today_invoice
+        return self.env['account.move']
+
     def close_limit_cron(self):
         """ It Checks renew date, close date. It will send mail when renew date """
         pending_subscriptions = self.env['subscription.package'].search(
@@ -66,8 +117,12 @@ class SubscriptionPackage(models.Model):
                 elif pending_subscription.plan_id.limit_choice == 'ones' and invoice_count >= 1:
                     pending_subscription.set_close()
                 else:
-                    pending_subscription.create_invoice_forced()
-                
+                    if self._already_invoiced_current_period(pending_subscription, today_date):
+                        latest_invoice = self._get_related_invoice(pending_subscription, today_date=today_date)
+                        self._set_next_invoice_date(pending_subscription, latest_invoice.invoice_date or today_date)
+                        continue
+                    self._create_and_sync_invoice(pending_subscription, today_date)
+
         for close_subscription in subscriptions.filtered(lambda s: s.to_renew == True):
             if close_subscription.close_date == today_date:
                 close_subscription.set_close()
@@ -109,13 +164,14 @@ class SubscriptionPackage(models.Model):
         subscriptions = self.env['subscription.package'].search([('stage_category', '=', 'progress'), ('to_renew', '=', False)])
         # Busco las facturas asociadas a cada suscripcion
         for subscription in subscriptions:
-            invoices = self.env['account.move'].search([('subscription_id', '=', subscription.id)])
-            if invoices:
-                # Obtengo la fecha de la última factura
-                last_invoice_date = invoices[0].invoice_date
-                if last_invoice_date:
-                    # Agrego 30 días a la fecha de la última factura
-                    next_invoice_date = last_invoice_date + relativedelta(days=30)
-                    # Asigno la nueva fecha al campo next_invoice_date de la suscripción
-                    subscription.next_invoice_date = next_invoice_date
+            latest_invoice = self.env['account.move'].search(
+                [('subscription_id', '=', subscription.id), ('move_type', '=', 'out_invoice')],
+                order='invoice_date desc, id desc',
+                limit=1
+            )
+            if latest_invoice and latest_invoice.invoice_date:
+                # Agrego 30 días a la fecha de la última factura
+                next_invoice_date = latest_invoice.invoice_date + relativedelta(days=30)
+                # Asigno la nueva fecha al campo next_invoice_date de la suscripción
+                subscription.next_invoice_date = next_invoice_date
 
