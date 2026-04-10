@@ -9,7 +9,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.3.0.0",
+    "version": "15.0.3.1.0",
     "application": False,
     "installable": True,
     "depends": [
@@ -18,5 +18,6 @@
     "data": [
         'data/cron.xml',
         'views/subscription_plan.xml',
+        'views/subscription_package_tree.xml',
     ],
 }
