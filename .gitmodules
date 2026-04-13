@@ -159,6 +159,6 @@
 	url = git@github.com:OCA/crm.git
 	branch = 15.0
 [submodule "submodules/cybrosys-calyx"]
-	path = submodules/cybrosys-calyx
+	path = submodules/calyx-servicios/cybrosys-calyx
 	url = git@github.com:calyx-servicios/cybrosys-calyx.git
 	branch = 15.0
