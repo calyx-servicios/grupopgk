@@ -51,6 +51,20 @@ class SaleOrder(models.Model):
     quoter_user_can_edit_partner = fields.Boolean(
         compute="_compute_quoter_user_can_edit_fields",
     )
+    quoter_user_is_assigned_manager = fields.Boolean(
+        compute="_compute_quoter_user_can_edit_fields",
+        string="Usuario es gerente asignado",
+    )
+    quoter_manager_candidate_user_ids = fields.Many2many(
+        comodel_name="res.users",
+        compute="_compute_quoter_candidate_users",
+        string="Usuarios candidatos gerente",
+    )
+    quoter_partner_candidate_user_ids = fields.Many2many(
+        comodel_name="res.users",
+        compute="_compute_quoter_candidate_users",
+        string="Usuarios candidatos socio",
+    )
 
     # Preguntas estratégicas (max 140)
     quoter_q_competitors = fields.Char(
@@ -92,11 +106,63 @@ class SaleOrder(models.Model):
 
     @api.depends()
     def _compute_quoter_user_can_edit_fields(self):
-        can_mgr = self.env.user.has_group("quoter.group_quoter_manager")
-        can_partner = self.env.user.has_group("quoter.group_quoter_partner")
+        can_mgr = self.env.user.has_group("quoter.group_quoter_manager") or self.env.user.has_group("base.group_system")
+        can_partner = self.env.user.has_group("quoter.group_quoter_partner") or self.env.user.has_group("base.group_system")
+        current_user = self.env.user
         for order in self:
             order.quoter_user_can_edit_manager = bool(can_mgr)
             order.quoter_user_can_edit_partner = bool(can_partner)
+            order.quoter_user_is_assigned_manager = bool(
+                can_mgr and order.quoter_manager_id and order.quoter_manager_id == current_user
+            )
+
+    @api.depends()
+    def _compute_quoter_candidate_users(self):
+        User = self.env["res.users"]
+        manager_group = self.env.ref("quoter.group_quoter_manager", raise_if_not_found=False)
+        partner_group = self.env.ref("quoter.group_quoter_partner", raise_if_not_found=False)
+        manager_users = User.browse()
+        partner_users = User.browse()
+        if manager_group:
+            manager_users = manager_group.users.filtered(
+                lambda u: u.active and not u.share
+            )
+        if partner_group:
+            partner_users = partner_group.users.filtered(
+                lambda u: u.active and not u.share
+            )
+        for order in self:
+            order.quoter_manager_candidate_user_ids = manager_users
+            order.quoter_partner_candidate_user_ids = partner_users
+
+    def _check_quoter_responsibles_write_access(self, vals):
+        """Refuerza en servidor la edición por grupo de campos cabecera Quoter."""
+        if not vals:
+            return
+        can_mgr = self.env.user.has_group("quoter.group_quoter_manager") or self.env.user.has_group("base.group_system")
+        can_partner = self.env.user.has_group("quoter.group_quoter_partner") or self.env.user.has_group("base.group_system")
+        manager_group = self.env.ref("quoter.group_quoter_manager", raise_if_not_found=False)
+        partner_group = self.env.ref("quoter.group_quoter_partner", raise_if_not_found=False)
+        if "quoter_manager_id" in vals and not can_mgr:
+            raise UserError(
+                _("Solo usuarios del grupo Quoter - Gerente pueden editar Gerente responsable.")
+            )
+        if "quoter_partner_id" in vals and not can_partner:
+            raise UserError(
+                _("Solo usuarios del grupo Quoter - Socio pueden editar Socio asignado.")
+            )
+        if "quoter_manager_id" in vals and vals.get("quoter_manager_id"):
+            manager_user = self.env["res.users"].browse(vals["quoter_manager_id"])
+            if manager_group and manager_group not in manager_user.groups_id:
+                raise UserError(
+                    _("El usuario seleccionado en Gerente responsable debe pertenecer a Quoter - Gerente.")
+                )
+        if "quoter_partner_id" in vals and vals.get("quoter_partner_id"):
+            partner_user = self.env["res.users"].browse(vals["quoter_partner_id"])
+            if partner_group and partner_group not in partner_user.groups_id:
+                raise UserError(
+                    _("El usuario seleccionado en Socio asignado debe pertenecer a Quoter - Socio.")
+                )
 
     @api.constrains(
         "quoter_q_competitors",
@@ -115,6 +181,27 @@ class SaleOrder(models.Model):
                 val = getattr(order, fname) or ""
                 if len(val) > 140:
                     raise UserError(_("El campo no puede superar 140 caracteres."))
+
+    @api.constrains(
+        "order_line",
+        "order_line.quoter_is_adjustment_line",
+        "order_line.quoter_adjustment_note",
+        "order_line.display_type",
+    )
+    def _check_quoter_adjustment_notes_required(self):
+        for order in self.filtered("is_quotation"):
+            missing = order.order_line.filtered(
+                lambda l: not l.display_type
+                and l.quoter_is_adjustment_line
+                and not (l.quoter_adjustment_note or "").strip()
+            )
+            if missing:
+                raise UserError(
+                    _(
+                        "Todas las líneas de ajuste deben tener observación. "
+                        "Complete la observación en cada línea de ajuste antes de guardar."
+                    )
+                )
 
     quoter_area_block_ids = fields.One2many(
         comodel_name="quoter.sale.order.area",
@@ -391,36 +478,66 @@ class SaleOrder(models.Model):
         compute="_compute_quoter_slot_selectable_products",
     )
 
-    # --- Totales por pestaña de área (sin impuestos) + descuento global editable por bloque ---
+    # --- Totales por pestaña de área (sin impuestos) + ajustes globales por bloque ---
     quoter_slot_1_global_discount = fields.Monetary(
         string="Descuento global (área 1)",
         currency_field="currency_id",
-        compute="_compute_quoter_slot_global_discounts",
+        compute="_compute_quoter_slot_global_adjustments",
         inverse="_inverse_quoter_slot_1_global_discount",
+    )
+    quoter_slot_1_global_surcharge = fields.Monetary(
+        string="Recargo global (área 1)",
+        currency_field="currency_id",
+        compute="_compute_quoter_slot_global_adjustments",
+        inverse="_inverse_quoter_slot_1_global_surcharge",
     )
     quoter_slot_2_global_discount = fields.Monetary(
         string="Descuento global (área 2)",
         currency_field="currency_id",
-        compute="_compute_quoter_slot_global_discounts",
+        compute="_compute_quoter_slot_global_adjustments",
         inverse="_inverse_quoter_slot_2_global_discount",
+    )
+    quoter_slot_2_global_surcharge = fields.Monetary(
+        string="Recargo global (área 2)",
+        currency_field="currency_id",
+        compute="_compute_quoter_slot_global_adjustments",
+        inverse="_inverse_quoter_slot_2_global_surcharge",
     )
     quoter_slot_3_global_discount = fields.Monetary(
         string="Descuento global (área 3)",
         currency_field="currency_id",
-        compute="_compute_quoter_slot_global_discounts",
+        compute="_compute_quoter_slot_global_adjustments",
         inverse="_inverse_quoter_slot_3_global_discount",
+    )
+    quoter_slot_3_global_surcharge = fields.Monetary(
+        string="Recargo global (área 3)",
+        currency_field="currency_id",
+        compute="_compute_quoter_slot_global_adjustments",
+        inverse="_inverse_quoter_slot_3_global_surcharge",
     )
     quoter_slot_4_global_discount = fields.Monetary(
         string="Descuento global (área 4)",
         currency_field="currency_id",
-        compute="_compute_quoter_slot_global_discounts",
+        compute="_compute_quoter_slot_global_adjustments",
         inverse="_inverse_quoter_slot_4_global_discount",
+    )
+    quoter_slot_4_global_surcharge = fields.Monetary(
+        string="Recargo global (área 4)",
+        currency_field="currency_id",
+        compute="_compute_quoter_slot_global_adjustments",
+        inverse="_inverse_quoter_slot_4_global_surcharge",
     )
     quoter_slot_5_global_discount = fields.Monetary(
         string="Descuento global (área 5)",
         currency_field="currency_id",
-        compute="_compute_quoter_slot_global_discounts",
+        compute="_compute_quoter_slot_global_adjustments",
         inverse="_inverse_quoter_slot_5_global_discount",
+    )
+    quoter_slot_5_global_surcharge = fields.Monetary(
+        string="Recargo global (área 5)",
+        currency_field="currency_id",
+        compute="_compute_quoter_slot_global_adjustments",
+        inverse="_inverse_quoter_slot_5_global_surcharge",
     )
     quoter_slot_1_product_untaxed = fields.Monetary(
         string="Subtotal productos (área 1)",
@@ -498,27 +615,52 @@ class SaleOrder(models.Model):
         compute="_compute_quoter_slot_area_totals_untaxed",
     )
     quoter_slot_1_discount_line = fields.Monetary(
-        string="Descuento global (área 1)",
+        string="Importe descuento (área 1)",
         currency_field="currency_id",
         compute="_compute_quoter_slot_area_totals_untaxed",
     )
     quoter_slot_2_discount_line = fields.Monetary(
-        string="Descuento global (área 2)",
+        string="Importe descuento (área 2)",
         currency_field="currency_id",
         compute="_compute_quoter_slot_area_totals_untaxed",
     )
     quoter_slot_3_discount_line = fields.Monetary(
-        string="Descuento global (área 3)",
+        string="Importe descuento (área 3)",
         currency_field="currency_id",
         compute="_compute_quoter_slot_area_totals_untaxed",
     )
     quoter_slot_4_discount_line = fields.Monetary(
-        string="Descuento global (área 4)",
+        string="Importe descuento (área 4)",
         currency_field="currency_id",
         compute="_compute_quoter_slot_area_totals_untaxed",
     )
     quoter_slot_5_discount_line = fields.Monetary(
-        string="Descuento global (área 5)",
+        string="Importe descuento (área 5)",
+        currency_field="currency_id",
+        compute="_compute_quoter_slot_area_totals_untaxed",
+    )
+    quoter_slot_1_surcharge_line = fields.Monetary(
+        string="Importe recargo (área 1)",
+        currency_field="currency_id",
+        compute="_compute_quoter_slot_area_totals_untaxed",
+    )
+    quoter_slot_2_surcharge_line = fields.Monetary(
+        string="Importe recargo (área 2)",
+        currency_field="currency_id",
+        compute="_compute_quoter_slot_area_totals_untaxed",
+    )
+    quoter_slot_3_surcharge_line = fields.Monetary(
+        string="Importe recargo (área 3)",
+        currency_field="currency_id",
+        compute="_compute_quoter_slot_area_totals_untaxed",
+    )
+    quoter_slot_4_surcharge_line = fields.Monetary(
+        string="Importe recargo (área 4)",
+        currency_field="currency_id",
+        compute="_compute_quoter_slot_area_totals_untaxed",
+    )
+    quoter_slot_5_surcharge_line = fields.Monetary(
+        string="Importe recargo (área 5)",
         currency_field="currency_id",
         compute="_compute_quoter_slot_area_totals_untaxed",
     )
@@ -658,11 +800,15 @@ class SaleOrder(models.Model):
 
     @api.depends("quoter_area_ids", "quoter_area_block_ids", "quoter_area_block_ids.sequence", "quoter_area_block_ids.area_id")
     def _compute_quoter_slot_areas(self):
+        user_group_ids = set(self.env.user.groups_id.ids)
         for order in self:
             # Mapeo fijo: pestaña N = área con sequence == N
             blocks = order.quoter_area_block_ids.filtered(lambda b: b.area_id)
             by_seq = {}
             for b in blocks:
+                # Solo muestra la pestaña si el usuario pertenece al grupo del área.
+                if b.area_id.group_id and b.area_id.group_id.id not in user_group_ids:
+                    continue
                 seq = b.area_id.sequence
                 if isinstance(seq, int) and 1 <= seq <= 5 and seq not in by_seq:
                     by_seq[seq] = b.area_id
@@ -691,53 +837,126 @@ class SaleOrder(models.Model):
                 )[:1]
                 setattr(order, "quoter_block_slot_%s_id" % n, block)
 
+    @api.model
+    def _quoter_block_adjustment_amounts(self, block):
+        """Devuelve (descuento, recargo) no negativos, compatible con datos legacy."""
+        if not block:
+            return 0.0, 0.0
+        raw_discount = float(block.global_discount_amount or 0.0)
+        raw_surcharge = float(getattr(block, "global_surcharge_amount", 0.0) or 0.0)
+        # Legacy: el campo único permitía recargo como valor negativo en discount.
+        if raw_discount < 0.0:
+            raw_surcharge += abs(raw_discount)
+            raw_discount = 0.0
+        return max(0.0, raw_discount), max(0.0, raw_surcharge)
+
     @api.depends(
         "quoter_block_slot_1_id.global_discount_amount",
         "quoter_block_slot_2_id.global_discount_amount",
         "quoter_block_slot_3_id.global_discount_amount",
         "quoter_block_slot_4_id.global_discount_amount",
         "quoter_block_slot_5_id.global_discount_amount",
+        "quoter_block_slot_1_id.global_surcharge_amount",
+        "quoter_block_slot_2_id.global_surcharge_amount",
+        "quoter_block_slot_3_id.global_surcharge_amount",
+        "quoter_block_slot_4_id.global_surcharge_amount",
+        "quoter_block_slot_5_id.global_surcharge_amount",
     )
-    def _compute_quoter_slot_global_discounts(self):
+    def _compute_quoter_slot_global_adjustments(self):
         for order in self:
             for n in range(1, 6):
                 block = getattr(order, "quoter_block_slot_%d_id" % n)
-                order["quoter_slot_%d_global_discount" % n] = (
-                    block.global_discount_amount if block else 0.0
-                )
+                disc, surcharge = order._quoter_block_adjustment_amounts(block)
+                order["quoter_slot_%d_global_discount" % n] = disc
+                order["quoter_slot_%d_global_surcharge" % n] = surcharge
 
     def _inverse_quoter_slot_1_global_discount(self):
         for order in self:
             if order.quoter_block_slot_1_id:
-                order.quoter_block_slot_1_id.global_discount_amount = order.quoter_slot_1_global_discount or 0.0
+                order.quoter_block_slot_1_id.global_discount_amount = max(
+                    0.0, float(order.quoter_slot_1_global_discount or 0.0)
+                )
             if order.is_quotation:
                 order._quoter_sync_area_discount_total_line()
 
     def _inverse_quoter_slot_2_global_discount(self):
         for order in self:
             if order.quoter_block_slot_2_id:
-                order.quoter_block_slot_2_id.global_discount_amount = order.quoter_slot_2_global_discount or 0.0
+                order.quoter_block_slot_2_id.global_discount_amount = max(
+                    0.0, float(order.quoter_slot_2_global_discount or 0.0)
+                )
             if order.is_quotation:
                 order._quoter_sync_area_discount_total_line()
 
     def _inverse_quoter_slot_3_global_discount(self):
         for order in self:
             if order.quoter_block_slot_3_id:
-                order.quoter_block_slot_3_id.global_discount_amount = order.quoter_slot_3_global_discount or 0.0
+                order.quoter_block_slot_3_id.global_discount_amount = max(
+                    0.0, float(order.quoter_slot_3_global_discount or 0.0)
+                )
             if order.is_quotation:
                 order._quoter_sync_area_discount_total_line()
 
     def _inverse_quoter_slot_4_global_discount(self):
         for order in self:
             if order.quoter_block_slot_4_id:
-                order.quoter_block_slot_4_id.global_discount_amount = order.quoter_slot_4_global_discount or 0.0
+                order.quoter_block_slot_4_id.global_discount_amount = max(
+                    0.0, float(order.quoter_slot_4_global_discount or 0.0)
+                )
             if order.is_quotation:
                 order._quoter_sync_area_discount_total_line()
 
     def _inverse_quoter_slot_5_global_discount(self):
         for order in self:
             if order.quoter_block_slot_5_id:
-                order.quoter_block_slot_5_id.global_discount_amount = order.quoter_slot_5_global_discount or 0.0
+                order.quoter_block_slot_5_id.global_discount_amount = max(
+                    0.0, float(order.quoter_slot_5_global_discount or 0.0)
+                )
+            if order.is_quotation:
+                order._quoter_sync_area_discount_total_line()
+
+    def _inverse_quoter_slot_1_global_surcharge(self):
+        for order in self:
+            if order.quoter_block_slot_1_id:
+                order.quoter_block_slot_1_id.global_surcharge_amount = max(
+                    0.0, float(order.quoter_slot_1_global_surcharge or 0.0)
+                )
+            if order.is_quotation:
+                order._quoter_sync_area_discount_total_line()
+
+    def _inverse_quoter_slot_2_global_surcharge(self):
+        for order in self:
+            if order.quoter_block_slot_2_id:
+                order.quoter_block_slot_2_id.global_surcharge_amount = max(
+                    0.0, float(order.quoter_slot_2_global_surcharge or 0.0)
+                )
+            if order.is_quotation:
+                order._quoter_sync_area_discount_total_line()
+
+    def _inverse_quoter_slot_3_global_surcharge(self):
+        for order in self:
+            if order.quoter_block_slot_3_id:
+                order.quoter_block_slot_3_id.global_surcharge_amount = max(
+                    0.0, float(order.quoter_slot_3_global_surcharge or 0.0)
+                )
+            if order.is_quotation:
+                order._quoter_sync_area_discount_total_line()
+
+    def _inverse_quoter_slot_4_global_surcharge(self):
+        for order in self:
+            if order.quoter_block_slot_4_id:
+                order.quoter_block_slot_4_id.global_surcharge_amount = max(
+                    0.0, float(order.quoter_slot_4_global_surcharge or 0.0)
+                )
+            if order.is_quotation:
+                order._quoter_sync_area_discount_total_line()
+
+    def _inverse_quoter_slot_5_global_surcharge(self):
+        for order in self:
+            if order.quoter_block_slot_5_id:
+                order.quoter_block_slot_5_id.global_surcharge_amount = max(
+                    0.0, float(order.quoter_slot_5_global_surcharge or 0.0)
+                )
             if order.is_quotation:
                 order._quoter_sync_area_discount_total_line()
 
@@ -757,6 +976,11 @@ class SaleOrder(models.Model):
         "quoter_block_slot_3_id.global_discount_amount",
         "quoter_block_slot_4_id.global_discount_amount",
         "quoter_block_slot_5_id.global_discount_amount",
+        "quoter_block_slot_1_id.global_surcharge_amount",
+        "quoter_block_slot_2_id.global_surcharge_amount",
+        "quoter_block_slot_3_id.global_surcharge_amount",
+        "quoter_block_slot_4_id.global_surcharge_amount",
+        "quoter_block_slot_5_id.global_surcharge_amount",
     )
     def _compute_quoter_slot_area_totals_untaxed(self):
         for order in self:
@@ -766,11 +990,13 @@ class SaleOrder(models.Model):
                 pname = "quoter_slot_%d_product_untaxed" % n
                 aname = "quoter_slot_%d_adjustment_untaxed" % n
                 dname = "quoter_slot_%d_discount_line" % n
+                rname = "quoter_slot_%d_surcharge_line" % n
                 tname = "quoter_slot_%d_total_untaxed" % n
                 if not area:
                     order[pname] = 0.0
                     order[aname] = 0.0
                     order[dname] = 0.0
+                    order[rname] = 0.0
                     order[tname] = 0.0
                     continue
                 olines = order.order_line.filtered(
@@ -779,11 +1005,12 @@ class SaleOrder(models.Model):
                 prod = sum(olines.filtered(lambda l: not l.quoter_is_adjustment_line).mapped("price_subtotal"))
                 adj = sum(olines.filtered(lambda l: l.quoter_is_adjustment_line).mapped("price_subtotal"))
                 sub = prod + adj
-                disc = float(block.global_discount_amount or 0.0) if block else 0.0
-                total = sub - disc
+                disc, surcharge = order._quoter_block_adjustment_amounts(block)
+                total = sub - disc + surcharge
                 order[pname] = prod
                 order[aname] = adj
                 order[dname] = disc
+                order[rname] = surcharge
                 order[tname] = total
 
     @api.depends(
@@ -892,41 +1119,75 @@ class SaleOrder(models.Model):
         return not name or name == mark
 
     def _quoter_prepare_vals_for_create(self, vals):
-        """Evita consumir ir.sequence sale.order: asignar Q… solo en el create (1er guardado).
+        """Cotización: solo consume ``quoter.quotation`` (Q…).
+
+        Se asigna ``name`` igual al número Q para que ``sale.order``:create no llame a la secuencia
+        estándar de pedidos (evita saltos 8183–8184 al crear una cotización entre dos ventas).
 
         - ``is_quotation`` puede no venir en el primer ``create`` del formulario.
         - La acción del menú Cotizador envía ``default_is_quotation`` y ``quoter_use_cot_sequence``.
-        - ``@api.model`` alinea la cadena con ``sale`` / ``sale_stock``.
         """
         ctx = self.env.context
-        if "is_quotation" not in vals and "default_is_quotation" in ctx:
-            vals["is_quotation"] = ctx["default_is_quotation"]
         if ctx.get("quoter_use_cot_sequence"):
             vals["is_quotation"] = True
+        elif "is_quotation" not in vals and "default_is_quotation" in ctx:
+            vals["is_quotation"] = ctx["default_is_quotation"]
         if not vals.get("is_quotation"):
             return
         if not vals.get("quotation_sequence"):
             vals["quotation_sequence"] = (
                 self.env["ir.sequence"].next_by_code("quoter.quotation") or "/"
             )
-        # sale.order:create solo pide secuencia si name sigue siendo _('New').
         vals["name"] = vals["quotation_sequence"]
 
-    @api.model
-    def create(self, vals):
-        # sale.order:create corre ANTES que BaseModel.create; ahí aún no se fusionaron
-        # default_get / default_is_quotation. Sin esto, is_quotation falta, name se toma
-        # como _('New') y sale dispara next_by_code('sale.order') → huecos en serie S.
-        vals = self._add_missing_default_values(dict(vals or {}))
-        self._quoter_prepare_vals_for_create(vals)
-        record = super().create(vals)
-        record._sync_quoter_area_blocks()
-        record._quoter_autoload_default_products_after_save(trigger_vals=vals)
-        if record.is_quotation:
-            record._quoter_sync_area_discount_total_line()
-        return record
+    def _quoter_guard_quotation_name_before_sale_create(self, vals):
+        """Refuerzo: si ``sale.order``:create ve ``name`` == _('New'), consume ``sale.order``.
+
+        Odoo 15 usa ``model_create_multi`` y vuelve a fusionar defaults; además el orden de
+        herencias puede dejar ``name`` en placeholder pese a ser cotización PGK.
+
+        Repite la lógica de contexto de ``_quoter_prepare_vals_for_create`` para no depender
+        del orden entre ambos si en el futuro se refactoriza.
+        """
+        ctx = self.env.context
+        if ctx.get("quoter_use_cot_sequence"):
+            vals["is_quotation"] = True
+        elif "is_quotation" not in vals and "default_is_quotation" in ctx:
+            vals["is_quotation"] = ctx["default_is_quotation"]
+        if not vals.get("is_quotation"):
+            return
+        mark = _("New")
+        name = vals.get("name")
+        if name and name != mark:
+            return
+        if not vals.get("quotation_sequence"):
+            vals["quotation_sequence"] = (
+                self.env["ir.sequence"].next_by_code("quoter.quotation") or "/"
+            )
+        vals["name"] = vals["quotation_sequence"]
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        # Normalizar como BaseModel (dict único → lista de un elemento).
+        if isinstance(vals_list, dict):
+            vals_list = [vals_list]
+        for vals in vals_list:
+            self._check_quoter_responsibles_write_access(vals)
+            merged = self._add_missing_default_values(dict(vals or {}))
+            vals.clear()
+            vals.update(merged)
+            self._quoter_prepare_vals_for_create(vals)
+            self._quoter_guard_quotation_name_before_sale_create(vals)
+        records = super().create(vals_list)
+        for order, vals in zip(records, vals_list):
+            order._sync_quoter_area_blocks()
+            order._quoter_autoload_default_products_after_save(trigger_vals=vals)
+            if order.is_quotation:
+                order._quoter_sync_area_discount_total_line()
+        return records
 
     def write(self, vals):
+        self._check_quoter_responsibles_write_access(vals)
         if vals is not None and self.env.context.get("quoter_use_cot_sequence"):
             vals = dict(vals)
             vals["is_quotation"] = True
@@ -941,6 +1202,11 @@ class SaleOrder(models.Model):
                 "quoter_slot_3_global_discount",
                 "quoter_slot_4_global_discount",
                 "quoter_slot_5_global_discount",
+                "quoter_slot_1_global_surcharge",
+                "quoter_slot_2_global_surcharge",
+                "quoter_slot_3_global_surcharge",
+                "quoter_slot_4_global_surcharge",
+                "quoter_slot_5_global_surcharge",
             }
             if any(k in vals for k in discount_keys):
                 for order in self.filtered("is_quotation"):
@@ -1038,7 +1304,7 @@ class SaleOrder(models.Model):
         return self.env.ref("quoter.product_quoter_area_discount_sum", raise_if_not_found=False)
 
     def _quoter_sync_area_discount_total_line(self):
-        """Sincroniza una sola línea contable con el total Descuento/Recargo de áreas."""
+        """Sincroniza una sola línea contable con el neto Descuento/Recargo de áreas."""
         self.ensure_one()
         if not self.is_quotation:
             return
@@ -1047,9 +1313,14 @@ class SaleOrder(models.Model):
             return
         line_model = self.env["sale.order.line"]
         discount_lines = self.order_line.filtered("quoter_is_area_discount_total_line")
-        total_discount = sum(self.quoter_area_block_ids.mapped("global_discount_amount") or [0.0])
-        # Convención: descuento positivo baja el total; recargo negativo sube el total.
-        line_amount = -float(total_discount or 0.0)
+        total_discount = 0.0
+        total_surcharge = 0.0
+        for block in self.quoter_area_block_ids:
+            disc, surcharge = self._quoter_block_adjustment_amounts(block)
+            total_discount += disc
+            total_surcharge += surcharge
+        # Neto: descuento resta, recargo suma.
+        line_amount = float(total_surcharge or 0.0) - float(total_discount or 0.0)
         rounding = self.currency_id.rounding or 0.01
         if float_is_zero(line_amount, precision_rounding=rounding):
             if discount_lines:

@@ -50,11 +50,16 @@ class QuoterSaleOrderArea(models.Model):
         readonly=True,
     )
     global_discount_amount = fields.Monetary(
-        string="Descuento/Recargo (área)",
+        string="Descuento (área)",
         currency_field="currency_id",
         default=0.0,
-        help="Monto libre (positivo o negativo) aplicado al subtotal del área en el resumen del cotizador. "
-        "No modifica automáticamente el total estándar del pedido hasta confirmación.",
+        help="Monto de descuento aplicado al subtotal del área en el resumen del cotizador.",
+    )
+    global_surcharge_amount = fields.Monetary(
+        string="Recargo (área)",
+        currency_field="currency_id",
+        default=0.0,
+        help="Monto de recargo aplicado al subtotal del área en el resumen del cotizador.",
     )
     area_level_ids = fields.Many2many(
         comodel_name="quoter.complexity.level",
@@ -79,6 +84,14 @@ class QuoterSaleOrderArea(models.Model):
                     _("El nivel debe pertenecer a los niveles configurados en el área «%s».")
                     % rec.area_id.display_name
                 )
+
+    @api.constrains("global_discount_amount", "global_surcharge_amount")
+    def _check_non_negative_adjustments(self):
+        for rec in self:
+            if (rec.global_discount_amount or 0.0) < 0.0:
+                raise ValidationError(_("El descuento del área no puede ser negativo."))
+            if (rec.global_surcharge_amount or 0.0) < 0.0:
+                raise ValidationError(_("El recargo del área no puede ser negativo."))
 
     @api.onchange("area_id")
     def _onchange_area_id_clear_level(self):
@@ -161,7 +174,7 @@ class QuoterSaleOrderArea(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if "global_discount_amount" in vals:
+        if {"global_discount_amount", "global_surcharge_amount"} & set(vals.keys()):
             for rec in self:
                 if rec.order_id and rec.order_id.is_quotation:
                     rec.order_id._quoter_sync_area_discount_total_line()

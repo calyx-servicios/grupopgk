@@ -10,6 +10,7 @@ from . import quoter_product_level_range
 from . import quoter_range_rate_product
 from . import sale_order
 from . import sale_order_line
+from . import quoter_adjustment_note_wizard
 from . import sale_order_line_range_hour
 from . import quoter_sale_order_area
 # from . import quoter_service_config

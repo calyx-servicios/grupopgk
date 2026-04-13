@@ -87,23 +87,17 @@ class QuoterServiceLine(models.Model):
         help="Marca este producto como opción predeterminada para usar en ventas.",
     )
 
-    quoter_active = fields.Boolean(
-        string="Activa",
-        compute="_compute_quoter_active",
-        store=True,
-        help="True cuando nombre, nivel y etiqueta están completos.",
+    manual_load = fields.Boolean(
+        string="Carga manual",
+        default=False,
+        help="Indica que las horas de esta línea se cargan manualmente (p. ej. en pedido). "
+        "La aplicación en sale.order se puede enlazar después; conceptualmente similar a rangos unificados.",
     )
 
     range_hour_ids = fields.One2many(
         comodel_name="quoter.service.line.range.hour",
         inverse_name="line_id",
         string="Horas por rango del área",
-    )
-
-    total_hours = fields.Float(
-        string="Horas totales",
-        compute="_compute_total_hours",
-        store=True,
     )
 
     product_id = fields.Many2one(
@@ -118,20 +112,6 @@ class QuoterServiceLine(models.Model):
         readonly=True,
         copy=False,
     )
-
-    @api.depends("range_hour_ids", "range_hour_ids.hours")
-    def _compute_total_hours(self):
-        for line in self:
-            line.total_hours = sum(line.range_hour_ids.mapped("hours"))
-
-    @api.depends("name", "separator_tag_id")
-    def _compute_quoter_active(self):
-        for line in self:
-            line.quoter_active = bool(
-                line.name
-                and line.name.strip()
-                and line.separator_tag_id
-            )
 
     def _sync_range_hour_lines(self):
         """Filas de horas alineadas con los rangos definidos en el área."""
@@ -164,7 +144,7 @@ class QuoterServiceLine(models.Model):
             area = line.area_id
             if not tmpl or not area:
                 continue
-            levels = area.complexity_level_ids
+            levels = area._complexity_levels_ordered()
             if not levels:
                 continue
             existing = LevelRange.search(

@@ -1,7 +1,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0.html)
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class SaleOrderLine(models.Model):
@@ -154,7 +154,7 @@ class SaleOrderLine(models.Model):
             if not plr:
                 continue
             line._quoter_sync_range_hours()
-            for tmpl_row in plr.range_hour_ids:
+            for tmpl_row in plr.output_line_ids:
                 ar = tmpl_row.area_range_id
                 h = float(tmpl_row.hours)
                 row = line.quoter_range_hour_ids.filtered(
@@ -522,7 +522,7 @@ class SaleOrderLine(models.Model):
                 return candidate
         return seq
 
-    def action_quoter_add_adjustment_line(self):
+    def _quoter_validate_adjustment_create_permissions(self):
         self.ensure_one()
         if self.quoter_is_adjustment_line:
             raise ValidationError(_("Solo se pueden crear ajustes desde una línea base."))
@@ -532,7 +532,23 @@ class SaleOrderLine(models.Model):
             raise ValidationError(_("La línea base debe tener un producto para crear el ajuste."))
         if self.quoter_adjustment_child_line_ids:
             raise ValidationError(_("Esta línea ya tiene un ajuste creado."))
+        if not self.order_id.quoter_manager_id:
+            raise ValidationError(
+                _("Defina primero un Gerente responsable en la cotización para crear líneas de ajuste.")
+            )
+        if not self.env.user.has_group("quoter.group_quoter_manager"):
+            raise AccessError(_("Solo usuarios del grupo Quoter - Gerente pueden crear líneas de ajuste."))
+        if self.order_id.quoter_manager_id != self.env.user:
+            raise AccessError(
+                _("Solo el gerente asignado en la cotización puede crear líneas de ajuste.")
+            )
 
+    def _quoter_create_adjustment_line(self, note):
+        self.ensure_one()
+        self._quoter_validate_adjustment_create_permissions()
+        note = (note or "").strip()
+        if not note:
+            raise ValidationError(_("La observación es obligatoria en líneas de ajuste."))
         base_seq = self._quoter_ensure_odd_sequence_for_adjustment_parent()
         self._quoter_shift_sequences_after(base_seq)
         adj_seq = int(self.sequence) + 1
@@ -549,9 +565,23 @@ class SaleOrderLine(models.Model):
                 "quoter_tab_area_id": self.quoter_tab_area_id.id,
                 "quoter_is_adjustment_line": True,
                 "quoter_adjustment_parent_line_id": self.id,
-                "quoter_adjustment_note": _("Completar justificación del ajuste"),
+                "quoter_adjustment_note": note,
             }
         )
         new_line._quoter_sync_range_hours()
         new_line._quoter_onchange_compute_price_from_ranges()
         return True
+
+    def action_quoter_add_adjustment_line(self):
+        self.ensure_one()
+        self._quoter_validate_adjustment_create_permissions()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Agregar ajuste"),
+            "res_model": "quoter.adjustment.note.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_sale_line_id": self.id,
+            },
+        }

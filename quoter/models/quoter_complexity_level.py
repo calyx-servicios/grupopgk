@@ -6,7 +6,13 @@ from odoo import fields, models
 class QuoterComplexityLevel(models.Model):
     _name = "quoter.complexity.level"
     _description = "Nivel de complejidad (bajo, medio, alto, etc.)"
-    _order = "name"
+    _order = "sequence, id, name"
+
+    sequence = fields.Integer(
+        string="Secuencia",
+        default=10,
+        help="Orden creciente de menor a mayor complejidad (ej. bajo=10, medio=20, alto=30).",
+    )
 
     name = fields.Char(
         string="Nombre",

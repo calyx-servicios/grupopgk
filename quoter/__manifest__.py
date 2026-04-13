@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Sales",
-    "version": "15.0.6.0.87",
+    "version": "15.0.6.2.31",
     "development_status": "Beta",
     "application": False,
     "installable": True,
@@ -18,12 +18,14 @@
         "sale",
         "sale_management",
         "product",
+        # Después de sale_order_type: el create del quoter corre antes que el de OCA
+        # y deja name=Q antes de next_by_id (evita consumir la secuencia del tipo en vano).
+        "sale_order_type",
     ],
     "data": [
         "security/quoter_groups.xml",
         "security/ir.model.access.csv",
         "security/quoter_security_rules.xml",
-        "data/quoter_cleanup.xml",
         "data/sequence_data.xml",
         "data/pricelist_data.xml",
         "data/quoter_product_attribute.xml",
@@ -31,14 +33,17 @@
         "views/quoter_product_level_range_views.xml",
         "views/quoter_product_views.xml",
         "views/quoter_product_menu_views.xml",
+        "views/quoter_adjustment_note_wizard_views.xml",
         "views/sale_order_views.xml",
         "views/quoter_menu.xml",
         "views/quoter_settings_views.xml",
     ],
     "assets": {
         "web.assets_backend": [
+            "quoter/static/src/scss/quoter_matrix.scss",
             "quoter/static/src/js/quoter_tab_labels.js",
             "quoter/static/src/js/quoter_range_columns.js",
+            "quoter/static/src/js/quoter_area_hours_matrix.js",
         ],
     },
 }

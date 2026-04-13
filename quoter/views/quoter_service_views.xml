@@ -19,6 +19,15 @@
         <field name="model">quoter.professional.area</field>
         <field name="arch" type="xml">
             <form string="Área profesional">
+                <field name="quoter_config_edit_mode" invisible="1"/>
+                <header>
+                    <button name="action_quoter_area_unlock_config" string="Abrir editor de tabla" type="object"
+                            class="oe_highlight" groups="quoter.group_quoter_manager"
+                            attrs="{'invisible': ['|', ('id', '=', False), ('quoter_config_edit_mode', '=', True)]}"/>
+                    <button name="action_quoter_area_lock_config" string="Cerrar editor de tabla" type="object"
+                            class="oe_highlight" groups="quoter.group_quoter_manager"
+                            attrs="{'invisible': ['|', ('id', '=', False), ('quoter_config_edit_mode', '=', False)]}"/>
+                </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_open_quoter_lines" type="object" class="oe_stat_button" icon="fa-list">
@@ -37,6 +46,7 @@
                                    required="1"/>
                         </h1>
                     </div>
+                    <field name="id" invisible="1"/>
                     <group>
                         <group>
                             <field name="sequence"/>
@@ -50,9 +60,22 @@
                         <group>
                             <field name="active"/>
                             <field name="quoter_config_complete" invisible="1"/>
-                            <field name="cerrado" groups="base.group_system"
+                            <field name="cerrado" invisible="1"/>
+                            <field name="cerrado" groups="quoter.group_quoter_manager"
                                    attrs="{'invisible': [('quoter_config_complete', '=', False)]}"/>
                         </group>
+                    </group>
+                    <group string="Política de horas (matrices)">
+                        <field name="hour_matrix_mode" widget="radio"
+                               attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                        <field name="table_a_layout"
+                               attrs="{'invisible': [('hour_matrix_mode', '!=', 'combined')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                        <field name="table_b_kind"
+                               attrs="{'invisible': [('hour_matrix_mode', '!=', 'combined')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                        <p class="text-muted" colspan="2">
+                            Regular: horas finales por producto y nivel. Combinada: tabla A × tabla B por rango;
+                            el detalle se edita en «Horas por nivel» con el botón de tablas.
+                        </p>
                     </group>
                     <group>
                         <group string="Niveles de complejidad">
@@ -73,18 +96,19 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Líneas cotizador" name="area_tab_lines">
+                        <page string="Líneas cotizador" name="area_tab_lines"
+                              attrs="{'invisible': [('id', '=', False)]}">
                             <field name="line_ids"
                                    context="{'default_area_id': active_id}"
+                                   attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}"
                                    mode="tree,form">
                                 <tree string="Líneas" editable="bottom">
                                     <field name="sequence" widget="handle"/>
                                     <field name="separator_tag_id" optional="show"/>
                                     <field name="name"/>
                                     <field name="is_default_product" optional="show"/>
+                                    <field name="manual_load" optional="show"/>
                                     <field name="product_tmpl_id" readonly="1" optional="show"/>
-                                    <field name="quoter_active" readonly="1"/>
-                                    <field name="total_hours" readonly="1"/>
                                     <button name="action_open_level_ranges"
                                             type="object"
                                             string=" "
@@ -99,9 +123,8 @@
                                             <field name="name"/>
                                             <field name="separator_tag_id"/>
                                             <field name="is_default_product"/>
+                                            <field name="manual_load"/>
                                             <field name="product_tmpl_id" readonly="1"/>
-                                            <field name="quoter_active" readonly="1"/>
-                                            <field name="total_hours" readonly="1"/>
                                         </group>
                                     </group>
                                     <group string="Referencia (no alimenta el cotizador)">
@@ -127,10 +150,18 @@
                             </field>
                         </page>
                     </notebook>
+                    <separator string="Matriz de horas resultado (cotizador)"
+                               attrs="{'invisible': [('id', '=', False)]}"/>
+                    <div class="o_quoter_area_hours_matrix_root"
+                         attrs="{'invisible': [('id', '=', False)]}"/>
+                    <p class="text-muted" attrs="{'invisible': [('id', '!=', False)]}">
+                        Guarde el área para ver la matriz de horas por producto, nivel y rango.
+                    </p>
                     <p class="text-muted">
                         Si asigna un grupo, solo los usuarios con ese grupo verán esta área,
-                        sus líneas del cotizador y productos asociados. Solo administradores Odoo pueden modificar
-                        el indicador «Cerrado».
+                        sus líneas del cotizador y productos asociados. «Cerrado» solo indica que el área puede
+                        usarse en cotizaciones; la edición de matrices y líneas se hace con «Abrir editor de tabla»
+                        y se cierra con «Cerrar editor de tabla» (recalcula en modo combinado).
                     </p>
                 </sheet>
             </form>
@@ -216,7 +247,8 @@
         <field name="name">quoter.complexity.level.tree</field>
         <field name="model">quoter.complexity.level</field>
         <field name="arch" type="xml">
-            <tree string="Niveles de complejidad">
+            <tree string="Niveles de complejidad" default_order="sequence,name">
+                <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="color" widget="color_picker"/>
             </tree>
@@ -230,6 +262,7 @@
             <form string="Nivel de complejidad">
                 <sheet>
                     <group>
+                        <field name="sequence"/>
                         <field name="name"/>
                         <field name="color" widget="color_picker"/>
                     </group>
@@ -257,9 +290,8 @@
                 <field name="name"/>
                 <field name="separator_tag_id" optional="hide"/>
                 <field name="is_default_product" optional="show"/>
+                <field name="manual_load" optional="show"/>
                 <field name="product_tmpl_id" optional="show"/>
-                <field name="quoter_active"/>
-                <field name="total_hours"/>
             </tree>
         </field>
     </record>
@@ -275,9 +307,8 @@
                         <field name="name"/>
                         <field name="separator_tag_id"/>
                         <field name="is_default_product"/>
+                        <field name="manual_load"/>
                         <field name="product_tmpl_id" readonly="1"/>
-                        <field name="quoter_active" readonly="1"/>
-                        <field name="total_hours" readonly="1"/>
                     </group>
                     <group string="Referencia interna (opcional)">
                         <field name="range_hour_ids" nolabel="1">
