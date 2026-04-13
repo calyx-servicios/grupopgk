@@ -3,6 +3,7 @@ odoo.define("quoter.range_columns", function (require) {
 
     const rpc = require("web.rpc");
     const FormRenderer = require("web.FormRenderer");
+    const ListRenderer = require("web.ListRenderer");
 
     const LOG = "[quoter.range.columns]";
 
@@ -67,19 +68,30 @@ odoo.define("quoter.range_columns", function (require) {
         }
     }
 
-    function applyHeaders($root, names) {
+    /**
+     * Renombra cabeceras de columnas slot_N_hours o quoter_range_N_hours.
+     * @param {jQuery} $root contenedor (form tab o lista)
+     * @param {string[]} names nombres de rango del área (hasta 4)
+     * @param {string} fieldPrefix "slot_" (lista quoter.product.level.range) o "quoter_range_" (tabs pedido)
+     */
+    function applySlotHourColumnTitles($root, names, fieldPrefix) {
         const fallback = ["Rango 1", "Rango 2", "Rango 3", "Rango 4"];
+        const prefix = fieldPrefix || "quoter_range_";
         for (let i = 0; i < 4; i++) {
             const label = names[i] || fallback[i];
-            const fieldName = "quoter_range_" + (i + 1) + "_hours";
-            $root.find('th[data-name="' + fieldName + '"] .o_column_title, th[data-name="' + fieldName + '"]')
-                .first()
-                .text(label);
+            const fieldName = prefix + (i + 1) + "_hours";
+            const $th = $root.find('th[data-name="' + fieldName + '"]');
+            const $title = $th.find(".o_column_title").first();
+            if ($title.length) {
+                $title.text(label);
+            } else if ($th.length) {
+                $th.first().text(label);
+            }
         }
     }
 
     async function updateAllSlotRangeHeaders(renderer) {
-        if (!renderer || renderer.state.model !== "sale.order") {
+        if (!renderer || !renderer.state || renderer.state.model !== "sale.order") {
             return;
         }
         const data = renderer.state.data || {};
@@ -91,13 +103,48 @@ odoo.define("quoter.range_columns", function (require) {
             const areaId = idFromM2o(data["quoter_slot_" + slot + "_area_id"]);
             const ranges = await fetchAreaRanges(areaId);
             const names = ranges.map((r) => r.name);
-            // Buscar el contenido del tab del slot (tiene marker).
             const $marker = $form.find('.o_quoter_slot_tab_marker[data-quoter-slot="' + slot + '"]').first();
             if (!$marker.length) continue;
             const $pane = $marker.closest(".tab-pane");
             if (!$pane.length) continue;
-            applyHeaders($pane, names);
+            applySlotHourColumnTitles($pane, names, "quoter_range_");
         }
+    }
+
+    function getFirstAreaIdFromLevelRangeList(renderer) {
+        if (!renderer || !renderer.state || renderer.state.model !== "quoter.product.level.range") {
+            return null;
+        }
+        const records = renderer.state.data || [];
+        for (let i = 0; i < records.length; i++) {
+            const rec = records[i];
+            if (!rec || !rec.data) {
+                continue;
+            }
+            const aid = idFromM2o(rec.data.area_id);
+            if (aid) {
+                return aid;
+            }
+        }
+        return null;
+    }
+
+    async function updateLevelRangeListSlotHeaders(renderer) {
+        if (!renderer || !renderer.el || renderer.isGrouped) {
+            return;
+        }
+        if (!renderer.state || renderer.state.model !== "quoter.product.level.range") {
+            return;
+        }
+        const areaId = getFirstAreaIdFromLevelRangeList(renderer);
+        if (!areaId) {
+            return;
+        }
+        const ranges = await fetchAreaRanges(areaId);
+        const names = ranges.map(function (r) {
+            return r.name;
+        });
+        applySlotHourColumnTitles($(renderer.el), names, "slot_");
     }
 
     FormRenderer.include({
@@ -116,5 +163,21 @@ odoo.define("quoter.range_columns", function (require) {
             return res;
         },
     });
-});
 
+    ListRenderer.include({
+        _renderView: function () {
+            const res = this._super.apply(this, arguments);
+            const self = this;
+            function run() {
+                updateLevelRangeListSlotHeaders(self);
+            }
+            if (res && typeof res.then === "function") {
+                return res.then(function () {
+                    run();
+                });
+            }
+            run();
+            return res;
+        },
+    });
+});

@@ -23,7 +23,7 @@ odoo.define("quoter.tab_labels", function (require) {
     }
 
     function updateLabels(renderer) {
-        if (!renderer || renderer.state.model !== "sale.order") {
+        if (!renderer || !renderer.state || renderer.state.model !== "sale.order") {
             return;
         }
         const data = renderer.state.data || {};

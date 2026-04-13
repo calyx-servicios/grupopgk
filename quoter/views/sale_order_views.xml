@@ -34,12 +34,15 @@
                        options="{'no_create': True}"/>
                 <field name="quoter_user_can_edit_manager" invisible="1"/>
                 <field name="quoter_user_can_edit_partner" invisible="1"/>
+                <field name="quoter_user_is_assigned_manager" invisible="1"/>
+                <field name="quoter_manager_candidate_user_ids" invisible="1"/>
+                <field name="quoter_partner_candidate_user_ids" invisible="1"/>
                 <field name="quoter_manager_id"
                        attrs="{'invisible': [('is_quotation', '=', False)], 'readonly': [('quoter_user_can_edit_manager', '=', False)]}"
-                       domain="[('groups_id', 'in', [%(quoter.group_quoter_manager)d])]"/>
+                       domain="[('id', 'in', quoter_manager_candidate_user_ids)]"/>
                 <field name="quoter_partner_id"
                        attrs="{'invisible': [('is_quotation', '=', False)], 'readonly': [('quoter_user_can_edit_partner', '=', False)]}"
-                       domain="[('groups_id', 'in', [%(quoter.group_quoter_partner)d])]"/>
+                       domain="[('id', 'in', quoter_partner_candidate_user_ids)]"/>
             </xpath>
 
             <!-- Preguntas estratégicas: antes de pestañas -->
@@ -92,7 +95,11 @@
                                    options="{'no_create': True}"
                                    attrs="{'readonly': [('quoter_slot_1_editable', '=', False)]}"/>
                             <field name="quoter_slot_1_global_discount"
-                                   string="Descuento/Recargo"
+                                   string="Descuento"
+                                   groups="quoter.group_quoter_manager"
+                                   attrs="{'readonly': [('quoter_slot_1_editable', '=', False)], 'invisible': [('quoter_slot_1_block_level_id', '=', False)]}"/>
+                            <field name="quoter_slot_1_global_surcharge"
+                                   string="Recargo"
                                    groups="quoter.group_quoter_manager"
                                    attrs="{'readonly': [('quoter_slot_1_editable', '=', False)], 'invisible': [('quoter_slot_1_block_level_id', '=', False)]}"/>
                         </group>
@@ -134,7 +141,7 @@
                                     icon="fa-wrench"
                                     string="Ajustar"
                                     groups="quoter.group_quoter_manager"
-                                    attrs="{'invisible': ['|', '|', ('quoter_is_adjustment_line', '=', True), ('quoter_has_adjustment_line', '=', True), ('parent.quoter_slot_1_lines_frozen', '=', True)]}"/>
+                                    attrs="{'invisible': ['|', '|', '|', ('quoter_is_adjustment_line', '=', True), ('quoter_has_adjustment_line', '=', True), ('parent.quoter_slot_1_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
                             <field name="quoter_adjustment_status"
                                    readonly="1"
                                    groups="quoter.group_quoter_manager"
@@ -161,6 +168,7 @@
                                    optional="show"/>
                             <field name="quoter_adjustment_note"
                                    optional="show"
+                                   placeholder="Completar justificación del ajuste..."
                                    groups="quoter.group_quoter_manager"
                                    attrs="{'readonly': [('parent.quoter_slot_1_lines_frozen', '=', True)], 'required': [('quoter_is_adjustment_line', '=', True)]}"/>
                             <field name="price_subtotal" readonly="1"/>
@@ -178,10 +186,15 @@
                                groups="quoter.group_quoter_manager"
                                attrs="{'invisible': [('quoter_slot_1_adjustment_untaxed', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_1_discount_line" string="Descuento/Recargo" class="o_form_label"
+                        <label for="quoter_slot_1_discount_line" string="Descuento" class="o_form_label"
                                attrs="{'invisible': [('quoter_slot_1_discount_line', '=', 0)]}"/>
                         <field name="quoter_slot_1_discount_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_1_discount_line', '=', 0)]}"/>
+                        <newline/>
+                        <label for="quoter_slot_1_surcharge_line" string="Recargo" class="o_form_label"
+                               attrs="{'invisible': [('quoter_slot_1_surcharge_line', '=', 0)]}"/>
+                        <field name="quoter_slot_1_surcharge_line" nolabel="1" widget="monetary" readonly="1"
+                               attrs="{'invisible': [('quoter_slot_1_surcharge_line', '=', 0)]}"/>
                         <newline/>
                         <label for="quoter_slot_1_total_untaxed" string="Total" class="o_form_label"/>
                         <field name="quoter_slot_1_total_untaxed" nolabel="1" widget="monetary" readonly="1"
@@ -211,7 +224,11 @@
                                    options="{'no_create': True}"
                                    attrs="{'readonly': [('quoter_slot_2_editable', '=', False)]}"/>
                             <field name="quoter_slot_2_global_discount"
-                                   string="Descuento/Recargo"
+                                   string="Descuento"
+                                   groups="quoter.group_quoter_manager"
+                                   attrs="{'readonly': [('quoter_slot_2_editable', '=', False)], 'invisible': [('quoter_slot_2_block_level_id', '=', False)]}"/>
+                            <field name="quoter_slot_2_global_surcharge"
+                                   string="Recargo"
                                    groups="quoter.group_quoter_manager"
                                    attrs="{'readonly': [('quoter_slot_2_editable', '=', False)], 'invisible': [('quoter_slot_2_block_level_id', '=', False)]}"/>
                         </group>
@@ -253,7 +270,7 @@
                                     icon="fa-wrench"
                                     string="Ajustar"
                                     groups="quoter.group_quoter_manager"
-                                    attrs="{'invisible': ['|', '|', ('quoter_is_adjustment_line', '=', True), ('quoter_has_adjustment_line', '=', True), ('parent.quoter_slot_2_lines_frozen', '=', True)]}"/>
+                                    attrs="{'invisible': ['|', '|', '|', ('quoter_is_adjustment_line', '=', True), ('quoter_has_adjustment_line', '=', True), ('parent.quoter_slot_2_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
                             <field name="quoter_adjustment_status"
                                    readonly="1"
                                    groups="quoter.group_quoter_manager"
@@ -280,6 +297,7 @@
                                    optional="show"/>
                             <field name="quoter_adjustment_note"
                                    optional="show"
+                                   placeholder="Completar justificación del ajuste..."
                                    groups="quoter.group_quoter_manager"
                                    attrs="{'readonly': [('parent.quoter_slot_2_lines_frozen', '=', True)], 'required': [('quoter_is_adjustment_line', '=', True)]}"/>
                             <field name="price_subtotal" readonly="1"/>
@@ -297,10 +315,15 @@
                                groups="quoter.group_quoter_manager"
                                attrs="{'invisible': [('quoter_slot_2_adjustment_untaxed', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_2_discount_line" string="Descuento/Recargo" class="o_form_label"
+                        <label for="quoter_slot_2_discount_line" string="Descuento" class="o_form_label"
                                attrs="{'invisible': [('quoter_slot_2_discount_line', '=', 0)]}"/>
                         <field name="quoter_slot_2_discount_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_2_discount_line', '=', 0)]}"/>
+                        <newline/>
+                        <label for="quoter_slot_2_surcharge_line" string="Recargo" class="o_form_label"
+                               attrs="{'invisible': [('quoter_slot_2_surcharge_line', '=', 0)]}"/>
+                        <field name="quoter_slot_2_surcharge_line" nolabel="1" widget="monetary" readonly="1"
+                               attrs="{'invisible': [('quoter_slot_2_surcharge_line', '=', 0)]}"/>
                         <newline/>
                         <label for="quoter_slot_2_total_untaxed" string="Total" class="o_form_label"/>
                         <field name="quoter_slot_2_total_untaxed" nolabel="1" widget="monetary" readonly="1"
@@ -330,7 +353,11 @@
                                    options="{'no_create': True}"
                                    attrs="{'readonly': [('quoter_slot_3_editable', '=', False)]}"/>
                             <field name="quoter_slot_3_global_discount"
-                                   string="Descuento/Recargo"
+                                   string="Descuento"
+                                   groups="quoter.group_quoter_manager"
+                                   attrs="{'readonly': [('quoter_slot_3_editable', '=', False)], 'invisible': [('quoter_slot_3_block_level_id', '=', False)]}"/>
+                            <field name="quoter_slot_3_global_surcharge"
+                                   string="Recargo"
                                    groups="quoter.group_quoter_manager"
                                    attrs="{'readonly': [('quoter_slot_3_editable', '=', False)], 'invisible': [('quoter_slot_3_block_level_id', '=', False)]}"/>
                         </group>
@@ -372,7 +399,7 @@
                                     icon="fa-wrench"
                                     string="Ajustar"
                                     groups="quoter.group_quoter_manager"
-                                    attrs="{'invisible': ['|', '|', ('quoter_is_adjustment_line', '=', True), ('quoter_has_adjustment_line', '=', True), ('parent.quoter_slot_3_lines_frozen', '=', True)]}"/>
+                                    attrs="{'invisible': ['|', '|', '|', ('quoter_is_adjustment_line', '=', True), ('quoter_has_adjustment_line', '=', True), ('parent.quoter_slot_3_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
                             <field name="quoter_adjustment_status"
                                    readonly="1"
                                    groups="quoter.group_quoter_manager"
@@ -399,6 +426,7 @@
                                    optional="show"/>
                             <field name="quoter_adjustment_note"
                                    optional="show"
+                                   placeholder="Completar justificación del ajuste..."
                                    groups="quoter.group_quoter_manager"
                                    attrs="{'readonly': [('parent.quoter_slot_3_lines_frozen', '=', True)], 'required': [('quoter_is_adjustment_line', '=', True)]}"/>
                             <field name="price_subtotal" readonly="1"/>
@@ -416,10 +444,15 @@
                                groups="quoter.group_quoter_manager"
                                attrs="{'invisible': [('quoter_slot_3_adjustment_untaxed', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_3_discount_line" string="Descuento/Recargo" class="o_form_label"
+                        <label for="quoter_slot_3_discount_line" string="Descuento" class="o_form_label"
                                attrs="{'invisible': [('quoter_slot_3_discount_line', '=', 0)]}"/>
                         <field name="quoter_slot_3_discount_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_3_discount_line', '=', 0)]}"/>
+                        <newline/>
+                        <label for="quoter_slot_3_surcharge_line" string="Recargo" class="o_form_label"
+                               attrs="{'invisible': [('quoter_slot_3_surcharge_line', '=', 0)]}"/>
+                        <field name="quoter_slot_3_surcharge_line" nolabel="1" widget="monetary" readonly="1"
+                               attrs="{'invisible': [('quoter_slot_3_surcharge_line', '=', 0)]}"/>
                         <newline/>
                         <label for="quoter_slot_3_total_untaxed" string="Total" class="o_form_label"/>
                         <field name="quoter_slot_3_total_untaxed" nolabel="1" widget="monetary" readonly="1"
@@ -449,7 +482,11 @@
                                    options="{'no_create': True}"
                                    attrs="{'readonly': [('quoter_slot_4_editable', '=', False)]}"/>
                             <field name="quoter_slot_4_global_discount"
-                                   string="Descuento/Recargo"
+                                   string="Descuento"
+                                   groups="quoter.group_quoter_manager"
+                                   attrs="{'readonly': [('quoter_slot_4_editable', '=', False)], 'invisible': [('quoter_slot_4_block_level_id', '=', False)]}"/>
+                            <field name="quoter_slot_4_global_surcharge"
+                                   string="Recargo"
                                    groups="quoter.group_quoter_manager"
                                    attrs="{'readonly': [('quoter_slot_4_editable', '=', False)], 'invisible': [('quoter_slot_4_block_level_id', '=', False)]}"/>
                         </group>
@@ -491,7 +528,7 @@
                                     icon="fa-wrench"
                                     string="Ajustar"
                                     groups="quoter.group_quoter_manager"
-                                    attrs="{'invisible': ['|', '|', ('quoter_is_adjustment_line', '=', True), ('quoter_has_adjustment_line', '=', True), ('parent.quoter_slot_4_lines_frozen', '=', True)]}"/>
+                                    attrs="{'invisible': ['|', '|', '|', ('quoter_is_adjustment_line', '=', True), ('quoter_has_adjustment_line', '=', True), ('parent.quoter_slot_4_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
                             <field name="quoter_adjustment_status"
                                    readonly="1"
                                    groups="quoter.group_quoter_manager"
@@ -518,6 +555,7 @@
                                    optional="show"/>
                             <field name="quoter_adjustment_note"
                                    optional="show"
+                                   placeholder="Completar justificación del ajuste..."
                                    groups="quoter.group_quoter_manager"
                                    attrs="{'readonly': [('parent.quoter_slot_4_lines_frozen', '=', True)], 'required': [('quoter_is_adjustment_line', '=', True)]}"/>
                             <field name="price_subtotal" readonly="1"/>
@@ -535,10 +573,15 @@
                                groups="quoter.group_quoter_manager"
                                attrs="{'invisible': [('quoter_slot_4_adjustment_untaxed', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_4_discount_line" string="Descuento/Recargo" class="o_form_label"
+                        <label for="quoter_slot_4_discount_line" string="Descuento" class="o_form_label"
                                attrs="{'invisible': [('quoter_slot_4_discount_line', '=', 0)]}"/>
                         <field name="quoter_slot_4_discount_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_4_discount_line', '=', 0)]}"/>
+                        <newline/>
+                        <label for="quoter_slot_4_surcharge_line" string="Recargo" class="o_form_label"
+                               attrs="{'invisible': [('quoter_slot_4_surcharge_line', '=', 0)]}"/>
+                        <field name="quoter_slot_4_surcharge_line" nolabel="1" widget="monetary" readonly="1"
+                               attrs="{'invisible': [('quoter_slot_4_surcharge_line', '=', 0)]}"/>
                         <newline/>
                         <label for="quoter_slot_4_total_untaxed" string="Total" class="o_form_label"/>
                         <field name="quoter_slot_4_total_untaxed" nolabel="1" widget="monetary" readonly="1"
@@ -568,7 +611,11 @@
                                    options="{'no_create': True}"
                                    attrs="{'readonly': [('quoter_slot_5_editable', '=', False)]}"/>
                             <field name="quoter_slot_5_global_discount"
-                                   string="Descuento/Recargo"
+                                   string="Descuento"
+                                   groups="quoter.group_quoter_manager"
+                                   attrs="{'readonly': [('quoter_slot_5_editable', '=', False)], 'invisible': [('quoter_slot_5_block_level_id', '=', False)]}"/>
+                            <field name="quoter_slot_5_global_surcharge"
+                                   string="Recargo"
                                    groups="quoter.group_quoter_manager"
                                    attrs="{'readonly': [('quoter_slot_5_editable', '=', False)], 'invisible': [('quoter_slot_5_block_level_id', '=', False)]}"/>
                         </group>
@@ -610,7 +657,7 @@
                                     icon="fa-wrench"
                                     string="Ajustar"
                                     groups="quoter.group_quoter_manager"
-                                    attrs="{'invisible': ['|', '|', ('quoter_is_adjustment_line', '=', True), ('quoter_has_adjustment_line', '=', True), ('parent.quoter_slot_5_lines_frozen', '=', True)]}"/>
+                                    attrs="{'invisible': ['|', '|', '|', ('quoter_is_adjustment_line', '=', True), ('quoter_has_adjustment_line', '=', True), ('parent.quoter_slot_5_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
                             <field name="quoter_adjustment_status"
                                    readonly="1"
                                    groups="quoter.group_quoter_manager"
@@ -637,6 +684,7 @@
                                    optional="show"/>
                             <field name="quoter_adjustment_note"
                                    optional="show"
+                                   placeholder="Completar justificación del ajuste..."
                                    groups="quoter.group_quoter_manager"
                                    attrs="{'readonly': [('parent.quoter_slot_5_lines_frozen', '=', True)], 'required': [('quoter_is_adjustment_line', '=', True)]}"/>
                             <field name="price_subtotal" readonly="1"/>
@@ -654,10 +702,15 @@
                                groups="quoter.group_quoter_manager"
                                attrs="{'invisible': [('quoter_slot_5_adjustment_untaxed', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_5_discount_line" string="Descuento/Recargo" class="o_form_label"
+                        <label for="quoter_slot_5_discount_line" string="Descuento" class="o_form_label"
                                attrs="{'invisible': [('quoter_slot_5_discount_line', '=', 0)]}"/>
                         <field name="quoter_slot_5_discount_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_5_discount_line', '=', 0)]}"/>
+                        <newline/>
+                        <label for="quoter_slot_5_surcharge_line" string="Recargo" class="o_form_label"
+                               attrs="{'invisible': [('quoter_slot_5_surcharge_line', '=', 0)]}"/>
+                        <field name="quoter_slot_5_surcharge_line" nolabel="1" widget="monetary" readonly="1"
+                               attrs="{'invisible': [('quoter_slot_5_surcharge_line', '=', 0)]}"/>
                         <newline/>
                         <label for="quoter_slot_5_total_untaxed" string="Total" class="o_form_label"/>
                         <field name="quoter_slot_5_total_untaxed" nolabel="1" widget="monetary" readonly="1"
