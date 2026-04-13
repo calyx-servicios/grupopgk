@@ -33,11 +33,22 @@ class SubscriptionPackage(models.Model):
         if values:
             invoice.sudo().write(values)
 
-    def _set_next_invoice_date(self, subscription, invoice_date):
-        if invoice_date:
-            subscription.sudo().write({
-                'next_invoice_date': invoice_date + relativedelta(days=30)
-            })
+    def _link_invoice_to_sale_order(self, subscription, invoice):
+        sale_order = subscription.sale_order
+        if not sale_order:
+            return
+        sale_lines = sale_order.order_line.filtered(lambda l: not l.display_type)
+        for line in invoice.invoice_line_ids.filtered(lambda l: not l.display_type and l.product_id):
+            matches = sale_lines.filtered(lambda l: l.product_id.id == line.product_id.id)
+            if matches:
+                line.sudo().write({'sale_line_ids': [(6, 0, matches.ids)]})
+
+    def _sync_subscription_cycle(self, subscription, invoice_date):
+        if not invoice_date:
+            return
+        # next_invoice_date es compute(store=False), por eso avanzamos start_date.
+        subscription.sudo().write({'start_date': invoice_date})
+        subscription._compute_invoice_count()
 
     def _create_and_sync_invoice(self, subscription, today_date):
         before_invoice = self._get_related_invoice(subscription)
@@ -47,13 +58,16 @@ class SubscriptionPackage(models.Model):
         latest_invoice = self._get_related_invoice(subscription)
         if latest_invoice and latest_invoice.id != before_invoice_id:
             self._link_invoice_to_subscription(subscription, latest_invoice)
-            self._set_next_invoice_date(subscription, latest_invoice.invoice_date or today_date)
+            self._link_invoice_to_sale_order(subscription, latest_invoice)
+            self._sync_subscription_cycle(subscription, latest_invoice.invoice_date or today_date)
             return latest_invoice
 
         # Evita avanzar sin actualizar campos si la factura ya existia para el periodo.
         latest_today_invoice = self._get_related_invoice(subscription, today_date=today_date)
         if latest_today_invoice:
-            self._set_next_invoice_date(subscription, latest_today_invoice.invoice_date or today_date)
+            self._link_invoice_to_subscription(subscription, latest_today_invoice)
+            self._link_invoice_to_sale_order(subscription, latest_today_invoice)
+            self._sync_subscription_cycle(subscription, latest_today_invoice.invoice_date or today_date)
             return latest_today_invoice
         return self.env['account.move']
 
@@ -119,7 +133,9 @@ class SubscriptionPackage(models.Model):
                 else:
                     if self._already_invoiced_current_period(pending_subscription, today_date):
                         latest_invoice = self._get_related_invoice(pending_subscription, today_date=today_date)
-                        self._set_next_invoice_date(pending_subscription, latest_invoice.invoice_date or today_date)
+                        self._link_invoice_to_subscription(pending_subscription, latest_invoice)
+                        self._link_invoice_to_sale_order(pending_subscription, latest_invoice)
+                        self._sync_subscription_cycle(pending_subscription, latest_invoice.invoice_date or today_date)
                         continue
                     self._create_and_sync_invoice(pending_subscription, today_date)
 
