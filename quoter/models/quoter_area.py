@@ -65,6 +65,17 @@ class QuoterProfessionalArea(models.Model):
         string="Etiquetas separador",
         help="Etiquetas reutilizables entre áreas; sirven para agrupar y dar color en el cotizador.",
     )
+    separator_visual_mode = fields.Selection(
+        selection=[
+            ("none", "Sin color"),
+            ("dot", "Punto de color"),
+            ("full", "Línea completa con color"),
+        ],
+        string="Visual separadores",
+        default="none",
+        required=True,
+        help="Cómo se muestran los separadores de etiquetas en las líneas del pedido.",
+    )
 
     complexity_level_ids = fields.Many2many(
         comodel_name="quoter.complexity.level",
@@ -213,6 +224,7 @@ class QuoterProfessionalArea(models.Model):
     def write(self, vals):
         policy_fields = ("hour_matrix_mode", "table_a_layout", "table_b_kind")
         snapshots = {rec.id: {f: rec[f] for f in policy_fields} for rec in self}
+        rebuild_separator_sections = "separator_visual_mode" in vals
         res = super().write(vals)
         for rec in self:
             before = snapshots[rec.id]
@@ -229,6 +241,18 @@ class QuoterProfessionalArea(models.Model):
                 area.line_ids._ensure_quoter_product()
                 # Crear configuraciones por nivel para productos existentes del área.
                 area.line_ids._sync_product_level_ranges()
+        if rebuild_separator_sections:
+            SaleLine = self.env["sale.order.line"]
+            orders = self.env["sale.order"].search(
+                [
+                    ("is_quotation", "=", True),
+                    ("order_line.quoter_tab_area_id", "in", self.ids),
+                ]
+            )
+            if orders:
+                SaleLine.with_context(quoter_skip_separator_rebuild=True)._quoter_rebuild_separator_sections_for_orders(
+                    orders
+                )
         return res
 
     def _apply_hour_policy_to_level_ranges(self, before, after):

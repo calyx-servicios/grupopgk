@@ -13,5 +13,6 @@ from . import sale_order_line
 from . import quoter_adjustment_note_wizard
 from . import sale_order_line_range_hour
 from . import quoter_sale_order_area
+from . import res_config_settings
 # from . import quoter_service_config
 # from . import quoter_service_product_line
