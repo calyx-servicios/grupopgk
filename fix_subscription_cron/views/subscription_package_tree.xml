@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_subscription_package_tree_inherit_sale_order" model="ir.ui.view">
+        <field name="name">subscription.package.tree.inherit.sale.order</field>
+        <field name="model">subscription.package</field>
+        <field name="inherit_id" ref="subscription_package.subscription_package_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//tree/field[@name='partner_id']" position="after">
+                <field name="sale_order" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
