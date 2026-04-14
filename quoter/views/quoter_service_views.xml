@@ -87,6 +87,7 @@
                                    placeholder="Defina los niveles (bajo / medio / alto, etc.) para variantes y colores en el pedido…"/>
                         </group>
                         <group string="Etiquetas">
+                            <field name="separator_visual_mode"/>
                             <field name="separator_tag_ids"
                                    widget="many2many_tags"
                                    options="{'color_field': 'color'}"

@@ -49,17 +49,17 @@ class QuoterSaleOrderArea(models.Model):
         string="Moneda",
         readonly=True,
     )
-    global_discount_amount = fields.Monetary(
-        string="Descuento (área)",
-        currency_field="currency_id",
+    global_discount_amount = fields.Float(
+        string="Descuento % (área)",
         default=0.0,
-        help="Monto de descuento aplicado al subtotal del área en el resumen del cotizador.",
+        digits=(16, 4),
+        help="Porcentaje de descuento del socio sobre el subtotal del área (productos + ajustes de línea).",
     )
-    global_surcharge_amount = fields.Monetary(
-        string="Recargo (área)",
-        currency_field="currency_id",
+    global_surcharge_amount = fields.Float(
+        string="Recargo % (área)",
         default=0.0,
-        help="Monto de recargo aplicado al subtotal del área en el resumen del cotizador.",
+        digits=(16, 4),
+        help="Porcentaje de aumento del socio sobre el subtotal del área (productos + ajustes de línea).",
     )
     area_level_ids = fields.Many2many(
         comodel_name="quoter.complexity.level",
@@ -89,9 +89,9 @@ class QuoterSaleOrderArea(models.Model):
     def _check_non_negative_adjustments(self):
         for rec in self:
             if (rec.global_discount_amount or 0.0) < 0.0:
-                raise ValidationError(_("El descuento del área no puede ser negativo."))
+                raise ValidationError(_("El descuento (%) del área no puede ser negativo."))
             if (rec.global_surcharge_amount or 0.0) < 0.0:
-                raise ValidationError(_("El recargo del área no puede ser negativo."))
+                raise ValidationError(_("El recargo (%) del área no puede ser negativo."))
 
     @api.onchange("area_id")
     def _onchange_area_id_clear_level(self):
@@ -173,6 +173,10 @@ class QuoterSaleOrderArea(models.Model):
             order._quoter_refresh_area_lines_hours_from_levels(area)
 
     def write(self, vals):
+        if {"global_discount_amount", "global_surcharge_amount"} & set(vals.keys()):
+            for rec in self:
+                if rec.order_id:
+                    rec.order_id._check_quoter_partner_adjustment_write_access()
         res = super().write(vals)
         if {"global_discount_amount", "global_surcharge_amount"} & set(vals.keys()):
             for rec in self:

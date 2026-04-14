@@ -209,3 +209,36 @@ $o-quoter-matrix-bottom-bar: #e9ecef;
         margin: 0;
     }
 }
+
+// Resumen por rango (HTML): misma escala que el resto del formulario / pie de subtotales del área
+.o_quoter_resumen_rango {
+    font-size: inherit;
+    line-height: 1.45;
+
+    .o_field_widget.o_field_html {
+        font-size: inherit;
+        line-height: inherit;
+    }
+}
+
+// Separadores por etiqueta en líneas de cotización (sale.order).
+.o_list_view .o_data_row.o_quoter_separator_section {
+    td {
+        font-weight: 600;
+    }
+}
+
+.o_list_view .o_data_row .o_quoter_separator_dot {
+    display: inline-block;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    margin-right: 0.45rem;
+    vertical-align: middle;
+    background-color: var(--quoter-separator-color);
+}
+
+.o_list_view .o_data_row.o_quoter_separator_mode_full td {
+    background-color: var(--quoter-separator-color-rgba) !important;
+    color: #1f2937;
+}

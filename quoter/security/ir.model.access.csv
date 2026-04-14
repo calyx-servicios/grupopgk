@@ -17,6 +17,7 @@ access_sale_order_manager,sale.order.quoter.manager,sale.model_sale_order,sales_
 access_sale_order_line_user,sale.order.line.quoter.user,sale.model_sale_order_line,sales_team.group_sale_salesman,1,1,1,1
 access_sale_order_line_manager,sale.order.line.quoter.manager,sale.model_sale_order_line,sales_team.group_sale_manager,1,1,1,1
 access_sale_order_line_range_hour_quoter_manager,sale.order.line.range.hour.quoter.manager,model_sale_order_line_range_hour,quoter.group_quoter_manager,1,1,1,1
+access_sale_order_line_range_hour_salesman_read,sale.order.line.range.hour.salesman.read,model_sale_order_line_range_hour,sales_team.group_sale_salesman,1,0,0,0
 access_quoter_sale_order_area_user,quoter.sale.order.area.user,model_quoter_sale_order_area,sales_team.group_sale_salesman,1,1,1,1
 access_quoter_sale_order_area_manager,quoter.sale.order.area.manager,model_quoter_sale_order_area,sales_team.group_sale_manager,1,1,1,1
 access_quoter_product_level_range_user,quoter.product.level.range.user,model_quoter_product_level_range,sales_team.group_sale_salesman,1,1,1,0
