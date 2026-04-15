@@ -851,9 +851,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         _logger.error(f"No se encontró pago en el payment_group {payment_group.id}")
                         return log_item
                     
-                    # Si la diferencia es negativa (pago menor), crear nota de crédito
+                    # Si la diferencia es positiva (pago menor), crear nota de crédito
                     credit_note_created = False
-                    if payment_difference < 0:
+                    if payment_difference > 0:
                         _logger.info(f"Pago menor detectado. Diferencia: {payment_difference}. Creando nota de crédito...")
                         # Crear nota de crédito para reducir la deuda por la diferencia
                         credit_note = self._create_credit_note_for_tolerance(
@@ -872,8 +872,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                             _logger.warning(f"No se pudo crear la nota de crédito para tolerancia")
                             return log_item
                     
-                    # Si la diferencia es positiva (pago mayor), crear nota de débito por la diferencia
-                    elif payment_difference > 0:
+                    # Si la diferencia es negativa (pago mayor), crear nota de débito por la diferencia
+                    elif payment_difference < 0:
                         # Crear nota de débito por la diferencia y agregarla a la deuda
                         debit_note = self._create_invoice_for_tolerance(
                             payment_group,
@@ -1519,14 +1519,14 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         La nota de crédito reduce la deuda del payment_group.
         
         :param payment_group: account.payment.group - El grupo de pago
-        :param difference: float - La diferencia (debe ser negativa, pago menor)
+        :param difference: float - La diferencia (debe ser positiva, pago menor)
         :param payment_date: str - La fecha del pago (no se usa, se usa fecha de hoy)
         :param company: res.company - La compañía
         :return: account.move - La nota de crédito creada o None
         """
         try:
-            if difference >= 0:
-                _logger.warning(f"No se crea nota de crédito porque la diferencia es positiva: {difference}")
+            if difference <= 0:
+                _logger.warning(f"No se crea nota de crédito porque la diferencia es negativa: {difference}")
                 return None
             
             abs_diff = abs(difference)
@@ -1726,14 +1726,14 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         La nota de débito se agrega a la deuda del payment_group.
         
         :param payment_group: account.payment.group - El grupo de pago
-        :param difference: float - La diferencia (debe ser positiva, pago mayor)
+        :param difference: float - La diferencia (debe ser negativa, pago mayor)
         :param payment_date: str - La fecha del pago (no se usa, se usa fecha de hoy)
         :param company: res.company - La compañía
         :return: account.move - La nota de débito creada o None
         """
         try:
-            if difference <= 0:
-                _logger.warning(f"No se crea nota de débito porque la diferencia es negativa: {difference}")
+            if difference >= 0:
+                _logger.warning(f"No se crea nota de débito porque la diferencia es positiva: {difference}")
                 return None
             
             abs_diff = abs(difference)
