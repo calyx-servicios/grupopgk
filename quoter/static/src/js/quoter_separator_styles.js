@@ -61,9 +61,8 @@ odoo.define("quoter.separator_styles", function (require) {
             const localData = toLocalDataMap(this.state);
             const $rows = $(this.el).find("tbody tr.o_data_row");
             $rows.removeClass(
-                "o_quoter_separator_section o_quoter_separator_mode_dot o_quoter_separator_mode_full"
+                "o_quoter_separator_section o_quoter_separator_mode_full"
             );
-            $rows.find(".o_quoter_separator_dot").remove();
             $rows.each(function () {
                 const $row = $(this);
                 const localId = String($row.data("id"));
@@ -78,14 +77,7 @@ odoo.define("quoter.separator_styles", function (require) {
                 $row.addClass("o_quoter_separator_section");
                 $row.css("--quoter-separator-color", color);
                 $row.css("--quoter-separator-color-rgba", "rgba(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ", 0.38)");
-                if (mode === "dot") {
-                    $row.addClass("o_quoter_separator_mode_dot");
-                    const $nameCell = $row.find('td[data-name="name"]').first();
-                    const $targetCell = $nameCell.length ? $nameCell : $row.find("td").first();
-                    if ($targetCell.length && !$targetCell.find(".o_quoter_separator_dot").length) {
-                        $targetCell.prepend('<span class="o_quoter_separator_dot"/>');
-                    }
-                } else if (mode === "full") {
+                if (mode === "full") {
                     $row.addClass("o_quoter_separator_mode_full");
                 }
             });

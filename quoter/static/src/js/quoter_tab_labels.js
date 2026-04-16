@@ -31,12 +31,18 @@ odoo.define("quoter.tab_labels", function (require) {
             return;
         }
         const $form = $(renderer.el);
+        $form.find(".o_form_label").each(function () {
+            const text = ($(this).text() || "").trim().toLowerCase();
+            if (text.indexOf("factura dividida") >= 0) {
+                const $label = $(this);
+                $label.closest(".o_row, .o_inner_group, .o_group").hide();
+            }
+        });
         $form.find(".o_quoter_slot_tab_marker").each(function () {
             const slot = parseInt($(this).attr("data-quoter-slot"), 10);
             if (!slot || slot < 1 || slot > 5) return;
             const areaVal = data["quoter_slot_" + slot + "_area_id"];
             let title = labelFromM2o(areaVal);
-            if (!title) title = "Área " + slot;
 
             const $pane = $(this).closest(".tab-pane");
             const paneId = $pane.attr("id");
@@ -44,6 +50,12 @@ odoo.define("quoter.tab_labels", function (require) {
             const href = "#" + paneId;
             const $link = $form.find('a.nav-link[href="' + href + '"]').first();
             if ($link.length) {
+                if (!title) {
+                    title = ($link.text() || "").trim();
+                }
+                if (!title) {
+                    return;
+                }
                 $link.text(title);
             }
         });

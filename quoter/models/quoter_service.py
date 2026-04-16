@@ -93,6 +93,26 @@ class QuoterServiceLine(models.Model):
         help="Indica que las horas de esta línea se cargan manualmente (p. ej. en pedido). "
         "La aplicación en sale.order se puede enlazar después; conceptualmente similar a rangos unificados.",
     )
+    manual_total_load = fields.Boolean(
+        string="Horas totales manual",
+        default=False,
+        help="Permite editar horas totales en la cotización. Al cambiar el total, se redistribuye "
+        "proporcionalmente entre los rangos sin alterar la tabla resultado del área.",
+    )
+
+    @api.onchange("manual_total_load")
+    def _onchange_manual_total_load(self):
+        for line in self:
+            if line.manual_total_load:
+                line.manual_load = False
+
+    @api.constrains("manual_load", "manual_total_load")
+    def _check_manual_modes_exclusive(self):
+        for line in self:
+            if line.manual_load and line.manual_total_load:
+                raise ValidationError(
+                    _("Seleccione solo un modo manual: rangos o total.")
+                )
 
     range_hour_ids = fields.One2many(
         comodel_name="quoter.service.line.range.hour",

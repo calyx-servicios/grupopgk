@@ -228,17 +228,47 @@ $o-quoter-matrix-bottom-bar: #e9ecef;
     }
 }
 
-.o_list_view .o_data_row .o_quoter_separator_dot {
-    display: inline-block;
-    width: 0.55rem;
-    height: 0.55rem;
-    border-radius: 50%;
-    margin-right: 0.45rem;
-    vertical-align: middle;
-    background-color: var(--quoter-separator-color);
-}
-
 .o_list_view .o_data_row.o_quoter_separator_mode_full td {
     background-color: var(--quoter-separator-color-rgba) !important;
     color: #1f2937;
 }
+
+.o_form_view .o_quoter_area_footer_totals {
+    color: #1f2937 !important;
+
+    .o_field_widget[name*="_caption_"] {
+        display: inline-block;
+        width: 12rem;
+        min-width: 12rem;
+        text-align: right;
+        font-weight: 700;
+        color: #1f2937 !important;
+    }
+
+    .o_form_label {
+        text-align: right !important;
+        justify-content: flex-end;
+        width: 12rem !important;
+        min-width: 12rem;
+        padding-right: 0.25rem;
+        color: #1f2937 !important;
+    }
+
+    .o_field_widget[name*="_product_untaxed"],
+    .o_field_widget[name*="_adjustment_untaxed"],
+    .o_field_widget[name*="_discount_line"],
+    .o_field_widget[name*="_surcharge_line"],
+    .o_field_widget[name*="_total_untaxed"] {
+        display: inline-block;
+        width: 11rem;
+        min-width: 11rem;
+        text-align: right;
+        color: #1f2937 !important;
+    }
+
+    .o_field_monetary {
+        justify-content: flex-end;
+        color: #1f2937 !important;
+    }
+}
+
