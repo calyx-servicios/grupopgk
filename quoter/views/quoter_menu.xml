@@ -14,6 +14,7 @@
         <field name="type">ir.actions.act_window</field>
         <field name="res_model">sale.order</field>
         <field name="view_mode">tree,kanban,form,calendar,pivot,graph,activity</field>
+        <field name="view_id" ref="quoter.view_quotation_tree_quoter"/>
         <field name="context">{
             'default_is_quotation': True,
             'quoter_use_cot_sequence': True,

@@ -75,10 +75,12 @@ odoo.define("quoter.range_columns", function (require) {
      * @param {string} fieldPrefix "slot_" (lista quoter.product.level.range) o "quoter_range_" (tabs pedido)
      */
     function applySlotHourColumnTitles($root, names, fieldPrefix) {
-        const fallback = ["Rango 1", "Rango 2", "Rango 3", "Rango 4"];
         const prefix = fieldPrefix || "quoter_range_";
         for (let i = 0; i < 4; i++) {
-            const label = names[i] || fallback[i];
+            const label = names[i];
+            if (!label) {
+                continue;
+            }
             const fieldName = prefix + (i + 1) + "_hours";
             const $th = $root.find('th[data-name="' + fieldName + '"]');
             const $title = $th.find(".o_column_title").first();

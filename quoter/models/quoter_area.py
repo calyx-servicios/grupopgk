@@ -68,7 +68,6 @@ class QuoterProfessionalArea(models.Model):
     separator_visual_mode = fields.Selection(
         selection=[
             ("none", "Sin color"),
-            ("dot", "Punto de color"),
             ("full", "Línea completa con color"),
         ],
         string="Visual separadores",

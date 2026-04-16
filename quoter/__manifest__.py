@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Sales",
-    "version": "15.0.6.2.52",
+    "version": "15.0.6.2.63",
     "development_status": "Beta",
     "application": False,
     "installable": True,
@@ -45,6 +45,9 @@
             "quoter/static/src/js/quoter_range_columns.js",
             "quoter/static/src/js/quoter_separator_styles.js",
             "quoter/static/src/js/quoter_area_hours_matrix.js",
+        ],
+        "web.assets_qweb": [
+            "quoter/static/src/xml/tax_totals.xml",
         ],
     },
 }

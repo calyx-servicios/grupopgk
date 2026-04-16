@@ -63,14 +63,6 @@
                 <attribute name="required">0</attribute>
             </xpath>
 
-            <!-- Resumen estándar del pedido: fila Descuento/Recargo (áreas) antes del total -->
-            <xpath expr="//field[@name='tax_totals_json']" position="before">
-                <field name="quoter_footer_area_discount_amount"
-                       widget="monetary"
-                       readonly="1"
-                       attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_footer_area_discount_amount', '=', 0)]}"/>
-            </xpath>
-
             <!-- Pestaña estándar convertida en resumen para cotizaciones -->
             <xpath expr="//page[@name='order_lines']" position="attributes">
                 <attribute name="string">Resumen general</attribute>
@@ -175,6 +167,7 @@
                             <field name="quoter_separator_section_tag_id" invisible="1"/>
                             <field name="quoter_separator_style_mode" invisible="1"/>
                             <field name="quoter_separator_color" invisible="1"/>
+                            <field name="quoter_can_edit_range_hours" invisible="1"/>
                             <field name="quoter_can_edit_total_hours" invisible="1"/>
                             <field name="quoter_is_adjustment_line" invisible="1"/>
                             <field name="quoter_adjustment_parent_line_id" invisible="1"/>
@@ -196,18 +189,15 @@
                             <field name="name" widget="section_and_note_text"
                                    attrs="{'readonly': [('parent.quoter_slot_1_lines_frozen', '=', True)]}"/>
                             <field name="product_uom_qty" invisible="1"/>
-                            <field name="price_unit"
-                                   attrs="{'readonly': [('parent.quoter_slot_1_lines_frozen', '=', True)]}"/>
-                            <field name="discount"
-                                   attrs="{'readonly': [('parent.quoter_slot_1_lines_frozen', '=', True)]}"/>
+                            <field name="price_unit" readonly="1"/>
                             <field name="quoter_range_1_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_1_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_1_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_2_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_1_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_1_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_3_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_1_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_1_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_4_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_1_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_1_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_total_hours" optional="show"
                                    attrs="{'readonly': ['|', ('parent.quoter_slot_1_lines_frozen', '=', True), ('quoter_can_edit_total_hours', '=', False)]}"/>
                             <field name="tax_id" widget="many2many_tags"
@@ -221,11 +211,11 @@
                             <field name="price_subtotal" readonly="1"/>
                         </tree>
                     </field>
-                    <group string="Resumen por rango" class="o_quoter_resumen_rango"
+                    <group string="Resumen por rango" class="o_quoter_resumen_rango" colspan="2"
                            attrs="{'invisible': [('quoter_slot_1_block_level_id', '=', False)]}">
                         <field name="quoter_slot_1_area_summary_html" nolabel="1" readonly="1"/>
                     </group>
-                    <group class="oe_subtotal_footer oe_right"
+                    <group class="oe_subtotal_footer oe_right o_quoter_area_footer_totals" colspan="2"
                            attrs="{'invisible': [('quoter_slot_1_block_level_id', '=', False)]}">
                         <field name="quoter_slot_1_caption_products" readonly="1" nolabel="1"/>
                         <field name="quoter_slot_1_product_untaxed" widget="monetary" readonly="1" nolabel="1"/>
@@ -237,17 +227,17 @@
                                groups="quoter.group_quoter_manager"
                                attrs="{'invisible': [('quoter_slot_1_adjustment_untaxed', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_1_discount_line" string="Descuento" class="o_form_label"
+                        <field name="quoter_slot_1_caption_discount" readonly="1" nolabel="1"
                                attrs="{'invisible': [('quoter_slot_1_discount_line', '=', 0)]}"/>
                         <field name="quoter_slot_1_discount_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_1_discount_line', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_1_surcharge_line" string="Recargo" class="o_form_label"
+                        <field name="quoter_slot_1_caption_surcharge" readonly="1" nolabel="1"
                                attrs="{'invisible': [('quoter_slot_1_surcharge_line', '=', 0)]}"/>
                         <field name="quoter_slot_1_surcharge_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_1_surcharge_line', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_1_total_untaxed" string="Total" class="o_form_label"/>
+                        <field name="quoter_slot_1_caption_total" readonly="1" nolabel="1"/>
                         <field name="quoter_slot_1_total_untaxed" nolabel="1" widget="monetary" readonly="1"
                                class="oe_subtotal_footer_separator"/>
                     </group>
@@ -318,6 +308,7 @@
                             <field name="quoter_separator_section_tag_id" invisible="1"/>
                             <field name="quoter_separator_style_mode" invisible="1"/>
                             <field name="quoter_separator_color" invisible="1"/>
+                            <field name="quoter_can_edit_range_hours" invisible="1"/>
                             <field name="quoter_can_edit_total_hours" invisible="1"/>
                             <field name="quoter_is_adjustment_line" invisible="1"/>
                             <field name="quoter_adjustment_parent_line_id" invisible="1"/>
@@ -339,18 +330,15 @@
                             <field name="name" widget="section_and_note_text"
                                    attrs="{'readonly': [('parent.quoter_slot_2_lines_frozen', '=', True)]}"/>
                             <field name="product_uom_qty" invisible="1"/>
-                            <field name="price_unit"
-                                   attrs="{'readonly': [('parent.quoter_slot_2_lines_frozen', '=', True)]}"/>
-                            <field name="discount"
-                                   attrs="{'readonly': [('parent.quoter_slot_2_lines_frozen', '=', True)]}"/>
+                            <field name="price_unit" readonly="1"/>
                             <field name="quoter_range_1_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_2_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_2_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_2_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_2_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_2_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_3_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_2_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_2_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_4_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_2_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_2_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_total_hours" optional="show"
                                    attrs="{'readonly': ['|', ('parent.quoter_slot_2_lines_frozen', '=', True), ('quoter_can_edit_total_hours', '=', False)]}"/>
                             <field name="tax_id" widget="many2many_tags"
@@ -364,11 +352,11 @@
                             <field name="price_subtotal" readonly="1"/>
                         </tree>
                     </field>
-                    <group string="Resumen por rango" class="o_quoter_resumen_rango"
+                    <group string="Resumen por rango" class="o_quoter_resumen_rango" colspan="2"
                            attrs="{'invisible': [('quoter_slot_2_block_level_id', '=', False)]}">
                         <field name="quoter_slot_2_area_summary_html" nolabel="1" readonly="1"/>
                     </group>
-                    <group class="oe_subtotal_footer oe_right"
+                    <group class="oe_subtotal_footer oe_right o_quoter_area_footer_totals" colspan="2"
                            attrs="{'invisible': [('quoter_slot_2_block_level_id', '=', False)]}">
                         <field name="quoter_slot_2_caption_products" readonly="1" nolabel="1"/>
                         <field name="quoter_slot_2_product_untaxed" widget="monetary" readonly="1" nolabel="1"/>
@@ -380,17 +368,17 @@
                                groups="quoter.group_quoter_manager"
                                attrs="{'invisible': [('quoter_slot_2_adjustment_untaxed', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_2_discount_line" string="Descuento" class="o_form_label"
+                        <field name="quoter_slot_2_caption_discount" readonly="1" nolabel="1"
                                attrs="{'invisible': [('quoter_slot_2_discount_line', '=', 0)]}"/>
                         <field name="quoter_slot_2_discount_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_2_discount_line', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_2_surcharge_line" string="Recargo" class="o_form_label"
+                        <field name="quoter_slot_2_caption_surcharge" readonly="1" nolabel="1"
                                attrs="{'invisible': [('quoter_slot_2_surcharge_line', '=', 0)]}"/>
                         <field name="quoter_slot_2_surcharge_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_2_surcharge_line', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_2_total_untaxed" string="Total" class="o_form_label"/>
+                        <field name="quoter_slot_2_caption_total" readonly="1" nolabel="1"/>
                         <field name="quoter_slot_2_total_untaxed" nolabel="1" widget="monetary" readonly="1"
                                class="oe_subtotal_footer_separator"/>
                     </group>
@@ -461,6 +449,7 @@
                             <field name="quoter_separator_section_tag_id" invisible="1"/>
                             <field name="quoter_separator_style_mode" invisible="1"/>
                             <field name="quoter_separator_color" invisible="1"/>
+                            <field name="quoter_can_edit_range_hours" invisible="1"/>
                             <field name="quoter_can_edit_total_hours" invisible="1"/>
                             <field name="quoter_is_adjustment_line" invisible="1"/>
                             <field name="quoter_adjustment_parent_line_id" invisible="1"/>
@@ -482,18 +471,15 @@
                             <field name="name" widget="section_and_note_text"
                                    attrs="{'readonly': [('parent.quoter_slot_3_lines_frozen', '=', True)]}"/>
                             <field name="product_uom_qty" invisible="1"/>
-                            <field name="price_unit"
-                                   attrs="{'readonly': [('parent.quoter_slot_3_lines_frozen', '=', True)]}"/>
-                            <field name="discount"
-                                   attrs="{'readonly': [('parent.quoter_slot_3_lines_frozen', '=', True)]}"/>
+                            <field name="price_unit" readonly="1"/>
                             <field name="quoter_range_1_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_3_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_3_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_2_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_3_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_3_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_3_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_3_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_3_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_4_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_3_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_3_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_total_hours" optional="show"
                                    attrs="{'readonly': ['|', ('parent.quoter_slot_3_lines_frozen', '=', True), ('quoter_can_edit_total_hours', '=', False)]}"/>
                             <field name="tax_id" widget="many2many_tags"
@@ -507,11 +493,11 @@
                             <field name="price_subtotal" readonly="1"/>
                         </tree>
                     </field>
-                    <group string="Resumen por rango" class="o_quoter_resumen_rango"
+                    <group string="Resumen por rango" class="o_quoter_resumen_rango" colspan="2"
                            attrs="{'invisible': [('quoter_slot_3_block_level_id', '=', False)]}">
                         <field name="quoter_slot_3_area_summary_html" nolabel="1" readonly="1"/>
                     </group>
-                    <group class="oe_subtotal_footer oe_right"
+                    <group class="oe_subtotal_footer oe_right o_quoter_area_footer_totals" colspan="2"
                            attrs="{'invisible': [('quoter_slot_3_block_level_id', '=', False)]}">
                         <field name="quoter_slot_3_caption_products" readonly="1" nolabel="1"/>
                         <field name="quoter_slot_3_product_untaxed" widget="monetary" readonly="1" nolabel="1"/>
@@ -523,17 +509,17 @@
                                groups="quoter.group_quoter_manager"
                                attrs="{'invisible': [('quoter_slot_3_adjustment_untaxed', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_3_discount_line" string="Descuento" class="o_form_label"
+                        <field name="quoter_slot_3_caption_discount" readonly="1" nolabel="1"
                                attrs="{'invisible': [('quoter_slot_3_discount_line', '=', 0)]}"/>
                         <field name="quoter_slot_3_discount_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_3_discount_line', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_3_surcharge_line" string="Recargo" class="o_form_label"
+                        <field name="quoter_slot_3_caption_surcharge" readonly="1" nolabel="1"
                                attrs="{'invisible': [('quoter_slot_3_surcharge_line', '=', 0)]}"/>
                         <field name="quoter_slot_3_surcharge_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_3_surcharge_line', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_3_total_untaxed" string="Total" class="o_form_label"/>
+                        <field name="quoter_slot_3_caption_total" readonly="1" nolabel="1"/>
                         <field name="quoter_slot_3_total_untaxed" nolabel="1" widget="monetary" readonly="1"
                                class="oe_subtotal_footer_separator"/>
                     </group>
@@ -604,6 +590,7 @@
                             <field name="quoter_separator_section_tag_id" invisible="1"/>
                             <field name="quoter_separator_style_mode" invisible="1"/>
                             <field name="quoter_separator_color" invisible="1"/>
+                            <field name="quoter_can_edit_range_hours" invisible="1"/>
                             <field name="quoter_can_edit_total_hours" invisible="1"/>
                             <field name="quoter_is_adjustment_line" invisible="1"/>
                             <field name="quoter_adjustment_parent_line_id" invisible="1"/>
@@ -625,18 +612,15 @@
                             <field name="name" widget="section_and_note_text"
                                    attrs="{'readonly': [('parent.quoter_slot_4_lines_frozen', '=', True)]}"/>
                             <field name="product_uom_qty" invisible="1"/>
-                            <field name="price_unit"
-                                   attrs="{'readonly': [('parent.quoter_slot_4_lines_frozen', '=', True)]}"/>
-                            <field name="discount"
-                                   attrs="{'readonly': [('parent.quoter_slot_4_lines_frozen', '=', True)]}"/>
+                            <field name="price_unit" readonly="1"/>
                             <field name="quoter_range_1_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_4_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_4_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_2_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_4_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_4_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_3_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_4_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_4_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_4_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_4_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_4_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_total_hours" optional="show"
                                    attrs="{'readonly': ['|', ('parent.quoter_slot_4_lines_frozen', '=', True), ('quoter_can_edit_total_hours', '=', False)]}"/>
                             <field name="tax_id" widget="many2many_tags"
@@ -650,11 +634,11 @@
                             <field name="price_subtotal" readonly="1"/>
                         </tree>
                     </field>
-                    <group string="Resumen por rango" class="o_quoter_resumen_rango"
+                    <group string="Resumen por rango" class="o_quoter_resumen_rango" colspan="2"
                            attrs="{'invisible': [('quoter_slot_4_block_level_id', '=', False)]}">
                         <field name="quoter_slot_4_area_summary_html" nolabel="1" readonly="1"/>
                     </group>
-                    <group class="oe_subtotal_footer oe_right"
+                    <group class="oe_subtotal_footer oe_right o_quoter_area_footer_totals" colspan="2"
                            attrs="{'invisible': [('quoter_slot_4_block_level_id', '=', False)]}">
                         <field name="quoter_slot_4_caption_products" readonly="1" nolabel="1"/>
                         <field name="quoter_slot_4_product_untaxed" widget="monetary" readonly="1" nolabel="1"/>
@@ -666,17 +650,17 @@
                                groups="quoter.group_quoter_manager"
                                attrs="{'invisible': [('quoter_slot_4_adjustment_untaxed', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_4_discount_line" string="Descuento" class="o_form_label"
+                        <field name="quoter_slot_4_caption_discount" readonly="1" nolabel="1"
                                attrs="{'invisible': [('quoter_slot_4_discount_line', '=', 0)]}"/>
                         <field name="quoter_slot_4_discount_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_4_discount_line', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_4_surcharge_line" string="Recargo" class="o_form_label"
+                        <field name="quoter_slot_4_caption_surcharge" readonly="1" nolabel="1"
                                attrs="{'invisible': [('quoter_slot_4_surcharge_line', '=', 0)]}"/>
                         <field name="quoter_slot_4_surcharge_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_4_surcharge_line', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_4_total_untaxed" string="Total" class="o_form_label"/>
+                        <field name="quoter_slot_4_caption_total" readonly="1" nolabel="1"/>
                         <field name="quoter_slot_4_total_untaxed" nolabel="1" widget="monetary" readonly="1"
                                class="oe_subtotal_footer_separator"/>
                     </group>
@@ -747,6 +731,7 @@
                             <field name="quoter_separator_section_tag_id" invisible="1"/>
                             <field name="quoter_separator_style_mode" invisible="1"/>
                             <field name="quoter_separator_color" invisible="1"/>
+                            <field name="quoter_can_edit_range_hours" invisible="1"/>
                             <field name="quoter_can_edit_total_hours" invisible="1"/>
                             <field name="quoter_is_adjustment_line" invisible="1"/>
                             <field name="quoter_adjustment_parent_line_id" invisible="1"/>
@@ -768,18 +753,15 @@
                             <field name="name" widget="section_and_note_text"
                                    attrs="{'readonly': [('parent.quoter_slot_5_lines_frozen', '=', True)]}"/>
                             <field name="product_uom_qty" invisible="1"/>
-                            <field name="price_unit"
-                                   attrs="{'readonly': [('parent.quoter_slot_5_lines_frozen', '=', True)]}"/>
-                            <field name="discount"
-                                   attrs="{'readonly': [('parent.quoter_slot_5_lines_frozen', '=', True)]}"/>
+                            <field name="price_unit" readonly="1"/>
                             <field name="quoter_range_1_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_5_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_5_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_2_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_5_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_5_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_3_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_5_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_5_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_range_4_hours" optional="show"
-                                   attrs="{'readonly': ['|', ('parent.quoter_slot_5_lines_frozen', '=', True), ('parent.quoter_user_is_assigned_manager', '=', False)]}"/>
+                                   attrs="{'readonly': ['|', ('parent.quoter_slot_5_lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                             <field name="quoter_total_hours" optional="show"
                                    attrs="{'readonly': ['|', ('parent.quoter_slot_5_lines_frozen', '=', True), ('quoter_can_edit_total_hours', '=', False)]}"/>
                             <field name="tax_id" widget="many2many_tags"
@@ -793,11 +775,11 @@
                             <field name="price_subtotal" readonly="1"/>
                         </tree>
                     </field>
-                    <group string="Resumen por rango" class="o_quoter_resumen_rango"
+                    <group string="Resumen por rango" class="o_quoter_resumen_rango" colspan="2"
                            attrs="{'invisible': [('quoter_slot_5_block_level_id', '=', False)]}">
                         <field name="quoter_slot_5_area_summary_html" nolabel="1" readonly="1"/>
                     </group>
-                    <group class="oe_subtotal_footer oe_right"
+                    <group class="oe_subtotal_footer oe_right o_quoter_area_footer_totals" colspan="2"
                            attrs="{'invisible': [('quoter_slot_5_block_level_id', '=', False)]}">
                         <field name="quoter_slot_5_caption_products" readonly="1" nolabel="1"/>
                         <field name="quoter_slot_5_product_untaxed" widget="monetary" readonly="1" nolabel="1"/>
@@ -809,17 +791,17 @@
                                groups="quoter.group_quoter_manager"
                                attrs="{'invisible': [('quoter_slot_5_adjustment_untaxed', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_5_discount_line" string="Descuento" class="o_form_label"
+                        <field name="quoter_slot_5_caption_discount" readonly="1" nolabel="1"
                                attrs="{'invisible': [('quoter_slot_5_discount_line', '=', 0)]}"/>
                         <field name="quoter_slot_5_discount_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_5_discount_line', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_5_surcharge_line" string="Recargo" class="o_form_label"
+                        <field name="quoter_slot_5_caption_surcharge" readonly="1" nolabel="1"
                                attrs="{'invisible': [('quoter_slot_5_surcharge_line', '=', 0)]}"/>
                         <field name="quoter_slot_5_surcharge_line" nolabel="1" widget="monetary" readonly="1"
                                attrs="{'invisible': [('quoter_slot_5_surcharge_line', '=', 0)]}"/>
                         <newline/>
-                        <label for="quoter_slot_5_total_untaxed" string="Total" class="o_form_label"/>
+                        <field name="quoter_slot_5_caption_total" readonly="1" nolabel="1"/>
                         <field name="quoter_slot_5_total_untaxed" nolabel="1" widget="monetary" readonly="1"
                                class="oe_subtotal_footer_separator"/>
                     </group>
@@ -839,6 +821,25 @@
                 <field name="quoter_menu_context" invisible="1"/>
                 <field name="quotation_sequence" optional="show"/>
                 <field name="is_quotation" invisible="1"/>
+                <field name="quoter_area_ids" widget="many2many_tags" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_sales_order_filter_quoter" model="ir.ui.view">
+        <field name="name">sale.order.search.quoter</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="quoter_primary_area_id" string="Área"/>
+                <field name="quoter_primary_complexity_level_id" string="Complejidad"/>
+                <filter name="quoter_group_area"
+                        string="Área"
+                        context="{'group_by': 'quoter_primary_area_id'}"/>
+                <filter name="quoter_group_complexity"
+                        string="Complejidad"
+                        context="{'group_by': 'quoter_primary_complexity_level_id'}"/>
             </xpath>
         </field>
     </record>

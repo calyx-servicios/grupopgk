@@ -73,7 +73,6 @@ class SaleOrderLine(models.Model):
     quoter_separator_style_mode = fields.Selection(
         selection=[
             ("none", "Sin color"),
-            ("dot", "Punto de color"),
             ("full", "Línea completa con color"),
         ],
         string="Visual separador",
@@ -103,9 +102,23 @@ class SaleOrderLine(models.Model):
         store=True,
         readonly=True,
     )
+    quoter_manual_total_load = fields.Boolean(
+        string="Horas totales manual (cotizador)",
+        related="product_id.product_tmpl_id.quoter_service_line_id.manual_total_load",
+        store=True,
+        readonly=True,
+    )
+    quoter_can_edit_range_hours = fields.Boolean(
+        string="Permite editar horas por rango",
+        compute="_compute_quoter_can_edit_range_hours",
+    )
     quoter_can_edit_total_hours = fields.Boolean(
         string="Permite editar horas totales",
         compute="_compute_quoter_can_edit_total_hours",
+    )
+    quoter_manual_mode_note = fields.Char(
+        string="Modo manual",
+        compute="_compute_quoter_manual_mode_note",
     )
 
     quoter_range_1_hours = fields.Float(
@@ -195,17 +208,23 @@ class SaleOrderLine(models.Model):
 
     def _quoter_manual_total_mode(self):
         self.ensure_one()
-        area = self.quoter_tab_area_id
+        return bool(
+            self.order_id
+            and self.order_id.is_quotation
+            and self.product_id
+            and getattr(self.product_id, "is_quoter_product", False)
+            and self.quoter_manual_total_load
+        )
+
+    def _quoter_manual_ranges_mode(self):
+        self.ensure_one()
         return bool(
             self.order_id
             and self.order_id.is_quotation
             and self.product_id
             and getattr(self.product_id, "is_quoter_product", False)
             and self.quoter_manual_load
-            and area
-            and area.hour_matrix_mode == "combined"
-            and area.table_b_kind == "percent"
-            and area.table_a_layout == "compact"
+            and not self.quoter_manual_total_load
         )
 
     def _quoter_apply_level_template_hours(self):
@@ -586,51 +605,56 @@ class SaleOrderLine(models.Model):
         "product_id",
         "product_id.product_tmpl_id.is_quoter_product",
         "product_id.product_tmpl_id.quoter_service_line_id.manual_load",
+        "product_id.product_tmpl_id.quoter_service_line_id.manual_total_load",
+    )
+    def _compute_quoter_can_edit_range_hours(self):
+        for line in self:
+            line.quoter_can_edit_range_hours = line._quoter_manual_ranges_mode()
+
+    @api.depends(
+        "order_id.is_quotation",
+        "product_id",
+        "product_id.product_tmpl_id.is_quoter_product",
+        "product_id.product_tmpl_id.quoter_service_line_id.manual_total_load",
         "quoter_tab_area_id",
-        "quoter_tab_area_id.hour_matrix_mode",
-        "quoter_tab_area_id.table_b_kind",
-        "quoter_tab_area_id.table_a_layout",
     )
     def _compute_quoter_can_edit_total_hours(self):
         for line in self:
             line.quoter_can_edit_total_hours = line._quoter_manual_total_mode()
+
+    @api.depends(
+        "quoter_manual_load",
+        "quoter_manual_total_load",
+    )
+    def _compute_quoter_manual_mode_note(self):
+        for line in self:
+            if line.quoter_manual_total_load:
+                line.quoter_manual_mode_note = _("Total manual")
+            elif line.quoter_manual_load:
+                line.quoter_manual_mode_note = _("Rangos manual")
+            else:
+                line.quoter_manual_mode_note = ""
 
     def _inverse_quoter_total_hours(self):
         for line in self:
             if not line._quoter_manual_total_mode():
                 continue
             value = float(line.quoter_total_hours or 0.0)
-            level = line._quoter_block_level_for_line()
-            tmpl = line.product_id.product_tmpl_id
-            if not level or not tmpl:
+            line._quoter_sync_range_hours()
+            rows = line.quoter_range_hour_ids.sorted(key=lambda r: (r.area_range_id.sequence, r.id))
+            if not rows:
                 continue
-            lr = line.env["quoter.product.level.range"].search(
-                [
-                    ("product_tmpl_id", "=", tmpl.id),
-                    ("complexity_level_id", "=", level.id),
-                ],
-                limit=1,
-            )
-            if not lr:
-                continue
-            if not lr._is_area_combined_compact_a() or not lr._matrix_b_percent_split_mode():
-                continue
-            lr._sync_matrix_rows()
-            original_hours_by_row = {row.id: float(row.hours or 0.0) for row in lr.matrix_a_ids}
-            try:
-                lr.matrix_a_ids.write({"hours": value})
-                lr._apply_combined_final_all()
-                line._quoter_sync_range_hours()
-                line._quoter_apply_level_template_hours()
-                line._quoter_onchange_compute_price_from_ranges()
-            finally:
-                for row in lr.matrix_a_ids:
-                    old_val = original_hours_by_row.get(row.id)
-                    if old_val is None:
-                        continue
-                    if float(row.hours or 0.0) != old_val:
-                        row.write({"hours": old_val})
-                lr._apply_combined_final_all()
+            current = [float(r.hours or 0.0) for r in rows]
+            total = sum(current)
+            if total > 0:
+                factor = value / total
+                new_vals = [h * factor for h in current]
+            else:
+                each = (value / len(rows)) if rows else 0.0
+                new_vals = [each] * len(rows)
+            for row, new_h in zip(rows, new_vals):
+                row.write({"hours": new_h})
+            line._quoter_onchange_compute_price_from_ranges()
 
     @api.depends(
         "quoter_tab_area_id",
@@ -775,7 +799,7 @@ class SaleOrderLine(models.Model):
                 continue
             if not others.filtered(lambda l: int(l.sequence) == candidate):
                 super(SaleOrderLine, self).write({"sequence": candidate})
-                self.invalidate_recordset(["sequence"])
+                self.invalidate_cache(fnames=["sequence"])
                 return candidate
         return seq
 

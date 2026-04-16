@@ -1,9 +1,12 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
+import json
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.float_utils import float_is_zero
 from odoo.tools import html_escape
+from odoo.tools.misc import formatLang
 
 
 class SaleOrder(models.Model):
@@ -101,6 +104,18 @@ class SaleOrder(models.Model):
         string="Áreas",
         domain="[('active', '=', True), ('cerrado', '=', True)]",
         help="Áreas de la cotización (máx. 5). Cada una tiene su pestaña en el cotizador.",
+    )
+    quoter_primary_area_id = fields.Many2one(
+        comodel_name="quoter.professional.area",
+        string="Área principal",
+        compute="_compute_quoter_search_helper_fields",
+        store=True,
+    )
+    quoter_primary_complexity_level_id = fields.Many2one(
+        comodel_name="quoter.complexity.level",
+        string="Complejidad principal",
+        compute="_compute_quoter_search_helper_fields",
+        store=True,
     )
     quoter_footer_area_discount_amount = fields.Monetary(
         string="Descuento/Recargo (áreas)",
@@ -700,12 +715,36 @@ class SaleOrder(models.Model):
         string="Leyenda ajustes (área 1)",
         compute="_compute_quoter_slot_footer_captions",
     )
+    quoter_slot_1_caption_discount = fields.Char(
+        string="Leyenda descuento (área 1)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
+    quoter_slot_1_caption_surcharge = fields.Char(
+        string="Leyenda recargo (área 1)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
+    quoter_slot_1_caption_total = fields.Char(
+        string="Leyenda total (área 1)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
     quoter_slot_2_caption_products = fields.Char(
         string="Leyenda productos (área 2)",
         compute="_compute_quoter_slot_footer_captions",
     )
     quoter_slot_2_caption_adjustments = fields.Char(
         string="Leyenda ajustes (área 2)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
+    quoter_slot_2_caption_discount = fields.Char(
+        string="Leyenda descuento (área 2)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
+    quoter_slot_2_caption_surcharge = fields.Char(
+        string="Leyenda recargo (área 2)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
+    quoter_slot_2_caption_total = fields.Char(
+        string="Leyenda total (área 2)",
         compute="_compute_quoter_slot_footer_captions",
     )
     quoter_slot_3_caption_products = fields.Char(
@@ -716,6 +755,18 @@ class SaleOrder(models.Model):
         string="Leyenda ajustes (área 3)",
         compute="_compute_quoter_slot_footer_captions",
     )
+    quoter_slot_3_caption_discount = fields.Char(
+        string="Leyenda descuento (área 3)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
+    quoter_slot_3_caption_surcharge = fields.Char(
+        string="Leyenda recargo (área 3)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
+    quoter_slot_3_caption_total = fields.Char(
+        string="Leyenda total (área 3)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
     quoter_slot_4_caption_products = fields.Char(
         string="Leyenda productos (área 4)",
         compute="_compute_quoter_slot_footer_captions",
@@ -724,12 +775,36 @@ class SaleOrder(models.Model):
         string="Leyenda ajustes (área 4)",
         compute="_compute_quoter_slot_footer_captions",
     )
+    quoter_slot_4_caption_discount = fields.Char(
+        string="Leyenda descuento (área 4)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
+    quoter_slot_4_caption_surcharge = fields.Char(
+        string="Leyenda recargo (área 4)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
+    quoter_slot_4_caption_total = fields.Char(
+        string="Leyenda total (área 4)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
     quoter_slot_5_caption_products = fields.Char(
         string="Leyenda productos (área 5)",
         compute="_compute_quoter_slot_footer_captions",
     )
     quoter_slot_5_caption_adjustments = fields.Char(
         string="Leyenda ajustes (área 5)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
+    quoter_slot_5_caption_discount = fields.Char(
+        string="Leyenda descuento (área 5)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
+    quoter_slot_5_caption_surcharge = fields.Char(
+        string="Leyenda recargo (área 5)",
+        compute="_compute_quoter_slot_footer_captions",
+    )
+    quoter_slot_5_caption_total = fields.Char(
+        string="Leyenda total (área 5)",
         compute="_compute_quoter_slot_footer_captions",
     )
     quoter_slot_1_area_summary_html = fields.Html(
@@ -873,6 +948,27 @@ class SaleOrder(models.Model):
                     by_seq[seq] = b.area_id
             for n in range(1, 6):
                 setattr(order, f"quoter_slot_{n}_area_id", by_seq.get(n))
+
+    @api.depends(
+        "quoter_area_ids",
+        "quoter_area_ids.sequence",
+        "quoter_area_block_ids",
+        "quoter_area_block_ids.area_id",
+        "quoter_area_block_ids.area_id.sequence",
+        "quoter_area_block_ids.complexity_level_id",
+    )
+    def _compute_quoter_search_helper_fields(self):
+        for order in self:
+            ordered_areas = order.quoter_area_ids.sorted(key=lambda a: (a.sequence, a.id))
+            primary_area = ordered_areas[:1]
+            level = self.env["quoter.complexity.level"]
+            if primary_area:
+                block = order.quoter_area_block_ids.filtered(
+                    lambda b, a=primary_area: b.area_id == a
+                )[:1]
+                level = block.complexity_level_id if block else self.env["quoter.complexity.level"]
+            order.quoter_primary_area_id = primary_area
+            order.quoter_primary_complexity_level_id = level
 
     @api.depends(
         "quoter_area_block_ids",
@@ -1054,7 +1150,7 @@ class SaleOrder(models.Model):
             "column-gap:.5rem;row-gap:.4rem;align-items:center;"
             "font-size:inherit;line-height:1.45;"
         )
-        style_hdr = "font-weight:600;font-size:inherit;opacity:0.7;"
+        style_hdr = "font-weight:600;font-size:inherit;color:#1f2937;"
         style_lbl = "font-weight:400;font-size:inherit;"
         style_lbl_total = "font-weight:700;font-size:inherit;"
         style_cell = (
@@ -1083,8 +1179,8 @@ class SaleOrder(models.Model):
         add_row(_("Tarifa online"), cells_numeric(rates, decimals=2, money=True, total_mode="none"))
         add_row(_("Valor total"), cells_numeric(base_vals, decimals=2, money=True))
         rows_html.append(
-            '<div class="text-muted mt-2 mb-1" '
-            'style="font-weight:600;font-size:inherit;line-height:1.45;">'
+            '<div class="mt-2 mb-1" '
+            'style="font-weight:600;font-size:inherit;line-height:1.45;color:#1f2937;">'
             f"{esc(_('AJUSTE SOCIO a las horas'))}</div>"
         )
         add_row(adj_title, cells_numeric(adj_h, decimals=2))
@@ -1096,7 +1192,7 @@ class SaleOrder(models.Model):
         add_row(_("Valor total"), cells_numeric(final_vals, decimals=2, money=True), strong=True)
 
         return (
-            '<div class="o_quoter_area_summary" style="max-width:52rem;font-size:inherit;">'
+            '<div class="o_quoter_area_summary" style="width:52rem;max-width:100%;margin-left:auto;margin-right:0;font-size:inherit;color:#1f2937;">'
             + "".join(rows_html)
             + "</div>"
         )
@@ -1289,11 +1385,14 @@ class SaleOrder(models.Model):
                 area = getattr(order, "quoter_slot_%d_area_id" % n)
                 aname = area.name if area else ""
                 order["quoter_slot_%d_caption_products" % n] = (
-                    _("Productos %s") % aname if aname else _("Productos")
+                    (_("Productos %s") % aname if aname else _("Productos")) + ":"
                 )
                 order["quoter_slot_%d_caption_adjustments" % n] = (
-                    _("Ajustes %s") % aname if aname else _("Ajustes")
+                    (_("Ajustes %s") % aname if aname else _("Ajustes")) + ":"
                 )
+                order["quoter_slot_%d_caption_discount" % n] = _("Descuento:")
+                order["quoter_slot_%d_caption_surcharge" % n] = _("Recargo:")
+                order["quoter_slot_%d_caption_total" % n] = _("Total:")
 
     @api.depends(
         "order_line",
@@ -1393,6 +1492,61 @@ class SaleOrder(models.Model):
                 lambda l: l.quoter_is_area_discount_total_line and not l.display_type
             )
             order.quoter_footer_area_discount_amount = sum(lines.mapped("price_subtotal"))
+
+    @api.depends_context("lang")
+    @api.depends(
+        "order_line.tax_id",
+        "order_line.price_unit",
+        "amount_total",
+        "amount_untaxed",
+        "is_quotation",
+        "order_line.price_subtotal",
+        "order_line.quoter_is_area_discount_total_line",
+        "order_line.display_type",
+    )
+    def _compute_tax_totals_json(self):
+        """Añade fila Descuento/Recargo (áreas) al JSON del widget de totales (misma clave que en factura)."""
+        super()._compute_tax_totals_json()
+        untaxed_amount_label = _("Untaxed Amount")
+        for order in self:
+            if not order.tax_totals_json:
+                continue
+            totals = json.loads(order.tax_totals_json)
+            extra_rows = [
+                row
+                for row in totals.get("extra_rows", [])
+                if row.get("key") != "quoter_area_discount"
+            ]
+            area_amount = 0.0
+            if order.is_quotation:
+                area_amount = sum(
+                    order.order_line.filtered(
+                        lambda l: l.quoter_is_area_discount_total_line
+                        and not l.display_type
+                    ).mapped("price_subtotal")
+                )
+            if not float_is_zero(
+                area_amount,
+                precision_rounding=order.currency_id.rounding,
+            ):
+                extra_rows.append(
+                    {
+                        "key": "quoter_area_discount",
+                        "label": _("Descuento/Recargo (áreas)"),
+                        "amount": area_amount,
+                        "formatted_amount": formatLang(
+                            self.env,
+                            area_amount,
+                            currency_obj=order.currency_id,
+                        ),
+                        "after_subtotal": untaxed_amount_label,
+                    }
+                )
+            if extra_rows:
+                totals["extra_rows"] = extra_rows
+            else:
+                totals.pop("extra_rows", None)
+            order.tax_totals_json = json.dumps(totals)
 
     @api.depends("is_quotation", "quotation_sequence", "name")
     def _compute_quoter_form_title(self):
