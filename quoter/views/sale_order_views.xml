@@ -24,6 +24,9 @@
                 <field name="is_quotation" invisible="1"/>
                 <field name="quotation_sequence" attrs="{'invisible': [('is_quotation', '=', False)]}"/>
             </xpath>
+            <xpath expr="//field[@name='partner']" position="attributes">
+                <attribute name="required">0</attribute>
+            </xpath>
             
             <!-- Add quotation fields after partner_id -->
             <xpath expr="//field[@name='partner_id']" position="after">
@@ -43,6 +46,15 @@
                 <field name="quoter_partner_id"
                        attrs="{'invisible': [('is_quotation', '=', False)], 'readonly': [('quoter_user_can_edit_partner', '=', False)]}"
                        domain="[('id', 'in', quoter_partner_candidate_user_ids)]"/>
+                <field name="date_order"
+                       string="Fecha de cotización"
+                       attrs="{'invisible': [('is_quotation', '=', False)]}"/>
+                <field name="date_of_issue"
+                       string="Fecha de emisión"
+                       attrs="{'invisible': [('is_quotation', '=', False)]}"/>
+                <field name="validity_date"
+                       string="Expiración"
+                       attrs="{'invisible': [('is_quotation', '=', False)]}"/>
             </xpath>
 
             <!-- Campos de cabecera ocultos para cotizador -->
@@ -58,11 +70,6 @@
             <xpath expr="//label[@for='pricelist_id']/following-sibling::div[1]" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
-            <xpath expr="//field[@name='partner']" position="attributes">
-                <attribute name="invisible">1</attribute>
-                <attribute name="required">0</attribute>
-            </xpath>
-
             <!-- Pestaña estándar convertida en resumen para cotizaciones -->
             <xpath expr="//page[@name='order_lines']" position="attributes">
                 <attribute name="string">Resumen general</attribute>
