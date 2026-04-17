@@ -1525,9 +1525,16 @@ class SaleOrder(models.Model):
                         and not l.display_type
                     ).mapped("price_subtotal")
                 )
+            rounding = (
+                order.currency_id.rounding
+                or order.company_id.currency_id.rounding
+                or 0.01
+            )
+            if rounding <= 0:
+                rounding = 0.01
             if not float_is_zero(
                 area_amount,
-                precision_rounding=order.currency_id.rounding,
+                precision_rounding=rounding,
             ):
                 extra_rows.append(
                     {
