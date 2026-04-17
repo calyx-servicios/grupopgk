@@ -189,7 +189,8 @@ class SaleOrderLine(models.Model):
         )
         for line in quoter_lines:
             line._quoter_sync_range_hours()
-            line._quoter_apply_level_template_hours()
+            if not line.quoter_is_adjustment_line:
+                line._quoter_apply_level_template_hours()
         for line in quoter_lines:
             price, _warn = line._quoter_compute_unit_price_from_ranges()
             line.write({"price_unit": price})
@@ -230,6 +231,8 @@ class SaleOrderLine(models.Model):
     def _quoter_apply_level_template_hours(self):
         """Copia horas de quoter.product.level.range (plantilla por nivel) a las filas de esta línea."""
         for line in self:
+            if line.quoter_is_adjustment_line:
+                continue
             if not line.order_id.is_quotation:
                 continue
             if not line.product_id or not getattr(line.product_id, "is_quoter_product", False):
@@ -606,9 +609,13 @@ class SaleOrderLine(models.Model):
         "product_id.product_tmpl_id.is_quoter_product",
         "product_id.product_tmpl_id.quoter_service_line_id.manual_load",
         "product_id.product_tmpl_id.quoter_service_line_id.manual_total_load",
+        "quoter_is_adjustment_line",
     )
     def _compute_quoter_can_edit_range_hours(self):
         for line in self:
+            if line.quoter_is_adjustment_line and line.order_id.is_quotation:
+                line.quoter_can_edit_range_hours = True
+                continue
             line.quoter_can_edit_range_hours = line._quoter_manual_ranges_mode()
 
     @api.depends(
@@ -617,9 +624,13 @@ class SaleOrderLine(models.Model):
         "product_id.product_tmpl_id.is_quoter_product",
         "product_id.product_tmpl_id.quoter_service_line_id.manual_total_load",
         "quoter_tab_area_id",
+        "quoter_is_adjustment_line",
     )
     def _compute_quoter_can_edit_total_hours(self):
         for line in self:
+            if line.quoter_is_adjustment_line and line.order_id.is_quotation:
+                line.quoter_can_edit_total_hours = False
+                continue
             line.quoter_can_edit_total_hours = line._quoter_manual_total_mode()
 
     @api.depends(
@@ -850,6 +861,8 @@ class SaleOrderLine(models.Model):
             }
         )
         new_line._quoter_sync_range_hours()
+        for rh in new_line.quoter_range_hour_ids:
+            rh.write({"hours": 0.0})
         new_line._quoter_onchange_compute_price_from_ranges()
         return True
 
