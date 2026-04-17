@@ -142,21 +142,21 @@ class SaleOrder(models.Model):
             )
 
     def _check_quoter_partner_adjustment_write_access(self):
-        """Descuento/recargo % por área: solo gerente asignado o administrador."""
+        """Descuento/recargo % por área: solo socio asignado (grupo Socio) o administrador."""
         self.ensure_one()
         if self.env.user.has_group("base.group_system"):
             return
-        if not self.env.user.has_group("quoter.group_quoter_manager"):
+        if not self.env.user.has_group("quoter.group_quoter_partner"):
             raise UserError(
-                _("Solo usuarios del grupo Quoter - Gerente pueden editar el porcentaje de descuento o recargo por área.")
+                _("Solo usuarios del grupo Quoter - Socio pueden editar el porcentaje de descuento o recargo por área.")
             )
-        if not self.quoter_manager_id:
+        if not self.quoter_partner_id:
             raise UserError(
-                _("Defina un Gerente responsable en la cotización para poder cargar porcentaje de descuento o recargo por área.")
+                _("Defina un Socio asignado en la cotización para poder cargar porcentaje de descuento o recargo por área.")
             )
-        if self.quoter_manager_id != self.env.user:
+        if self.quoter_partner_id != self.env.user:
             raise UserError(
-                _("Solo el gerente asignado en la cotización puede editar el porcentaje de descuento o recargo por área.")
+                _("Solo el socio asignado en la cotización puede editar el porcentaje de descuento o recargo por área.")
             )
 
     @api.depends()
@@ -224,6 +224,26 @@ class SaleOrder(models.Model):
                 val = getattr(order, fname) or ""
                 if len(val) > 140:
                     raise UserError(_("El campo no puede superar 140 caracteres."))
+
+    @api.constrains(
+        "is_quotation",
+        "quoter_q_competitors",
+        "quoter_q_budget",
+        "quoter_q_current_payment",
+        "quoter_q_notes",
+    )
+    def _check_quoter_strategic_questions_required(self):
+        for order in self.filtered("is_quotation"):
+            for fname in (
+                "quoter_q_competitors",
+                "quoter_q_budget",
+                "quoter_q_current_payment",
+                "quoter_q_notes",
+            ):
+                if not (getattr(order, fname) or "").strip():
+                    raise UserError(
+                        _("Las preguntas estratégicas son obligatorias en cotizaciones del cotizador.")
+                    )
 
     @api.constrains(
         "order_line",

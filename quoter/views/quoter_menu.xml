@@ -44,7 +44,7 @@
               name="Cotizador"
               sequence="15"
               web_icon="quoter,static/description/icon.png"
-              groups="base.group_system"/>
+              groups="base.group_system,quoter.group_quoter_manager,quoter.group_quoter_partner,quoter.group_quoter_tax,quoter.group_quoter_auditoria,quoter.group_quoter_bpo,quoter.group_quoter_payroll"/>
 
     <menuitem id="menu_quoter_quotations"
               name="Cotizador"

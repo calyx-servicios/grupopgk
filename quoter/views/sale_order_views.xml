@@ -95,10 +95,14 @@
                 <page string="Información estratégica" name="quoter_strategy"
                       attrs="{'invisible': [('is_quotation', '=', False)]}">
                     <group>
-                        <field name="quoter_q_competitors"/>
-                        <field name="quoter_q_budget"/>
-                        <field name="quoter_q_current_payment"/>
-                        <field name="quoter_q_notes"/>
+                        <field name="quoter_q_competitors"
+                               attrs="{'required': [('is_quotation', '=', True)]}"/>
+                        <field name="quoter_q_budget"
+                               attrs="{'required': [('is_quotation', '=', True)]}"/>
+                        <field name="quoter_q_current_payment"
+                               attrs="{'required': [('is_quotation', '=', True)]}"/>
+                        <field name="quoter_q_notes"
+                               attrs="{'required': [('is_quotation', '=', True)]}"/>
                     </group>
                 </page>
                 <page string="Área 1" name="quoter_slot_1"
@@ -132,12 +136,12 @@
                                    attrs="{'readonly': [('quoter_slot_1_editable', '=', False)]}"/>
                             <field name="quoter_slot_1_global_discount"
                                    string="Descuento %"
-                                   groups="quoter.group_quoter_manager"
-                                   attrs="{'readonly': ['|', ('quoter_slot_1_editable', '=', False), ('quoter_user_is_assigned_manager', '=', False)], 'invisible': [('quoter_slot_1_block_level_id', '=', False)]}"/>
+                                   groups="quoter.group_quoter_partner"
+                                   attrs="{'readonly': ['|', ('quoter_slot_1_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('quoter_slot_1_block_level_id', '=', False)]}"/>
                             <field name="quoter_slot_1_global_surcharge"
                                    string="Recargo %"
-                                   groups="quoter.group_quoter_manager"
-                                   attrs="{'readonly': ['|', ('quoter_slot_1_editable', '=', False), ('quoter_user_is_assigned_manager', '=', False)], 'invisible': [('quoter_slot_1_block_level_id', '=', False)]}"/>
+                                   groups="quoter.group_quoter_partner"
+                                   attrs="{'readonly': ['|', ('quoter_slot_1_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('quoter_slot_1_block_level_id', '=', False)]}"/>
                         </group>
                         <group>
                             <button name="action_quoter_slot_1_publish"
@@ -218,10 +222,11 @@
                             <field name="price_subtotal" readonly="1"/>
                         </tree>
                     </field>
-                    <group string="Resumen por rango" class="o_quoter_resumen_rango" colspan="2"
-                           attrs="{'invisible': [('quoter_slot_1_block_level_id', '=', False)]}">
+                    <div class="o_quoter_resumen_rango"
+                         attrs="{'invisible': [('quoter_slot_1_block_level_id', '=', False)]}">
+                        <div class="o_quoter_resumen_rango_title">Resumen por rango</div>
                         <field name="quoter_slot_1_area_summary_html" nolabel="1" readonly="1"/>
-                    </group>
+                    </div>
                     <group class="oe_subtotal_footer oe_right o_quoter_area_footer_totals" colspan="2"
                            attrs="{'invisible': [('quoter_slot_1_block_level_id', '=', False)]}">
                         <field name="quoter_slot_1_caption_products" readonly="1" nolabel="1"/>
@@ -273,12 +278,12 @@
                                    attrs="{'readonly': [('quoter_slot_2_editable', '=', False)]}"/>
                             <field name="quoter_slot_2_global_discount"
                                    string="Descuento %"
-                                   groups="quoter.group_quoter_manager"
-                                   attrs="{'readonly': ['|', ('quoter_slot_2_editable', '=', False), ('quoter_user_is_assigned_manager', '=', False)], 'invisible': [('quoter_slot_2_block_level_id', '=', False)]}"/>
+                                   groups="quoter.group_quoter_partner"
+                                   attrs="{'readonly': ['|', ('quoter_slot_2_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('quoter_slot_2_block_level_id', '=', False)]}"/>
                             <field name="quoter_slot_2_global_surcharge"
                                    string="Recargo %"
-                                   groups="quoter.group_quoter_manager"
-                                   attrs="{'readonly': ['|', ('quoter_slot_2_editable', '=', False), ('quoter_user_is_assigned_manager', '=', False)], 'invisible': [('quoter_slot_2_block_level_id', '=', False)]}"/>
+                                   groups="quoter.group_quoter_partner"
+                                   attrs="{'readonly': ['|', ('quoter_slot_2_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('quoter_slot_2_block_level_id', '=', False)]}"/>
                         </group>
                         <group>
                             <button name="action_quoter_slot_2_publish"
@@ -359,10 +364,11 @@
                             <field name="price_subtotal" readonly="1"/>
                         </tree>
                     </field>
-                    <group string="Resumen por rango" class="o_quoter_resumen_rango" colspan="2"
-                           attrs="{'invisible': [('quoter_slot_2_block_level_id', '=', False)]}">
+                    <div class="o_quoter_resumen_rango"
+                         attrs="{'invisible': [('quoter_slot_2_block_level_id', '=', False)]}">
+                        <div class="o_quoter_resumen_rango_title">Resumen por rango</div>
                         <field name="quoter_slot_2_area_summary_html" nolabel="1" readonly="1"/>
-                    </group>
+                    </div>
                     <group class="oe_subtotal_footer oe_right o_quoter_area_footer_totals" colspan="2"
                            attrs="{'invisible': [('quoter_slot_2_block_level_id', '=', False)]}">
                         <field name="quoter_slot_2_caption_products" readonly="1" nolabel="1"/>
@@ -414,12 +420,12 @@
                                    attrs="{'readonly': [('quoter_slot_3_editable', '=', False)]}"/>
                             <field name="quoter_slot_3_global_discount"
                                    string="Descuento %"
-                                   groups="quoter.group_quoter_manager"
-                                   attrs="{'readonly': ['|', ('quoter_slot_3_editable', '=', False), ('quoter_user_is_assigned_manager', '=', False)], 'invisible': [('quoter_slot_3_block_level_id', '=', False)]}"/>
+                                   groups="quoter.group_quoter_partner"
+                                   attrs="{'readonly': ['|', ('quoter_slot_3_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('quoter_slot_3_block_level_id', '=', False)]}"/>
                             <field name="quoter_slot_3_global_surcharge"
                                    string="Recargo %"
-                                   groups="quoter.group_quoter_manager"
-                                   attrs="{'readonly': ['|', ('quoter_slot_3_editable', '=', False), ('quoter_user_is_assigned_manager', '=', False)], 'invisible': [('quoter_slot_3_block_level_id', '=', False)]}"/>
+                                   groups="quoter.group_quoter_partner"
+                                   attrs="{'readonly': ['|', ('quoter_slot_3_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('quoter_slot_3_block_level_id', '=', False)]}"/>
                         </group>
                         <group>
                             <button name="action_quoter_slot_3_publish"
@@ -500,10 +506,11 @@
                             <field name="price_subtotal" readonly="1"/>
                         </tree>
                     </field>
-                    <group string="Resumen por rango" class="o_quoter_resumen_rango" colspan="2"
-                           attrs="{'invisible': [('quoter_slot_3_block_level_id', '=', False)]}">
+                    <div class="o_quoter_resumen_rango"
+                         attrs="{'invisible': [('quoter_slot_3_block_level_id', '=', False)]}">
+                        <div class="o_quoter_resumen_rango_title">Resumen por rango</div>
                         <field name="quoter_slot_3_area_summary_html" nolabel="1" readonly="1"/>
-                    </group>
+                    </div>
                     <group class="oe_subtotal_footer oe_right o_quoter_area_footer_totals" colspan="2"
                            attrs="{'invisible': [('quoter_slot_3_block_level_id', '=', False)]}">
                         <field name="quoter_slot_3_caption_products" readonly="1" nolabel="1"/>
@@ -555,12 +562,12 @@
                                    attrs="{'readonly': [('quoter_slot_4_editable', '=', False)]}"/>
                             <field name="quoter_slot_4_global_discount"
                                    string="Descuento %"
-                                   groups="quoter.group_quoter_manager"
-                                   attrs="{'readonly': ['|', ('quoter_slot_4_editable', '=', False), ('quoter_user_is_assigned_manager', '=', False)], 'invisible': [('quoter_slot_4_block_level_id', '=', False)]}"/>
+                                   groups="quoter.group_quoter_partner"
+                                   attrs="{'readonly': ['|', ('quoter_slot_4_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('quoter_slot_4_block_level_id', '=', False)]}"/>
                             <field name="quoter_slot_4_global_surcharge"
                                    string="Recargo %"
-                                   groups="quoter.group_quoter_manager"
-                                   attrs="{'readonly': ['|', ('quoter_slot_4_editable', '=', False), ('quoter_user_is_assigned_manager', '=', False)], 'invisible': [('quoter_slot_4_block_level_id', '=', False)]}"/>
+                                   groups="quoter.group_quoter_partner"
+                                   attrs="{'readonly': ['|', ('quoter_slot_4_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('quoter_slot_4_block_level_id', '=', False)]}"/>
                         </group>
                         <group>
                             <button name="action_quoter_slot_4_publish"
@@ -641,10 +648,11 @@
                             <field name="price_subtotal" readonly="1"/>
                         </tree>
                     </field>
-                    <group string="Resumen por rango" class="o_quoter_resumen_rango" colspan="2"
-                           attrs="{'invisible': [('quoter_slot_4_block_level_id', '=', False)]}">
+                    <div class="o_quoter_resumen_rango"
+                         attrs="{'invisible': [('quoter_slot_4_block_level_id', '=', False)]}">
+                        <div class="o_quoter_resumen_rango_title">Resumen por rango</div>
                         <field name="quoter_slot_4_area_summary_html" nolabel="1" readonly="1"/>
-                    </group>
+                    </div>
                     <group class="oe_subtotal_footer oe_right o_quoter_area_footer_totals" colspan="2"
                            attrs="{'invisible': [('quoter_slot_4_block_level_id', '=', False)]}">
                         <field name="quoter_slot_4_caption_products" readonly="1" nolabel="1"/>
@@ -696,12 +704,12 @@
                                    attrs="{'readonly': [('quoter_slot_5_editable', '=', False)]}"/>
                             <field name="quoter_slot_5_global_discount"
                                    string="Descuento %"
-                                   groups="quoter.group_quoter_manager"
-                                   attrs="{'readonly': ['|', ('quoter_slot_5_editable', '=', False), ('quoter_user_is_assigned_manager', '=', False)], 'invisible': [('quoter_slot_5_block_level_id', '=', False)]}"/>
+                                   groups="quoter.group_quoter_partner"
+                                   attrs="{'readonly': ['|', ('quoter_slot_5_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('quoter_slot_5_block_level_id', '=', False)]}"/>
                             <field name="quoter_slot_5_global_surcharge"
                                    string="Recargo %"
-                                   groups="quoter.group_quoter_manager"
-                                   attrs="{'readonly': ['|', ('quoter_slot_5_editable', '=', False), ('quoter_user_is_assigned_manager', '=', False)], 'invisible': [('quoter_slot_5_block_level_id', '=', False)]}"/>
+                                   groups="quoter.group_quoter_partner"
+                                   attrs="{'readonly': ['|', ('quoter_slot_5_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('quoter_slot_5_block_level_id', '=', False)]}"/>
                         </group>
                         <group>
                             <button name="action_quoter_slot_5_publish"
@@ -782,10 +790,11 @@
                             <field name="price_subtotal" readonly="1"/>
                         </tree>
                     </field>
-                    <group string="Resumen por rango" class="o_quoter_resumen_rango" colspan="2"
-                           attrs="{'invisible': [('quoter_slot_5_block_level_id', '=', False)]}">
+                    <div class="o_quoter_resumen_rango"
+                         attrs="{'invisible': [('quoter_slot_5_block_level_id', '=', False)]}">
+                        <div class="o_quoter_resumen_rango_title">Resumen por rango</div>
                         <field name="quoter_slot_5_area_summary_html" nolabel="1" readonly="1"/>
-                    </group>
+                    </div>
                     <group class="oe_subtotal_footer oe_right o_quoter_area_footer_totals" colspan="2"
                            attrs="{'invisible': [('quoter_slot_5_block_level_id', '=', False)]}">
                         <field name="quoter_slot_5_caption_products" readonly="1" nolabel="1"/>

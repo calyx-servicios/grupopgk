@@ -58,6 +58,44 @@ odoo.define("quoter.tab_labels", function (require) {
                 }
                 $link.text(title);
             }
+            const isTax = title && /\btax\b/i.test(String(title).trim());
+            $pane.toggleClass("o_quoter_slot_tax", !!isTax);
+            if (!isTax) {
+                $pane.find(".o_quoter_tax_resumen_align").removeClass("o_quoter_tax_resumen_align");
+                $pane.find(".o_horizontal_separator").each(function () {
+                    const st = ($(this).text() || "").trim();
+                    if (st === "Resumen por roles o rango") {
+                        $(this).text("Resumen por rango");
+                    }
+                });
+                $pane.find(".o_quoter_resumen_rango_title").each(function () {
+                    const st = ($(this).text() || "").trim();
+                    if (st === "Resumen por roles o rango") {
+                        $(this).text("Resumen por rango");
+                    }
+                });
+                $pane.find("label.o_form_label").each(function () {
+                    if (($(this).text() || "").trim() === "Nivel de complejidad") {
+                        $(this).text("Nivel del área");
+                    }
+                });
+                return;
+            }
+            $pane.find("label.o_form_label").each(function () {
+                const lt = ($(this).text() || "").trim();
+                if (lt === "Nivel del área") {
+                    $(this).text("Nivel de complejidad");
+                }
+            });
+            $pane.find(".o_horizontal_separator").each(function () {
+                const st = ($(this).text() || "").trim();
+                if (st === "Resumen por rango") {
+                    $(this).text("Resumen por roles o rango");
+                }
+            });
+            $pane.find(".o_quoter_resumen_rango").each(function () {
+                $(this).addClass("o_quoter_tax_resumen_align");
+            });
         });
     }
 
