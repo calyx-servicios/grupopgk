@@ -890,15 +890,22 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                             _logger.warning(f"No se pudo crear la nota de débito para tolerancia")
                             return log_item
                     
-                    # Si se creó una nota de crédito, postear el pago automáticamente
-                    if credit_note_created:
-                        _logger.info(f"Nota de crédito creada. Posteando payment group {payment_group.id} automáticamente...")
-                        payment_group.post()
-                    # Si no se creó nota de crédito, postear solo si cumple condiciones de retenciones
-                    elif self._should_post_payment_group(log_item):
+                    # Misma regla para NC y ND: solo postear si _should_post_payment_group lo permite
+                    if self._should_post_payment_group(log_item):
+                        note_label = (
+                            "Nota de crédito creada"
+                            if credit_note_created
+                            else "Nota de débito creada"
+                        )
+                        _logger.info(
+                            f"{note_label}. Posteando payment group {payment_group.id} automáticamente..."
+                        )
                         payment_group.post()
                     else:
-                        _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
+                        _logger.info(
+                            f"Payment group {payment_group.id} no publicado: "
+                            f"condiciones de retenciones no cumplidas"
+                        )
                         return log_item
                     
                     # Marcar como leído cuando el recibo se haya publicado exitosamente
@@ -1020,9 +1027,6 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         
         # Si hay retenciones, verificar que también haya archivos de retención
         if has_withholding:
-            if not has_files:
-                _logger.info(f"Payment group no se postea: hay retenciones pero no hay archivos de retención descargados")
-                return False
             return True
         
         # Si no hay retenciones ni archivos, se postea normalmente
