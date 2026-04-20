@@ -53,7 +53,9 @@ class SubscriptionPackage(models.Model):
     def _create_and_sync_invoice(self, subscription, today_date):
         before_invoice = self._get_related_invoice(subscription)
         before_invoice_id = before_invoice.id if before_invoice else 0
-        subscription.create_invoice_forced()
+        subscription.with_context(
+            allowed_company_ids=[subscription.company_id.id]
+        ).with_company(subscription.company_id).create_invoice_forced()
 
         latest_invoice = self._get_related_invoice(subscription)
         if latest_invoice and latest_invoice.id != before_invoice_id:
