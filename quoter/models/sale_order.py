@@ -102,7 +102,7 @@ class SaleOrder(models.Model):
         column1="order_id",
         column2="area_id",
         string="Áreas",
-        domain="[('active', '=', True), ('cerrado', '=', True)]",
+        domain=lambda self: self._quoter_domain_available_areas(),
         help="Áreas de la cotización (máx. 5). Cada una tiene su pestaña en el cotizador.",
     )
     quoter_primary_area_id = fields.Many2one(
@@ -126,8 +126,8 @@ class SaleOrder(models.Model):
 
     @api.depends()
     def _compute_quoter_user_can_edit_fields(self):
-        can_mgr = self.env.user.has_group("quoter.group_quoter_manager") or self.env.user.has_group("base.group_system")
-        can_partner = self.env.user.has_group("quoter.group_quoter_partner") or self.env.user.has_group("base.group_system")
+        can_mgr = self.env.user.has_group("quoter.group_quoter_manager")
+        can_partner = self.env.user.has_group("quoter.group_quoter_partner")
         current_user = self.env.user
         for order in self:
             order.quoter_user_can_edit_manager = bool(can_mgr)
@@ -141,11 +141,54 @@ class SaleOrder(models.Model):
                 and order.quoter_partner_id == current_user
             )
 
-    def _check_quoter_partner_adjustment_write_access(self):
-        """Descuento/recargo % por área: solo socio asignado (grupo Socio) o administrador."""
-        self.ensure_one()
-        if self.env.user.has_group("base.group_system"):
+    @api.model
+    def _quoter_user_can_see_all_areas(self):
+        user = self.env.user
+        return bool(
+            user.has_group("quoter.group_quoter_manager")
+            or user.has_group("quoter.group_quoter_partner")
+        )
+
+    @api.model
+    def _quoter_user_in_any_quoter_group(self):
+        user = self.env.user
+        return bool(
+            user.has_group("quoter.group_quoter_manager")
+            or user.has_group("quoter.group_quoter_partner")
+            or user.has_group("quoter.group_quoter_tax")
+            or user.has_group("quoter.group_quoter_auditoria")
+            or user.has_group("quoter.group_quoter_bpo")
+            or user.has_group("quoter.group_quoter_payroll")
+        )
+
+    @api.model
+    def _quoter_domain_available_areas(self):
+        domain = [("active", "=", True), ("cerrado", "=", True)]
+        if self._quoter_user_can_see_all_areas():
+            return domain
+        user_group_ids = self.env.user.groups_id.ids
+        if not user_group_ids:
+            return domain + [("id", "=", 0)]
+        return domain + [("group_id", "in", user_group_ids)]
+
+    def _quoter_validate_area_visibility_access(self):
+        if self._quoter_user_can_see_all_areas():
             return
+        user_groups = self.env.user.groups_id
+        for order in self.filtered("is_quotation"):
+            forbidden = order.quoter_area_ids.filtered(
+                lambda a: not a.group_id or a.group_id not in user_groups
+            )
+            if forbidden:
+                raise UserError(
+                    _(
+                        "Solo puede seleccionar áreas donde esté asignado al grupo del área."
+                    )
+                )
+
+    def _check_quoter_partner_adjustment_write_access(self):
+        """Descuento/recargo % por área: solo socio asignado (grupo Socio)."""
+        self.ensure_one()
         if not self.env.user.has_group("quoter.group_quoter_partner"):
             raise UserError(
                 _("Solo usuarios del grupo Quoter - Socio pueden editar el porcentaje de descuento o recargo por área.")
@@ -182,18 +225,33 @@ class SaleOrder(models.Model):
         """Refuerza en servidor la edición por grupo de campos cabecera Quoter."""
         if not vals:
             return
-        can_mgr = self.env.user.has_group("quoter.group_quoter_manager") or self.env.user.has_group("base.group_system")
-        can_partner = self.env.user.has_group("quoter.group_quoter_partner") or self.env.user.has_group("base.group_system")
+        can_mgr = self.env.user.has_group("quoter.group_quoter_manager")
+        can_partner = self.env.user.has_group("quoter.group_quoter_partner")
         manager_group = self.env.ref("quoter.group_quoter_manager", raise_if_not_found=False)
         partner_group = self.env.ref("quoter.group_quoter_partner", raise_if_not_found=False)
+        is_create = not bool(self.ids)
+        is_quotation_flow = bool(
+            vals.get("is_quotation")
+            or self.env.context.get("default_is_quotation")
+            or self.env.context.get("quoter_use_cot_sequence")
+        )
+        allow_quotation_create = bool(
+            is_create and is_quotation_flow and self._quoter_user_in_any_quoter_group()
+        )
         if "quoter_manager_id" in vals and not can_mgr:
-            raise UserError(
-                _("Solo usuarios del grupo Quoter - Gerente pueden editar Gerente responsable.")
-            )
+            if allow_quotation_create:
+                vals.pop("quoter_manager_id", None)
+            else:
+                raise UserError(
+                    _("Solo usuarios del grupo Quoter - Gerente pueden editar Gerente responsable.")
+                )
         if "quoter_partner_id" in vals and not can_partner:
-            raise UserError(
-                _("Solo usuarios del grupo Quoter - Socio pueden editar Socio asignado.")
-            )
+            if allow_quotation_create:
+                vals.pop("quoter_partner_id", None)
+            else:
+                raise UserError(
+                    _("Solo usuarios del grupo Quoter - Socio pueden editar Socio asignado.")
+                )
         if "quoter_manager_id" in vals and vals.get("quoter_manager_id"):
             manager_user = self.env["res.users"].browse(vals["quoter_manager_id"])
             if manager_group and manager_group not in manager_user.groups_id:
@@ -950,8 +1008,7 @@ class SaleOrder(models.Model):
     def _compute_quoter_slot_areas(self):
         user_group_ids = set(self.env.user.groups_id.ids)
         can_view_all_tabs = (
-            self.env.user.has_group("base.group_system")
-            or self.env.user.has_group("quoter.group_quoter_manager")
+            self.env.user.has_group("quoter.group_quoter_manager")
             or self.env.user.has_group("quoter.group_quoter_partner")
         )
         for order in self:
@@ -1239,6 +1296,8 @@ class SaleOrder(models.Model):
 
     def _inverse_quoter_slot_1_global_discount(self):
         for order in self:
+            if not self.env.user.has_group("quoter.group_quoter_partner"):
+                continue
             order._check_quoter_partner_adjustment_write_access()
             if order.quoter_block_slot_1_id:
                 order.quoter_block_slot_1_id.global_discount_amount = max(
@@ -1249,6 +1308,8 @@ class SaleOrder(models.Model):
 
     def _inverse_quoter_slot_2_global_discount(self):
         for order in self:
+            if not self.env.user.has_group("quoter.group_quoter_partner"):
+                continue
             order._check_quoter_partner_adjustment_write_access()
             if order.quoter_block_slot_2_id:
                 order.quoter_block_slot_2_id.global_discount_amount = max(
@@ -1259,6 +1320,8 @@ class SaleOrder(models.Model):
 
     def _inverse_quoter_slot_3_global_discount(self):
         for order in self:
+            if not self.env.user.has_group("quoter.group_quoter_partner"):
+                continue
             order._check_quoter_partner_adjustment_write_access()
             if order.quoter_block_slot_3_id:
                 order.quoter_block_slot_3_id.global_discount_amount = max(
@@ -1269,6 +1332,8 @@ class SaleOrder(models.Model):
 
     def _inverse_quoter_slot_4_global_discount(self):
         for order in self:
+            if not self.env.user.has_group("quoter.group_quoter_partner"):
+                continue
             order._check_quoter_partner_adjustment_write_access()
             if order.quoter_block_slot_4_id:
                 order.quoter_block_slot_4_id.global_discount_amount = max(
@@ -1279,6 +1344,8 @@ class SaleOrder(models.Model):
 
     def _inverse_quoter_slot_5_global_discount(self):
         for order in self:
+            if not self.env.user.has_group("quoter.group_quoter_partner"):
+                continue
             order._check_quoter_partner_adjustment_write_access()
             if order.quoter_block_slot_5_id:
                 order.quoter_block_slot_5_id.global_discount_amount = max(
@@ -1289,6 +1356,8 @@ class SaleOrder(models.Model):
 
     def _inverse_quoter_slot_1_global_surcharge(self):
         for order in self:
+            if not self.env.user.has_group("quoter.group_quoter_partner"):
+                continue
             order._check_quoter_partner_adjustment_write_access()
             if order.quoter_block_slot_1_id:
                 order.quoter_block_slot_1_id.global_surcharge_amount = max(
@@ -1299,6 +1368,8 @@ class SaleOrder(models.Model):
 
     def _inverse_quoter_slot_2_global_surcharge(self):
         for order in self:
+            if not self.env.user.has_group("quoter.group_quoter_partner"):
+                continue
             order._check_quoter_partner_adjustment_write_access()
             if order.quoter_block_slot_2_id:
                 order.quoter_block_slot_2_id.global_surcharge_amount = max(
@@ -1309,6 +1380,8 @@ class SaleOrder(models.Model):
 
     def _inverse_quoter_slot_3_global_surcharge(self):
         for order in self:
+            if not self.env.user.has_group("quoter.group_quoter_partner"):
+                continue
             order._check_quoter_partner_adjustment_write_access()
             if order.quoter_block_slot_3_id:
                 order.quoter_block_slot_3_id.global_surcharge_amount = max(
@@ -1319,6 +1392,8 @@ class SaleOrder(models.Model):
 
     def _inverse_quoter_slot_4_global_surcharge(self):
         for order in self:
+            if not self.env.user.has_group("quoter.group_quoter_partner"):
+                continue
             order._check_quoter_partner_adjustment_write_access()
             if order.quoter_block_slot_4_id:
                 order.quoter_block_slot_4_id.global_surcharge_amount = max(
@@ -1329,6 +1404,8 @@ class SaleOrder(models.Model):
 
     def _inverse_quoter_slot_5_global_surcharge(self):
         for order in self:
+            if not self.env.user.has_group("quoter.group_quoter_partner"):
+                continue
             order._check_quoter_partner_adjustment_write_access()
             if order.quoter_block_slot_5_id:
                 order.quoter_block_slot_5_id.global_surcharge_amount = max(
@@ -1707,6 +1784,7 @@ class SaleOrder(models.Model):
             self._quoter_apply_hidden_fields_policy(vals)
         records = super().create(vals_list)
         for order, vals in zip(records, vals_list):
+            order._quoter_validate_area_visibility_access()
             order._sync_quoter_area_blocks()
             order._quoter_autoload_default_products_after_save(trigger_vals=vals)
             if order.is_quotation:
@@ -1715,6 +1793,23 @@ class SaleOrder(models.Model):
 
     def write(self, vals):
         self._check_quoter_responsibles_write_access(vals)
+        if vals:
+            vals = dict(vals)
+            discount_keys = {
+                "quoter_slot_1_global_discount",
+                "quoter_slot_2_global_discount",
+                "quoter_slot_3_global_discount",
+                "quoter_slot_4_global_discount",
+                "quoter_slot_5_global_discount",
+                "quoter_slot_1_global_surcharge",
+                "quoter_slot_2_global_surcharge",
+                "quoter_slot_3_global_surcharge",
+                "quoter_slot_4_global_surcharge",
+                "quoter_slot_5_global_surcharge",
+            }
+            if not self.env.user.has_group("quoter.group_quoter_partner"):
+                for key in discount_keys:
+                    vals.pop(key, None)
         if vals is not None and self.env.context.get("quoter_use_cot_sequence"):
             vals = dict(vals)
             vals["is_quotation"] = True
@@ -1727,6 +1822,8 @@ class SaleOrder(models.Model):
                 vals, force=not vals.get("is_quotation")
             )
         res = super().write(vals)
+        if vals and ("quoter_area_ids" in vals or "is_quotation" in vals):
+            self._quoter_validate_area_visibility_access()
         if "quoter_area_ids" in vals or "is_quotation" in vals:
             self._sync_quoter_area_blocks()
         if vals:
