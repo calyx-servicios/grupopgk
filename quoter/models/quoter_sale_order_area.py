@@ -173,6 +173,10 @@ class QuoterSaleOrderArea(models.Model):
             order._quoter_refresh_area_lines_hours_from_levels(area)
 
     def write(self, vals):
+        vals = dict(vals or {})
+        if not self.env.user.has_group("quoter.group_quoter_partner"):
+            vals.pop("global_discount_amount", None)
+            vals.pop("global_surcharge_amount", None)
         if {"global_discount_amount", "global_surcharge_amount"} & set(vals.keys()):
             for rec in self:
                 if rec.order_id:

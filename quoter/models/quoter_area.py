@@ -142,9 +142,12 @@ class QuoterProfessionalArea(models.Model):
 
     @api.model
     def name_search(self, name="", args=None, operator="ilike", limit=100):
-        """Permite a usuarios con listas de precios elegir áreas aunque group_id restrinja."""
+        """Gerente/Socio ven todas; el resto respeta visibilidad por grupo."""
         args = args or []
-        if self.env.user.has_group("product.group_sale_pricelist"):
+        if (
+            self.env.user.has_group("quoter.group_quoter_manager")
+            or self.env.user.has_group("quoter.group_quoter_partner")
+        ):
             return super(QuoterProfessionalArea, self.sudo()).name_search(
                 name=name, args=args, operator=operator, limit=limit
             )
