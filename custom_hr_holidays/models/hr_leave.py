@@ -41,10 +41,22 @@ class HrLeave(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        if not self.env.user.has_group('hr_holidays.group_hr_holidays_manager'):
-            self.check_date_range(vals_list)
-            self.check_start_day(vals_list)
+        if not self.env.user.has_group("hr_holidays.group_hr_holidays_manager"):
+            for vals in vals_list:
+                holiday_status_id = vals.get("holiday_status_id")
+                if not holiday_status_id:
+                    continue
+                holiday_status = self.env["hr.leave.type"].browse(holiday_status_id)
+                # Reglas personalizadas solo para vacaciones.
+                if not self._is_vacation_leave_type(holiday_status):
+                    continue
+                self.check_date_range([vals])
+                self.check_start_day([vals])
         return super(HrLeave, self).create(vals_list)
+
+    def _is_vacation_leave_type(self, holiday_status):
+        name = (holiday_status.name or "").lower()
+        return holiday_status.time_type == "other" and "vacacion" in name
 
     def check_start_day(self, vals_list):
         # Mapeo de los días de la semana de inglés a español
