@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_calendar_event_form_hr_filter" model="ir.ui.view">
+        <field name="name">calendar.event.form.hr.filter</field>
+        <field name="model">calendar.event</field>
+        <field name="inherit_id" ref="calendar.view_calendar_event_form"/>
+        <field name="arch" type="xml">
+            <field name="user_id" position="before">
+                <field name="user_id_domain" invisible="1"/>
+                <field name="partner_ids_domain" invisible="1"/>
+            </field>
+            <field name="user_id" position="attributes">
+                <attribute name="domain">user_id_domain</attribute>
+            </field>
+            <field name="partner_ids" position="attributes">
+                <attribute name="domain">partner_ids_domain</attribute>
+            </field>
+        </field>
+    </record>
+
+</odoo>
