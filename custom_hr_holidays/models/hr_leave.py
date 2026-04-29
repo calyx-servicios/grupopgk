@@ -41,10 +41,76 @@ class HrLeave(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        if not self.env.user.has_group('hr_holidays.group_hr_holidays_manager'):
-            self.check_date_range(vals_list)
-            self.check_start_day(vals_list)
-        return super(HrLeave, self).create(vals_list)
+        should_check_mudanza_quota = not self.env.user.has_group(
+            "hr_holidays.group_hr_holidays_manager"
+        )
+        if not self.env.user.has_group("hr_holidays.group_hr_holidays_manager"):
+            for vals in vals_list:
+                holiday_status_id = vals.get("holiday_status_id")
+                if not holiday_status_id:
+                    continue
+                holiday_status = self.env["hr.leave.type"].browse(holiday_status_id)
+                # Reglas personalizadas solo para vacaciones.
+                if not self._is_vacation_leave_type(holiday_status):
+                    continue
+                self.check_date_range([vals])
+                self.check_start_day([vals])
+        leaves = super(HrLeave, self).create(vals_list)
+        if should_check_mudanza_quota:
+            leaves._check_mudanza_available_days()
+        return leaves
+
+    def write(self, vals):
+        should_check_mudanza_quota = not self.env.user.has_group(
+            "hr_holidays.group_hr_holidays_manager"
+        )
+        result = super(HrLeave, self).write(vals)
+        if should_check_mudanza_quota:
+            self._check_mudanza_available_days()
+        return result
+
+    def _is_vacation_leave_type(self, holiday_status):
+        name = (holiday_status.name or "").lower()
+        return holiday_status.time_type == "other" and "vacacion" in name
+
+    def _is_mudanza_leave(self):
+        self.ensure_one()
+        name = (self.holiday_status_id.name or "").lower()
+        return self.holiday_status_id.requires_allocation == "no" and "mudanza" in name
+
+    def _check_mudanza_available_days(self):
+        for leave in self:
+            if (
+                leave.holiday_type != "employee"
+                or not leave.employee_id
+                or leave.state not in ["confirm", "validate1", "validate"]
+                or not leave._is_mudanza_leave()
+            ):
+                continue
+
+            leave_date = leave.date_from.date() if leave.date_from else fields.Date.context_today(self)
+            year_start = leave_date.replace(month=1, day=1)
+            year_end = leave_date.replace(month=12, day=31)
+            next_year_start = year_end + timedelta(days=1)
+
+            consumed_days = self.env["hr.leave"].search(
+                [
+                    ("id", "!=", leave.id),
+                    ("employee_id", "=", leave.employee_id.id),
+                    ("holiday_status_id", "=", leave.holiday_status_id.id),
+                    ("state", "in", ["confirm", "validate1", "validate"]),
+                    ("date_from", ">=", fields.Datetime.to_datetime(year_start)),
+                    ("date_from", "<", fields.Datetime.to_datetime(next_year_start)),
+                ]
+            ).mapped("number_of_days")
+            available_days = max(2.0 - sum(consumed_days), 0.0)
+            if leave.number_of_days > available_days:
+                raise ValidationError(
+                    _(
+                        "Solo dispone de %s día(s) de mudanza en el año."
+                    )
+                    % round(available_days, 2)
+                )
 
     def check_start_day(self, vals_list):
         # Mapeo de los días de la semana de inglés a español
