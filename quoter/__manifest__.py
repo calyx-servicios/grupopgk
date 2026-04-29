@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Sales",
-    "version": "15.0.6.2.65",
+    "version": "15.0.6.2.66",
     "development_status": "Beta",
     "application": False,
     "installable": True,
@@ -18,6 +18,7 @@
         "sale",
         "sale_management",
         "product",
+        "account",
         # Después de sale_order_type: el create del quoter corre antes que el de OCA
         # y deja name=Q antes de next_by_id (evita consumir la secuencia del tipo en vano).
         "sale_order_type",
