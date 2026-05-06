@@ -31,15 +31,34 @@ class HrLeaveType(models.Model):
         if not employee_id or not self:
             return {}
 
+        employee = self.env["hr.employee"].browse(employee_id)
+        employee_company = employee._get_holidays_reference_company()
+        if not employee_company:
+            return {}
+
+        allowed_company_ids = set(
+            self.env.context.get("allowed_company_ids") or self.env.companies.ids
+        )
+        if employee_company.id not in allowed_company_ids:
+            return {}
+
+        leave_types = self.filtered(
+            lambda lt: not lt.company_id or lt.company_id == employee_company
+        )
+        if not leave_types:
+            return {}
+
         today = fields.Date.context_today(self)
         year_start = today.replace(month=1, day=1)
         year_end = today.replace(month=12, day=31)
         next_year_start = year_end + timedelta(days=1)
 
         allocation_domain = [
-            ("holiday_status_id", "in", self.ids),
+            ("holiday_status_id", "in", leave_types.ids),
             ("holiday_status_id.requires_allocation", "=", "no"),
+            ("holiday_status_id.company_id", "in", [False, employee_company.id]),
             ("employee_id", "=", employee_id),
+            ("employee_id.company_id", "=", employee_company.id),
             ("state", "=", "validate"),
             ("active", "=", True),
             ("date_from", "<=", year_end),
@@ -55,7 +74,7 @@ class HrLeaveType(models.Model):
         )
 
         fallback_quota_by_type = {}
-        for leave_type in self.filtered(lambda lt: lt.requires_allocation == "no"):
+        for leave_type in leave_types.filtered(lambda lt: lt.requires_allocation == "no"):
             # Regla de negocio PGK: mudanza tiene 2 dias por anio aunque no haya asignacion.
             if "mudanza" in (leave_type.name or "").lower():
                 fallback_quota_by_type[leave_type.id] = 2.0
@@ -73,7 +92,9 @@ class HrLeaveType(models.Model):
 
         leave_domain_common = [
             ("holiday_status_id", "in", list(max_by_type)),
+            ("holiday_status_id.company_id", "in", [False, employee_company.id]),
             ("employee_id", "=", employee_id),
+            ("employee_id.company_id", "=", employee_company.id),
             ("date_from", ">=", fields.Datetime.to_datetime(year_start)),
             ("date_from", "<", fields.Datetime.to_datetime(next_year_start)),
         ]
@@ -137,12 +158,27 @@ class HrLeaveType(models.Model):
         if not employee_id:
             return result
 
-        all_types = self.search([])
-        manual_metrics = all_types._get_manual_allocation_metrics(employee_id)
-        if not manual_metrics:
+        employee = self.env["hr.employee"].browse(employee_id)
+        employee_company = employee._get_holidays_reference_company()
+        if not employee_company:
             return result
 
-        merged = {item[3]: item for item in result}
+        allowed_company_ids = set(
+            self.env.context.get("allowed_company_ids") or self.env.companies.ids
+        )
+        if employee_company.id not in allowed_company_ids:
+            return []
+
+        all_types = self.search([
+            "|",
+            ("company_id", "=", False),
+            ("company_id", "=", employee_company.id),
+        ])
+        manual_metrics = all_types._get_manual_allocation_metrics(employee_id)
+        if not manual_metrics:
+            return [item for item in result if item[3] in all_types.ids]
+
+        merged = {item[3]: item for item in result if item[3] in all_types.ids}
         for leave_type in all_types:
             metrics = manual_metrics.get(leave_type.id)
             if not metrics:
@@ -163,8 +199,23 @@ class HrLeaveType(models.Model):
         if not employee_id:
             return [(record.id, names.get(record.id, record.name)) for record in self]
 
-        manual_metrics = self._get_manual_allocation_metrics(employee_id)
-        for record in self:
+        employee = self.env["hr.employee"].browse(employee_id)
+        employee_company = employee._get_holidays_reference_company()
+        if not employee_company:
+            return []
+
+        allowed_company_ids = set(
+            self.env.context.get("allowed_company_ids") or self.env.companies.ids
+        )
+        if employee_company.id not in allowed_company_ids:
+            return []
+
+        allowed_records = self.filtered(
+            lambda record: not record.company_id or record.company_id == employee_company
+        )
+
+        manual_metrics = allowed_records._get_manual_allocation_metrics(employee_id)
+        for record in allowed_records:
             metrics = manual_metrics.get(record.id)
             if not metrics or self._context.get("from_manager_leave_form"):
                 continue
@@ -179,4 +230,4 @@ class HrLeaveType(models.Model):
                 + (_(" hours") if record.request_unit == "hour" else _(" days")),
             }
 
-        return [(record.id, names.get(record.id, record.name)) for record in self]
+        return [(record.id, names.get(record.id, record.name)) for record in allowed_records]

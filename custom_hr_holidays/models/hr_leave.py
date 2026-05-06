@@ -56,6 +56,7 @@ class HrLeave(models.Model):
                 self.check_date_range([vals])
                 self.check_start_day([vals])
         leaves = super(HrLeave, self).create(vals_list)
+        leaves._check_mudanza_company_context()
         if should_check_mudanza_quota:
             leaves._check_mudanza_available_days()
         return leaves
@@ -65,6 +66,7 @@ class HrLeave(models.Model):
             "hr_holidays.group_hr_holidays_manager"
         )
         result = super(HrLeave, self).write(vals)
+        self._check_mudanza_company_context()
         if should_check_mudanza_quota:
             self._check_mudanza_available_days()
         return result
@@ -78,6 +80,46 @@ class HrLeave(models.Model):
         name = (self.holiday_status_id.name or "").lower()
         return self.holiday_status_id.requires_allocation == "no" and "mudanza" in name
 
+    def _check_mudanza_company_context(self):
+        allowed_company_ids = set(
+            self.env.context.get("allowed_company_ids") or self.env.companies.ids
+        )
+        for leave in self:
+            if (
+                leave.holiday_type != "employee"
+                or not leave.employee_id
+                or not leave._is_mudanza_leave()
+            ):
+                continue
+
+            employee_company = leave.employee_id._get_holidays_reference_company()
+            if not employee_company:
+                continue
+
+            if not leave.employee_id._is_holidays_company_allowed(employee_company):
+                raise ValidationError(
+                    _(
+                        "El empleado no pertenece a la empresa configurada para esta ausencia."
+                    )
+                )
+
+            if employee_company.id not in allowed_company_ids:
+                raise ValidationError(
+                    _(
+                        "No puede registrar días de mudanza fuera de la empresa del empleado."
+                    )
+                )
+
+            if (
+                leave.holiday_status_id.company_id
+                and leave.holiday_status_id.company_id != employee_company
+            ):
+                raise ValidationError(
+                    _(
+                        "El tipo de ausencia de mudanza no pertenece a la empresa del empleado."
+                    )
+                )
+
     def _check_mudanza_available_days(self):
         for leave in self:
             if (
@@ -86,6 +128,10 @@ class HrLeave(models.Model):
                 or leave.state not in ["confirm", "validate1", "validate"]
                 or not leave._is_mudanza_leave()
             ):
+                continue
+
+            employee_company = leave.employee_id._get_holidays_reference_company()
+            if not employee_company:
                 continue
 
             leave_date = leave.date_from.date() if leave.date_from else fields.Date.context_today(self)
@@ -97,7 +143,9 @@ class HrLeave(models.Model):
                 [
                     ("id", "!=", leave.id),
                     ("employee_id", "=", leave.employee_id.id),
+                    ("employee_id.company_id", "=", employee_company.id),
                     ("holiday_status_id", "=", leave.holiday_status_id.id),
+                    ("holiday_status_id.company_id", "in", [False, employee_company.id]),
                     ("state", "in", ["confirm", "validate1", "validate"]),
                     ("date_from", ">=", fields.Datetime.to_datetime(year_start)),
                     ("date_from", "<", fields.Datetime.to_datetime(next_year_start)),
@@ -263,4 +311,4 @@ class HrLeave(models.Model):
 
         return False
 
-    
+
