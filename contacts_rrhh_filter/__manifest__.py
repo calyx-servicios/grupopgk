@@ -9,7 +9,7 @@
     "website": "https://www.grupopgk.com.ar/",
     "license": "AGPL-3",
     "category": "Human Resources",
-    "version": "15.0.1.0.0",
+    "version": "15.0.1.1.0",
     "application": False,
     "installable": True,
     "auto_install": False,
@@ -20,6 +20,8 @@
     ],
     "data": [
         "views/calendar_event_views.xml",
+        "views/hr_employee_views.xml",
+        "views/hr_menu_restrict.xml",
     ],
     "assets": {
         "web.assets_backend": [
