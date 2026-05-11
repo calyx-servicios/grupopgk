@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Vista tree -->
+    <record id="view_employee_tree_no_create" model="ir.ui.view">
+        <field name="name">hr.employee.tree.no.create</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="arch" type="xml">
+            <tree position="attributes">
+                <attribute name="create">0</attribute>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_employee_tree_manager_create" model="ir.ui.view">
+        <field name="name">hr.employee.tree.manager.create</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_tree"/>
+        <field name="groups_id" eval="[(6, 0, [ref('hr.group_hr_manager')])]"/>
+        <field name="arch" type="xml">
+            <tree position="attributes">
+                <attribute name="create">1</attribute>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Vista kanban -->
+    <record id="view_employee_kanban_no_create" model="ir.ui.view">
+        <field name="name">hr.employee.kanban.no.create</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.hr_kanban_view_employees"/>
+        <field name="arch" type="xml">
+            <kanban position="attributes">
+                <attribute name="create">0</attribute>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_employee_kanban_manager_create" model="ir.ui.view">
+        <field name="name">hr.employee.kanban.manager.create</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.hr_kanban_view_employees"/>
+        <field name="groups_id" eval="[(6, 0, [ref('hr.group_hr_manager')])]"/>
+        <field name="arch" type="xml">
+            <kanban position="attributes">
+                <attribute name="create">1</attribute>
+            </kanban>
+        </field>
+    </record>
+
+</odoo>
