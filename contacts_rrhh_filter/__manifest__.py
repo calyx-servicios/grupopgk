@@ -11,7 +11,7 @@
     "website": "https://www.grupopgk.com.ar/",
     "license": "AGPL-3",
     "category": "Human Resources",
-    "version": "15.0.1.1.0",
+    "version": "15.0.1.1.1",
     "application": False,
     "installable": True,
     "auto_install": False,

@@ -9,6 +9,8 @@
         <field name="arch" type="xml">
             <tree position="attributes">
                 <attribute name="create">0</attribute>
+                <attribute name="delete">0</attribute>
+                <attribute name="duplicate">0</attribute>
             </tree>
         </field>
     </record>
@@ -21,6 +23,8 @@
         <field name="arch" type="xml">
             <tree position="attributes">
                 <attribute name="create">1</attribute>
+                <attribute name="delete">1</attribute>
+                <attribute name="duplicate">1</attribute>
             </tree>
         </field>
     </record>
@@ -46,6 +50,36 @@
             <kanban position="attributes">
                 <attribute name="create">1</attribute>
             </kanban>
+        </field>
+    </record>
+
+    <!-- Vista form -->
+    <record id="view_employee_form_no_create_edit" model="ir.ui.view">
+        <field name="name">hr.employee.form.no.create.edit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <form position="attributes">
+                <attribute name="create">0</attribute>
+                <attribute name="edit">0</attribute>
+                <attribute name="delete">0</attribute>
+                <attribute name="duplicate">0</attribute>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_employee_form_manager_create_edit" model="ir.ui.view">
+        <field name="name">hr.employee.form.manager.create.edit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="groups_id" eval="[(6, 0, [ref('hr.group_hr_manager')])]"/>
+        <field name="arch" type="xml">
+            <form position="attributes">
+                <attribute name="create">1</attribute>
+                <attribute name="edit">1</attribute>
+                <attribute name="delete">1</attribute>
+                <attribute name="duplicate">1</attribute>
+            </form>
         </field>
     </record>
 
