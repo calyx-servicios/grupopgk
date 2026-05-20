@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Quien tenga cualquier rol Quoter ve todas las cotizaciones (OR con "solo propios" de Ventas). -->
+    <data noupdate="0">
+        <record id="quoter_rule_sale_order_all_quotations" model="ir.rule">
+            <field name="name">Quoter: ver todas las cotizaciones profesionales</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="domain_force">[('is_quotation', '=', True)]</field>
+            <field name="groups" eval="[(6, 0, [
+                ref('quoter.group_quoter_access'),
+                ref('quoter.group_quoter_admin'),
+                ref('quoter.group_quoter_manager'),
+                ref('quoter.group_quoter_partner'),
+                ref('quoter.group_quoter_tax'),
+                ref('quoter.group_quoter_auditoria'),
+                ref('quoter.group_quoter_bpo'),
+                ref('quoter.group_quoter_payroll'),
+            ])]"/>
+        </record>
+
+        <record id="quoter_rule_sale_order_line_quotations" model="ir.rule">
+            <field name="name">Quoter: líneas de cotizaciones profesionales</field>
+            <field name="model_id" ref="sale.model_sale_order_line"/>
+            <field name="domain_force">[('order_id.is_quotation', '=', True)]</field>
+            <field name="groups" eval="[(6, 0, [
+                ref('quoter.group_quoter_access'),
+                ref('quoter.group_quoter_admin'),
+                ref('quoter.group_quoter_manager'),
+                ref('quoter.group_quoter_partner'),
+                ref('quoter.group_quoter_tax'),
+                ref('quoter.group_quoter_auditoria'),
+                ref('quoter.group_quoter_bpo'),
+                ref('quoter.group_quoter_payroll'),
+            ])]"/>
+        </record>
+    </data>
+</odoo>
