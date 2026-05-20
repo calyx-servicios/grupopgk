@@ -1,0 +1,338 @@
+// Matriz de horas: lista Odoo — verticales solo en thead; cuerpo sin separadores verticales
+$o-quoter-matrix-celeste: #e8f0fe;
+$o-quoter-matrix-row-edit: #f5f5f5;
+// Cabecera tipo lista Odoo (no el blanco que fuerza web_enterprise en .o_list_table thead)
+$o-quoter-matrix-thead-bg: #efefef;
+// ~50 % más claro que #c8c8c8 (menos contraste agresivo)
+$o-quoter-matrix-thead-top: #e3e3e3;
+$o-quoter-matrix-thead-rule: #e3e3e3;
+$o-quoter-matrix-sep: #dee2e6;
+$o-quoter-matrix-bottom-bar: #e9ecef;
+
+.o_quoter_matrix_table_responsive {
+    border: none;
+    border-radius: 0;
+}
+
+// Altura alineada con lista Odoo (~10px en captura de referencia vs. barra más delgada anterior)
+.o_quoter_matrix_table_bottom_bar {
+    display: block;
+    height: 10px;
+    background-color: $o-quoter-matrix-bottom-bar;
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+.o_quoter_matrix_list.o_list_view {
+    height: auto;
+    min-height: 0;
+    margin-bottom: 0;
+
+    // Por encima de .o_list_view .o_list_table > thead { background: white } (web_enterprise)
+    table.o_list_table.o_quoter_area_hours_matrix > thead,
+    table.o_list_table.o_quoter_area_hours_matrix thead > tr > th {
+        background-color: $o-quoter-matrix-thead-bg !important;
+    }
+
+    table.o_list_table.o_quoter_area_hours_matrix.table {
+        cursor: default;
+        margin-bottom: 0;
+        border: none;
+        border-collapse: collapse;
+        border-spacing: 0;
+        border-top: 1px solid $o-quoter-matrix-thead-top;
+
+        thead {
+            color: inherit;
+            background-color: $o-quoter-matrix-thead-bg !important;
+            --q-matrix-thead-py: 0.375rem;
+            border-bottom: 1px solid $o-quoter-matrix-sep;
+
+            > tr > th {
+                border-top: none;
+                border-left: none;
+                border-right: none;
+                border-bottom: 1px solid $o-quoter-matrix-thead-rule !important;
+                background-color: $o-quoter-matrix-thead-bg !important;
+                background-image: none !important;
+                font-weight: bold;
+                font-size: inherit;
+                line-height: inherit;
+                padding-top: var(--q-matrix-thead-py) !important;
+                padding-bottom: var(--q-matrix-thead-py) !important;
+            }
+
+            > tr:last-child > th {
+                border-bottom: none;
+            }
+        }
+
+        tbody > tr > td {
+            border-left: none !important;
+            border-right: none !important;
+            border-top: none;
+            border-bottom: none;
+        }
+
+        // Separador horizontal en todo el ancho desde la 3ª fila (sin línea entre 1ª y 2ª).
+        tbody > tr:nth-child(n + 3) > td {
+            border-top: 1px solid #eaeaea;
+        }
+    }
+
+    // Primera columna (handle): sin línea vertical a la derecha
+    thead .o_quoter_matrix_handle_cell {
+        border-right: none !important;
+    }
+
+    thead .o_quoter_matrix_th_line {
+        border-right: 1px solid $o-quoter-matrix-thead-rule !important;
+    }
+
+    thead .o_quoter_matrix_th_range {
+        background-color: $o-quoter-matrix-thead-bg !important;
+        color: inherit;
+        font-size: 0.975rem;
+        line-height: 1.25;
+        vertical-align: middle;
+    }
+
+    thead .o_quoter_matrix_th_range_sep_after {
+        border-right: 1px solid $o-quoter-matrix-thead-rule !important;
+    }
+
+    thead .o_quoter_matrix_th_range_level_start {
+        border-left: 1px solid $o-quoter-matrix-thead-rule !important;
+    }
+
+    // Cuerpo: sin líneas verticales (ni handle ni nombre de producto)
+    tbody .o_quoter_matrix_handle_cell,
+    tbody .o_quoter_matrix_line_cell {
+        border-right: none !important;
+    }
+
+    .o_quoter_matrix_th_group {
+        vertical-align: middle;
+    }
+
+    // Celda neutra (altura como lista Odoo: sin padding extra en el th)
+    .o_quoter_matrix_level_head {
+        background-color: $o-quoter-matrix-thead-bg !important;
+        border-left: 1px solid $o-quoter-matrix-thead-rule !important;
+        vertical-align: middle !important;
+
+        &:first-of-type {
+            border-left: none !important;
+        }
+    }
+
+    // Misma lógica que Odoo 15 many2many tags:
+    // - addons/web/.../fields.scss → .o_field_many2manytags .badge { font-size: 12px }
+    // - .o_badge_text → line-height: 1.1
+    // - Bootstrap 4 _badge.scss → padding-y/x .25em .4em; .badge-pill → .6em horizontal
+    // - webclient.scss → .badge { margin: 1px 2px 1px 0 }
+    .o_quoter_matrix_level_pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: max-content;
+        max-width: 100%;
+        margin: 1px 2px 1px 0;
+        padding: 0.25em 0.6em;
+        border: 0;
+        border-radius: 10rem;
+        box-sizing: border-box;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.1;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .o_quoter_matrix_handle_cell {
+        width: 32px;
+        min-width: 32px;
+        max-width: 32px;
+        padding-left: 4px;
+        padding-right: 4px;
+        vertical-align: middle;
+
+        .o_row_handle {
+            font-size: 12px;
+            opacity: 0.55;
+            cursor: grab;
+        }
+    }
+
+    .o_quoter_matrix_cell {
+        vertical-align: middle;
+        font-size: inherit;
+    }
+
+    tbody tr.o_quoter_matrix_row_editing > td {
+        background-color: $o-quoter-matrix-row-edit !important;
+    }
+
+    tbody tr.o_quoter_matrix_row_editing > td.o_quoter_matrix_line_cell {
+        background-color: $o-quoter-matrix-celeste !important;
+        border-radius: 4px;
+    }
+
+    tbody tr.o_quoter_matrix_row_editing > td.o_quoter_matrix_cell_focus {
+        background-color: $o-quoter-matrix-celeste !important;
+        border-radius: 4px;
+    }
+
+    .o_quoter_matrix_num_input {
+        appearance: textfield;
+        -moz-appearance: textfield;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        background: transparent !important;
+        font-size: inherit;
+        line-height: inherit;
+        color: inherit;
+
+        &:focus {
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            background: transparent !important;
+        }
+    }
+
+    .o_quoter_matrix_num_input::-webkit-outer-spin-button,
+    .o_quoter_matrix_num_input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+}
+
+// Resumen por rango (HTML): misma escala que el resto del formulario / pie de subtotales del área
+.o_quoter_resumen_rango {
+    width: 100%;
+    font-size: inherit;
+    line-height: 1.45;
+
+    // Misma caja que sale_order._quoter_build_area_summary_html (52rem, pegada a la derecha)
+    .o_quoter_resumen_rango_title {
+        width: 52rem;
+        max-width: 100%;
+        margin-left: auto;
+        margin-right: 0;
+        margin-bottom: 0.25rem;
+        text-align: right;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .o_field_widget.o_field_html {
+        font-size: inherit;
+        line-height: inherit;
+    }
+}
+
+// Pestaña TAX (área cuyo nombre contiene "tax"): título del resumen y bloque alineados a la derecha.
+.o_quoter_slot_tax .o_quoter_tax_resumen_align {
+    margin-left: auto;
+    text-align: right;
+
+    .o_horizontal_separator {
+        text-align: right;
+    }
+
+    .o_field_widget.o_field_html {
+        margin-left: auto;
+    }
+}
+
+// Separadores por etiqueta en líneas de cotización (sale.order).
+.o_list_view .o_data_row.o_quoter_separator_section {
+    td {
+        font-weight: 600;
+    }
+}
+
+.o_list_view .o_data_row.o_quoter_separator_mode_full td {
+    background-color: var(--quoter-separator-color-rgba) !important;
+    color: #1f2937;
+}
+
+// Primera línea de producto de cada etiqueta de sección (form embebido sin filas line_section).
+.o_list_view .o_data_row.o_quoter_separator_group_start td {
+    border-top: 3px solid var(--quoter-separator-color, #6c757d);
+}
+
+.o_list_view .o_data_row.o_quoter_separator_group_start.o_quoter_separator_mode_full td {
+    background-color: var(--quoter-separator-color-rgba) !important;
+}
+
+.o_form_view .o_quoter_area_footer_totals {
+    color: #1f2937 !important;
+
+    .o_field_widget[name*="_caption_"] {
+        display: inline-block;
+        width: 12rem;
+        min-width: 12rem;
+        text-align: right;
+        font-weight: 700;
+        color: #1f2937 !important;
+    }
+
+    .o_form_label {
+        text-align: right !important;
+        justify-content: flex-end;
+        width: 12rem !important;
+        min-width: 12rem;
+        padding-right: 0.25rem;
+        color: #1f2937 !important;
+    }
+
+    .o_field_widget[name*="_product_untaxed"],
+    .o_field_widget[name*="_adjustment_untaxed"],
+    .o_field_widget[name*="_discount_line"],
+    .o_field_widget[name*="_surcharge_line"],
+    .o_field_widget[name*="_total_untaxed"] {
+        display: inline-block;
+        width: 11rem;
+        min-width: 11rem;
+        text-align: right;
+        color: #1f2937 !important;
+    }
+
+    .o_field_monetary {
+        justify-content: flex-end;
+        color: #1f2937 !important;
+    }
+}
+
+// Cotización por área: lista oculta; formulario embebido en el slot (quoter_area_block_embed.js).
+.o_form_view .o_quoter_area_blocks_embed {
+    display: flex;
+    flex-direction: column;
+    min-height: 40vh;
+}
+
+.o_form_view .o_quoter_area_blocks_embed .o_field_one2many[name="quoter_area_block_ids"] .o_x2m_control_panel,
+.o_form_view .o_quoter_area_blocks_embed .o_field_one2many[name="quoter_area_block_ids"] .o_list_view {
+    display: none !important;
+}
+
+.o_form_view .o_quoter_area_blocks_embed .o_field_one2many[name="quoter_area_block_ids"] {
+    min-height: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.o_form_view .o_quoter_area_blocks_embed .o_quoter_area_block_form_slot {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 50vh;
+}
+
+.o_form_view .tab-pane.o_quoter_area_tab_pane .o_field_one2many[name="quoter_area_block_ids"] .o_x2m_control_panel,
+.o_form_view .tab-pane.o_quoter_area_tab_pane .o_field_one2many[name="quoter_area_block_ids"] .o_list_view {
+    display: none !important;
+}
+

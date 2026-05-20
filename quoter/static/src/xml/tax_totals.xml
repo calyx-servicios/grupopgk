@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-inherit="account.TaxTotalsField" t-inherit-mode="extension" owl="1">
+        <xpath expr="//t[@t-foreach=&quot;totals.value.groups_by_subtotal[subtotal['name']]&quot;]" position="before">
+            <t t-if="totals.value.extra_rows">
+                <t t-foreach="totals.value.extra_rows" t-as="extraRow" t-key="extraRow['key']">
+                    <tr t-if="extraRow['after_subtotal'] === subtotal['name']">
+                        <td class="o_td_label">
+                            <label class="o_form_label o_tax_total_label" t-esc="extraRow['label']"/>
+                        </td>
+                        <td>
+                            <span style="white-space: nowrap;" t-esc="extraRow['formatted_amount']"/>
+                        </td>
+                    </tr>
+                </t>
+            </t>
+        </xpath>
+    </t>
+</templates>

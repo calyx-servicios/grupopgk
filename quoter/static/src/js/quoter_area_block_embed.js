@@ -419,11 +419,21 @@ odoo.define("quoter.area_block_embed", function (require) {
                 return runParentSave();
             }
             const parentFc = getFormControllerFromField(fieldW);
-            return Promise.resolve(fieldW._quoterFlushEmbeddedBlock())
+            return Promise.resolve(fieldW._quoterSaveEmbeddedIfDirty())
+                .then(function () {
+                    const embedForm = fieldW.__quoterEmbedForm;
+                    if (fieldW.__quoterHadServerLineUnlink && embedForm) {
+                        return fieldW._quoterRefreshEmbeddedDataAfterSave(embedForm);
+                    }
+                    return Promise.resolve();
+                })
                 .then(function () {
                     return fieldW._quoterPurgeParentOrderLineGhostState(parentFc);
                 })
-                .then(runParentSave);
+                .then(runParentSave)
+                .finally(function () {
+                    fieldW.__quoterHadServerLineUnlink = false;
+                });
         },
         discardChanges: function () {
             const args = arguments;
@@ -442,7 +452,15 @@ odoo.define("quoter.area_block_embed", function (require) {
             if (!fieldW || typeof fieldW._quoterDiscardEmbeddedIfDirty !== "function") {
                 return runParentDiscard();
             }
-            return Promise.resolve(fieldW._quoterDiscardEmbeddedIfDirty()).then(runParentDiscard);
+            const parentFc = getFormControllerFromField(fieldW);
+            return Promise.resolve(fieldW._quoterDiscardEmbeddedIfDirty())
+                .then(function () {
+                    return fieldW._quoterPurgeParentOrderLineGhostState(parentFc);
+                })
+                .then(runParentDiscard)
+                .finally(function () {
+                    fieldW.__quoterHadServerLineUnlink = false;
+                });
         },
     });
 
@@ -690,29 +708,37 @@ odoo.define("quoter.area_block_embed", function (require) {
             });
         },
 
+        /**
+         * Descarta el form embebido sin rollback: las líneas borradas vía RPC ya no existen
+         * en BD y rollback provoca MissingError al re-leer sale.order.line(id).
+         */
         _quoterDiscardEmbeddedIfDirty: function () {
             const formView = this.__quoterEmbedForm;
             if (!formView || !formView.model || !formView.handle) {
                 return Promise.resolve();
             }
             const self = this;
-            let dirty = false;
-            if (typeof formView.model.isDirty === "function") {
-                dirty = !!formView.model.isDirty(formView.handle);
-            } else {
-                const rec = formView.model.get(formView.handle);
-                dirty = !!(rec && rec._changes && Object.keys(rec._changes).length);
-            }
+            const dirty = self._quoterEmbeddedHasUnsavedChanges(formView);
+            const hadServerUnlink = !!self.__quoterHadServerLineUnlink;
             const finish = function () {
+                self.__quoterHadServerLineUnlink = false;
                 self._quoterDestroyEmbedForm();
             };
-            if (!dirty) {
+            if (!dirty && !hadServerUnlink) {
                 finish();
                 return Promise.resolve();
             }
-            return Promise.resolve(
-                formView.model.discardChanges(formView.handle, { rollback: true })
-            )
+            const model = formView.model;
+            const dropEmbedded = function () {
+                if (typeof model.discardChanges === "function") {
+                    return model.discardChanges(formView.handle, { rollback: false });
+                }
+                return Promise.resolve();
+            };
+            return dropEmbedded()
+                .then(function () {
+                    return self._quoterRefreshEmbeddedDataAfterSave(formView);
+                })
                 .catch(function (err) {
                     if (window.console && console.error) {
                         console.error("[quoter] discard embedded form failed:", err);
@@ -1063,7 +1089,7 @@ odoo.define("quoter.area_block_embed", function (require) {
                             discardEv.stopPropagation();
                             formView._disableButtons();
                             const discardDef = formView.model
-                                .discardChanges(formView.handle, { rollback: true })
+                                .discardChanges(formView.handle, { rollback: false })
                                 .then(function () {
                                     return self._quoterRefreshEmbeddedDataAfterSave(formView);
                                 })
@@ -1108,12 +1134,18 @@ odoo.define("quoter.area_block_embed", function (require) {
         },
 
         _quoterIsBlockOrderLineField: function () {
-            return (
-                this.name === "order_line_ids" &&
-                this.record &&
-                this.record.model === "quoter.sale.order.area" &&
-                this.$el.closest(".o_quoter_area_block_form_body").length
-            );
+            if (this.name !== "order_line_ids" || !this.$el.closest(".o_quoter_area_blocks_embed").length) {
+                return false;
+            }
+            if (this.record && this.record.model === "quoter.sale.order.area") {
+                return true;
+            }
+            const formView = this.__quoterEmbedForm;
+            if (formView && formView.modelName === "quoter.sale.order.area") {
+                return true;
+            }
+            const host = this._quoterGetAreaBlocksHostField && this._quoterGetAreaBlocksHostField();
+            return !!(host && host.__quoterEmbedForm);
         },
 
         _quoterGetAreaBlocksHostField: function () {
@@ -1145,13 +1177,71 @@ odoo.define("quoter.area_block_embed", function (require) {
             }
             ev.stopPropagation();
             const blockResId = blockDp.res_id;
+            const lineResId = row.res_id;
+            const self = this;
+            host.__quoterHadServerLineUnlink = true;
             return this._rpc({
                 model: "quoter.sale.order.area",
                 method: "action_quoter_unlink_order_line",
-                args: [[blockResId], row.res_id],
-            }).then(function () {
-                return host._quoterRefreshEmbeddedDataAfterSave(formView);
-            });
+                args: [[blockResId], lineResId],
+            })
+                .then(function () {
+                    return host._quoterPurgeParentOrderLineGhostState(
+                        getFormControllerFromField(host)
+                    );
+                })
+                .then(function () {
+                    return host._quoterRefreshEmbeddedDataAfterSave(formView);
+                })
+                .then(function () {
+                    self._quoterPruneLocalLineDatapoint(model, localId, lineResId);
+                });
+        },
+
+        /**
+         * Quita del BasicModel la fila ya borrada en servidor (evita lecturas a res_id inexistente).
+         */
+        _quoterPruneLocalLineDatapoint: function (model, localId, lineResId) {
+            if (!model || !localId) {
+                return;
+            }
+            const rec = model.get(localId);
+            if (rec && rec.id) {
+                delete model.localData[rec.id];
+            }
+            if (!lineResId) {
+                return;
+            }
+            const walk = function (dp) {
+                if (!dp || dp.type !== "list" || !Array.isArray(dp.data)) {
+                    return;
+                }
+                dp.data = dp.data.filter(function (lid) {
+                    const row = model.get(lid);
+                    return !row || row.res_id !== lineResId;
+                });
+                if (Array.isArray(dp.res_ids)) {
+                    dp.res_ids = dp.res_ids.filter(function (rid) {
+                        return rid !== lineResId;
+                    });
+                }
+                dp._changes = [];
+            };
+            walk(model.get(this.value && this.value.id));
+            const formView = this.__quoterEmbedForm;
+            if (formView && formView.handle) {
+                const blockDp = model.get(formView.handle);
+                if (blockDp && blockDp.data && blockDp.data.order_line_ids) {
+                    walk(model.get(blockDp.data.order_line_ids.id));
+                }
+            }
+            const fc = getFormControllerFromField(this);
+            if (fc && fc.handle) {
+                const order = model.get(fc.handle);
+                if (order && order.data && order.data.order_line) {
+                    walk(model.get(order.data.order_line.id));
+                }
+            }
         },
 
         _onOpenRecord: function (ev) {

@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_quoter_service_config_tree" model="ir.ui.view">
+        <field name="name">quoter.service.config.tree</field>
+        <field name="model">quoter.service.config</field>
+        <field name="arch" type="xml">
+            <tree string="Service Configuration">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="complexity"/>
+                <field name="risk_level"/>
+                <field name="pricelist_id"/>
+                <field name="proposal_date"/>
+                <field name="product_line_count"/>
+                <field name="total_hours" sum="Total Hours"/>
+                <field name="total_amount" sum="Total Amount"/>
+                <field name="currency_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_quoter_service_config_form" model="ir.ui.view">
+        <field name="name">quoter.service.config.form</field>
+        <field name="model">quoter.service.config</field>
+        <field name="arch" type="xml">
+            <form string="Service Configuration">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_apply_audit_rules" 
+                                type="object" 
+                                string="Apply Audit Rules"
+                                class="oe_stat_button"
+                                icon="fa-calculator"
+                                help="Calculate SR, GTE and Partner hours automatically"/>
+                    </div>
+                    <group>
+                        <group name="service_info">
+                            <field name="name" placeholder="e.g., Tax Services, Audit, Payroll"/>
+                            <field name="partner_id"/>
+                            <field name="contact_id"/>
+                        </group>
+                        <group name="pricing_info">
+                            <field name="pricelist_id" 
+                                   options="{'no_create': True, 'no_open': True}"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="proposal_date"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group name="audit_config">
+                            <field name="complexity" widget="radio" options="{'horizontal': true}"/>
+                            <field name="risk_level" widget="radio" options="{'horizontal': true}"/>
+                        </group>
+                        <group name="responsible">
+                            <field name="manager_id"/>
+                            <field name="partner_responsible_id"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Product Lines" name="product_lines">
+                            <field name="product_line_ids" 
+                                   context="{'default_service_id': active_id}">
+                                <tree string="Products" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="task_category"/>
+                                    <field name="product_id" 
+                                           options="{'no_create': True}"
+                                           domain="[('sale_ok', '=', True), ('is_quoter_range_rate_product', '=', False)]"/>
+                                    <field name="ae_hours" sum="Total AE"/>
+                                    <field name="sr_hours" sum="Total SR"/>
+                                    <field name="mg_hours" sum="Total MG"/>
+                                    <field name="partner_hours" sum="Total Partner"/>
+                                    <field name="total_hours" sum="Total Hours" readonly="1"/>
+                                    <field name="hours_percentage" string="%" readonly="1"/>
+                                    <field name="price_unit" readonly="1"/>
+                                    <field name="amount" sum="Total Amount" readonly="1"/>
+                                    <field name="currency_id" invisible="1"/>
+                                    <field name="pricelist_id" invisible="1"/>
+                                </tree>
+                                <form string="Product Line">
+                                    <group>
+                                        <group>
+                                            <field name="product_id"/>
+                                            <field name="task_category"/>
+                                            <field name="sequence"/>
+                                        </group>
+                                        <group>
+                                            <field name="price_unit" readonly="1"/>
+                                            <field name="amount" readonly="1"/>
+                                            <field name="currency_id" invisible="1"/>
+                                        </group>
+                                    </group>
+                                    <group string="Task Description">
+                                        <field name="task_description" nolabel="1" placeholder="Detailed procedures..."/>
+                                    </group>
+                                    <group string="Hours by Role">
+                                        <group>
+                                            <field name="ae_hours" required="1"/>
+                                            <field name="sr_hours" required="1"/>
+                                        </group>
+                                        <group>
+                                            <field name="mg_hours" required="1"/>
+                                            <field name="partner_hours" required="1"/>
+                                        </group>
+                                    </group>
+                                    <group>
+                                        <field name="total_hours" readonly="1"/>
+                                        <field name="hours_percentage" readonly="1"/>
+                                    </group>
+                                </form>
+                            </field>
+                        </page>
+                        
+                        <page string="Hours Summary" name="hours_summary">
+                            <group>
+                                <group string="Total Hours by Category">
+                                    <field name="total_ae_hours" readonly="1"/>
+                                    <field name="total_sr_hours" readonly="1"/>
+                                    <field name="total_gte_hours" readonly="1"/>
+                                    <field name="total_partner_hours" readonly="1"/>
+                                    <field name="total_hours" readonly="1"/>
+                                </group>
+                                <group string="Financial Summary">
+                                    <field name="total_amount" readonly="1"/>
+                                    <field name="average_hour_rate" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Propuesta anterior" name="previous_proposal">
+                            <group>
+                                <group string="Referencia">
+                                    <field name="previous_proposal_date"/>
+                                    <field name="previous_amount"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Billing" name="billing">
+                            <group>
+                                <group string="Billing Conditions">
+                                    <field name="billing_type"/>
+                                    <field name="installments_count" attrs="{'invisible': [('billing_type', '!=', 'installments')]}"/>
+                                    <field name="adjustment_method"/>
+                                </group>
+                                <group string="Other Considerations">
+                                    <field name="other_considerations" nolabel="1" placeholder="Special considerations..."/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_quoter_service_config_search" model="ir.ui.view">
+        <field name="name">quoter.service.config.search</field>
+        <field name="model">quoter.service.config</field>
+        <field name="arch" type="xml">
+            <search string="Search Services">
+                <field name="name" string="Service" 
+                       filter_domain="[('name', 'ilike', self)]"/>
+                <field name="partner_id"/>
+                <field name="complexity"/>
+                <field name="risk_level"/>
+                <field name="pricelist_id"/>
+                
+                <filter string="Low Complexity" name="complexity_low"
+                        domain="[('complexity', '=', 'low')]"/>
+                <filter string="Medium Complexity" name="complexity_medium"
+                        domain="[('complexity', '=', 'medium')]"/>
+                <filter string="High Complexity" name="complexity_high"
+                        domain="[('complexity', '=', 'high')]"/>
+                
+                <separator/>
+                
+                <filter string="Risk Low" name="risk_low"
+                        domain="[('risk_level', '=', 'low')]"/>
+                <filter string="Risk Medium" name="risk_medium"
+                        domain="[('risk_level', '=', 'medium')]"/>
+                <filter string="Risk High" name="risk_high"
+                        domain="[('risk_level', '=', 'high')]"/>
+                
+                <group expand="0" string="Group By">
+                    <filter string="Client" name="group_partner"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter string="Complexity" name="group_complexity"
+                            context="{'group_by': 'complexity'}"/>
+                    <filter string="Risk Level" name="group_risk"
+                            context="{'group_by': 'risk_level'}"/>
+                    <filter string="Price List" name="group_pricelist"
+                            context="{'group_by': 'pricelist_id'}"/>
+                    <filter string="Proposal Date" name="group_proposal_date"
+                            context="{'group_by': 'proposal_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_quoter_service_config" model="ir.actions.act_window">
+        <field name="name">Service Configuration</field>
+        <field name="res_model">quoter.service.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_quoter_service_config_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first service configuration
+            </p>
+            <p>
+                Configure services with products and hours per role to be used in quotations.
+            </p>
+        </field>
+    </record>
+
+</odoo>

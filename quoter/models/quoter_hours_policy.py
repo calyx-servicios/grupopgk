@@ -1,0 +1,54 @@
+# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0.html)
+
+from odoo import _, api, models
+from odoo.exceptions import ValidationError
+
+
+class QuoterHoursPolicy(models.AbstractModel):
+    """Helpers de validación de horas/factores (uso vía env['quoter.hours.policy'])."""
+
+    _name = "quoter.hours.policy"
+    _description = "Política de validación de horas del cotizador"
+
+    @api.model
+    def _quoter_skip_strict_hours_validation(self):
+        return bool(self.env.context.get("quoter_allow_zero_hours"))
+
+    @api.model
+    def validate_hours_strictly_positive(self, value, label=None):
+        """Horas editadas por usuario: deben ser > 0 (no 0 ni negativas)."""
+        if self._quoter_skip_strict_hours_validation():
+            return float(value or 0.0)
+        hours = float(value or 0.0)
+        if hours <= 0.0:
+            field = label or _("Horas")
+            raise ValidationError(_("%s deben ser mayores a cero.") % field)
+        return hours
+
+    @api.model
+    def validate_adjustment_hours_nonzero(self, value, range_name=None):
+        """Ajuste: 0 no es válido; negativas siguen permitidas si el total no baja de cero."""
+        if self._quoter_skip_strict_hours_validation():
+            return float(value or 0.0)
+        hours = float(value or 0.0)
+        if hours == 0.0:
+            if range_name:
+                raise ValidationError(
+                    _("Las horas de ajuste en «%s» no pueden ser cero.")
+                    % range_name
+                )
+            raise ValidationError(_("Las horas de ajuste no pueden ser cero."))
+        return hours
+
+    @api.model
+    def validate_matrix_b_factor_positive(self, value, table_b_kind="percent"):
+        if self._quoter_skip_strict_hours_validation():
+            return float(value or 0.0)
+        factor = float(value or 0.0)
+        if factor <= 0.0:
+            if table_b_kind == "percent":
+                raise ValidationError(
+                    _("El porcentaje de la tabla B debe ser mayor a cero.")
+                )
+            raise ValidationError(_("El factor de la tabla B debe ser mayor a cero."))
+        return factor
