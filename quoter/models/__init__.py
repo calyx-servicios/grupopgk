@@ -1,5 +1,6 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
+from . import quoter_chatter
 from . import quoter_hours_policy
 from . import quoter_complexity_level
 from . import quoter_area_complexity_range

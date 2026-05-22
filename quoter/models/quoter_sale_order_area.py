@@ -4,6 +4,8 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.float_utils import float_compare
 
+from .quoter_chatter import quoter_chatter_collect_changes, quoter_chatter_should_log
+
 
 class QuoterSaleOrderArea(models.Model):
     _name = "quoter.sale.order.area"
@@ -104,6 +106,18 @@ class QuoterSaleOrderArea(models.Model):
         related="area_id.complexity_level_ids",
         string="Niveles del área",
         readonly=True,
+    )
+    complexity_level_custom_label = fields.Char(
+        related="area_id.complexity_level_custom_label",
+        readonly=True,
+    )
+    area_allow_change_complexity_level = fields.Boolean(
+        related="area_id.allow_change_complexity_level",
+        readonly=True,
+    )
+    complexity_level_change_allowed = fields.Boolean(
+        string="Puede cambiar nivel",
+        compute="_compute_complexity_level_change_allowed",
     )
 
     order_line_ids = fields.One2many(
@@ -312,6 +326,48 @@ class QuoterSaleOrderArea(models.Model):
                 rec._quoter_rebuild_separator_sections()
                 order._quoter_refresh_block_selectable_products()
             order._quoter_refresh_area_lines_hours_from_levels(area)
+            rec._quoter_recalc_all_block_products_for_level()
+
+    def _quoter_recalc_all_block_products_for_level(self):
+        """Tras cambiar el nivel: variantes correctas, horas de plantilla y precios en todas las filas."""
+        self.ensure_one()
+        Line = self.env["sale.order.line"]
+        QuoterLine = self.env["quoter.service.line"]
+        ctx = dict(
+            quoter_skip_separator_rebuild=True,
+            quoter_skip_chatter_log=True,
+        )
+        for rec in self:
+            if rec.state not in (False, "draft"):
+                continue
+            order = rec.order_id
+            area = rec.area_id
+            level = rec.complexity_level_id
+            if (
+                not order
+                or not isinstance(order.id, int)
+                or not area
+                or not order.is_quotation
+                or not level
+            ):
+                continue
+            lines = rec.order_line_ids.filtered(
+                lambda l: not l.display_type
+                and not l.quoter_is_adjustment_line
+                and not l.quoter_is_area_discount_total_line
+                and l.product_id
+            )
+            for line in lines:
+                tmpl = line.product_id.product_tmpl_id
+                qline = QuoterLine.search(
+                    [("area_id", "=", area.id), ("product_tmpl_id", "=", tmpl.id)],
+                    limit=1,
+                )
+                if qline:
+                    variant = rec._quoter_variant_for_level(qline, level)
+                    if variant and variant != line.product_id:
+                        line.with_context(ctx).write({"product_id": variant.id})
+            order._quoter_refresh_area_lines_hours_from_levels(area)
 
     def _quoter_rebuild_separator_sections(self):
         """Fila sección por etiqueta y productos debajo; conserva ids de sección existentes."""
@@ -327,7 +383,7 @@ class QuoterSaleOrderArea(models.Model):
                 or not isinstance(order.id, int)
             ):
                 continue
-            area_lines = block.order_line_ids
+            area_lines = block.order_line_ids.exists()
             sections = area_lines.filtered(
                 lambda l: l.display_type == "line_section"
                 and l.quoter_separator_section_tag_id
@@ -414,6 +470,8 @@ class QuoterSaleOrderArea(models.Model):
             )
             seq = 10
             for row in ordered_rows:
+                if not row.exists():
+                    continue
                 if int(row.sequence or 0) != seq:
                     row.with_context(ctx).write({"sequence": seq})
                 seq += 10
@@ -423,8 +481,25 @@ class QuoterSaleOrderArea(models.Model):
         """Alias: mantiene llamadas antiguas."""
         return self._quoter_rebuild_separator_sections()
 
+    @api.depends(
+        "block_editable",
+        "area_allow_change_complexity_level",
+        "complexity_level_frozen",
+    )
+    def _compute_complexity_level_change_allowed(self):
+        for rec in self:
+            if not rec.block_editable:
+                rec.complexity_level_change_allowed = False
+            elif rec.area_allow_change_complexity_level:
+                rec.complexity_level_change_allowed = True
+            else:
+                rec.complexity_level_change_allowed = not rec.complexity_level_frozen
+
     def _quoter_complexity_level_label(self):
         self.ensure_one()
+        custom = (self.area_id.complexity_level_custom_label or "").strip()
+        if custom:
+            return custom
         return _("Nivel de complejidad") if self.area_is_tax else _("Nivel del área")
 
     _QUOTER_CHATTER_FIELDS = {
@@ -433,6 +508,8 @@ class QuoterSaleOrderArea(models.Model):
         "global_discount_amount": _("Descuento %"),
         "global_surcharge_amount": _("Recargo %"),
         "state": _("Estado del bloque"),
+        "sequence": _("Orden del bloque"),
+        "complexity_level_frozen": _("Nivel bloqueado"),
     }
     _QUOTER_CHATTER_FLOAT_FIELDS = frozenset(
         {"global_discount_amount", "global_surcharge_amount"}
@@ -471,27 +548,23 @@ class QuoterSaleOrderArea(models.Model):
         ) or "-"
 
     def _quoter_log_block_changes(self, vals):
-        labels = self._QUOTER_CHATTER_FIELDS
+        if not quoter_chatter_should_log(self.env):
+            return
+        labels = dict(self._QUOTER_CHATTER_FIELDS)
         for rec in self:
             order = rec.order_id
             if not order or not order.is_quotation:
                 continue
+            block_labels = dict(labels)
+            if "complexity_level_id" in vals:
+                block_labels["complexity_level_id"] = rec._quoter_complexity_level_label()
             parts = []
-            for fname, label in labels.items():
-                if fname not in vals:
+            for fname, label in block_labels.items():
+                if fname not in vals or not label:
                     continue
-                if fname == "complexity_level_id":
-                    label = rec._quoter_complexity_level_label()
                 old = rec[fname]
                 new = vals[fname]
-                if fname.endswith("_id"):
-                    old_disp = old.display_name if old else "-"
-                    new_rec = self.env[rec._fields[fname].comodel_name].browse(new) if new else False
-                    new_disp = new_rec.display_name if new_rec else "-"
-                    if old_disp == new_disp:
-                        continue
-                    parts.append("%s: %s → %s" % (label, old_disp, new_disp))
-                elif fname == "state":
+                if fname == "state":
                     old_disp = rec._quoter_selection_label("state", old)
                     new_disp = rec._quoter_selection_label("state", new)
                     if old_disp == new_disp:
@@ -509,9 +582,8 @@ class QuoterSaleOrderArea(models.Model):
                         )
                     )
                 else:
-                    if old == new:
-                        continue
-                    parts.append("%s: %s → %s" % (label, old, new))
+                    sub = quoter_chatter_collect_changes(rec, {fname: new}, {fname: label})
+                    parts.extend(sub)
             if parts:
                 rec._quoter_message_post_block(parts)
 
@@ -560,7 +632,10 @@ class QuoterSaleOrderArea(models.Model):
     def write(self, vals):
         if "complexity_level_id" in vals:
             for rec in self:
-                if rec.complexity_level_frozen:
+                if (
+                    rec.complexity_level_frozen
+                    and not rec.area_id.allow_change_complexity_level
+                ):
                     raise ValidationError(
                         _("El nivel del área no puede modificarse una vez guardado en la cotización.")
                     )
@@ -594,20 +669,26 @@ class QuoterSaleOrderArea(models.Model):
         other_line_ops = []
         removed_lines_for_chatter = self.env["sale.order.line"]
         if line_cmds:
-            unlink_ops = [
-                c
-                for c in line_cmds
-                if isinstance(c, (list, tuple)) and len(c) >= 2 and c[0] in (2, 3)
-            ]
-            other_line_ops = [c for c in line_cmds if c not in unlink_ops]
+            unlink_line_ids = set()
+            for cmd in line_cmds:
+                if (
+                    isinstance(cmd, (list, tuple))
+                    and len(cmd) >= 2
+                    and cmd[0] in (2, 3)
+                ):
+                    lid = self._quoter_coerce_line_command_id(cmd[1])
+                    if lid:
+                        unlink_ops.append(cmd)
+                        unlink_line_ids.add(lid)
+                else:
+                    other_line_ops.append(cmd)
+            if unlink_line_ids:
+                other_line_ops = self._quoter_filter_line_commands_excluding_line_ids(
+                    other_line_ops, unlink_line_ids
+                )
             if unlink_ops and len(self) == 1:
-                unlink_ids = [
-                    cmd[1]
-                    for cmd in unlink_ops
-                    if isinstance(cmd, (list, tuple)) and len(cmd) >= 2
-                ]
                 removed_lines_for_chatter = self.env["sale.order.line"].browse(
-                    unlink_ids
+                    list(unlink_line_ids)
                 ).exists()
         res = True
         if unlink_ops:
@@ -617,6 +698,12 @@ class QuoterSaleOrderArea(models.Model):
                     removed_lines=removed_lines_for_chatter,
                     header=_("Productos eliminados"),
                 )
+            self.invalidate_cache(["order_line_ids"])
+            self.mapped("order_id").invalidate_cache(fnames=["order_line"])
+            if other_line_ops and len(self) == 1:
+                other_line_ops = self._quoter_drop_missing_line_commands(
+                    self._quoter_sanitize_line_command_list(other_line_ops)
+                )
         write_vals = dict(vals)
         if other_line_ops:
             write_vals["order_line_ids"] = other_line_ops
@@ -625,9 +712,10 @@ class QuoterSaleOrderArea(models.Model):
         if line_cmds is not None:
             self.invalidate_cache(["order_line_ids"])
             orders = self.mapped("order_id")
+            orders.invalidate_cache(fnames=["order_line"])
+            self.order_line_ids.exists()._quoter_validate_quotation_line_hours_sum()
             self._quoter_rebuild_separator_sections()
             for order in orders:
-                order.invalidate_cache(fnames=["order_line"])
                 order.flush(fnames=["order_line"])
             orders._quoter_refresh_block_selectable_products()
         if tracked:
@@ -649,7 +737,11 @@ class QuoterSaleOrderArea(models.Model):
         if "complexity_level_id" in vals and vals.get("complexity_level_id"):
             for rec in self:
                 order = rec.order_id
-                if order and isinstance(order.id, int):
+                if (
+                    order
+                    and isinstance(order.id, int)
+                    and not rec.area_id.allow_change_complexity_level
+                ):
                     rec.complexity_level_frozen = True
         return res
 
@@ -704,6 +796,63 @@ class QuoterSaleOrderArea(models.Model):
                 rec.complexity_level_frozen = True
         return records
 
+    @api.model
+    def _quoter_coerce_line_command_id(self, line_id):
+        if isinstance(line_id, int):
+            return line_id
+        if isinstance(line_id, str) and line_id.isdigit():
+            return int(line_id)
+        return None
+
+    @api.model
+    def _quoter_line_ids_from_unlink_commands(self, commands):
+        """Ids de sale.order.line que se borran con comandos (2)/(3) en el mismo write."""
+        unlink_ids = set()
+        for cmd in commands or []:
+            if not isinstance(cmd, (list, tuple)) or len(cmd) < 2 or cmd[0] not in (2, 3):
+                continue
+            lid = self._quoter_coerce_line_command_id(cmd[1])
+            if lid:
+                unlink_ids.add(lid)
+        return unlink_ids
+
+    @api.model
+    def _quoter_filter_line_commands_excluding_line_ids(self, commands, excluded_ids):
+        """Quita updates/links sobre líneas que se eliminan en el mismo batch."""
+        excluded = set(excluded_ids or [])
+        if not excluded:
+            return list(commands or [])
+        filtered = []
+        for cmd in commands or []:
+            if not isinstance(cmd, (list, tuple)) or len(cmd) < 2:
+                continue
+            op = cmd[0]
+            lid = self._quoter_coerce_line_command_id(cmd[1])
+            if op in (1, 2, 3, 4) and lid in excluded:
+                continue
+            filtered.append(cmd)
+        return filtered
+
+    @api.model
+    def _quoter_drop_missing_line_commands(self, commands):
+        """Ignora comandos sobre líneas inexistentes (p. ej. ya borradas por RPC)."""
+        if not commands:
+            return []
+        Line = self.env["sale.order.line"]
+        kept = []
+        for cmd in commands:
+            if not isinstance(cmd, (list, tuple)) or len(cmd) < 2:
+                kept.append(cmd)
+                continue
+            if cmd[0] not in (1, 2, 3, 4):
+                kept.append(cmd)
+                continue
+            lid = self._quoter_coerce_line_command_id(cmd[1])
+            if lid and not Line.browse(lid).exists():
+                continue
+            kept.append(cmd)
+        return kept
+
     def _quoter_sanitize_line_command_list(self, commands):
         """Completa campos requeridos en comandos de líneas del bloque."""
         self.ensure_one()
@@ -715,13 +864,14 @@ class QuoterSaleOrderArea(models.Model):
         for cmd in commands:
             if not isinstance(cmd, (list, tuple)):
                 continue
-            if cmd[0] == 1 and len(cmd) >= 3 and not Line.browse(cmd[1]).exists():
+            lid = self._quoter_coerce_line_command_id(cmd[1]) if len(cmd) >= 2 else None
+            if cmd[0] in (1, 2, 3, 4) and lid and not Line.browse(lid).exists():
                 continue
-            if cmd[0] in (2, 3) and len(cmd) >= 2:
-                line = Line.browse(cmd[1])
+            if cmd[0] in (2, 3, 4) and len(cmd) >= 2:
+                line = Line.browse(lid) if lid else Line
                 if not line.exists():
                     continue
-                if line.display_type == "line_section" and line.quoter_separator_section_tag_id:
+                if cmd[0] in (2, 3) and line.display_type == "line_section" and line.quoter_separator_section_tag_id:
                     continue
             if cmd[0] == 0 and len(cmd) >= 3 and isinstance(cmd[2], dict):
                 if cmd[2].get("display_type") == "line_section":
@@ -847,15 +997,22 @@ class QuoterSaleOrderArea(models.Model):
         order._quoter_refresh_area_lines_hours_from_levels(area)
         return True
 
+    def _quoter_line_belongs_to_block(self, line):
+        """True si la línea pertenece a este bloque (por block_id o área del pedido)."""
+        self.ensure_one()
+        if not line.exists() or line.order_id != self.order_id:
+            return False
+        if line.display_type == "line_section":
+            return False
+        if line.quoter_block_id:
+            return line.quoter_block_id == self
+        return bool(self.area_id and line.quoter_tab_area_id == self.area_id)
+
     def action_quoter_unlink_order_line(self, line_id):
         """Borra la línea en servidor de inmediato (evita id fantasma en el BasicModel)."""
         self.ensure_one()
         line = self.env["sale.order.line"].browse(line_id)
-        if (
-            not line.exists()
-            or line.quoter_block_id != self
-            or line.display_type == "line_section"
-        ):
+        if not self._quoter_line_belongs_to_block(line):
             return True
         if not line.display_type and not line.quoter_is_area_discount_total_line:
             product_name = (
@@ -871,6 +1028,8 @@ class QuoterSaleOrderArea(models.Model):
         )
         line.with_context(ctx).unlink()
         self.invalidate_cache(["order_line_ids"])
+        if self.order_id:
+            self.order_id.invalidate_cache(fnames=["order_line"])
         if self.order_id and self.order_id.is_quotation:
             self._quoter_rebuild_separator_sections()
             order = self.order_id

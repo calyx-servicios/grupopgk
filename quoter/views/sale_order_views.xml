@@ -46,6 +46,10 @@
                        attrs="{'invisible': [('is_quotation', '=', False)]}"
                        widget="many2many_tags"
                        options="{'no_create': True}"/>
+                <field name="date_order"
+                       string="Fecha de cotización"
+                       widget="datetime"
+                       attrs="{'invisible': [('is_quotation', '=', False)], 'readonly': [('state', 'in', ('done', 'cancel'))]}"/>
                 <!-- Plazo de pago (editable) → calcula Expiración en servidor -->
                 <field name="payment_term_id"
                        string="Plazo de pago"
@@ -57,11 +61,11 @@
                        attrs="{'invisible': [('is_quotation', '=', False)], 'readonly': [('is_quotation', '=', True)]}"/>
             </xpath>
 
-            <!-- Ocultar fechas estándar en cotización (siguen en BD para cálculos). -->
-            <xpath expr="//label[@for='date_order']" position="attributes">
+            <!-- Ocultar solo la fecha del encabezado derecho (order_details), no la de cabecera cotizador. -->
+            <xpath expr="//group[@name='order_details']//label[@for='date_order']" position="attributes">
                 <attribute name="attrs">{'invisible': [('is_quotation', '=', True)]}</attribute>
             </xpath>
-            <xpath expr="//field[@name='date_order']" position="attributes">
+            <xpath expr="//group[@name='order_details']//field[@name='date_order']" position="attributes">
                 <attribute name="attrs">{'invisible': [('is_quotation', '=', True)]}</attribute>
             </xpath>
             <xpath expr="//field[@name='date_of_issue']" position="attributes">
@@ -78,6 +82,9 @@
             </xpath>
             <xpath expr="//button[@name='print_quotation'][hasclass('o_sale_print')]" position="attributes">
                 <attribute name="attrs">{'invisible': ['|', ('is_quotation', '=', True), ('sales_order_with_detail', '!=', 'with_detail')]}</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_quotation_send']" position="attributes">
+                <attribute name="attrs">{'invisible': [('is_quotation', '=', True)]}</attribute>
             </xpath>
 
             <!-- Campos de cabecera ocultos para cotizador -->
@@ -133,7 +140,6 @@
                       attrs="{'invisible': [('is_quotation', '=', False)]}">
                     <field name="quoter_primary_tab_area_name" invisible="1"/>
                     <field name="quoter_area_block_count" invisible="1"/>
-                    <div class="o_quoter_primary_tab_marker d-none"/>
                     <div class="alert alert-warning" role="alert"
                          attrs="{'invisible': [('quoter_area_block_ids', '!=', False)]}">
                         Elija al menos un área profesional en la cabecera del presupuesto para habilitar los bloques de cotización.
@@ -144,14 +150,44 @@
                            context="{'default_order_id': active_id}">
                         <tree string="Bloques" create="0" delete="0" class="o_quoter_area_o2m_tree_hidden">
                             <field name="sequence" invisible="1"/>
-                            <field name="area_id" readonly="1"/>
+                            <field name="area_id" readonly="1" options="{'no_open': True}"/>
                         </tree>
                         <form string="Bloque de cotización por área">
+                            <header>
+                                <button name="action_quoter_publish"
+                                        string="Cerrar"
+                                        type="object"
+                                        class="btn-primary"
+                                        attrs="{'invisible': ['|', ('block_editable', '=', False), ('state', '!=', 'draft')]}"/>
+                                <button name="action_quoter_cancel_block"
+                                        string="Cancelar bloque"
+                                        type="object"
+                                        class="btn-secondary"
+                                        icon="fa-times"
+                                        attrs="{'invisible': ['|', ('block_editable', '=', False), ('state', '!=', 'draft')]}"/>
+                                <button name="action_quoter_reopen"
+                                        string="Reabrir"
+                                        type="object"
+                                        class="btn-secondary"
+                                        icon="fa-undo"
+                                        attrs="{'invisible': [('state', '!=', 'published')]}"/>
+                                <button name="action_quoter_load_default_products"
+                                        string="Cargar predeterminados"
+                                        type="object"
+                                        class="btn-secondary"
+                                        attrs="{'invisible': ['|', ('block_editable', '=', False), ('state', 'not in', (False, 'draft'))]}"/>
+                                <field name="state" widget="statusbar"
+                                       statusbar_visible="draft,published,cancel"
+                                       attrs="{'readonly': [('block_editable', '=', False)]}"/>
+                            </header>
                             <sheet>
                                 <field name="block_editable" invisible="1"/>
                                 <field name="structure_locked" invisible="1"/>
                                 <field name="lines_frozen" invisible="1"/>
                                 <field name="complexity_level_frozen" invisible="1"/>
+                                <field name="complexity_level_custom_label" invisible="1"/>
+                                <field name="area_allow_change_complexity_level" invisible="1"/>
+                                <field name="complexity_level_change_allowed" invisible="1"/>
                                 <field name="area_use_branching" invisible="1"/>
                                 <field name="area_is_tax" invisible="1"/>
                                 <field name="order_id" invisible="1"/>
@@ -159,23 +195,19 @@
                                 <field name="selectable_product_ids" invisible="1"/>
                                 <field name="quoter_user_is_assigned_manager" invisible="1"/>
                                 <field name="quoter_user_is_assigned_partner" invisible="1"/>
-                                <div class="o_form_statusbar mb-2">
-                                    <field name="state" widget="statusbar"
-                                           statusbar_visible="draft,published,cancel"
-                                           class="o_statusbar_status"
-                                           attrs="{'readonly': [('block_editable', '=', False)]}"/>
-                                </div>
                                 <group string="Cotización por área">
                                     <group>
-                                        <field name="area_id" readonly="1"/>
+                                        <field name="area_id" readonly="1" options="{'no_open': True}"/>
                                         <field name="complexity_level_id"
+                                               class="o_quoter_block_complexity_level"
                                                string="Nivel de complejidad"
                                                options="{'no_create': True, 'no_open': True}"
-                                               attrs="{'invisible': [('area_is_tax', '=', False)], 'readonly': ['|', ('block_editable', '=', False), ('complexity_level_frozen', '=', True)]}"/>
+                                               attrs="{'invisible': [('area_is_tax', '=', False)], 'readonly': [('complexity_level_change_allowed', '=', False)]}"/>
                                         <field name="complexity_level_id"
+                                               class="o_quoter_block_complexity_level"
                                                string="Nivel del área"
                                                options="{'no_create': True, 'no_open': True}"
-                                               attrs="{'invisible': [('area_is_tax', '=', True)], 'readonly': ['|', ('block_editable', '=', False), ('complexity_level_frozen', '=', True)]}"/>
+                                               attrs="{'invisible': [('area_is_tax', '=', True)], 'readonly': [('complexity_level_change_allowed', '=', False)]}"/>
                                         <field name="branch_id"
                                                string="Rama"
                                                options="{'no_create': True}"
@@ -188,30 +220,6 @@
                                                string="Recargo %"
                                                attrs="{'readonly': ['|', ('block_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('complexity_level_id', '=', False)]}"/>
                                     </group>
-                                    <group>
-                                        <button name="action_quoter_publish"
-                                                string="Cerrar"
-                                                type="object"
-                                                class="btn-primary"
-                                                attrs="{'invisible': ['|', ('block_editable', '=', False), ('state', '!=', 'draft')]}"/>
-                                        <button name="action_quoter_cancel_block"
-                                                string="Cancelar bloque"
-                                                type="object"
-                                                class="btn-secondary"
-                                                icon="fa-times"
-                                                attrs="{'invisible': ['|', ('block_editable', '=', False), ('state', '!=', 'draft')]}"/>
-                                        <button name="action_quoter_reopen"
-                                                string="Reabrir"
-                                                type="object"
-                                                class="btn-secondary"
-                                                icon="fa-undo"
-                                                attrs="{'invisible': [('state', '!=', 'published')]}"/>
-                                        <button name="action_quoter_load_default_products"
-                                                string="Cargar predeterminados"
-                                                type="object"
-                                                class="btn-secondary"
-                                                attrs="{'invisible': ['|', ('block_editable', '=', False), ('state', 'not in', (False, 'draft'))]}"/>
-                                    </group>
                                 </group>
                                 <div class="alert alert-info" role="alert"
                                      attrs="{'invisible': ['|', ('complexity_level_id', '!=', False), ('area_is_tax', '=', True)]}">
@@ -222,11 +230,12 @@
                                     Seleccione el nivel de complejidad y guarde el bloque para habilitar productos y líneas.
                                 </div>
                                 <field name="order_line_ids"
-                                       context="{'default_quoter_tab_area_id': area_id, 'default_quoter_block_id': id}"
+                                       context="{'default_quoter_tab_area_id': area_id, 'default_quoter_block_id': id, 'default_order_id': order_id}"
                                        attrs="{'invisible': [('complexity_level_id', '=', False)], 'readonly': [('lines_frozen', '=', True)]}">
                                     <tree editable="bottom" decoration-bf="display_type == 'line_section'">
                                         <field name="company_id" invisible="1"/>
                                         <field name="display_type" invisible="1"/>
+                                        <field name="order_id" invisible="1"/>
                                         <field name="quoter_tab_area_id" invisible="1"/>
                                         <field name="quoter_block_id" invisible="1"/>
                                         <field name="quoter_separator_section_tag_id" invisible="1"/>
@@ -234,6 +243,7 @@
                                         <field name="quoter_separator_color" invisible="1"/>
                                         <field name="quoter_product_separator_tag_color" invisible="1"/>
                                         <field name="quoter_area_separator_visual_mode" invisible="1"/>
+                                        <field name="quoter_manual_load" invisible="1"/>
                                         <field name="quoter_can_edit_range_hours" invisible="1"/>
                                         <field name="quoter_can_edit_total_hours" invisible="1"/>
                                         <field name="quoter_is_adjustment_line" invisible="1"/>
@@ -313,7 +323,6 @@
                     </field>
                         <div class="o_quoter_area_block_form_slot border rounded bg-white">
                             <div class="o_quoter_area_block_form_body"></div>
-                            <div class="o_quoter_area_block_form_footer border-top bg-light px-2 py-2"></div>
                         </div>
                     </div>
                 </page>
@@ -332,6 +341,7 @@
                 <field name="quoter_menu_context" invisible="1"/>
                 <field name="quotation_sequence" optional="show"/>
                 <field name="is_quotation" invisible="1"/>
+                <field name="date_order" string="Fecha de cotización" optional="show"/>
                 <field name="quoter_area_ids" widget="many2many_tags" optional="show"/>
             </xpath>
         </field>

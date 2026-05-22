@@ -8,7 +8,7 @@
                 <group>
                     <p colspan="2" class="text-muted">
                         Crea un producto reutilizable en varias áreas. Después agreguelo en cada área
-                        con «Agregar producto genérico existente».
+                        con «Agregar producto genérico».
                     </p>
                     <field name="name" placeholder="Nombre del servicio…"/>
                 </group>
@@ -34,16 +34,31 @@
             <form string="Agregar producto genérico al área">
                 <group>
                     <field name="area_id" readonly="1" options="{'no_open': True}"/>
+                </group>
+                <group string="Producto genérico existente">
                     <field name="product_tmpl_id"
                            options="{'no_create': True}"
                            domain="[('is_quoter_generic_product', '=', True)]"/>
+                </group>
+                <group string="Crear producto genérico nuevo">
+                    <p colspan="2" class="text-muted">
+                        Si no está en la lista, indique un nombre y pulse «Crear producto genérico»
+                        (mismo asistente que en el menú Productos).
+                    </p>
+                    <field name="new_generic_name" placeholder="Nombre del servicio…"/>
+                    <button name="action_create_generic_product"
+                            string="Crear producto genérico"
+                            type="object"
+                            class="btn-secondary"/>
+                </group>
+                <group string="Opciones en el área">
                     <field name="separator_tag_id" options="{'no_create': True}"/>
                     <field name="is_default_product"/>
-                    <field name="manual_load"/>
+                    <field name="manual_load" invisible="1"/>
                     <field name="manual_total_load"/>
                 </group>
                 <footer>
-                    <button name="action_add_to_area" string="Agregar" type="object" class="btn-primary"/>
+                    <button name="action_add_to_area" string="Agregar al área" type="object" class="btn-primary"/>
                     <button string="Cancelar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

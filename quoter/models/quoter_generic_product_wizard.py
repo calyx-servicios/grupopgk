@@ -10,40 +10,9 @@ class QuoterGenericProductWizard(models.TransientModel):
 
     name = fields.Char(string="Nombre", required=True)
 
-    def _quoter_general_category(self):
-        return self.env.ref("quoter.product_category_quoter_general", raise_if_not_found=False)
-
     def action_create_product(self):
         self.ensure_one()
-        general_categ = self._quoter_general_category()
-        if not general_categ:
-            raise UserError(_("No está configurada la categoría General (Cotizador)."))
-        name = (self.name or "").strip()
-        if not name:
-            raise UserError(_("Indique un nombre para el producto."))
-        Template = self.env["product.template"]
-        if Template.search(
-            [("is_quoter_generic_product", "=", True), ("name", "=", name)], limit=1
-        ):
-            raise UserError(_("Ya existe un producto genérico con ese nombre."))
-        uom_unit = self.env.ref("uom.product_uom_unit", raise_if_not_found=False)
-        tmpl_vals = {
-            "name": name,
-            "type": "service",
-            "sale_ok": True,
-            "purchase_ok": False,
-            "default_code": "QR-G-%s" % (name[:40].replace(" ", "-") or "GEN"),
-            "is_quoter_product": True,
-            "is_quoter_generic_product": True,
-            "quoter_area_id": False,
-            "quoter_service_line_id": False,
-            "categ_id": general_categ.id,
-        }
-        if uom_unit:
-            tmpl_vals["uom_id"] = uom_unit.id
-            tmpl_vals["uom_po_id"] = uom_unit.id
-        tmpl = Template.create(tmpl_vals)
-        Template.quoter_apply_default_sale_taxes(tmpl)
+        tmpl = self.env["product.template"].quoter_create_generic_product(self.name)
         return {
             "type": "ir.actions.act_window",
             "name": _("Producto genérico"),
@@ -66,10 +35,13 @@ class QuoterAddGenericToAreaWizard(models.TransientModel):
     )
     product_tmpl_id = fields.Many2one(
         comodel_name="product.template",
-        string="Producto genérico",
-        required=True,
+        string="Producto genérico existente",
         domain=[("is_quoter_generic_product", "=", True)],
         ondelete="cascade",
+    )
+    new_generic_name = fields.Char(
+        string="Nombre del producto genérico nuevo",
+        help="Si no encuentra el producto en la lista, créelo aquí (igual que en el menú Productos).",
     )
     separator_tag_id = fields.Many2one(
         comodel_name="quoter.line.separator.tag",
@@ -88,10 +60,37 @@ class QuoterAddGenericToAreaWizard(models.TransientModel):
             res["area_id"] = area_id
         return res
 
+    def _quoter_resolve_generic_template(self):
+        """Producto existente o recién creado a partir del nombre nuevo."""
+        self.ensure_one()
+        name = (self.new_generic_name or "").strip()
+        if name:
+            return self.env["product.template"].quoter_create_generic_product(name)
+        if self.product_tmpl_id:
+            return self.product_tmpl_id
+        raise UserError(
+            _("Seleccione un producto genérico existente o indique un nombre para crear uno nuevo.")
+        )
+
+    def action_create_generic_product(self):
+        """Crea el producto genérico y lo deja seleccionado (mismo flujo que el menú Productos)."""
+        self.ensure_one()
+        tmpl = self._quoter_resolve_generic_template()
+        self.write({"product_tmpl_id": tmpl.id, "new_generic_name": False})
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Agregar producto genérico"),
+            "res_model": self._name,
+            "res_id": self.id,
+            "view_mode": "form",
+            "target": "new",
+            "context": dict(self.env.context, default_area_id=self.area_id.id),
+        }
+
     def action_add_to_area(self):
         self.ensure_one()
         area = self.area_id
-        tmpl = self.product_tmpl_id
+        tmpl = self._quoter_resolve_generic_template()
         if not area or not tmpl:
             raise UserError(_("Seleccione área y producto genérico."))
         if not tmpl.is_quoter_generic_product:

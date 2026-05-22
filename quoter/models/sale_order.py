@@ -8,9 +8,29 @@ from odoo.tools.float_utils import float_is_zero
 from odoo.tools import html_escape
 from odoo.tools.misc import formatLang
 
+from .quoter_chatter import (
+    quoter_chatter_collect_changes,
+    quoter_chatter_format_value,
+    quoter_chatter_should_log,
+)
+
 
 class SaleOrder(models.Model):
     _inherit = "sale.order"
+
+    _QUOTER_ORDER_CHATTER_FIELDS = {
+        "quoter_manager_id": _("Gerente responsable"),
+        "quoter_partner_id": _("Socio asignado"),
+        "quoter_q_competitors": _("Pregunta: otros estudios"),
+        "quoter_q_budget": _("Pregunta: presupuesto del cliente"),
+        "quoter_q_current_payment": _("Pregunta: pago al proveedor actual"),
+        "quoter_q_notes": _("Observaciones estratégicas"),
+        "date_order": _("Fecha de cotización"),
+        "validity_date": _("Fecha de expiración"),
+        "payment_term_id": _("Condición de pago"),
+        "client_order_ref": _("Referencia del cliente"),
+        "note": _("Notas"),
+    }
     
     is_quotation = fields.Boolean(
         string="Es Cotización",
@@ -235,6 +255,11 @@ class SaleOrder(models.Model):
                         _("Las preguntas estratégicas son obligatorias en cotizaciones del cotizador.")
                     )
 
+    def _quoter_order_line_existing(self):
+        """Líneas del pedido que siguen en BD (evita MissingError tras borrar en bloque embebido)."""
+        self.ensure_one()
+        return self.order_line.exists()
+
     @api.constrains(
         "order_line",
         "order_line.quoter_is_adjustment_line",
@@ -243,7 +268,7 @@ class SaleOrder(models.Model):
     )
     def _check_quoter_adjustment_notes_required(self):
         for order in self.filtered("is_quotation"):
-            missing = order.order_line.filtered(
+            missing = order._quoter_order_line_existing().filtered(
                 lambda l: not l.display_type
                 and l.quoter_is_adjustment_line
                 and not (l.quoter_adjustment_note or "").strip()
@@ -364,6 +389,40 @@ class SaleOrder(models.Model):
         if not body or not hasattr(self, "message_post"):
             return
         self.message_post(body=body, subtype_xmlid="mail.mt_note")
+
+    def _quoter_log_order_field_changes(self, vals):
+        """Chatter al modificar campos del cotizador en el pedido."""
+        if not vals or not quoter_chatter_should_log(self.env):
+            return
+        labels = self._QUOTER_ORDER_CHATTER_FIELDS
+        tracked = {k: v for k, v in vals.items() if k in labels}
+        if not tracked:
+            return
+        for order in self.filtered("is_quotation"):
+            parts = quoter_chatter_collect_changes(order, tracked, labels)
+            if parts:
+                order._quoter_message_post(
+                    _("<b>Cotización</b><br/>%s") % "<br/>".join(parts)
+                )
+
+    def _quoter_log_order_created(self):
+        """Chatter al crear una cotización con datos del cotizador."""
+        if not quoter_chatter_should_log(self.env):
+            return
+        labels = self._QUOTER_ORDER_CHATTER_FIELDS
+        for order in self.filtered("is_quotation"):
+            parts = []
+            for fname, label in labels.items():
+                val = order[fname]
+                if val in (False, None, ""):
+                    continue
+                parts.append(
+                    "%s: %s" % (label, quoter_chatter_format_value(order, fname, val))
+                )
+            if parts:
+                order._quoter_message_post(
+                    _("<b>Cotización creada</b><br/>%s") % "<br/>".join(parts)
+                )
 
     @api.constrains("is_quotation", "date_order", "validity_date")
     def _check_quoter_validity_after_quotation_date(self):
@@ -854,10 +913,14 @@ class SaleOrder(models.Model):
                 order._quoter_sync_area_discount_total_line()
                 order._quoter_sync_date_of_issue_from_order_date()
                 order._quoter_compute_validity_date_from_payment_term()
+        records.filtered("is_quotation")._quoter_reconcile_area_ids_from_blocks()
+        records.filtered("is_quotation")._quoter_log_order_created()
         return records
 
     def write(self, vals):
         self._check_quoter_responsibles_write_access(vals)
+        if vals:
+            vals = self._quoter_protect_area_ids_write_vals(vals)
         if vals and "quoter_area_block_ids" in vals:
             vals = dict(vals)
             self._quoter_sanitize_quoter_area_block_commands(vals)
@@ -868,6 +931,11 @@ class SaleOrder(models.Model):
                 vals.pop("order_line", None)
             else:
                 self._quoter_sanitize_order_line_commands(vals)
+        quotation_write = self.filtered(
+            lambda o: o.is_quotation and isinstance(o.id, int)
+        )
+        if quotation_write:
+            quotation_write.invalidate_cache(fnames=["order_line"])
         if vals is not None and self.env.context.get("quoter_use_cot_sequence"):
             vals = dict(vals)
             vals["is_quotation"] = True
@@ -885,7 +953,17 @@ class SaleOrder(models.Model):
             for order in self:
                 if order.is_quotation or vals.get("is_quotation"):
                     area_change_snapshots.append((order, order.quoter_area_ids))
-        res = super().write(vals)
+        try:
+            res = super().write(vals)
+        except MissingError:
+            if not quotation_write:
+                raise
+            quotation_write.invalidate_cache(fnames=["order_line"])
+            safe_vals = dict(vals or {})
+            safe_vals.pop("order_line", None)
+            res = super().write(safe_vals)
+        if vals:
+            self.filtered(lambda o: o.is_quotation)._quoter_log_order_field_changes(vals)
         if area_change_snapshots:
             for order, old_areas in area_change_snapshots:
                 if not order.is_quotation:
@@ -911,6 +989,7 @@ class SaleOrder(models.Model):
             self.filtered("is_quotation")._quoter_compute_validity_date_from_payment_term()
         if "quoter_area_ids" in vals or "is_quotation" in vals:
             self._sync_quoter_area_blocks()
+        self.filtered("is_quotation")._quoter_reconcile_area_ids_from_blocks()
         if vals:
             self._quoter_autoload_default_products_after_save(trigger_vals=vals)
         # Refuerzo: sincronizar siempre después de guardar para evitar que comandos
@@ -997,6 +1076,43 @@ class SaleOrder(models.Model):
                     line_new._onchange_product_id()
                 self.order_line += line_new
 
+    @api.model
+    def _quoter_area_ids_cmds_clear_all(self, commands):
+        """True si los comandos vacían por completo el many2many de áreas."""
+        if not commands:
+            return True
+        if not isinstance(commands, list):
+            return False
+        if commands == [(5, 0, 0)]:
+            return True
+        if len(commands) == 1:
+            cmd = commands[0]
+            if isinstance(cmd, (list, tuple)) and len(cmd) >= 3 and cmd[0] == 6:
+                return not bool(cmd[2])
+        return False
+
+    def _quoter_protect_area_ids_write_vals(self, vals):
+        """Evita que un guardado del formulario borre áreas ya elegidas por error de cliente."""
+        if not vals or "quoter_area_ids" not in vals:
+            return vals
+        if self._quoter_area_ids_cmds_clear_all(vals["quoter_area_ids"]):
+            if any(
+                o.is_quotation and o.quoter_area_block_ids.mapped("area_id")
+                for o in self
+            ):
+                vals = dict(vals)
+                vals.pop("quoter_area_ids", None)
+        return vals
+
+    def _quoter_reconcile_area_ids_from_blocks(self):
+        """Tras guardar: si hay bloques con área, el m2m de cabecera debe coincidir."""
+        for order in self.filtered("is_quotation"):
+            block_areas = order.quoter_area_block_ids.mapped("area_id")
+            if not block_areas:
+                continue
+            if set(block_areas.ids) != set(order.quoter_area_ids.ids):
+                order.quoter_area_ids = block_areas
+
     def _quoter_sanitize_quoter_area_block_commands(self, vals, order=None):
         """Descarta comandos x2many inválidos sobre ``quoter_area_block_ids``.
 
@@ -1048,18 +1164,22 @@ class SaleOrder(models.Model):
         """En cotizaciones el pedido no edita líneas de bloques (solo vía form embebido)."""
         result = super().read(fields=fields, load=load)
         if fields is None or "order_line" in fields:
+            Line = self.env["sale.order.line"]
             for values in result:
                 order = self.browse(values["id"])
-                if order.is_quotation:
-                    Line = self.env["sale.order.line"]
-                    parent_lines = order.order_line.filtered(lambda l: not l.quoter_block_id)
-                    values["order_line"] = [
-                        lid
-                        for lid in parent_lines.sorted(
-                            key=lambda l: (int(l.sequence or 0), l.id)
-                        ).ids
-                        if Line.browse(lid).exists()
-                    ]
+                if not order.is_quotation:
+                    continue
+                # sudo: filtrar ids fantasma sin fallar si alguna línea no es legible.
+                parent_lines = order.sudo().order_line.filtered(
+                    lambda l: not l.quoter_block_id
+                )
+                values["order_line"] = [
+                    lid
+                    for lid in parent_lines.sorted(
+                        key=lambda l: (int(l.sequence or 0), l.id)
+                    ).ids
+                    if Line.sudo().browse(lid).exists()
+                ]
         return result
 
     @api.model
@@ -1111,12 +1231,14 @@ class SaleOrder(models.Model):
         except MissingError:
             if not is_quotation:
                 raise
-            result = {"warning": {
-                "title": _("Registro actualizado"),
-                "message": _(
-                    "Se eliminó una línea de la cotización; recargue el formulario si los totales no coinciden."
-                ),
-            }}
+            result = {
+                "warning": {
+                    "title": _("Registro actualizado"),
+                    "message": _(
+                        "Se eliminó una línea de la cotización; recargue el formulario si los totales no coinciden."
+                    ),
+                },
+            }
         if not result or not isinstance(result, dict):
             return result
         order_vals = result.get("value") or {}
@@ -1125,6 +1247,9 @@ class SaleOrder(models.Model):
                 order_vals["order_line"]
             )
             result["value"] = order_vals
+        elif is_quotation and "value" in result and not order_vals:
+            # Evita que el cliente interprete value:{} como borrar todo el formulario.
+            result.pop("value", None)
         return result
 
     def _quoter_filter_quotation_order_line_commands(self, commands):
@@ -1217,7 +1342,9 @@ class SaleOrder(models.Model):
         if not product:
             return
         line_model = self.env["sale.order.line"]
-        discount_lines = self.order_line.filtered("quoter_is_area_discount_total_line")
+        discount_lines = self._quoter_order_line_existing().filtered(
+            "quoter_is_area_discount_total_line"
+        )
         total_discount = 0.0
         total_surcharge = 0.0
         for block in self.quoter_area_block_ids:
@@ -1252,7 +1379,9 @@ class SaleOrder(models.Model):
             if len(discount_lines) > 1:
                 discount_lines[1:].unlink()
         else:
-            vals["sequence"] = (max(self.order_line.mapped("sequence") or [0]) + 1)
+            vals["sequence"] = (
+                max(self._quoter_order_line_existing().mapped("sequence") or [0]) + 1
+            )
             line_model.create(vals)
 
     def action_confirm(self):

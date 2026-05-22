@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Sales",
-    "version": "15.0.6.2.122",
+    "version": "15.0.6.2.165",
     "development_status": "Beta",
     "application": True,
     "installable": True,
@@ -18,6 +18,7 @@
         "sale",
         "sale_management",
         "product",
+        "stock",
         # Después de sale_order_type: el create del quoter corre antes que el de OCA
         # y deja name=Q antes de next_by_id (evita consumir la secuencia del tipo en vano).
         "sale_order_type",
@@ -48,6 +49,7 @@
         "web.assets_backend": [
             "quoter/static/src/scss/quoter_matrix.scss",
             "quoter/static/src/js/quoter_tab_labels.js",
+            "quoter/static/src/js/quoter_preserve_active_record.js",
             "quoter/static/src/js/quoter_area_block_embed.js",
             "quoter/static/src/js/quoter_range_columns.js",
             "quoter/static/src/js/quoter_separator_styles.js",
