@@ -26,6 +26,36 @@ class QuoterHoursPolicy(models.AbstractModel):
         return hours
 
     @api.model
+    def validate_hours_non_negative(self, value, label=None):
+        """Horas por rol: permiten 0; no negativas (la suma > 0 se valida al guardar)."""
+        if self._quoter_skip_strict_hours_validation():
+            return float(value or 0.0)
+        hours = float(value or 0.0)
+        if hours < 0.0:
+            field = label or _("Horas")
+            raise ValidationError(_("%s no pueden ser negativas.") % field)
+        return hours
+
+    @api.model
+    def validate_quotation_line_hours_sum(self, total, product_name=None):
+        """Suma de horas por rol en línea: debe ser > 0 (cada rol puede ser 0)."""
+        if self._quoter_skip_strict_hours_validation():
+            return float(total or 0.0)
+        hours = float(total or 0.0)
+        if hours <= 0.0:
+            if product_name:
+                raise ValidationError(
+                    _(
+                        "La suma de horas por rol debe ser mayor a cero en la línea «%s»."
+                    )
+                    % product_name
+                )
+            raise ValidationError(
+                _("La suma de horas por rol debe ser mayor a cero.")
+            )
+        return hours
+
+    @api.model
     def validate_adjustment_hours_nonzero(self, value, range_name=None):
         """Ajuste: 0 no es válido; negativas siguen permitidas si el total no baja de cero."""
         if self._quoter_skip_strict_hours_validation():

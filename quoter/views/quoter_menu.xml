@@ -13,10 +13,16 @@
         <field name="name">Cotizaciones</field>
         <field name="type">ir.actions.act_window</field>
         <field name="res_model">sale.order</field>
-        <field name="view_mode">tree,kanban,form,calendar,pivot,graph,activity</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_quotation_tree_quoter')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_order_form_quoter_inherit')}),
+        ]"/>
+        <field name="search_view_id" ref="view_sales_order_filter_quoter"/>
         <field name="context">{
             'default_is_quotation': True,
             'quoter_use_cot_sequence': True,
+            'quoter_menu_context': True,
         }</field>
         <field name="domain">[('is_quotation', '=', True)]</field>
         <field name="help" type="html">
@@ -47,35 +53,32 @@
         <field name="groups_id" eval="[(5, 0, 0)]"/>
     </record>
 
+    <!-- Ítem explícito en barra (misma acción que el icono de la app). -->
+    <menuitem id="menu_quoter_cotizador"
+              name="Cotizador"
+              parent="menu_quoter_root"
+              action="action_quotations_quoter"
+              sequence="1"/>
+
     <menuitem id="menu_quoter_products_root"
               name="Productos"
               parent="menu_quoter_root"
-              sequence="20"/>
+              sequence="20"
+              groups="quoter.group_quoter_access,stock.group_stock_user"/>
 
     <menuitem id="menu_quoter_products_templates"
               name="Productos"
               parent="menu_quoter_products_root"
               action="action_quoter_products_templates"
-              sequence="1"/>
+              sequence="1"
+              groups="quoter.group_quoter_access,stock.group_stock_user"/>
 
     <menuitem id="menu_quoter_products_variants"
               name="Variantes"
               parent="menu_quoter_products_root"
               action="action_quoter_products_variants"
-              sequence="2"/>
-
-    <menuitem id="menu_quoter_generic_products"
-              name="Productos genéricos"
-              parent="menu_quoter_products_root"
-              action="action_quoter_generic_products_templates"
-              sequence="3"/>
-
-    <menuitem id="menu_quoter_create_generic_product"
-              name="Crear producto genérico"
-              parent="menu_quoter_products_root"
-              action="action_quoter_generic_product_wizard"
-              sequence="4"
-              groups="quoter.group_quoter_manager,quoter.group_quoter_admin"/>
+              sequence="2"
+              groups="quoter.group_quoter_access,stock.group_stock_user"/>
 
     <menuitem id="menu_quoter_products_pricing"
               name="Tarifa"
@@ -84,12 +87,19 @@
               sequence="5"
               groups="quoter.group_quoter_admin"/>
 
-    <!-- Configuración maestra: no visible para grupos por área (TAX, BPO, etc.). -->
+    <!-- Submenús de producto genérico retirados del menú Productos (creación en wizard del área). -->
+    <delete model="ir.ui.menu" id="menu_quoter_generic_products"/>
+    <delete model="ir.ui.menu" id="menu_quoter_create_generic_product"/>
+
+    <!-- Configuración maestra: solo administrador del cotizador (no gerente ni grupos por área). -->
     <menuitem id="menu_quoter_configuration"
               name="Configuración"
               parent="menu_quoter_root"
-              groups="base.group_system,quoter.group_quoter_admin,quoter.group_quoter_manager"
               sequence="100"/>
+    <!-- Reemplaza grupos en BD (evita que queden manager/system de instalaciones anteriores). -->
+    <record id="menu_quoter_configuration" model="ir.ui.menu">
+        <field name="groups_id" eval="[(6, 0, [ref('quoter.group_quoter_admin')])]"/>
+    </record>
 
     <record id="action_quoter_security_groups" model="ir.actions.act_window">
         <field name="name">Ajustes de grupos</field>
@@ -104,13 +114,14 @@
               parent="menu_quoter_configuration"
               action="action_quoter_res_config_settings"
               sequence="1"
-              groups="base.group_system"/>
+              groups="quoter.group_quoter_admin"/>
 
     <menuitem id="menu_quoter_professional_area"
               name="Áreas profesionales"
               parent="menu_quoter_configuration"
               action="action_quoter_professional_area"
-              sequence="5"/>
+              sequence="5"
+              groups="quoter.group_quoter_admin"/>
 
     <menuitem id="menu_quoter_area_complexity_range"
               name="Categorías de recursos"
@@ -123,13 +134,15 @@
               name="Secciones de cotizador"
               parent="menu_quoter_configuration"
               action="action_quoter_line_separator_tag"
-              sequence="8"/>
+              sequence="8"
+              groups="quoter.group_quoter_admin"/>
 
     <menuitem id="menu_quoter_complexity_level"
               name="Niveles de complejidad"
               parent="menu_quoter_configuration"
               action="action_quoter_complexity_level"
-              sequence="9"/>
+              sequence="9"
+              groups="quoter.group_quoter_admin"/>
 
     <!-- Acceso explícito a ramas (tree/form) -->
     <record id="action_quoter_area_branch_menu" model="ir.actions.act_window">
@@ -143,12 +156,22 @@
               name="Ramas"
               parent="menu_quoter_configuration"
               action="action_quoter_area_branch_menu"
-              sequence="10"/>
+              sequence="10"
+              groups="quoter.group_quoter_admin"/>
 
     <menuitem id="menu_quoter_service_line"
               name="Líneas de servicio"
               parent="menu_quoter_configuration"
               action="action_quoter_service_line"
-              sequence="25"/>
+              sequence="25"
+              groups="quoter.group_quoter_admin"/>
+
+    <!-- Forzar solo Quoter - Administrador (quitar Settings/gerente heredados en BD). -->
+    <record id="menu_quoter_settings" model="ir.ui.menu">
+        <field name="groups_id" eval="[(6, 0, [ref('quoter.group_quoter_admin')])]"/>
+    </record>
+    <record id="menu_quoter_area_complexity_range" model="ir.ui.menu">
+        <field name="groups_id" eval="[(6, 0, [ref('quoter.group_quoter_admin')])]"/>
+    </record>
 
 </odoo>

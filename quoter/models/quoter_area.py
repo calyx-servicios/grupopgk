@@ -48,6 +48,11 @@ class QuoterProfessionalArea(models.Model):
         compute="_compute_is_tax_area",
         help="True si la visibilidad del área es el grupo Quoter - TAX.",
     )
+    is_auditoria_area = fields.Boolean(
+        string="Área Auditoría",
+        compute="_compute_is_auditoria_area",
+        help="True si la visibilidad del área es el grupo Quoter - Auditoría.",
+    )
 
     pricelist_id = fields.Many2one(
         comodel_name="product.pricelist",
@@ -73,7 +78,6 @@ class QuoterProfessionalArea(models.Model):
     separator_visual_mode = fields.Selection(
         selection=[
             ("none", "Sin color"),
-            ("dot", "Punto de color"),
             ("full", "Línea completa con color"),
         ],
         string="Visual separadores",
@@ -89,6 +93,18 @@ class QuoterProfessionalArea(models.Model):
         column2="complexity_level_id",
         string="Niveles de complejidad",
         help="Bajo, medio, alto, etc.: definen variantes de producto y colores en el pedido.",
+    )
+    complexity_level_custom_label = fields.Char(
+        string="Nuevo nombre",
+        translate=True,
+        help="Si se define, reemplaza la etiqueta «Nivel de complejidad» / «Nivel del área» "
+        "en el bloque de cotización del pedido.",
+    )
+    allow_change_complexity_level = fields.Boolean(
+        string="Permite cambiar el nivel",
+        default=False,
+        help="En cotizaciones, permite modificar el nivel del bloque aunque ya esté guardado; "
+        "al cambiarlo se recalculan horas y precios de todas las líneas de producto del bloque.",
     )
     branch_ids = fields.Many2many(
         comodel_name="quoter.area.branch",
@@ -128,6 +144,13 @@ class QuoterProfessionalArea(models.Model):
         required=True,
         help="Regular: se cargan horas finales por producto y nivel. "
         "Combinada: horas base (tabla A) y factor (tabla B) según el formato y tipo definidos aquí.",
+    )
+    output_hours_minimum = fields.Float(
+        string="Mínimo tabla resultado (horas)",
+        default=0.0,
+        help="Piso de la tabla de horas resultado (salida): si el valor calculado o ingresado "
+        "queda por debajo, se guarda este mínimo (p. ej. 0,9 con mínimo 1 → 1). "
+        "0 = solo exige horas mayores a cero, sin ajuste automático.",
     )
     table_a_layout = fields.Selection(
         selection=[
@@ -232,13 +255,32 @@ class QuoterProfessionalArea(models.Model):
             rec.line_count = len(rec.line_ids)
             rec.quoter_product_count = len(rec.line_ids.mapped("product_tmpl_id"))
 
-    @api.depends("branch_ids")
     @api.depends("group_id")
     def _compute_is_tax_area(self):
         tax_group = self.env.ref("quoter.group_quoter_tax", raise_if_not_found=False)
         for rec in self:
             rec.is_tax_area = bool(tax_group and rec.group_id == tax_group)
 
+    @api.depends("group_id")
+    def _compute_is_auditoria_area(self):
+        aud_group = self.env.ref("quoter.group_quoter_auditoria", raise_if_not_found=False)
+        for rec in self:
+            rec.is_auditoria_area = bool(aud_group and rec.group_id == aud_group)
+
+    @api.constrains("output_hours_minimum", "is_auditoria_area")
+    def _check_output_hours_minimum(self):
+        for rec in self:
+            minimum = float(rec.output_hours_minimum or 0.0)
+            if minimum < 0.0:
+                raise ValidationError(
+                    _("El mínimo de la tabla resultado no puede ser negativo.")
+                )
+            if rec.is_auditoria_area and minimum < 1.0:
+                raise ValidationError(
+                    _("En áreas de Auditoría el mínimo de la tabla resultado debe ser al menos 1.")
+                )
+
+    @api.depends("branch_ids")
     def _compute_use_branching(self):
         for rec in self:
             rec.use_branching = bool(rec.branch_ids)
@@ -745,9 +787,23 @@ class QuoterProfessionalArea(models.Model):
             "area_range_id": ar_id,
         }
 
+    def _quoter_sync_level_range_matrix_rows(self):
+        """Asegura líneas de salida (regular) o A/B (combinada) antes de mostrar/editar la matriz."""
+        self.ensure_one()
+        LevelRange = self.env["quoter.product.level.range"]
+        tmpl_ids = self.line_ids.filtered("product_tmpl_id").mapped("product_tmpl_id").ids
+        if not tmpl_ids:
+            return
+        lrs = LevelRange.search(
+            [("area_id", "=", self.id), ("product_tmpl_id", "in", tmpl_ids)]
+        )
+        if lrs:
+            lrs._sync_matrix_rows()
+
     def get_hours_matrix_preview_data(self):
         """Datos para la matriz JS del formulario de área (horas resultado por producto / nivel / rol)."""
         self.ensure_one()
+        self._quoter_sync_level_range_matrix_rows()
         can_edit_matrix = self.env.user.has_group("quoter.group_quoter_manager")
         matrix_read_only = not self.quoter_config_edit_mode or not can_edit_matrix
         ranges = self.area_range_ids.sorted(key=lambda r: (r.sequence, r.id))
@@ -804,7 +860,10 @@ class QuoterProfessionalArea(models.Model):
         global_a = self.table_a_layout == "global"
         b_kind_meta = self.fields_get(["table_b_kind"])["table_b_kind"]
         b_kind_label = dict(b_kind_meta["selection"]).get(self.table_b_kind, "")
-        labels["output_title"] = _("Salida (horas resultado)")
+        if self.hour_matrix_mode == "regular":
+            labels["output_title"] = _("Salida (horas finales)")
+        else:
+            labels["output_title"] = _("Salida (horas resultado)")
         labels["matrix_a_title"] = _("Tabla A (horas base)")
         labels["matrix_b_title"] = _("Tabla B (%s)") % (b_kind_label or self.table_b_kind)
         labels["percent_mode"] = self.table_b_percent_mode
@@ -1019,13 +1078,23 @@ class QuoterProfessionalArea(models.Model):
                 raise UserError(
                     _("En modo combinado la salida se calcula desde las tablas A y B; edite esas tablas.")
                 )
+            lr._sync_matrix_rows()
             out = lr.output_line_ids.filtered(lambda o: o.area_range_id.id == ar_id)[:1]
             if not out:
-                raise UserError(_("No hay línea de salida para ese rol."))
-            try:
-                out.write({"hours": val})
-            except ValidationError as e:
-                raise UserError(str(e)) from e
+                O = self.env["quoter.product.level.range.output"]
+                out = O.with_context(quoter_allow_zero_hours=True).create(
+                    {
+                        "level_range_id": lr.id,
+                        "area_range_id": ar_id,
+                        "matrix_a_id": False,
+                        "hours": val,
+                    }
+                )
+            else:
+                try:
+                    out.write({"hours": val})
+                except ValidationError as e:
+                    raise UserError(str(e)) from e
             return True
 
         if write_kind == "matrix_a_compact":
@@ -1220,6 +1289,7 @@ class QuoterProfessionalArea(models.Model):
             raise AccessError(
                 _("Solo los usuarios del grupo Quoter - Gerente pueden abrir o cerrar el editor de tabla.")
             )
+        self._quoter_sync_level_range_matrix_rows()
         self.write({"quoter_config_edit_mode": True})
         return True
 

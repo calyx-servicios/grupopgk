@@ -33,11 +33,19 @@ class SaleOrderLineRangeHour(models.Model):
 
     hours = fields.Float(string="Horas", default=0.0)
 
+    def _quoter_skip_hours_policy_for_line(self, line):
+        Line = self.env["sale.order.line"]
+        if not line:
+            return True
+        if self.env["quoter.hours.policy"]._quoter_skip_strict_hours_validation():
+            return True
+        return not Line._quoter_is_real_db_id(line.id)
+
     def _quoter_enforce_hours_policy(self):
         Policy = self.env["quoter.hours.policy"]
         for row in self:
             line = row.sale_line_id
-            if not line:
+            if not line or self._quoter_skip_hours_policy_for_line(line):
                 continue
             if line.quoter_is_adjustment_line:
                 Policy.validate_adjustment_hours_nonzero(
@@ -45,7 +53,7 @@ class SaleOrderLineRangeHour(models.Model):
                     row.area_range_id.display_name if row.area_range_id else None,
                 )
             elif line._quoter_manual_ranges_mode() or line._quoter_manual_total_mode():
-                Policy.validate_hours_strictly_positive(row.hours, _("Horas"))
+                Policy.validate_hours_non_negative(row.hours, _("Horas"))
             elif (row.hours or 0.0) < 0.0:
                 raise ValidationError(_("Las horas no pueden ser negativas."))
 
@@ -66,7 +74,9 @@ class SaleOrderLineRangeHour(models.Model):
             self._quoter_enforce_hours_policy_on_vals(vals)
         res = super().write(vals)
         if "hours" in vals:
-            self.mapped("sale_line_id")._quoter_validate_adjustment_hours_balance()
+            self.mapped("sale_line_id").filtered(
+                "quoter_is_adjustment_line"
+            )._quoter_validate_adjustment_hours_balance()
         return res
 
     def _quoter_enforce_hours_policy_on_vals(self, vals):
@@ -75,7 +85,7 @@ class SaleOrderLineRangeHour(models.Model):
         hours = float(vals.get("hours", 0.0))
         for row in self:
             line = row.sale_line_id
-            if not line:
+            if not line or self._quoter_skip_hours_policy_for_line(line):
                 continue
             Policy = self.env["quoter.hours.policy"]
             if line.quoter_is_adjustment_line:
@@ -84,7 +94,7 @@ class SaleOrderLineRangeHour(models.Model):
                     row.area_range_id.display_name if row.area_range_id else None,
                 )
             elif line._quoter_manual_ranges_mode() or line._quoter_manual_total_mode():
-                Policy.validate_hours_strictly_positive(hours, _("Horas"))
+                Policy.validate_hours_non_negative(hours, _("Horas"))
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -97,14 +107,16 @@ class SaleOrderLineRangeHour(models.Model):
                 line = False
                 if vals.get("sale_line_id"):
                     line = self.env["sale.order.line"].browse(vals["sale_line_id"])
-                if not line:
+                if not line or self._quoter_skip_hours_policy_for_line(line):
                     continue
                 if line.quoter_is_adjustment_line:
                     Policy.validate_adjustment_hours_nonzero(hours)
                 elif line._quoter_manual_ranges_mode() or line._quoter_manual_total_mode():
-                    Policy.validate_hours_strictly_positive(hours, _("Horas"))
+                    Policy.validate_hours_non_negative(hours, _("Horas"))
         rows = super().create(vals_list)
-        rows.mapped("sale_line_id")._quoter_validate_adjustment_hours_balance()
+        rows.mapped("sale_line_id").filtered(
+            "quoter_is_adjustment_line"
+        )._quoter_validate_adjustment_hours_balance()
         return rows
 
     @api.constrains("area_range_id", "sale_line_id")

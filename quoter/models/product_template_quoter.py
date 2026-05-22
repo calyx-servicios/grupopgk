@@ -1,6 +1,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0.html)
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class ProductAttributeValue(models.Model):
@@ -41,6 +42,39 @@ class ProductTemplate(models.Model):
         )
         chosen = prefer[:1] or candidates[:1]
         return chosen.ids
+
+    @api.model
+    def quoter_create_generic_product(self, name):
+        """Crea un producto genérico del cotizador (catálogo reutilizable entre áreas)."""
+        general_categ = self.env.ref("quoter.product_category_quoter_general", raise_if_not_found=False)
+        if not general_categ:
+            raise UserError(_("No está configurada la categoría General (Cotizador)."))
+        name = (name or "").strip()
+        if not name:
+            raise UserError(_("Indique un nombre para el producto."))
+        if self.search(
+            [("is_quoter_generic_product", "=", True), ("name", "=", name)], limit=1
+        ):
+            raise UserError(_("Ya existe un producto genérico con ese nombre."))
+        uom_unit = self.env.ref("uom.product_uom_unit", raise_if_not_found=False)
+        tmpl_vals = {
+            "name": name,
+            "type": "service",
+            "sale_ok": True,
+            "purchase_ok": False,
+            "default_code": "QR-G-%s" % (name[:40].replace(" ", "-") or "GEN"),
+            "is_quoter_product": True,
+            "is_quoter_generic_product": True,
+            "quoter_area_id": False,
+            "quoter_service_line_id": False,
+            "categ_id": general_categ.id,
+        }
+        if uom_unit:
+            tmpl_vals["uom_id"] = uom_unit.id
+            tmpl_vals["uom_po_id"] = uom_unit.id
+        tmpl = self.create(tmpl_vals)
+        self.quoter_apply_default_sale_taxes(tmpl)
+        return tmpl
 
     @api.model
     def quoter_apply_default_sale_taxes(self, templates):

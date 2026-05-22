@@ -421,7 +421,7 @@ odoo.define("quoter.area_hours_matrix", function (require) {
                         const v = cells[ri] != null ? cells[ri] : 0;
                         const arId = rangeIds[ri] || 0;
                         const oid = outIds[ri] || 0;
-                        const canEdit = !readOnly && !combined && lrId && oid;
+                        const canEdit = !readOnly && !combined && lrId;
                         let inner;
                         if (canEdit) {
                             inner = cellInput("output", lrId, arId, v);

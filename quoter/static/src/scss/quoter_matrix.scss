@@ -326,9 +326,62 @@ $o-quoter-matrix-bottom-bar: #e9ecef;
 }
 
 .o_form_view .o_quoter_area_blocks_embed .o_quoter_area_block_form_slot {
+    display: flex;
+    flex-direction: column;
     flex: 1 1 auto;
     width: 100%;
     min-height: 50vh;
+}
+
+.o_form_view .o_quoter_area_blocks_embed .o_quoter_area_block_form_body {
+    flex: 1 1 auto;
+    min-height: 0;
+
+    // Guardar/Descartar del embed: activos en JS, ocultos (el pedido usa su barra superior).
+    > .o_form_buttons_view,
+    > .o_form_buttons_edit {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        margin: -1px !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
+    .o_form_button_create {
+        display: none !important;
+    }
+
+    // Header del bloque: acciones a la izquierda, barra de estado a la derecha.
+    .o_form_statusbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 0.5rem;
+        padding-left: 0;
+        padding-right: 0;
+
+        .o_statusbar_buttons {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.25rem;
+            margin-right: auto;
+            order: 1;
+        }
+
+        .o_field_widget[name="state"],
+        .o_statusbar_status {
+            margin-left: auto;
+            order: 2;
+        }
+    }
 }
 
 .o_form_view .tab-pane.o_quoter_area_tab_pane .o_field_one2many[name="quoter_area_block_ids"] .o_x2m_control_panel,
