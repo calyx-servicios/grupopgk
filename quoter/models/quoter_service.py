@@ -123,6 +123,10 @@ class QuoterServiceLine(models.Model):
         compute="_compute_is_generic_link",
         store=True,
     )
+    area_quoter_config_edit_mode = fields.Boolean(
+        related="area_id.quoter_config_edit_mode",
+        readonly=True,
+    )
 
     @api.depends("product_tmpl_id", "product_tmpl_id.is_quoter_generic_product")
     def _compute_is_generic_link(self):
@@ -452,6 +456,23 @@ class QuoterServiceLine(models.Model):
             if orders:
                 orders._quoter_refresh_block_selectable_products()
         return res
+
+    def action_remove_from_area(self):
+        """Eliminar producto del área (botón × en la pestaña Productos)."""
+        blocked = self.filtered(
+            lambda line: line.area_id and not line.area_id.quoter_config_edit_mode
+        )
+        if blocked:
+            raise UserError(
+                _("Use «Abrir editor de tabla» en el área para poder eliminar productos.")
+            )
+        without_id = self.filtered(lambda line: not line.id)
+        if without_id:
+            raise UserError(
+                _("Guarde el área antes de eliminar productos recién agregados.")
+            )
+        self.unlink()
+        return True
 
     def action_open_product_variant(self):
         self.ensure_one()

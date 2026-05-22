@@ -7,10 +7,19 @@ odoo.define("quoter.area_hours_matrix", function (require) {
     }
 
     const core = require("web.core");
+    const FormController = require("web.FormController");
     const FormRenderer = require("web.FormRenderer");
     const rpc = require("web.rpc");
 
     const _t = core._t;
+
+    function rowMatrixEditable(row, readOnly) {
+        return !readOnly;
+    }
+
+    function trOpen() {
+        return "<tr>";
+    }
 
     // Misma paleta que $o-colors en Odoo 15 (addons/web/.../secondary_variables.scss).
     // Índice 7 = #2C8397 (teal/celeste); el verde de etiquetas Odoo es índice 10 = #30C381.
@@ -407,7 +416,7 @@ odoo.define("quoter.area_hours_matrix", function (require) {
                 "</td></tr>";
         } else {
             rows.forEach(function (row) {
-                html += "<tr>";
+                html += trOpen();
                 html += tdHandle();
                 html += tdCell("left", escapeHtml(sentenceCase(row.line_name || "")), "o_quoter_matrix_line_cell");
                 const lh = row.levels_hours || [];
@@ -421,7 +430,7 @@ odoo.define("quoter.area_hours_matrix", function (require) {
                         const v = cells[ri] != null ? cells[ri] : 0;
                         const arId = rangeIds[ri] || 0;
                         const oid = outIds[ri] || 0;
-                        const canEdit = !readOnly && !combined && lrId;
+                        const canEdit = rowMatrixEditable(row, readOnly) && !combined && lrId;
                         let inner;
                         if (canEdit) {
                             inner = cellInput("output", lrId, arId, v);
@@ -462,13 +471,13 @@ odoo.define("quoter.area_hours_matrix", function (require) {
                 "</td></tr>";
         } else {
             rows.forEach(function (row) {
-                html += "<tr>";
+                html += trOpen();
                 html += tdHandle();
                 html += tdCell("left", escapeHtml(sentenceCase(row.line_name || "")), "o_quoter_matrix_line_cell");
                 if (globalA) {
                     const v = row.global_matrix_a_value != null ? row.global_matrix_a_value : 0;
                     const lrId = row.global_matrix_a_level_range_id || 0;
-                    const canEdit = !readOnly && combined && lrId;
+                    const canEdit = rowMatrixEditable(row, readOnly) && combined && lrId;
                     let inner;
                     if (canEdit) {
                         inner = cellInput("matrix_a_global", lrId, firstAr, v);
@@ -497,7 +506,7 @@ odoo.define("quoter.area_hours_matrix", function (require) {
                             return id > 0;
                         });
                         const canEdit =
-                            !readOnly &&
+                            rowMatrixEditable(row, readOnly) &&
                             combined &&
                             lrId &&
                             hasA;
@@ -518,7 +527,7 @@ odoo.define("quoter.area_hours_matrix", function (require) {
                             const v = cells[ri] != null ? cells[ri] : 0;
                             const arId = rangeIds[ri] || 0;
                             const aid = aIds[ri] || 0;
-                            const canEdit = !readOnly && combined && lrId && aid;
+                            const canEdit = rowMatrixEditable(row, readOnly) && combined && lrId && aid;
                             let inner;
                             if (canEdit) {
                                 inner = cellInput("matrix_a", lrId, arId, v);
@@ -556,7 +565,7 @@ odoo.define("quoter.area_hours_matrix", function (require) {
                 "</td></tr>";
         } else {
             rows.forEach(function (row) {
-                html += "<tr>";
+                html += trOpen();
                 html += tdHandle();
                 html += tdCell("left", escapeHtml(sentenceCase(row.line_name || "")), "o_quoter_matrix_line_cell");
                 const lb = row.levels_matrix_b || [];
@@ -575,7 +584,7 @@ odoo.define("quoter.area_hours_matrix", function (require) {
                         const lrId = lrPerCol || meta.level_range_id || 0;
                         const useSingleCellWrite = lrPerCol > 0;
                         const writeKind = useSingleCellWrite ? "matrix_b_single" : "matrix_b";
-                        const canEdit = !readOnly && combined && lrId && bid;
+                        const canEdit = rowMatrixEditable(row, readOnly) && combined && lrId && bid;
                         let inner;
                         if (canEdit) {
                             inner = cellInput(writeKind, lrId, arId, v);
@@ -1278,25 +1287,70 @@ odoo.define("quoter.area_hours_matrix", function (require) {
         }
     }
 
+    function safeRenderAreaMatrix(renderer) {
+        try {
+            renderAreaMatrix(renderer);
+        } catch (e) {
+            if (window.console && console.error) {
+                console.error("[quoter.area_hours_matrix]", e);
+            }
+        }
+    }
+
+    function afterAreaFormMutation(controllerOrRenderer) {
+        const renderer =
+            controllerOrRenderer && controllerOrRenderer.renderer
+                ? controllerOrRenderer.renderer
+                : controllerOrRenderer;
+        if (!renderer || renderer.state.model !== "quoter.professional.area") {
+            return;
+        }
+        safeRenderAreaMatrix(renderer);
+    }
+
+    function chainPromiseResult(result, fn) {
+        if (result && typeof result.then === "function") {
+            return result.then(fn);
+        }
+        fn();
+        return result;
+    }
+
     FormRenderer.include({
         _renderView: function () {
             const res = this._super.apply(this, arguments);
             const self = this;
-            function safeMatrix() {
-                try {
-                    renderAreaMatrix(self);
-                } catch (e) {
-                    if (window.console && console.error) {
-                        console.error("[quoter.area_hours_matrix]", e);
-                    }
-                }
-            }
-            if (res && typeof res.then === "function") {
-                return res.then(function () {
-                    safeMatrix();
+            return chainPromiseResult(res, function () {
+                safeRenderAreaMatrix(self);
+            });
+        },
+    });
+
+    FormController.include({
+        _onButtonClicked: function (event) {
+            const res = this._super.apply(this, arguments);
+            const attrs = (event && event.data && event.data.attrs) || {};
+            const name = attrs.name;
+            if (
+                this.modelName === "quoter.professional.area" &&
+                (name === "action_quoter_area_unlock_config" ||
+                    name === "action_quoter_area_lock_config")
+            ) {
+                const self = this;
+                return chainPromiseResult(res, function () {
+                    afterAreaFormMutation(self);
                 });
             }
-            safeMatrix();
+            return res;
+        },
+        saveRecord: function () {
+            const res = this._super.apply(this, arguments);
+            if (this.modelName === "quoter.professional.area") {
+                const self = this;
+                return chainPromiseResult(res, function () {
+                    afterAreaFormMutation(self);
+                });
+            }
             return res;
         },
     });

@@ -614,8 +614,26 @@ class QuoterProfessionalArea(models.Model):
 
     def _sync_product_level_range_hour_lines(self):
         """Filas B / A / salida en plantillas quoter.product.level.range al cambiar roles del área."""
-        lr = self.env["quoter.product.level.range"].search([("area_id", "in", self.ids)])
-        lr._sync_matrix_rows()
+        LevelRange = self.env["quoter.product.level.range"]
+        for area in self:
+            lines = area.line_ids.filtered("product_tmpl_id")
+            if not lines:
+                continue
+            generic_tmpl_ids = lines.filtered("is_generic_link").mapped("product_tmpl_id").ids
+            area_tmpl_ids = lines.filtered(lambda l: not l.is_generic_link).mapped(
+                "product_tmpl_id"
+            ).ids
+            lrs = LevelRange.browse()
+            if area_tmpl_ids:
+                lrs |= LevelRange.search(
+                    [("area_id", "=", area.id), ("product_tmpl_id", "in", area_tmpl_ids)]
+                )
+            if generic_tmpl_ids:
+                lrs |= LevelRange.search(
+                    [("area_id", "=", False), ("product_tmpl_id", "in", generic_tmpl_ids)]
+                )
+            if lrs:
+                lrs.with_context(quoter_sync_matrix_area_id=area.id)._sync_matrix_rows()
 
     def _complexity_levels_ordered(self):
         """Niveles asignados al área ordenados por secuencia (menor → mayor) e id."""
@@ -713,15 +731,17 @@ class QuoterProfessionalArea(models.Model):
                     )
         return cols
 
-    def _matrix_b_first_lr_brow_for_role(self, tmpl_id, area_range_id, level_branch_specs, LevelRange):
+    def _matrix_b_first_lr_brow_for_role(
+        self, tmpl_id, area_range_id, level_branch_specs, LevelRange, is_generic_link=False
+    ):
         for spec in level_branch_specs:
             lr = LevelRange.search(
-                [
-                    ("product_tmpl_id", "=", tmpl_id),
-                    ("complexity_level_id", "=", spec["level_id"]),
-                    ("area_id", "=", self.id),
-                    ("branch_id", "=", spec["branch_id"]),
-                ],
+                self._matrix_level_range_domain(
+                    tmpl_id,
+                    spec["level_id"],
+                    spec["branch_id"],
+                    is_generic_link=is_generic_link,
+                ),
                 limit=1,
             )
             if not lr:
@@ -734,7 +754,14 @@ class QuoterProfessionalArea(models.Model):
         return LevelRange.browse(), self.env["quoter.product.level.range.matrix.b"].browse()
 
     def _matrix_b_compact_cell_meta(
-        self, tmpl_id, col, level_branch_specs, branches, levels, LevelRange
+        self,
+        tmpl_id,
+        col,
+        level_branch_specs,
+        branches,
+        levels,
+        LevelRange,
+        is_generic_link=False,
     ):
         self.ensure_one()
         ar_id = col["area_range_id"]
@@ -743,19 +770,16 @@ class QuoterProfessionalArea(models.Model):
         exp = col.get("expand") or "none"
         if exp == "none":
             lr, brec = self._matrix_b_first_lr_brow_for_role(
-                tmpl_id, ar_id, level_branch_specs, LevelRange
+                tmpl_id, ar_id, level_branch_specs, LevelRange, is_generic_link
             )
         elif exp == "level":
             bid = col["branch_id"] or (branches[0].id if branches else False)
             lid = col["level_id"]
             if bid and lid:
                 lr = LevelRange.search(
-                    [
-                        ("product_tmpl_id", "=", tmpl_id),
-                        ("area_id", "=", self.id),
-                        ("branch_id", "=", bid),
-                        ("complexity_level_id", "=", lid),
-                    ],
+                    self._matrix_level_range_domain(
+                        tmpl_id, lid, bid, is_generic_link=is_generic_link
+                    ),
                     limit=1,
                 )
                 if lr:
@@ -767,12 +791,9 @@ class QuoterProfessionalArea(models.Model):
             lid = col["level_id"]
             if bid and lid:
                 lr = LevelRange.search(
-                    [
-                        ("product_tmpl_id", "=", tmpl_id),
-                        ("area_id", "=", self.id),
-                        ("branch_id", "=", bid),
-                        ("complexity_level_id", "=", lid),
-                    ],
+                    self._matrix_level_range_domain(
+                        tmpl_id, lid, bid, is_generic_link=is_generic_link
+                    ),
                     limit=1,
                 )
                 if lr:
@@ -787,22 +808,69 @@ class QuoterProfessionalArea(models.Model):
             "area_range_id": ar_id,
         }
 
+    def _matrix_level_range_domain(self, tmpl_id, level_id, branch_id, is_generic_link=False):
+        """Dominio de plantilla nivel: propia del área o genérica global (area_id vacío)."""
+        domain = [
+            ("product_tmpl_id", "=", tmpl_id),
+            ("complexity_level_id", "=", level_id),
+            ("branch_id", "=", branch_id),
+        ]
+        if is_generic_link:
+            domain.append(("area_id", "=", False))
+        else:
+            domain.append(("area_id", "=", self.id))
+        return domain
+
+    def _matrix_level_range_for_line_spec(self, line, spec):
+        LevelRange = self.env["quoter.product.level.range"]
+        return LevelRange.search(
+            self._matrix_level_range_domain(
+                line.product_tmpl_id.id,
+                spec["level_id"],
+                spec["branch_id"],
+                is_generic_link=line.is_generic_link,
+            ),
+            limit=1,
+        )
+
+    def _matrix_validate_level_range_for_area(self, level_range):
+        """Valida que la plantilla pertenezca a un producto listado en el área."""
+        self.ensure_one()
+        if not level_range:
+            raise UserError(_("Plantilla de nivel no válida para esta área."))
+        tmpl_ids = set(self.line_ids.filtered("product_tmpl_id").mapped("product_tmpl_id").ids)
+        if level_range.product_tmpl_id.id not in tmpl_ids:
+            raise UserError(_("Plantilla de nivel no válida para esta área."))
+        if level_range.area_id and level_range.area_id != self:
+            raise UserError(_("Plantilla de nivel no válida para esta área."))
+
     def _quoter_sync_level_range_matrix_rows(self):
         """Asegura líneas de salida (regular) o A/B (combinada) antes de mostrar/editar la matriz."""
         self.ensure_one()
         LevelRange = self.env["quoter.product.level.range"]
-        tmpl_ids = self.line_ids.filtered("product_tmpl_id").mapped("product_tmpl_id").ids
-        if not tmpl_ids:
+        lines = self.line_ids.filtered("product_tmpl_id")
+        if not lines:
             return
-        lrs = LevelRange.search(
-            [("area_id", "=", self.id), ("product_tmpl_id", "in", tmpl_ids)]
-        )
+        generic_tmpl_ids = lines.filtered("is_generic_link").mapped("product_tmpl_id").ids
+        area_tmpl_ids = lines.filtered(lambda l: not l.is_generic_link).mapped(
+            "product_tmpl_id"
+        ).ids
+        lrs = LevelRange.browse()
+        if area_tmpl_ids:
+            lrs |= LevelRange.search(
+                [("area_id", "=", self.id), ("product_tmpl_id", "in", area_tmpl_ids)]
+            )
+        if generic_tmpl_ids:
+            lrs |= LevelRange.search(
+                [("area_id", "=", False), ("product_tmpl_id", "in", generic_tmpl_ids)]
+            )
         if lrs:
-            lrs._sync_matrix_rows()
+            lrs.with_context(quoter_sync_matrix_area_id=self.id)._sync_matrix_rows()
 
     def get_hours_matrix_preview_data(self):
         """Datos para la matriz JS del formulario de área (horas resultado por producto / nivel / rol)."""
         self.ensure_one()
+        self.line_ids._sync_product_level_ranges()
         self._quoter_sync_level_range_matrix_rows()
         can_edit_matrix = self.env.user.has_group("quoter.group_quoter_manager")
         matrix_read_only = not self.quoter_config_edit_mode or not can_edit_matrix
@@ -888,15 +956,7 @@ class QuoterProfessionalArea(models.Model):
             global_matrix_a_value = 0.0
             global_matrix_a_level_range_id = 0
             for spec in level_branch_specs:
-                lr = LevelRange.search(
-                    [
-                        ("product_tmpl_id", "=", tmpl_id),
-                        ("complexity_level_id", "=", spec["level_id"]),
-                        ("area_id", "=", self.id),
-                        ("branch_id", "=", spec["branch_id"]),
-                    ],
-                    limit=1,
-                )
+                lr = self._matrix_level_range_for_line_spec(line, spec)
                 zr = [0.0] * len(ranges)
                 if not lr:
                     levels_hours.append(list(zr))
@@ -983,6 +1043,7 @@ class QuoterProfessionalArea(models.Model):
                         branches_eff,
                         levels_ord,
                         LevelRange,
+                        line.is_generic_link,
                     )
                     for c in matrix_b_compact_columns
                 ]
@@ -1055,15 +1116,8 @@ class QuoterProfessionalArea(models.Model):
                 raise UserError(str(e)) from e
 
         LevelRange = self.env["quoter.product.level.range"]
-        lr = LevelRange.search(
-            [
-                ("id", "=", int(level_range_id)),
-                ("area_id", "=", self.id),
-            ],
-            limit=1,
-        )
-        if not lr:
-            raise UserError(_("Plantilla de nivel no válida para esta área."))
+        lr = LevelRange.browse(int(level_range_id)).exists()
+        self._matrix_validate_level_range_for_area(lr)
 
         ar_id = int(area_range_id)
         ar_rec = self.env["quoter.area.complexity.range"].browse(ar_id)
@@ -1078,11 +1132,14 @@ class QuoterProfessionalArea(models.Model):
                 raise UserError(
                     _("En modo combinado la salida se calcula desde las tablas A y B; edite esas tablas.")
                 )
-            lr._sync_matrix_rows()
+            sync_ctx = dict(self.env.context, quoter_sync_matrix_area_id=self.id)
+            lr.with_context(sync_ctx)._sync_matrix_rows()
             out = lr.output_line_ids.filtered(lambda o: o.area_range_id.id == ar_id)[:1]
             if not out:
                 O = self.env["quoter.product.level.range.output"]
-                out = O.with_context(quoter_allow_zero_hours=True).create(
+                out = O.with_context(
+                    quoter_allow_zero_hours=True, quoter_skip_output_hours_guard=True
+                ).create(
                     {
                         "level_range_id": lr.id,
                         "area_range_id": ar_id,
@@ -1092,7 +1149,7 @@ class QuoterProfessionalArea(models.Model):
                 )
             else:
                 try:
-                    out.write({"hours": val})
+                    out.with_context(quoter_skip_output_hours_guard=True).write({"hours": val})
                 except ValidationError as e:
                     raise UserError(str(e)) from e
             return True
@@ -1113,16 +1170,27 @@ class QuoterProfessionalArea(models.Model):
                 raise UserError(_("La tabla A solo aplica en modo combinado."))
             if self.table_a_layout != "global":
                 raise UserError(_("La edición global solo aplica con formato A unificada global."))
-            target_lrs = LevelRange.search(
-                [
-                    ("area_id", "=", self.id),
-                    ("product_tmpl_id", "=", lr.product_tmpl_id.id),
-                ]
-            )
+            line = self.line_ids.filtered(
+                lambda l: l.product_tmpl_id == lr.product_tmpl_id
+            )[:1]
+            if line.is_generic_link:
+                target_lrs = LevelRange.search(
+                    [
+                        ("area_id", "=", False),
+                        ("product_tmpl_id", "=", lr.product_tmpl_id.id),
+                    ]
+                )
+            else:
+                target_lrs = LevelRange.search(
+                    [
+                        ("area_id", "=", self.id),
+                        ("product_tmpl_id", "=", lr.product_tmpl_id.id),
+                    ]
+                )
             if not target_lrs:
                 raise UserError(_("No hay filas de tabla A para el producto."))
             try:
-                target_lrs._sync_matrix_rows()
+                target_lrs.with_context(quoter_sync_matrix_area_id=self.id)._sync_matrix_rows()
                 target_lrs.mapped("matrix_a_ids").write({"hours": val})
             except ValidationError as e:
                 raise UserError(str(e)) from e
