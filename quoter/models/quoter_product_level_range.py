@@ -247,7 +247,8 @@ class QuoterProductLevelRangeOutput(models.Model):
     def _recompute_combined_hours(self):
         for rec in self:
             lr = rec.level_range_id
-            if not lr.area_id or lr.area_id.hour_matrix_mode != "combined":
+            area = lr._resolve_sync_matrix_area()
+            if not area or area.hour_matrix_mode != "combined":
                 continue
             if not rec.matrix_a_id:
                 continue
@@ -309,9 +310,10 @@ class QuoterProductLevelRangeOutput(models.Model):
 
     def _is_combined_locked(self):
         self.ensure_one()
+        area = self.level_range_id._resolve_sync_matrix_area()
         return (
-            self.level_range_id.area_id
-            and self.level_range_id.area_id.hour_matrix_mode == "combined"
+            area
+            and area.hour_matrix_mode == "combined"
             and bool(self.matrix_a_id)
         )
 
@@ -812,17 +814,24 @@ class QuoterProductLevelRange(models.Model):
         default_branch = self.env.ref("quoter.quoter_area_branch_unique", raise_if_not_found=False)
         return default_branch.id if default_branch else False
 
+    def _resolve_sync_matrix_area(self):
+        """Área para sincronizar filas: propia del producto o la del formulario (genéricos)."""
+        self.ensure_one()
+        if self.area_id:
+            return self.area_id
+        area_id = self.env.context.get("quoter_sync_matrix_area_id")
+        if area_id:
+            return self.env["quoter.professional.area"].browse(area_id).exists()
+        return self.env["quoter.professional.area"]
+
     def _sync_matrix_rows(self):
         """Por rol del área (máx. 4): modo regular solo salida; modo combinado B y A por rol + salida."""
         B = self.env["quoter.product.level.range.matrix.b"]
         A = self.env["quoter.product.level.range.matrix.a"]
         O = self.env["quoter.product.level.range.output"]
         for rec in self:
-            area = rec.area_id
+            area = rec._resolve_sync_matrix_area()
             if not area:
-                rec.matrix_b_ids.unlink()
-                rec.matrix_a_ids.unlink()
-                rec.output_line_ids.unlink()
                 continue
             ranges = area.area_range_ids.sorted(key=lambda r: (r.sequence, r.id))[:4]
             keep_ids = set(ranges.ids)

@@ -90,7 +90,7 @@
                                    context="{'default_area_id': active_id}"
                                    attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}"
                                    mode="tree,form">
-                                <tree string="Líneas" editable="bottom">
+                                <tree string="Líneas" editable="bottom" delete="0">
                                     <field name="sequence" widget="handle"/>
                                     <field name="is_generic_link" invisible="1"/>
                                     <field name="separator_tag_id" optional="show"/>
@@ -106,9 +106,27 @@
                                             string=" "
                                             icon="fa-clock-o"
                                             title="Horas por nivel (hasta 4 roles del área)"/>
+                                    <button name="action_remove_from_area"
+                                            type="object"
+                                            string=" "
+                                            icon="fa-times"
+                                            class="text-danger"
+                                            title="Eliminar producto"
+                                            confirm="¿Eliminar este producto del área?"
+                                            attrs="{'invisible': ['|', ('parent.quoter_config_edit_mode', '=', False), ('id', '=', False)]}"/>
                                 </tree>
                                 <form string="Línea">
                                     <field name="area_id" invisible="1"/>
+                                    <field name="area_quoter_config_edit_mode" invisible="1"/>
+                                    <header>
+                                        <button name="action_remove_from_area"
+                                                type="object"
+                                                string="Eliminar"
+                                                icon="fa-times"
+                                                class="btn-secondary text-danger"
+                                                confirm="¿Eliminar este producto del área?"
+                                                attrs="{'invisible': [('area_quoter_config_edit_mode', '=', False)]}"/>
+                                    </header>
                                     <group>
                                         <group>
                                             <field name="is_generic_link" invisible="1"/>
@@ -390,7 +408,8 @@
         <field name="name">quoter.service.line.tree</field>
         <field name="model">quoter.service.line</field>
         <field name="arch" type="xml">
-            <tree string="Líneas de servicio">
+            <tree string="Líneas de servicio" delete="0">
+                <field name="area_quoter_config_edit_mode" invisible="1"/>
                 <field name="area_id"/>
                 <field name="name"/>
                 <field name="separator_tag_id" optional="hide"/>
@@ -398,6 +417,19 @@
                 <field name="manual_load" invisible="1"/>
                 <field name="manual_total_load" optional="show"/>
                 <field name="product_tmpl_id" optional="show"/>
+                <button name="action_open_level_ranges"
+                        type="object"
+                        string=" "
+                        icon="fa-clock-o"
+                        title="Horas por nivel"/>
+                <button name="action_remove_from_area"
+                        type="object"
+                        string=" "
+                        icon="fa-times"
+                        class="text-danger"
+                        title="Eliminar producto"
+                        confirm="¿Eliminar este producto del área?"
+                        attrs="{'invisible': ['|', ('area_quoter_config_edit_mode', '=', False), ('id', '=', False)]}"/>
             </tree>
         </field>
     </record>
@@ -407,6 +439,16 @@
         <field name="model">quoter.service.line</field>
         <field name="arch" type="xml">
             <form string="Línea de servicio">
+                <field name="area_quoter_config_edit_mode" invisible="1"/>
+                <header>
+                    <button name="action_remove_from_area"
+                            type="object"
+                            string="Eliminar"
+                            icon="fa-times"
+                            class="btn-secondary text-danger"
+                            confirm="¿Eliminar este producto del área?"
+                            attrs="{'invisible': [('area_quoter_config_edit_mode', '=', False)]}"/>
+                </header>
                 <sheet>
                     <group>
                         <field name="area_id"/>
