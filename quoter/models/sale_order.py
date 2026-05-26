@@ -939,14 +939,10 @@ class SaleOrder(models.Model):
         if vals is not None and self.env.context.get("quoter_use_cot_sequence"):
             vals = dict(vals)
             vals["is_quotation"] = True
-        if vals and (
-            vals.get("is_quotation")
-            or any(order.is_quotation for order in self)
-        ):
+        # Solo al marcar como cotización (create / conversión), no en cada guardado.
+        if vals and vals.get("is_quotation"):
             vals = dict(vals)
-            self._quoter_apply_hidden_fields_policy(
-                vals, force=not vals.get("is_quotation")
-            )
+            self._quoter_apply_hidden_fields_policy(vals)
         date_triggers = {"date_order", "payment_term_id"}
         area_change_snapshots = []
         if vals and "quoter_area_ids" in vals:

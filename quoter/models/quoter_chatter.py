@@ -37,8 +37,16 @@ def quoter_chatter_format_value(record, field_name, value):
         return "%.4g" % float(value)
     if field.type == "boolean":
         return _("Sí") if value else _("No")
-    if field.type in ("date", "datetime"):
-        return fields.Datetime.to_string(value) if field.type == "datetime" else str(value)
+    if field.type == "datetime":
+        if isinstance(value, str):
+            dt = fields.Datetime.to_datetime(value)
+            return fields.Datetime.to_string(dt) if dt else "-"
+        return fields.Datetime.to_string(value) if value else "-"
+    if field.type == "date":
+        if isinstance(value, str):
+            d = fields.Date.to_date(value)
+            return fields.Date.to_string(d) if d else "-"
+        return fields.Date.to_string(value) if value else "-"
     return str(value)
 
 

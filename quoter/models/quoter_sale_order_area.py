@@ -905,6 +905,17 @@ class QuoterSaleOrderArea(models.Model):
                     line_vals["quoter_tab_area_id"] = self.area_id.id
                 if self.id and not line_vals.get("quoter_block_id"):
                     line_vals["quoter_block_id"] = self.id
+                if cmd[0] == 1 and lid:
+                    line_rec = Line.browse(lid)
+                    if line_rec.exists() and line_rec.quoter_is_adjustment_line:
+                        line_vals = dict(line_vals)
+                        for fname in Line._QUOTER_RANGE_HOUR_FIELD_NAMES:
+                            line_vals.pop(fname, None)
+                        line_vals.pop("quoter_range_hour_ids", None)
+                        line_vals.pop("quoter_total_hours", None)
+                        line_vals.pop("price_unit", None)
+                        if not line_vals:
+                            continue
                 new_cmds.append((cmd[0], cmd[1], line_vals))
             else:
                 new_cmds.append(cmd)
@@ -1009,11 +1020,16 @@ class QuoterSaleOrderArea(models.Model):
         return bool(self.area_id and line.quoter_tab_area_id == self.area_id)
 
     def action_quoter_unlink_order_line(self, line_id):
-        """Borra la línea en servidor de inmediato (evita id fantasma en el BasicModel)."""
+        """Borra la línea en servidor de inmediato (evita id fantasma en el BasicModel).
+
+        Devuelve la lista de res_id de líneas eliminadas del bloque, incluidas
+        secciones de separador que _quoter_rebuild_separator_sections quite en cascada.
+        """
         self.ensure_one()
         line = self.env["sale.order.line"].browse(line_id)
         if not self._quoter_line_belongs_to_block(line):
-            return True
+            return {"removed_ids": [], "line_ids": self.order_line_ids.ids}
+        before_ids = set(self.order_line_ids.ids)
         if not line.display_type and not line.quoter_is_area_discount_total_line:
             product_name = (
                 line.product_id.display_name
@@ -1037,7 +1053,16 @@ class QuoterSaleOrderArea(models.Model):
             order.flush(fnames=["order_line"])
             order._quoter_sync_area_discount_total_line()
             self.order_id._quoter_refresh_block_selectable_products()
-        return True
+        after_ids = set(self.order_line_ids.ids)
+        return {
+            "removed_ids": list(before_ids - after_ids),
+            "line_ids": self.order_line_ids.ids,
+        }
+
+    def action_quoter_get_block_order_line_sync(self):
+        """Ids actuales de order_line_ids del bloque (fuente de verdad tras wizard/RPC)."""
+        self.ensure_one()
+        return {"line_ids": self.order_line_ids.ids}
 
     def action_quoter_publish(self):
         """Pasa el bloque a Cerrado (clave interna published)."""
