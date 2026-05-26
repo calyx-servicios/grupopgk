@@ -170,6 +170,105 @@ odoo.define("quoter.area_block_embed", function (require) {
             const parentFc = getFormControllerFromField(areaBlockField);
             quoterPreserveActive.quoterPushSaleOrderFormState(parentFc);
         };
+        quoterPatchEmbedFormLineObjectButtons(embedForm, areaBlockField);
+    }
+
+    /**
+     * Botones type="object" en order_line_ids del bloque embebido: el FormController
+     * estándar guarda todo el bloque antes de ejecutar la acción (p. ej. Ajustar),
+     * lo que impide abrir el wizard de observación. Ejecutamos la acción sobre la
+     * línea y refrescamos el bloque al cerrar el diálogo.
+     */
+    function quoterPatchEmbedFormLineObjectButtons(embedForm, areaBlockField) {
+        if (!embedForm || embedForm.__quoterLineBtnPatched) {
+            return;
+        }
+        embedForm.__quoterLineBtnPatched = true;
+        const origOnButtonClicked = embedForm._onButtonClicked.bind(embedForm);
+        embedForm._onButtonClicked = function (ev) {
+            const attrs = ev.data && ev.data.attrs;
+            const record = ev.data && ev.data.record;
+            if (
+                !record ||
+                record.model !== "sale.order.line" ||
+                !attrs ||
+                attrs.type !== "object" ||
+                !attrs.name ||
+                attrs.special === "cancel"
+            ) {
+                return origOnButtonClicked(ev);
+            }
+            ev.stopPropagation();
+            const self = embedForm;
+            self._disableButtons();
+            const lineRecord = self.model.get(record.id) || record;
+            const actionData = Object.assign({}, attrs, {
+                context: lineRecord.getContext({ additionalContext: attrs.context || {} }),
+            });
+            const recordData = {
+                context: lineRecord.getContext(),
+                currentID: lineRecord.res_id || lineRecord.data.id,
+                model: lineRecord.model,
+                resIDs: lineRecord.res_id ? [lineRecord.res_id] : lineRecord.res_ids,
+            };
+            const commitEdits = function () {
+                if (
+                    areaBlockField &&
+                    typeof areaBlockField._quoterCommitEmbeddedOrderLineEdits === "function"
+                ) {
+                    return areaBlockField._quoterCommitEmbeddedOrderLineEdits();
+                }
+                return Promise.resolve();
+            };
+            const afterClose = function () {
+                if (self.isDestroyed()) {
+                    return Promise.resolve();
+                }
+                const host = areaBlockField;
+                if (
+                    host &&
+                    attrs.name === "action_quoter_add_adjustment_line" &&
+                    typeof host._quoterRefreshAfterAdjustmentLine === "function"
+                ) {
+                    return host._quoterRefreshAfterAdjustmentLine(self);
+                }
+                if (
+                    host &&
+                    host.__quoterEmbedForm &&
+                    typeof host._quoterRefreshEmbeddedDataAfterSave === "function"
+                ) {
+                    return host._quoterRefreshEmbeddedDataAfterSave(host.__quoterEmbedForm);
+                }
+                if (typeof self.reload === "function") {
+                    return self.reload();
+                }
+                return Promise.resolve();
+            };
+            const prom = commitEdits().then(function () {
+                return new Promise(function (resolve, reject) {
+                    self.trigger_up("execute_action", {
+                        action_data: actionData,
+                        env: recordData,
+                        on_closed: afterClose,
+                        on_success: resolve,
+                        on_fail: function () {
+                            return self
+                                .update({}, { reload: false })
+                                .then(reject)
+                                .guardedCatch(reject);
+                        },
+                    });
+                });
+            });
+            return self
+                .alive(prom)
+                .then(function () {
+                    self._enableButtons();
+                })
+                .guardedCatch(function () {
+                    self._enableButtons();
+                });
+        };
     }
 
     function getSaleOrderFormControllerFromRenderer(renderer) {
@@ -265,19 +364,23 @@ odoo.define("quoter.area_block_embed", function (require) {
             return;
         }
         $container.find(".o_form_button_create").remove();
-        $container.find("button").each(function () {
-            const $btn = $(this);
-            if ($btn.hasClass("o_form_button_edit") || $btn.hasClass("o_form_button_save")) {
-                return;
-            }
-            if ($btn.hasClass("o_form_button_cancel") || $btn.hasClass("o_form_button_discard")) {
-                return;
-            }
-            const label = ($btn.text() || "").trim().toLowerCase();
-            if (label === "crear" || label === "create" || label === "new") {
-                $btn.remove();
-            }
-        });
+        $container
+            .find(
+                ".o_form_buttons_view button, .o_form_buttons_edit button, .o_form_statusbar .o_statusbar_buttons button"
+            )
+            .each(function () {
+                const $btn = $(this);
+                if ($btn.hasClass("o_form_button_edit") || $btn.hasClass("o_form_button_save")) {
+                    return;
+                }
+                if ($btn.hasClass("o_form_button_cancel") || $btn.hasClass("o_form_button_discard")) {
+                    return;
+                }
+                const label = ($btn.text() || "").trim().toLowerCase();
+                if (label === "crear" || label === "create" || label === "new") {
+                    $btn.remove();
+                }
+            });
     }
 
     function clearEmbedSlots($wrap) {
@@ -310,6 +413,95 @@ odoo.define("quoter.area_block_embed", function (require) {
         return out;
     }
 
+    function quoterRelationalId(value) {
+        if (value === false || value === null || value === undefined) {
+            return null;
+        }
+        if (typeof value === "number") {
+            return value;
+        }
+        if (Array.isArray(value)) {
+            return value[0] || null;
+        }
+        if (typeof value === "object") {
+            if (typeof value.id === "number") {
+                return value.id;
+            }
+            if (value.data && typeof value.data.id === "number") {
+                return value.data.id;
+            }
+        }
+        return null;
+    }
+
+    function quoterNormalizeServerLineSyncResult(result) {
+        if (result === true || result === false) {
+            return { removed_ids: [], line_ids: [], has_line_ids: false };
+        }
+        if (result && typeof result === "object" && !Array.isArray(result)) {
+            return {
+                removed_ids: quoterUniqueIntIds(result.removed_ids || []),
+                line_ids: quoterUniqueIntIds(result.line_ids || []),
+                has_line_ids: Array.isArray(result.line_ids),
+            };
+        }
+        if (Array.isArray(result)) {
+            return {
+                removed_ids: quoterUniqueIntIds(result),
+                line_ids: [],
+                has_line_ids: false,
+            };
+        }
+        return { removed_ids: [], line_ids: [], has_line_ids: false };
+    }
+
+    /** Datapoint real en BasicModel (model.get() devuelve copia sin _cache). */
+    function quoterGetRawDatapoint(model, datapointId) {
+        if (!model || !datapointId || !model.localData) {
+            return null;
+        }
+        return model.localData[datapointId] || null;
+    }
+
+    function quoterGetRawListDatapoint(model, listDatapointId) {
+        const dp = quoterGetRawDatapoint(model, listDatapointId);
+        if (!dp || dp.type !== "list") {
+            return null;
+        }
+        if (!dp._cache) {
+            dp._cache = {};
+        }
+        return dp;
+    }
+
+    const QUOTER_RANGE_HOUR_FIELD_NAMES = [
+        "quoter_range_1_hours",
+        "quoter_range_2_hours",
+        "quoter_range_3_hours",
+        "quoter_range_4_hours",
+    ];
+
+    function quoterIsCanBeSaveFalseError(err) {
+        const msg =
+            err === null || err === undefined
+                ? ""
+                : err.message || err.reason || String(err);
+        return msg.indexOf("canBeSave") >= 0;
+    }
+
+    function quoterResolveO2mListId(fieldValue) {
+        if (!fieldValue) {
+            return null;
+        }
+        if (typeof fieldValue === "string") {
+            return fieldValue;
+        }
+        if (typeof fieldValue === "object" && fieldValue.id) {
+            return fieldValue.id;
+        }
+        return null;
+    }
+
     /** Al editar líneas del bloque, el pedido padre debe pasar a modo edición (coherencia con Guardar/Descartar). */
     function quoterEnsureParentSaleOrderEditMode(widget) {
         const parentFc = getFormControllerFromField(widget);
@@ -320,6 +512,30 @@ odoo.define("quoter.area_block_embed", function (require) {
             parentFc._setMode("edit");
             quoterSyncEmbedFormMode(parentFc, "edit");
         }
+    }
+
+    /** Marca el sale.order como modificado (sin tocar quoter_area_block_ids: evita reset que vacía líneas). */
+    function quoterMarkParentSaleOrderDirty(fieldWidget) {
+        const parentFc = getFormControllerFromField(fieldWidget);
+        if (!parentFc || !parentFc.model || !parentFc.handle) {
+            return;
+        }
+        const orderDp = quoterGetRawDatapoint(parentFc.model, parentFc.handle);
+        if (!orderDp) {
+            return;
+        }
+        if (typeof parentFc.model.isDirty === "function") {
+            try {
+                if (parentFc.model.isDirty(parentFc.handle)) {
+                    return;
+                }
+            } catch (err) {
+                if (window.console && console.warn) {
+                    console.warn("[quoter] isDirty skipped (broken tree):", err);
+                }
+            }
+        }
+        orderDp._isDirty = true;
     }
 
     function quoterAttachCatch(def, onErr) {
@@ -536,6 +752,7 @@ odoo.define("quoter.area_block_embed", function (require) {
             }
             const parentFc = getFormControllerFromField(fieldW);
             const embedForm = fieldW.__quoterEmbedForm;
+            const hadServerUnlink = !!fieldW.__quoterHadServerLineUnlink;
             if (
                 parentFc &&
                 parentFc.model &&
@@ -546,42 +763,50 @@ odoo.define("quoter.area_block_embed", function (require) {
                     fieldW.__quoterRemovedLineResIds
                 );
             }
+            const syncParentOrderLines = function () {
+                if (!hadServerUnlink) {
+                    return Promise.resolve();
+                }
+                return fieldW._quoterHardResetParentOrderLineFromServer(parentFc);
+            };
             const prepBeforeSave = function () {
+                if (!hadServerUnlink && !(fieldW.__quoterRemovedLineResIds || []).length) {
+                    return Promise.resolve();
+                }
                 if (embedForm) {
                     fieldW._quoterSanitizeEmbedModelBeforeSave(embedForm);
                 }
-                // No recargar desde servidor antes del flush: la línea borrada sigue en BD
-                // hasta que se guarde el bloque y reaparecería en la grilla.
-                return fieldW._quoterPurgeParentOrderLineGhostState(parentFc, {
-                    reloadOrder: false,
-                });
+                return fieldW
+                    ._quoterPurgeParentOrderLineGhostState(parentFc, {
+                        reloadOrder: false,
+                    })
+                    .then(syncParentOrderLines);
             };
             const prepAfterSave = function () {
-                if (!embedForm) {
-                    return fieldW._quoterPurgeParentOrderLineGhostState(parentFc);
+                if (hadServerUnlink) {
+                    return syncParentOrderLines();
                 }
-                return fieldW._quoterRefreshEmbeddedDataAfterSave(embedForm).then(function () {
-                    return fieldW._quoterPurgeParentOrderLineGhostState(parentFc);
-                });
+                return Promise.resolve();
             };
-            return prepBeforeSave()
+            return fieldW
+                ._quoterCommitEmbeddedOrderLineEdits()
+                .then(prepBeforeSave)
                 .then(function () {
                     return fieldW._quoterSaveEmbeddedBeforeParent();
                 })
                 .then(prepAfterSave)
-                .then(function () {
-                    const removed = fieldW.__quoterRemovedLineResIds || [];
-                    if (removed.length && embedForm && embedForm.model) {
-                        fieldW._quoterPurgeGhostLinesByResIds(
-                            embedForm.model,
-                            removed
-                        );
-                    }
-                    return fieldW._quoterPurgeParentOrderLineGhostState(parentFc, {
-                        reloadOrder: true,
-                    });
-                })
                 .then(runParentSave)
+                .catch(function (err) {
+                    if (quoterIsCanBeSaveFalseError(err)) {
+                        if (window.console && console.warn) {
+                            console.warn(
+                                "[quoter] guardado embebido omitido (validación); se guarda el pedido igual"
+                            );
+                        }
+                        return runParentSave();
+                    }
+                    throw err;
+                })
                 .finally(function () {
                     fieldW.__quoterHadServerLineUnlink = false;
                     fieldW.__quoterRemovedLineResIds = [];
@@ -700,13 +925,16 @@ odoo.define("quoter.area_block_embed", function (require) {
             return !!(this.record && this.record.data && this.record.data.is_quotation);
         },
 
-        _quoterDestroyEmbedForm: function () {
+        _quoterDestroyEmbedForm: function (options) {
+            options = options || {};
             if (this.__quoterEmbedForm) {
                 this.__quoterEmbedForm.destroy();
                 this.__quoterEmbedForm = null;
             }
-            this.__quoterEmbedActiveDatapointId = null;
-            this.__quoterEmbedActiveResId = null;
+            if (!options.keepActiveDatapointId) {
+                this.__quoterEmbedActiveDatapointId = null;
+                this.__quoterEmbedActiveResId = null;
+            }
             this.__quoterEmbedSavePendingPromise = null;
             const $wrap = this.$el && this.$el.closest(".o_quoter_area_blocks_embed");
             if ($wrap && $wrap.length) {
@@ -774,11 +1002,255 @@ odoo.define("quoter.area_block_embed", function (require) {
             );
         },
 
+        /**
+         * res_ids a purgar al borrar una línea (ajustes en cascada + sección de separador).
+         */
+        _quoterCollectRelatedLineResIdsForUnlink: function (model, localId, formView) {
+            const ids = [];
+            const row = model && model.get(localId, {raw: true});
+            if (!row || typeof row.res_id !== "number" || row.res_id <= 0) {
+                return ids;
+            }
+            ids.push(row.res_id);
+            const childField = row.data && row.data.quoter_adjustment_child_line_ids;
+            const childListId =
+                childField && typeof childField === "object" ? childField.id : childField;
+            const childList = childListId && model.get(childListId);
+            if (childList && Array.isArray(childList.data)) {
+                childList.data.forEach(function (cid) {
+                    const child = model.get(cid);
+                    if (child && typeof child.res_id === "number" && child.res_id > 0) {
+                        ids.push(child.res_id);
+                    }
+                });
+            }
+            if (childList && Array.isArray(childList.res_ids)) {
+                childList.res_ids.forEach(function (rid) {
+                    if (typeof rid === "number" && rid > 0) {
+                        ids.push(rid);
+                    }
+                });
+            }
+            const productTagId = quoterRelationalId(
+                row.data && row.data.quoter_separator_tag_id
+            );
+            const blockDp =
+                formView && formView.handle && model.get(formView.handle, {raw: true});
+            const lineListId = quoterResolveO2mListId(
+                blockDp && blockDp.data && blockDp.data.order_line_ids
+            );
+            const lineList = quoterGetRawListDatapoint(model, lineListId);
+            if (lineList && Array.isArray(lineList.data)) {
+                const localIdx = lineList.data.indexOf(localId);
+                if (localIdx >= 0) {
+                    for (let i = localIdx - 1; i >= 0; i--) {
+                        const prev = model.localData[lineList.data[i]];
+                        if (!prev || typeof prev.res_id !== "number" || prev.res_id <= 0) {
+                            continue;
+                        }
+                        const prevData = Object.assign({}, prev.data, prev._changes);
+                        if (prevData.display_type === "line_section") {
+                            ids.push(prev.res_id);
+                            break;
+                        }
+                        if (!prevData.display_type) {
+                            break;
+                        }
+                    }
+                    if (localIdx + 1 < lineList.data.length) {
+                        const next = model.localData[lineList.data[localIdx + 1]];
+                        const nextData = next && Object.assign({}, next.data, next._changes);
+                        if (
+                            next &&
+                            typeof next.res_id === "number" &&
+                            next.res_id > 0 &&
+                            nextData &&
+                            nextData.quoter_is_adjustment_line
+                        ) {
+                            ids.push(next.res_id);
+                        }
+                    }
+                }
+                if (productTagId) {
+                    lineList.data.forEach(function (lid) {
+                        const sec = model.localData[lid];
+                        if (!sec || typeof sec.res_id !== "number" || sec.res_id <= 0) {
+                            return;
+                        }
+                        const secData = Object.assign({}, sec.data, sec._changes);
+                        if (secData.display_type !== "line_section") {
+                            return;
+                        }
+                        const secTagId = quoterRelationalId(
+                            secData.quoter_separator_section_tag_id
+                        );
+                        if (secTagId === productTagId) {
+                            ids.push(sec.res_id);
+                        }
+                    });
+                }
+            }
+            return quoterUniqueIntIds(ids);
+        },
+
+        /**
+         * Borra por completo la caché local de una lista x2many (evita sublistas rotas).
+         */
+        _quoterWipeLineListCache: function (model, listDatapointId) {
+            if (!model || !listDatapointId) {
+                return;
+            }
+            const listDp = quoterGetRawListDatapoint(model, listDatapointId);
+            if (!listDp) {
+                return;
+            }
+            Object.keys(listDp._cache).forEach(function (cacheKey) {
+                const dpId = listDp._cache[cacheKey];
+                if (dpId && model.localData[dpId]) {
+                    delete model.localData[dpId];
+                }
+            });
+            if (Array.isArray(listDp.data)) {
+                listDp.data.forEach(function (lid) {
+                    if (lid && model.localData[lid]) {
+                        delete model.localData[lid];
+                    }
+                });
+            }
+            listDp._cache = {};
+            listDp.data = [];
+            listDp._changes = [];
+            listDp.orderedResIDs = null;
+        },
+
+        /**
+         * Reconstruye order_line_ids desde cero con los ids del servidor (sin reload).
+         * Usar model.reload (no _readUngroupedList): la API interna exige list._cache y
+         * model.get() devuelve copias sin ese campo.
+         */
+        _quoterHardResetLineListFromServer: function (model, listDatapointId, serverLineIds) {
+            if (!model || !listDatapointId) {
+                return Promise.resolve();
+            }
+            const orderedIds = quoterUniqueIntIds(serverLineIds || []);
+            this._quoterWipeLineListCache(model, listDatapointId);
+            const listDp = quoterGetRawListDatapoint(model, listDatapointId);
+            if (!listDp) {
+                return Promise.resolve();
+            }
+            listDp.res_ids = orderedIds.slice();
+            listDp.count = orderedIds.length;
+            if (!orderedIds.length || typeof model.reload !== "function") {
+                return Promise.resolve();
+            }
+            return quoterAttachCatch(
+                model.reload(listDatapointId, { ids: orderedIds }),
+                function (err) {
+                    if (window.console && console.warn) {
+                        console.warn("[quoter] hard reset line list failed:", err);
+                    }
+                }
+            );
+        },
+
+        /**
+         * order_line del pedido padre comparte tabla con el bloque: tras borrado RPC hay que
+         * alinear res_ids desde servidor antes de guardar sale.order.
+         */
+        _quoterHardResetParentOrderLineFromServer: function (fc) {
+            const self = this;
+            if (!fc || !fc.model || fc.modelName !== "sale.order" || !fc.handle) {
+                return Promise.resolve();
+            }
+            const model = fc.model;
+            const orderDp = quoterGetRawDatapoint(model, fc.handle);
+            if (!orderDp || !orderDp.res_id || !orderDp.data || !orderDp.data.order_line) {
+                return Promise.resolve();
+            }
+            const parentListId = quoterResolveO2mListId(orderDp.data.order_line);
+            const removed = self.__quoterRemovedLineResIds || [];
+            if (removed.length) {
+                self._quoterPurgeGhostLinesByResIds(model, removed);
+            }
+            if (orderDp._changes && orderDp._changes.order_line) {
+                delete orderDp._changes.order_line;
+            }
+            const ctx =
+                typeof orderDp.getContext === "function" ? orderDp.getContext() : {};
+            return self
+                ._rpc({
+                    model: "sale.order",
+                    method: "read",
+                    args: [[orderDp.res_id], ["order_line"]],
+                    context: ctx,
+                })
+                .then(function (records) {
+                    const rec = records && records[0];
+                    const lineIds = (rec && rec.order_line) || [];
+                    return self._quoterHardResetLineListFromServer(
+                        model,
+                        parentListId,
+                        lineIds
+                    );
+                });
+        },
+
+        /**
+         * @deprecated use _quoterHardResetLineListFromServer
+         */
+        _quoterReplaceLineListFromServerIds: function (model, listDatapointId, serverLineIds) {
+            return this._quoterHardResetLineListFromServer(model, listDatapointId, serverLineIds);
+        },
+
+        /**
+         * Limpia todas las listas del BasicModel (cache/res_ids/data/_changes huérfanos).
+         */
+        _quoterSanitizeAllModelLists: function (model) {
+            if (!model || !model.localData) {
+                return;
+            }
+            const self = this;
+            Object.keys(model.localData).forEach(function (key) {
+                const dp = model.localData[key];
+                if (!dp || dp.type !== "list") {
+                    return;
+                }
+                if (dp._cache) {
+                    Object.keys(dp._cache).forEach(function (cacheKey) {
+                        const dpId = dp._cache[cacheKey];
+                        if (!dpId || !model.localData[dpId]) {
+                            delete dp._cache[cacheKey];
+                        }
+                    });
+                }
+                if (Array.isArray(dp.res_ids)) {
+                    dp.res_ids = dp.res_ids.filter(function (rid) {
+                        const cached = dp._cache && dp._cache[rid];
+                        return !cached || !!model.localData[cached];
+                    });
+                }
+                if (Array.isArray(dp.data)) {
+                    dp.data = dp.data.filter(function (lid) {
+                        return !!(lid && model.localData[lid]);
+                    });
+                }
+                if (Array.isArray(dp._changes)) {
+                    dp._changes = dp._changes.filter(function (chg) {
+                        if (!chg || !chg.id) {
+                            return true;
+                        }
+                        return !!model.localData[chg.id];
+                    });
+                }
+                self._quoterResyncLineListResIdsFromData(model, dp.id);
+            });
+        },
+
         _quoterClearLineListPendingChanges: function (model, listDatapointId) {
             if (!model || !listDatapointId) {
                 return;
             }
-            const listDp = model.get(listDatapointId);
+            const listDp = quoterGetRawListDatapoint(model, listDatapointId);
             if (listDp) {
                 listDp._changes = [];
             }
@@ -791,8 +1263,8 @@ odoo.define("quoter.area_block_embed", function (require) {
             if (!model || !listDatapointId) {
                 return;
             }
-            const listDp = model.get(listDatapointId);
-            if (!listDp || listDp.type !== "list" || !Array.isArray(listDp.data)) {
+            const listDp = quoterGetRawListDatapoint(model, listDatapointId);
+            if (!listDp || !Array.isArray(listDp.data)) {
                 return;
             }
             const resIds = [];
@@ -803,6 +1275,24 @@ odoo.define("quoter.area_block_embed", function (require) {
                 }
             });
             listDp.res_ids = resIds;
+        },
+
+        /**
+         * Quita ids de fila huérfanos en una lista (evita elem undefined en reload/discard).
+         */
+        _quoterSanitizeListDatapoint: function (model, listDatapointId) {
+            if (!model || !listDatapointId) {
+                return;
+            }
+            const listDp = quoterGetRawListDatapoint(model, listDatapointId);
+            if (!listDp || !Array.isArray(listDp.data)) {
+                return;
+            }
+            listDp.data = listDp.data.filter(function (lid) {
+                return !!(lid && model.localData[lid]);
+            });
+            this._quoterResyncLineListResIdsFromData(model, listDatapointId);
+            listDp._changes = [];
         },
 
         /**
@@ -838,13 +1328,29 @@ odoo.define("quoter.area_block_embed", function (require) {
                 }
                 listDp.data = listDp.data.filter(function (lid) {
                     const row = model.localData[lid];
-                    return !row || !row.res_id || !idSet.has(row.res_id);
+                    return !!(row && (!row.res_id || !idSet.has(row.res_id)));
                 });
                 if (Array.isArray(listDp.res_ids)) {
                     listDp.res_ids = listDp.res_ids.filter(function (rid) {
                         return !idSet.has(rid);
                     });
                 }
+                if (listDp._cache) {
+                    Object.keys(listDp._cache).forEach(function (cacheKey) {
+                        const dpId = listDp._cache[cacheKey];
+                        const row = dpId && model.localData[dpId];
+                        const resId = row && row.res_id;
+                        if (idSet.has(Number(cacheKey)) || (resId && idSet.has(resId))) {
+                            delete listDp._cache[cacheKey];
+                        }
+                    });
+                }
+                if (Array.isArray(listDp.orderedResIDs)) {
+                    listDp.orderedResIDs = listDp.orderedResIDs.filter(function (rid) {
+                        return !idSet.has(rid);
+                    });
+                }
+                listDp.orderedResIDs = null;
                 if (Array.isArray(listDp._changes)) {
                     listDp._changes = listDp._changes.filter(function (chg) {
                         if (!chg || !chg.id) {
@@ -853,6 +1359,9 @@ odoo.define("quoter.area_block_embed", function (require) {
                         const row = model.get(chg.id);
                         return !row || !row.res_id || !idSet.has(row.res_id);
                     });
+                }
+                if (!listDp._cache) {
+                    listDp._cache = {};
                 }
                 self._quoterResyncLineListResIdsFromData(model, listDp.id);
             };
@@ -872,23 +1381,34 @@ odoo.define("quoter.area_block_embed", function (require) {
             };
             const formView = this.__quoterEmbedForm;
             if (formView && formView.handle) {
-                const blockDp = model.get(formView.handle);
+                const blockDp = quoterGetRawDatapoint(model, formView.handle);
                 scrubRecordChanges(blockDp);
                 if (blockDp && blockDp.data && blockDp.data.order_line_ids) {
-                    pruneList(model.get(blockDp.data.order_line_ids.id));
+                    pruneList(
+                        quoterGetRawListDatapoint(
+                            model,
+                            quoterResolveO2mListId(blockDp.data.order_line_ids)
+                        )
+                    );
                 }
             }
             const fc = getFormControllerFromField(this);
             if (fc && fc.handle) {
-                const order = model.get(fc.handle);
+                const order = quoterGetRawDatapoint(model, fc.handle);
                 scrubRecordChanges(order);
                 if (order && order.data && order.data.order_line) {
-                    pruneList(model.get(order.data.order_line.id));
+                    pruneList(
+                        quoterGetRawListDatapoint(
+                            model,
+                            quoterResolveO2mListId(order.data.order_line)
+                        )
+                    );
                 }
             }
             if (this.value && this.value.id) {
-                pruneList(model.get(this.value.id));
+                pruneList(quoterGetRawListDatapoint(model, this.value.id));
             }
+            self._quoterSanitizeAllModelLists(model);
         },
 
         _quoterSanitizeEmbedModelBeforeSave: function (formView) {
@@ -900,18 +1420,21 @@ odoo.define("quoter.area_block_embed", function (require) {
             if (removed.length) {
                 this._quoterPurgeGhostLinesByResIds(model, removed);
             }
-            const blockDp = model.get(formView.handle);
+            const blockDp = quoterGetRawDatapoint(model, formView.handle);
             if (blockDp && blockDp.data && blockDp.data.order_line_ids) {
                 this._quoterResyncLineListResIdsFromData(
                     model,
-                    blockDp.data.order_line_ids.id
+                    quoterResolveO2mListId(blockDp.data.order_line_ids)
                 );
             }
             const fc = getFormControllerFromField(this);
             if (fc && fc.handle) {
-                const order = model.get(fc.handle);
+                const order = quoterGetRawDatapoint(model, fc.handle);
                 if (order && order.data && order.data.order_line) {
-                    this._quoterResyncLineListResIdsFromData(model, order.data.order_line.id);
+                    this._quoterResyncLineListResIdsFromData(
+                        model,
+                        quoterResolveO2mListId(order.data.order_line)
+                    );
                 }
             }
         },
@@ -938,10 +1461,57 @@ odoo.define("quoter.area_block_embed", function (require) {
          * (botón oculto por CSS pero activo), luego sale.order en el FormController.
          */
         _quoterSaveEmbeddedBeforeParent: function () {
+            const self = this;
             const formView = this.__quoterEmbedForm;
             if (!formView || !formView.model || !formView.handle) {
                 return Promise.resolve();
             }
+            return self
+                ._quoterCommitEmbeddedOrderLineEdits()
+                .then(function () {
+                    return self._quoterPersistAdjustmentLineHoursBeforeSave(formView);
+                })
+                .then(function () {
+                    return self._quoterSaveEmbeddedBeforeParentCore(formView);
+                });
+        },
+
+        _quoterEmbeddedCanSaveBlock: function (formView) {
+            if (!formView || typeof formView.canBeSaved !== "function") {
+                return true;
+            }
+            return formView.canBeSaved(formView.handle);
+        },
+
+        _quoterPrepareEmbeddedListBeforeBlockSave: function () {
+            const lw = this._quoterFindBlockOrderLineListWidget();
+            if (!lw || lw.isDestroyed()) {
+                return Promise.resolve();
+            }
+            const renderer = lw.renderer;
+            if (renderer && typeof renderer.unselectRow === "function") {
+                try {
+                    return Promise.resolve(renderer.unselectRow());
+                } catch (err) {
+                    if (window.console && console.warn) {
+                        console.warn("[quoter] unselectRow before block save failed:", err);
+                    }
+                }
+            }
+            if (typeof lw.commitChanges === "function") {
+                try {
+                    return Promise.resolve(lw.commitChanges());
+                } catch (err) {
+                    if (window.console && console.warn) {
+                        console.warn("[quoter] commitChanges before block save failed:", err);
+                    }
+                }
+            }
+            return Promise.resolve();
+        },
+
+        _quoterSaveEmbeddedBeforeParentCore: function (formView) {
+            const self = this;
             const block = formView.model.get(formView.handle, {raw: true});
             if (!block || !block.res_id) {
                 return Promise.resolve();
@@ -951,11 +1521,28 @@ odoo.define("quoter.area_block_embed", function (require) {
             }
             this._quoterSanitizeEmbedModelBeforeSave(formView);
             const removed = this.__quoterRemovedLineResIds || [];
+            const hadServerUnlink = !!this.__quoterHadServerLineUnlink;
             const dirty = this._quoterEmbeddedHasUnsavedChanges(formView);
-            if (!dirty && removed.length) {
-                return this._quoterRefreshEmbeddedDataAfterSave(formView);
+            if (hadServerUnlink && !dirty) {
+                return Promise.resolve();
             }
-            return this._quoterInvokeEmbeddedFormSave(formView);
+            if (!dirty) {
+                if (removed.length && !hadServerUnlink) {
+                    return this._quoterRefreshEmbeddedDataAfterSave(formView);
+                }
+                return Promise.resolve();
+            }
+            return self._quoterPrepareEmbeddedListBeforeBlockSave().then(function () {
+                if (!self._quoterEmbeddedCanSaveBlock(formView)) {
+                    if (window.console && console.warn) {
+                        console.warn(
+                            "[quoter] formulario del bloque con campos inválidos; horas vía RPC, sin saveRecord del embed"
+                        );
+                    }
+                    return Promise.resolve();
+                }
+                return self._quoterInvokeEmbeddedFormSave(formView);
+            });
         },
 
         /**
@@ -969,22 +1556,33 @@ odoo.define("quoter.area_block_embed", function (require) {
             if (self.__quoterEmbedSavePendingPromise) {
                 return self.__quoterEmbedSavePendingPromise;
             }
-            const savePromise = Promise.resolve(
-                formView.saveRecord(formView.handle, {
-                    stayInEdit: true,
-                    reload: false,
-                    savePoint: false,
-                    viewType: "form",
+            const savePromise = self
+                ._quoterPrepareEmbeddedListBeforeBlockSave()
+                .then(function () {
+                    if (!self._quoterEmbeddedCanSaveBlock(formView)) {
+                        return Promise.resolve([]);
+                    }
+                    return formView.saveRecord(formView.handle, {
+                        stayInEdit: true,
+                        reload: false,
+                        savePoint: false,
+                        viewType: "form",
+                    });
                 })
-            )
                 .then(function (changedFields) {
                     const rec = formView.model.get(formView.handle);
                     self._quoterSyncEmbeddedRecordLink(rec);
-                    return self._quoterRefreshEmbeddedDataAfterSave(formView).then(function () {
-                        return changedFields;
-                    });
+                    return changedFields;
                 })
                 .catch(function (err) {
+                    if (quoterIsCanBeSaveFalseError(err)) {
+                        if (window.console && console.warn) {
+                            console.warn(
+                                "[quoter] saveRecord embebido rechazado (canBeSaved=false); continuar"
+                            );
+                        }
+                        return [];
+                    }
                     if (window.console && console.error) {
                         console.error("[quoter] embedded form save failed:", err);
                     }
@@ -1026,17 +1624,40 @@ odoo.define("quoter.area_block_embed", function (require) {
                 return Promise.resolve();
             }
             const model = fc.model;
-            const order = model.get(fc.handle);
+            const order = quoterGetRawDatapoint(model, fc.handle);
             if (!order || !order.data || !order.data.order_line) {
                 return Promise.resolve();
             }
-            const listId = order.data.order_line.id;
-            const list = model.get(listId);
+            const listId = quoterResolveO2mListId(order.data.order_line);
+            const list = quoterGetRawListDatapoint(model, listId);
             const removed = new Set(this.__quoterRemovedLineResIds || []);
             if (list && removed.size) {
                 this._quoterPurgeGhostLinesByResIds(model, Array.from(removed));
+                if (list._cache) {
+                    removed.forEach(function (rid) {
+                        const dpId = list._cache[rid];
+                        if (dpId && model.localData[dpId]) {
+                            delete model.localData[dpId];
+                        }
+                        delete list._cache[rid];
+                    });
+                }
+                if (Array.isArray(list.res_ids)) {
+                    list.res_ids = list.res_ids.filter(function (rid) {
+                        return !removed.has(rid);
+                    });
+                }
+                if (Array.isArray(list.data)) {
+                    list.data = list.data.filter(function (lid) {
+                        const row = model.localData[lid];
+                        return row && (!row.res_id || !removed.has(row.res_id));
+                    });
+                }
+                list._changes = [];
             }
-            if (options.reloadOrder === false || typeof model.reload !== "function") {
+            // Por defecto no recargar el pedido: antes de saveRecord del padre borraría
+            // los cambios de cabecera aún no persistidos en el BasicModel.
+            if (options.reloadOrder !== true || typeof model.reload !== "function") {
                 return Promise.resolve();
             }
             return model.reload(fc.handle).then(function () {
@@ -1044,40 +1665,576 @@ odoo.define("quoter.area_block_embed", function (require) {
             });
         },
 
+        _quoterMergeLineRowData: function (row) {
+            if (!row) {
+                return {};
+            }
+            return Object.assign({}, row.data || {}, row._changes || {});
+        },
+
         /**
-         * Tras borrar una línea en servidor: recargar solo bloque + lista (no repintar value viejo).
+         * Lee horas desde inputs visibles del listado (BasicModel a veces queda en 0).
          */
-        _quoterRefreshBlockLinesAfterDelete: function (formView, lineListWidget) {
+        _quoterHarvestAdjustmentHoursFromDom: function (lw, formView) {
+            const harvested = {};
+            if (!lw || !lw.$el || !formView || !formView.model) {
+                return harvested;
+            }
+            const model = formView.model;
+            const $tbody = lw.$el.find("table.o_list_table tbody").first();
+            const $rows = $tbody.length ? $tbody.find("tr") : lw.$el.find("tbody tr");
+            $rows.each(function () {
+                const $tr = $(this);
+                if (
+                    $tr.hasClass("o_group_header") ||
+                    $tr.hasClass("o_list_table_grouped") ||
+                    !$tr.is(":visible")
+                ) {
+                    return;
+                }
+                let localId = $tr.data("id");
+                if (!localId) {
+                    const $withId = $tr.find("[data-id]").first();
+                    if ($withId.length) {
+                        localId = $withId.data("id");
+                    }
+                }
+                const row = localId ? quoterGetRawDatapoint(model, localId) : null;
+                const data = row
+                    ? Object.assign({}, row.data || {}, row._changes || {})
+                    : {};
+                if (!data.quoter_is_adjustment_line) {
+                    return;
+                }
+                const resId = row && row.res_id;
+                if (typeof resId !== "number" || resId <= 0) {
+                    return;
+                }
+                const item = {id: resId};
+                let found = false;
+                QUOTER_RANGE_HOUR_FIELD_NAMES.forEach(function (key) {
+                    let $input = $tr.find('input[name="' + key + '"]');
+                    if (!$input.length) {
+                        $input = $tr.find('[name="' + key + '"] input');
+                    }
+                    if (!$input.length) {
+                        $input = $tr.find('td[name="' + key + '"] input');
+                    }
+                    if (!$input.length) {
+                        $input = $tr.find('td.o_data_cell[name="' + key + '"] input');
+                    }
+                    if (!$input.length) {
+                        return;
+                    }
+                    const raw = $input.val();
+                    if (raw === undefined || raw === null || raw === "") {
+                        return;
+                    }
+                    const num = parseFloat(String(raw).replace(",", "."));
+                    if (isNaN(num)) {
+                        return;
+                    }
+                    item[key] = num;
+                    found = true;
+                });
+                const $noteCell = $tr.find('[name="quoter_adjustment_note"]');
+                const $noteInput = $noteCell.find("input, textarea");
+                if ($noteInput.length) {
+                    const noteVal = $noteInput.val();
+                    if (noteVal !== undefined && noteVal !== null && String(noteVal).trim()) {
+                        item.quoter_adjustment_note = String(noteVal).trim();
+                        found = true;
+                    }
+                }
+                if (found) {
+                    harvested[resId] = item;
+                }
+            });
+            return harvested;
+        },
+
+        _quoterStripAdjustmentHourFieldChanges: function (formView) {
+            if (!formView || !formView.model) {
+                return;
+            }
+            const model = formView.model;
+            const block = quoterGetRawDatapoint(model, formView.handle);
+            const listId = quoterResolveO2mListId(
+                block && block.data && block.data.order_line_ids
+            );
+            const list = quoterGetRawListDatapoint(model, listId);
+            if (!list || !Array.isArray(list.data)) {
+                return;
+            }
+            list.data.forEach(function (lid) {
+                const row = quoterGetRawDatapoint(model, lid);
+                if (!row || !row.data || !row.data.quoter_is_adjustment_line) {
+                    return;
+                }
+                if (!row._changes) {
+                    return;
+                }
+                QUOTER_RANGE_HOUR_FIELD_NAMES.forEach(function (key) {
+                    delete row._changes[key];
+                });
+                delete row._changes.quoter_range_hour_ids;
+                delete row._changes.quoter_total_hours;
+                delete row._changes.price_unit;
+                if (!Object.keys(row._changes).length) {
+                    delete row._changes;
+                }
+            });
+        },
+
+        _quoterCollectAdjustmentLineHoursPayloads: function (formView) {
+            const payloads = [];
+            if (!formView || !formView.model) {
+                return payloads;
+            }
+            const lw = this._quoterFindBlockOrderLineListWidget();
+            const domByResId = this._quoterHarvestAdjustmentHoursFromDom(lw, formView);
+            const model = formView.model;
+            const block = quoterGetRawDatapoint(model, formView.handle);
+            const listId = quoterResolveO2mListId(
+                block && block.data && block.data.order_line_ids
+            );
+            const list = quoterGetRawListDatapoint(model, listId);
+            if (!list || !Array.isArray(list.data)) {
+                return payloads;
+            }
+            const self = this;
+            list.data.forEach(function (lid) {
+                const row = quoterGetRawDatapoint(model, lid);
+                if (!row) {
+                    return;
+                }
+                const data = self._quoterMergeLineRowData(row);
+                if (!data.quoter_is_adjustment_line) {
+                    return;
+                }
+                const resId = row.res_id;
+                if (typeof resId !== "number" || resId <= 0) {
+                    return;
+                }
+                const item = {id: resId};
+                let hasPayload = false;
+                const domItem = domByResId[resId];
+                QUOTER_RANGE_HOUR_FIELD_NAMES.forEach(function (key) {
+                    if (domItem && domItem[key] !== undefined && domItem[key] !== null) {
+                        item[key] = domItem[key];
+                        hasPayload = true;
+                        return;
+                    }
+                    if (data[key] !== undefined && data[key] !== null) {
+                        item[key] = data[key];
+                        hasPayload = true;
+                    }
+                });
+                if (domItem && domItem.quoter_adjustment_note) {
+                    item.quoter_adjustment_note = domItem.quoter_adjustment_note;
+                    hasPayload = true;
+                } else if (data.quoter_adjustment_note) {
+                    item.quoter_adjustment_note = data.quoter_adjustment_note;
+                    hasPayload = true;
+                }
+                if (hasPayload) {
+                    payloads.push(item);
+                }
+            });
+            return payloads;
+        },
+
+        _quoterApplyAdjustmentHoursReadToEmbed: function (formView, readRows) {
+            if (!formView || !formView.model || !readRows || !readRows.length) {
+                return;
+            }
+            const model = formView.model;
+            const block = quoterGetRawDatapoint(model, formView.handle);
+            const listId = quoterResolveO2mListId(
+                block && block.data && block.data.order_line_ids
+            );
+            const list = quoterGetRawListDatapoint(model, listId);
+            if (!list || !Array.isArray(list.data)) {
+                return;
+            }
+            readRows.forEach(function (rec) {
+                if (!rec || typeof rec.id !== "number") {
+                    return;
+                }
+                const localId = list.data.find(function (lid) {
+                    const row = quoterGetRawDatapoint(model, lid);
+                    return row && row.res_id === rec.id;
+                });
+                if (!localId) {
+                    return;
+                }
+                const dp = quoterGetRawDatapoint(model, localId);
+                if (!dp) {
+                    return;
+                }
+                if (!dp.data) {
+                    dp.data = {};
+                }
+                QUOTER_RANGE_HOUR_FIELD_NAMES.forEach(function (key) {
+                    if (rec[key] !== undefined) {
+                        dp.data[key] = rec[key];
+                        if (dp._changes && key in dp._changes) {
+                            delete dp._changes[key];
+                        }
+                    }
+                });
+                if (rec.quoter_total_hours !== undefined) {
+                    dp.data.quoter_total_hours = rec.quoter_total_hours;
+                    if (dp._changes && "quoter_total_hours" in dp._changes) {
+                        delete dp._changes.quoter_total_hours;
+                    }
+                }
+                if (rec.price_unit !== undefined) {
+                    dp.data.price_unit = rec.price_unit;
+                    if (dp._changes && "price_unit" in dp._changes) {
+                        delete dp._changes.price_unit;
+                    }
+                }
+            });
+        },
+
+        _quoterPersistAdjustmentLineHoursBeforeSave: function (formView) {
+            const self = this;
+            const payloads = self._quoterCollectAdjustmentLineHoursPayloads(formView);
+            if (!payloads.length) {
+                return Promise.resolve();
+            }
+            const lineIds = payloads.map(function (p) {
+                return p.id;
+            });
+            const readFields = QUOTER_RANGE_HOUR_FIELD_NAMES.concat([
+                "quoter_total_hours",
+                "price_unit",
+            ]);
+            return self
+                ._rpc({
+                    model: "sale.order.line",
+                    method: "quoter_persist_adjustment_line_hours_batch",
+                    args: [payloads],
+                })
+                .then(function () {
+                    return self._rpc({
+                        model: "sale.order.line",
+                        method: "read",
+                        args: [lineIds, readFields],
+                    });
+                })
+                .then(function (rows) {
+                    self._quoterApplyAdjustmentHoursReadToEmbed(formView, rows);
+                    self._quoterStripAdjustmentHourFieldChanges(formView);
+                })
+                .catch(function (err) {
+                    if (window.console && console.warn) {
+                        console.warn("[quoter] persist adjustment hours failed:", err);
+                    }
+                    return Promise.resolve();
+                });
+        },
+
+        /**
+         * Confirma la fila en edición del listado (horas, nota) antes de guardar o abrir wizard.
+         */
+        _quoterCommitEmbeddedOrderLineEdits: function () {
+            const self = this;
+            const lw = self._quoterFindBlockOrderLineListWidget();
+            if (!lw || lw.isDestroyed()) {
+                return Promise.resolve();
+            }
+            const unselect = function () {
+                const renderer = lw.renderer;
+                if (renderer && typeof renderer.unselectRow === "function") {
+                    try {
+                        renderer.unselectRow();
+                    } catch (err) {
+                        if (window.console && console.warn) {
+                            console.warn("[quoter] unselect embedded line row failed:", err);
+                        }
+                    }
+                }
+                return Promise.resolve();
+            };
+            const commit = function () {
+                if (typeof lw.commitChanges !== "function") {
+                    return Promise.resolve();
+                }
+                try {
+                    return Promise.resolve(lw.commitChanges());
+                } catch (err) {
+                    if (window.console && console.warn) {
+                        console.warn("[quoter] commit embedded line edits failed:", err);
+                    }
+                    return Promise.resolve();
+                }
+            };
+            const formView = self.__quoterEmbedForm;
+            return unselect()
+                .then(commit)
+                .then(function () {
+                    if (!formView) {
+                        return Promise.resolve();
+                    }
+                    return self._quoterPersistAdjustmentLineHoursBeforeSave(formView);
+                });
+        },
+
+        _quoterFindBlockOrderLineListWidget: function () {
+            const formView = this.__quoterEmbedForm;
+            if (!formView || !formView.renderer || !formView.handle) {
+                return null;
+            }
+            const widgets =
+                formView.renderer.allFieldWidgets &&
+                formView.renderer.allFieldWidgets[formView.handle];
+            if (!widgets) {
+                return null;
+            }
+            for (let i = 0; i < widgets.length; i++) {
+                if (widgets[i].name === "order_line_ids") {
+                    return widgets[i];
+                }
+            }
+            return null;
+        },
+
+        /**
+         * Sincroniza el widget order_line_ids con el BasicModel (this.value queda stale
+         * si solo se llama renderer.updateState sin reset del campo).
+         */
+        _quoterRepaintBlockOrderLineField: function (formView, lineListWidget, listId) {
+            return this._quoterSyncBlockLineListRenderer(formView, lineListWidget, listId);
+        },
+
+        /**
+         * Repinta la lista del bloque tras borrado/reload (form del bloque + list renderer).
+         */
+        _quoterSyncBlockLineListRenderer: function (formView, lineListWidget, listId) {
             const self = this;
             if (!formView || !formView.model || !formView.handle) {
                 return Promise.resolve();
             }
             const model = formView.model;
-            const reloads = [model.reload(formView.handle)];
-            const blockDp = model.get(formView.handle);
-            let listId = null;
-            if (blockDp && blockDp.data && blockDp.data.order_line_ids) {
-                listId = blockDp.data.order_line_ids.id;
-                reloads.push(model.reload(listId));
+            const lw =
+                lineListWidget &&
+                !lineListWidget.isDestroyed() &&
+                lineListWidget.name === "order_line_ids"
+                    ? lineListWidget
+                    : self._quoterFindBlockOrderLineListWidget();
+            if (!lw || lw.isDestroyed()) {
+                return Promise.resolve();
             }
-            return Promise.all(reloads).then(function () {
-                const fc = getFormControllerFromField(self);
-                return self._quoterPurgeParentOrderLineGhostState(fc, {
-                    reloadOrder: false,
-                }).then(function () {
-                    if (!lineListWidget || !lineListWidget.renderer || !listId) {
-                        return;
+            const blockHandle = formView.handle;
+            let reloadDef = Promise.resolve();
+            if (typeof model.reload === "function") {
+                reloadDef = quoterAttachCatch(
+                    model.reload(blockHandle),
+                    function (err) {
+                        if (window.console && console.warn) {
+                            console.warn("[quoter] reload block form after line sync:", err);
+                        }
                     }
-                    const listDp = model.get(listId);
-                    if (!listDp) {
-                        return;
+                );
+            }
+            return reloadDef.then(function () {
+                const blockRecord = model.get(blockHandle);
+                if (!blockRecord) {
+                    return Promise.resolve();
+                }
+                const resolvedListId =
+                    listId ||
+                    quoterResolveO2mListId(
+                        blockRecord.data && blockRecord.data.order_line_ids
+                    );
+                const listDp = resolvedListId && model.get(resolvedListId);
+                if (!listDp) {
+                    return Promise.resolve();
+                }
+                let resetDef = Promise.resolve();
+                if (typeof lw.reset === "function") {
+                    resetDef = Promise.resolve(
+                        lw.reset(blockRecord, { fieldChanged: true })
+                    );
+                }
+                return resetDef.then(function () {
+                    if (
+                        lw.renderer &&
+                        typeof lw.renderer.updateState === "function"
+                    ) {
+                        return lw.renderer.updateState(listDp, {
+                            addCreateLine: lw._hasCreateLine(),
+                            addTrashIcon: lw._hasTrashIcon(),
+                            columnInvisibleFields: lw._evalColumnInvisibleFields(),
+                            keepWidths: true,
+                        });
                     }
-                    return lineListWidget.renderer.updateState(listDp, {
-                        addCreateLine: lineListWidget._hasCreateLine(),
-                        addTrashIcon: lineListWidget._hasTrashIcon(),
-                        keepWidths: true,
-                    });
+                    if (typeof lw._render === "function") {
+                        return lw._render();
+                    }
                 });
+            });
+        },
+
+        _quoterCollectLocalLineIdsForResIds: function (model, listDatapointId, resIds) {
+            const wanted = new Set(quoterUniqueIntIds(resIds || []));
+            const localIds = [];
+            if (!wanted.size || !model || !listDatapointId) {
+                return localIds;
+            }
+            const listDp = quoterGetRawListDatapoint(model, listDatapointId);
+            if (!listDp || !Array.isArray(listDp.data)) {
+                return localIds;
+            }
+            listDp.data.forEach(function (lid) {
+                const row = quoterGetRawDatapoint(model, lid);
+                if (row && typeof row.res_id === "number" && wanted.has(row.res_id)) {
+                    localIds.push(lid);
+                }
+            });
+            return localIds;
+        },
+
+        /**
+         * Quita filas del listado del bloque en el BasicModel y repinta al instante.
+         */
+        _quoterOptimisticRemoveBlockLinesFromUI: function (
+            formView,
+            localIds,
+            resIds
+        ) {
+            if (!formView || !formView.model) {
+                return Promise.resolve();
+            }
+            const model = formView.model;
+            const blockDp = quoterGetRawDatapoint(model, formView.handle);
+            const listId = quoterResolveO2mListId(
+                blockDp && blockDp.data && blockDp.data.order_line_ids
+            );
+            const listDp = quoterGetRawListDatapoint(model, listId);
+            if (!listDp || !Array.isArray(listDp.data)) {
+                return Promise.resolve();
+            }
+            const localSet = new Set(localIds || []);
+            const resSet = new Set(quoterUniqueIntIds(resIds || []));
+            listDp.data = listDp.data.filter(function (lid) {
+                if (localSet.has(lid)) {
+                    if (model.localData[lid]) {
+                        delete model.localData[lid];
+                    }
+                    return false;
+                }
+                const row = quoterGetRawDatapoint(model, lid);
+                if (row && typeof row.res_id === "number" && resSet.has(row.res_id)) {
+                    delete model.localData[lid];
+                    return false;
+                }
+                return true;
+            });
+            if (Array.isArray(listDp.res_ids)) {
+                listDp.res_ids = listDp.res_ids.filter(function (rid) {
+                    return !resSet.has(rid);
+                });
+            }
+            listDp.count = listDp.data.length;
+            listDp._changes = [];
+            if (blockDp && blockDp._changes && blockDp._changes.order_line_ids) {
+                delete blockDp._changes.order_line_ids;
+            }
+            return this._quoterSyncBlockLineListRenderer(formView, null, listId);
+        },
+
+        /**
+         * Tras borrar en servidor: alinear pedido padre (order_line) y bloque (order_line_ids).
+         * Los predeterminados se cargan en order_line del sale.order; si solo se refresca el
+         * bloque, esas filas siguen en el BasicModel del padre hasta guardar.
+         */
+        _quoterRefreshBlockLinesAfterDelete: function (blockDatapointId, serverPayload, lineListWidget) {
+            const self = this;
+            serverPayload = quoterNormalizeServerLineSyncResult(serverPayload || {});
+            const removed = quoterUniqueIntIds(
+                serverPayload.removed_ids.concat(self.__quoterRemovedLineResIds || [])
+            );
+            const formView = self.__quoterEmbedForm;
+            const fc = getFormControllerFromField(self);
+            if (!fc || !fc.model || !blockDatapointId || !formView) {
+                return Promise.resolve();
+            }
+            const model = fc.model;
+            const blockDp = quoterGetRawDatapoint(model, blockDatapointId);
+            if (!blockDp) {
+                return Promise.resolve();
+            }
+            if (removed.length) {
+                self._quoterPurgeGhostLinesByResIds(model, removed);
+            }
+            const listId = quoterResolveO2mListId(
+                blockDp.data && blockDp.data.order_line_ids
+            );
+            if (blockDp._changes && blockDp._changes.order_line_ids) {
+                delete blockDp._changes.order_line_ids;
+            }
+            if (listId) {
+                self._quoterClearLineListPendingChanges(model, listId);
+            }
+            self._quoterSanitizeAllModelLists(model);
+
+            const lineIds = serverPayload.has_line_ids ? serverPayload.line_ids : null;
+
+            const resetList = function () {
+                if (!listId) {
+                    return Promise.resolve();
+                }
+                if (lineIds === null) {
+                    return Promise.resolve();
+                }
+                return self._quoterHardResetLineListFromServer(model, listId, lineIds);
+            };
+            return self
+                ._quoterHardResetParentOrderLineFromServer(fc)
+                .then(resetList)
+                .then(function () {
+                    return self._quoterSyncBlockLineListRenderer(
+                        formView,
+                        lineListWidget,
+                        listId
+                    );
+                })
+                .then(function () {
+                    quoterEnsureParentSaleOrderEditMode(lineListWidget || self);
+                })
+                .guardedCatch(function (err) {
+                    if (window.console && console.warn) {
+                        console.warn("[quoter] refresh block lines after delete:", err);
+                    }
+                    return self._quoterSyncBlockLineListRenderer(
+                        formView,
+                        lineListWidget,
+                        listId
+                    );
+                });
+        },
+
+        _quoterFetchBlockOrderLineSync: function (blockResId) {
+            return this._rpc({
+                model: "quoter.sale.order.area",
+                method: "action_quoter_get_block_order_line_sync",
+                args: [[blockResId]],
+            }).then(function (result) {
+                return quoterNormalizeServerLineSyncResult(result);
+            });
+        },
+
+        _quoterResyncEmbeddedBlockLinesFromServer: function (blockDatapointId, blockResId) {
+            const self = this;
+            const blockDpId = blockDatapointId || self.__quoterEmbedActiveDatapointId;
+            if (!blockResId || !blockDpId) {
+                return Promise.resolve();
+            }
+            return self._quoterFetchBlockOrderLineSync(blockResId).then(function (payload) {
+                return self._quoterRefreshBlockLinesAfterDelete(blockDpId, payload, self);
             });
         },
 
@@ -1097,46 +2254,75 @@ odoo.define("quoter.area_block_embed", function (require) {
             return Promise.resolve();
         },
 
+        /**
+         * Tras crear una línea de ajuste en servidor (wizard): recargar bloque y lista
+         * order_line_ids para mostrarla sin guardar el pedido completo.
+         */
+        _quoterRefreshAfterAdjustmentLine: function (formView) {
+            const host = this;
+            const fc = getFormControllerFromField(host);
+            if (!fc || !fc.model || !formView || !formView.handle) {
+                return Promise.resolve();
+            }
+            const model = fc.model;
+            const blockDp = quoterGetRawDatapoint(model, formView.handle);
+            if (!blockDp || !blockDp.res_id) {
+                return Promise.resolve();
+            }
+            const listId = quoterResolveO2mListId(
+                blockDp.data && blockDp.data.order_line_ids
+            );
+            return host
+                ._quoterHardResetParentOrderLineFromServer(fc)
+                .then(function () {
+                    return host._quoterFetchBlockOrderLineSync(blockDp.res_id);
+                })
+                .then(function (payload) {
+                    if (!listId || !payload || !Array.isArray(payload.line_ids)) {
+                        return Promise.resolve();
+                    }
+                    return host._quoterHardResetLineListFromServer(
+                        model,
+                        listId,
+                        payload.line_ids
+                    );
+                })
+                .then(function () {
+                    return host._quoterRepaintBlockOrderLineField(formView, null, listId);
+                })
+                .then(function () {
+                    quoterEnsureParentSaleOrderEditMode(host);
+                });
+        },
+
         _quoterRefreshEmbeddedDataAfterSave: function (formView) {
             const self = this;
             const fc = getFormControllerFromField(this);
             if (!fc || !fc.model || !formView || !formView.handle) {
                 return Promise.resolve();
             }
-            const model = fc.model;
-            const reloads = [];
-            const hadDeletes = (self.__quoterRemovedLineResIds || []).length > 0;
-            const pushReload = function (handle) {
-                if (handle && model.get(handle) && typeof model.reload === "function") {
-                    reloads.push(model.reload(handle));
-                }
-            };
-            // Tras borrar líneas en servidor: no recargar el pedido completo (relee ids fantasma).
-            if (!hadDeletes && fc.handle) {
-                pushReload(fc.handle);
-            }
-            if (self.value && self.value.id) {
-                pushReload(self.value.id);
-            }
-            pushReload(formView.handle);
-            const blockDp = model.get(formView.handle);
-            if (blockDp && blockDp.data && blockDp.data.order_line_ids) {
-                pushReload(blockDp.data.order_line_ids.id);
-            }
-            if (hadDeletes && fc.handle) {
-                const order = model.get(fc.handle);
-                if (order && order.data && order.data.order_line) {
-                    pushReload(order.data.order_line.id);
-                }
-            }
-            if (!reloads.length) {
-                return self._quoterRefreshParentOrderLineList();
-            }
-            return Promise.all(reloads).then(function () {
-                return self._quoterRefreshParentOrderLineList().then(function () {
-                    return self._quoterPurgeParentOrderLineGhostState(fc);
+            if (self.__quoterHadServerLineUnlink) {
+                const blockDp = quoterGetRawDatapoint(fc.model, formView.handle);
+                return self._quoterHardResetParentOrderLineFromServer(fc).then(function () {
+                    if (!blockDp || !blockDp.res_id) {
+                        return;
+                    }
+                    return self._quoterFetchBlockOrderLineSync(blockDp.res_id).then(function (payload) {
+                        const listRef =
+                            blockDp.data &&
+                            blockDp.data.order_line_ids &&
+                            quoterResolveO2mListId(blockDp.data.order_line_ids);
+                        if (listRef) {
+                            return self._quoterHardResetLineListFromServer(
+                                fc.model,
+                                listRef,
+                                payload.line_ids
+                            );
+                        }
+                    });
                 });
-            });
+            }
+            return self._quoterRepaintBlockOrderLineField(formView, null);
         },
 
         /**
@@ -1160,10 +2346,30 @@ odoo.define("quoter.area_block_embed", function (require) {
                 return Promise.resolve();
             }
             const model = formView.model;
+            if (hadServerUnlink) {
+                const removed = self.__quoterRemovedLineResIds || [];
+                if (removed.length) {
+                    self._quoterPurgeGhostLinesByResIds(model, removed);
+                }
+                const blockDp = model.get(formView.handle);
+                if (blockDp && blockDp.data && blockDp.data.order_line_ids) {
+                    self._quoterSanitizeListDatapoint(
+                        model,
+                        blockDp.data.order_line_ids.id
+                    );
+                }
+                finish();
+                return Promise.resolve();
+            }
             const dropEmbedded = function () {
-                // Odoo 15: discardChanges es síncrono (no devuelve Promise).
                 if (typeof model.discardChanges === "function") {
-                    model.discardChanges(formView.handle, { rollback: false });
+                    try {
+                        model.discardChanges(formView.handle, { rollback: false });
+                    } catch (err) {
+                        if (window.console && console.error) {
+                            console.error("[quoter] discard embedded form failed:", err);
+                        }
+                    }
                 }
                 return Promise.resolve();
             };
@@ -1272,6 +2478,14 @@ odoo.define("quoter.area_block_embed", function (require) {
                             return row && row.res_id === self.__quoterEmbedActiveResId;
                         });
                     if (!still && !stillByResId) {
+                        const activeId = self.__quoterEmbedActiveDatapointId;
+                        const activeRow =
+                            activeId && fc && fc.model.localData
+                                ? fc.model.localData[activeId]
+                                : null;
+                        if (activeRow && activeRow.res_id && self.__quoterEmbedForm) {
+                            return;
+                        }
                         self._quoterDestroyEmbedForm();
                     }
                 }
@@ -1289,36 +2503,15 @@ odoo.define("quoter.area_block_embed", function (require) {
             }
             const model = fc.model;
             const listId = this.value.id;
-            const list = model.get(listId);
-            if (!list || list.type !== "list") {
+            const listDp = quoterGetRawListDatapoint(model, listId);
+            if (!listDp) {
                 return Promise.resolve();
             }
             const self = this;
-            // _readUngroupedList exige list._cache; si falta, usar reload público.
-            if (!list._cache) {
-                if (typeof model.reload === "function") {
-                    return model.reload(listId).then(function () {
-                        const fresh = model.get(listId);
-                        if (self.renderer && self.renderer.updateState && fresh) {
-                            return self.renderer.updateState(fresh, {
-                                addCreateLine: self._hasCreateLine(),
-                                addTrashIcon: self._hasTrashIcon(),
-                                columnInvisibleFields: self._evalColumnInvisibleFields(),
-                                keepWidths: true,
-                            });
-                        }
-                    });
-                }
+            if (typeof model.reload !== "function") {
                 return Promise.resolve();
             }
-            if (typeof model._readUngroupedList !== "function") {
-                return Promise.resolve();
-            }
-            return model._readUngroupedList(list).then(function () {
-                if (typeof model._fetchX2ManysBatched === "function") {
-                    return model._fetchX2ManysBatched(list);
-                }
-            }).then(function () {
+            return model.reload(listId).then(function () {
                 const fresh = model.get(listId);
                 if (self.renderer && self.renderer.updateState && fresh) {
                     return self.renderer.updateState(fresh, {
@@ -1406,8 +2599,16 @@ odoo.define("quoter.area_block_embed", function (require) {
             if (this.__quoterMountPendingPromise && this.__quoterMountPendingTargetId === targetId) {
                 return this.__quoterMountPendingPromise;
             }
-            if (this.__quoterEmbedForm && $b.children().length && this.__quoterEmbedActiveDatapointId === targetId) {
+            if (
+                this.__quoterEmbedForm &&
+                $b.children().length &&
+                this.__quoterEmbedActiveDatapointId === targetId
+            ) {
                 return Promise.resolve();
+            }
+            if (this.__quoterEmbedForm && !$b.children().length) {
+                this.__quoterEmbedForm.destroy();
+                this.__quoterEmbedForm = null;
             }
             if (QUOTER_AREA_EMBED_SIMPLE_PROBE) {
                 return Promise.resolve(this._quoterMountSimpleProbe($wrap, lines, targetId));
@@ -1415,7 +2616,8 @@ odoo.define("quoter.area_block_embed", function (require) {
             return Promise.resolve(this._quoterMountEmbedForDatapoint(targetId));
         },
 
-        _quoterMountEmbedForDatapoint: function (id) {
+        _quoterMountEmbedForDatapoint: function (id, options) {
+            options = options || {};
             if (QUOTER_AREA_EMBED_SIMPLE_PROBE) {
                 return Promise.resolve();
             }
@@ -1437,7 +2639,9 @@ odoo.define("quoter.area_block_embed", function (require) {
                 return Promise.resolve();
             }
 
-            this._quoterDestroyEmbedForm();
+            if (!options.skipDestroy) {
+                this._quoterDestroyEmbedForm();
+            }
             this.__quoterEmbedActiveDatapointId = id;
 
             const record = fc.model.get(id, { raw: true });
@@ -1494,6 +2698,9 @@ odoo.define("quoter.area_block_embed", function (require) {
                             }
                             quoterSanitizeEmbedFormButtons($body);
                             quoterPatchEmbedComplexityLevelLabel($body, formView);
+                            if (embedMode === "edit") {
+                                quoterEnsureParentSaleOrderEditMode(self);
+                            }
                         });
                     });
                 const pending = quoterAttachCatch(controllerDef, function (err) {
@@ -1557,23 +2764,91 @@ odoo.define("quoter.area_block_embed", function (require) {
             }
             const blockResId = blockDp.res_id;
             const lineResId = row.res_id;
+            const blockDatapointId = formView.handle;
             const self = this;
+            const resIdsToPurge = host._quoterCollectRelatedLineResIdsForUnlink(
+                model,
+                localId,
+                formView
+            );
+            if (host.__quoterAdjHourRpcTimer) {
+                clearTimeout(host.__quoterAdjHourRpcTimer);
+                host.__quoterAdjHourRpcTimer = null;
+            }
             host.__quoterHadServerLineUnlink = true;
-            host._quoterTrackRemovedLineResId(lineResId);
-            quoterEnsureParentSaleOrderEditMode(this);
-            return this._rpc({
-                model: "quoter.sale.order.area",
-                method: "action_quoter_unlink_order_line",
-                args: [[blockResId], lineResId],
-            }).then(function () {
-                host._quoterPurgeGhostLinesByResIds(model, [lineResId]);
-                self._quoterPruneLocalLineDatapoint(model, localId, lineResId);
-                return host._quoterRefreshBlockLinesAfterDelete(formView, self).then(
-                    function () {
-                        return true;
-                    }
-                );
+            resIdsToPurge.forEach(function (rid) {
+                host._quoterTrackRemovedLineResId(rid);
             });
+            const blockDpForList = quoterGetRawDatapoint(model, formView.handle);
+            const listIdForOpt = quoterResolveO2mListId(
+                blockDpForList && blockDpForList.data && blockDpForList.data.order_line_ids
+            );
+            const localIdsToDrop = [localId].concat(
+                host._quoterCollectLocalLineIdsForResIds(
+                    model,
+                    listIdForOpt,
+                    resIdsToPurge
+                )
+            );
+            quoterEnsureParentSaleOrderEditMode(this);
+            return host
+                ._quoterOptimisticRemoveBlockLinesFromUI(
+                    formView,
+                    localIdsToDrop,
+                    resIdsToPurge
+                )
+                .then(function () {
+                    return self._rpc({
+                        model: "quoter.sale.order.area",
+                        method: "action_quoter_unlink_order_line",
+                        args: [[blockResId], lineResId],
+                    });
+                })
+                .then(function (serverResult) {
+                    const payload = quoterNormalizeServerLineSyncResult(serverResult);
+                    const allRemoved = quoterUniqueIntIds(
+                        resIdsToPurge.concat(payload.removed_ids || [])
+                    );
+                    allRemoved.forEach(function (rid) {
+                        host._quoterTrackRemovedLineResId(rid);
+                    });
+                    host._quoterPurgeGhostLinesByResIds(model, allRemoved);
+                    host._quoterPruneLocalLineDatapoint(model, localId, lineResId);
+                    host._quoterSanitizeAllModelLists(model);
+                    if (payload.has_line_ids) {
+                        return host._quoterRefreshBlockLinesAfterDelete(
+                            blockDatapointId,
+                            payload,
+                            self
+                        );
+                    }
+                    return host._quoterFetchBlockOrderLineSync(blockResId).then(function (sync) {
+                        sync.removed_ids = quoterUniqueIntIds(
+                            allRemoved.concat(sync.removed_ids || [])
+                        );
+                        return host._quoterRefreshBlockLinesAfterDelete(
+                            blockDatapointId,
+                            sync,
+                            self
+                        );
+                    });
+                })
+                .then(function () {
+                    return true;
+                })
+                .guardedCatch(function (err) {
+                    if (window.console && console.error) {
+                        console.error("[quoter] unlink order line failed:", err);
+                    }
+                    return host
+                        ._quoterResyncEmbeddedBlockLinesFromServer(
+                            blockDatapointId,
+                            blockResId
+                        )
+                        .then(function () {
+                            throw err;
+                        });
+                });
         },
 
         _quoterGetAreaBlocksHostField: function () {
@@ -1594,11 +2869,81 @@ odoo.define("quoter.area_block_embed", function (require) {
             return null;
         },
 
+        _onEditLine: function (ev) {
+            if (this._quoterIsBlockOrderLineField()) {
+                quoterEnsureParentSaleOrderEditMode(this);
+                quoterMarkParentSaleOrderDirty(this);
+            }
+            return this._super.apply(this, arguments);
+        },
+
         _onAddRecord: function (ev) {
             if (this._quoterIsBlockOrderLineField()) {
                 quoterEnsureParentSaleOrderEditMode(this);
             }
             return this._super.apply(this, arguments);
+        },
+
+        _quoterScheduleAdjustmentHoursRpc: function (lineLocalId, changes) {
+            const host = this._quoterGetAreaBlocksHostField();
+            const formView = host && host.__quoterEmbedForm;
+            if (!host || !formView || !formView.model || !lineLocalId) {
+                return;
+            }
+            const row = quoterGetRawDatapoint(formView.model, lineLocalId);
+            if (!row || !row.data || !row.data.quoter_is_adjustment_line) {
+                return;
+            }
+            const resId = row.res_id;
+            if (typeof resId !== "number" || resId <= 0) {
+                return;
+            }
+            const data = Object.assign({}, row.data, row._changes || {}, changes || {});
+            const item = {id: resId};
+            let hasHour = false;
+            QUOTER_RANGE_HOUR_FIELD_NAMES.forEach(function (key) {
+                if (data[key] !== undefined && data[key] !== null) {
+                    item[key] = data[key];
+                    hasHour = true;
+                }
+            });
+            if (!hasHour) {
+                return;
+            }
+            if (host.__quoterAdjHourRpcTimer) {
+                clearTimeout(host.__quoterAdjHourRpcTimer);
+            }
+            host.__quoterAdjHourRpcTimer = setTimeout(function () {
+                host.__quoterAdjHourRpcTimer = null;
+                host
+                    ._rpc({
+                        model: "sale.order.line",
+                        method: "quoter_persist_adjustment_line_hours_batch",
+                        args: [[item]],
+                    })
+                    .then(function () {
+                        return host._rpc({
+                            model: "sale.order.line",
+                            method: "read",
+                            args: [
+                                [resId],
+                                QUOTER_RANGE_HOUR_FIELD_NAMES.concat([
+                                    "quoter_total_hours",
+                                    "price_unit",
+                                ]),
+                            ],
+                        });
+                    })
+                    .then(function (rows) {
+                        host._quoterApplyAdjustmentHoursReadToEmbed(formView, rows);
+                        host._quoterStripAdjustmentHourFieldChanges(formView);
+                    })
+                    .catch(function (err) {
+                        if (window.console && console.warn) {
+                            console.warn("[quoter] auto-save adjustment hours failed:", err);
+                        }
+                    });
+            }, 350);
         },
 
         _onFieldChanged: function (event) {
@@ -1610,6 +2955,17 @@ odoo.define("quoter.area_block_embed", function (require) {
                 event.data.changes
             ) {
                 quoterEnsureParentSaleOrderEditMode(this);
+                quoterMarkParentSaleOrderDirty(this);
+                const changes = event.data.changes;
+                const hourTouched = QUOTER_RANGE_HOUR_FIELD_NAMES.some(function (key) {
+                    return Object.prototype.hasOwnProperty.call(changes, key);
+                });
+                if (hourTouched && event.data.dataPointID) {
+                    this._quoterScheduleAdjustmentHoursRpc(
+                        event.data.dataPointID,
+                        changes
+                    );
+                }
             }
             return res;
         },
@@ -1647,11 +3003,11 @@ odoo.define("quoter.area_block_embed", function (require) {
             if (!model || !formView || !formView.handle) {
                 return;
             }
-            const blockDp = model.get(formView.handle);
+            const blockDp = quoterGetRawDatapoint(model, formView.handle);
             if (blockDp && blockDp.data && blockDp.data.order_line_ids) {
                 this._quoterClearLineListPendingChanges(
                     model,
-                    blockDp.data.order_line_ids.id
+                    quoterResolveO2mListId(blockDp.data.order_line_ids)
                 );
             }
         },
@@ -1663,41 +3019,61 @@ odoo.define("quoter.area_block_embed", function (require) {
             if (!model || !localId) {
                 return;
             }
-            const rec = model.get(localId);
+            const rec = quoterGetRawDatapoint(model, localId);
             if (rec && rec.id) {
                 delete model.localData[rec.id];
             }
             if (!lineResId) {
                 return;
             }
-            const walk = function (dp) {
-                if (!dp || dp.type !== "list" || !Array.isArray(dp.data)) {
+            const walk = function (listDatapointId) {
+                const dp = quoterGetRawListDatapoint(model, listDatapointId);
+                if (!dp || !Array.isArray(dp.data)) {
                     return;
                 }
                 dp.data = dp.data.filter(function (lid) {
-                    const row = model.get(lid);
-                    return !row || row.res_id !== lineResId;
+                    const row = model.localData[lid];
+                    return !!(row && row.res_id !== lineResId);
                 });
                 if (Array.isArray(dp.res_ids)) {
                     dp.res_ids = dp.res_ids.filter(function (rid) {
                         return rid !== lineResId;
                     });
                 }
+                if (dp._cache) {
+                    Object.keys(dp._cache).forEach(function (cacheKey) {
+                        if (Number(cacheKey) === lineResId) {
+                            delete dp._cache[cacheKey];
+                            return;
+                        }
+                        const dpId = dp._cache[cacheKey];
+                        const row = dpId && model.localData[dpId];
+                        if (row && row.res_id === lineResId) {
+                            delete dp._cache[cacheKey];
+                        }
+                    });
+                }
+                if (Array.isArray(dp.orderedResIDs)) {
+                    dp.orderedResIDs = dp.orderedResIDs.filter(function (rid) {
+                        return rid !== lineResId;
+                    });
+                }
+                dp.orderedResIDs = null;
                 dp._changes = [];
             };
-            walk(model.get(this.value && this.value.id));
+            walk(this.value && this.value.id);
             const formView = this.__quoterEmbedForm;
             if (formView && formView.handle) {
-                const blockDp = model.get(formView.handle);
+                const blockDp = quoterGetRawDatapoint(model, formView.handle);
                 if (blockDp && blockDp.data && blockDp.data.order_line_ids) {
-                    walk(model.get(blockDp.data.order_line_ids.id));
+                    walk(quoterResolveO2mListId(blockDp.data.order_line_ids));
                 }
             }
             const fc = getFormControllerFromField(this);
             if (fc && fc.handle) {
-                const order = model.get(fc.handle);
+                const order = quoterGetRawDatapoint(model, fc.handle);
                 if (order && order.data && order.data.order_line) {
-                    walk(model.get(order.data.order_line.id));
+                    walk(quoterResolveO2mListId(order.data.order_line));
                 }
             }
         },

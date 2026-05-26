@@ -57,18 +57,10 @@ class QuoterHoursPolicy(models.AbstractModel):
 
     @api.model
     def validate_adjustment_hours_nonzero(self, value, range_name=None):
-        """Ajuste: 0 no es válido; negativas siguen permitidas si el total no baja de cero."""
+        """Ajuste por rol: permite 0 y negativas; el tope se valida en la línea (base + ajuste)."""
         if self._quoter_skip_strict_hours_validation():
             return float(value or 0.0)
-        hours = float(value or 0.0)
-        if hours == 0.0:
-            if range_name:
-                raise ValidationError(
-                    _("Las horas de ajuste en «%s» no pueden ser cero.")
-                    % range_name
-                )
-            raise ValidationError(_("Las horas de ajuste no pueden ser cero."))
-        return hours
+        return float(value or 0.0)
 
     @api.model
     def validate_matrix_b_factor_positive(self, value, table_b_kind="percent"):
