@@ -9,15 +9,16 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Employees",
-    "version": "15.0.3.2.0",
+    "version": "15.0.3.2.1",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
-    "depends": ['account', 'contacts', 'timesheet_odoo', 'associated_partner_employee'],
+    "depends": ['account', 'contacts', 'timesheet_odoo', 'associated_partner_employee', 'purchase'],
     "data": [
         "security/ir.model.access.csv",
         "wizard/labor_cost_employee_wizard_views.xml",
         "views/account_move_views.xml",
+        "views/purchase_order_views.xml",
         "views/labor_cost_employee_views.xml",
     ],
     "assets": {
