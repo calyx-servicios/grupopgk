@@ -38,20 +38,20 @@ class QuoterHoursPolicy(models.AbstractModel):
 
     @api.model
     def validate_quotation_line_hours_sum(self, total, product_name=None):
-        """Suma de horas por rol en línea: debe ser > 0 (cada rol puede ser 0)."""
+        """Suma de horas por rol en línea: permite 0; solo bloquea negativos."""
         if self._quoter_skip_strict_hours_validation():
             return float(total or 0.0)
         hours = float(total or 0.0)
-        if hours <= 0.0:
+        if hours < 0.0:
             if product_name:
                 raise ValidationError(
                     _(
-                        "La suma de horas por rol debe ser mayor a cero en la línea «%s»."
+                        "La suma de horas por rol no puede ser negativa en la línea «%s»."
                     )
                     % product_name
                 )
             raise ValidationError(
-                _("La suma de horas por rol debe ser mayor a cero.")
+                _("La suma de horas por rol no puede ser negativa.")
             )
         return hours
 

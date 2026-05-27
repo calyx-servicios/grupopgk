@@ -84,7 +84,8 @@ class QuoterServiceLine(models.Model):
     separator_tag_id = fields.Many2one(
         comodel_name="quoter.line.separator.tag",
         string="Sección de cotizador",
-        ondelete="set null",
+        required=True,
+        ondelete="restrict",
         help="Para agrupar en vistas del pedido (se usará como separador entre líneas).",
     )
     is_default_product = fields.Boolean(

@@ -410,7 +410,7 @@ class SaleOrderLine(models.Model):
             if not getattr(line.product_id, "is_quoter_product", False):
                 continue
             if line._quoter_manual_total_mode():
-                Policy.validate_hours_strictly_positive(
+                Policy.validate_hours_non_negative(
                     line.quoter_total_hours,
                     _("Total horas"),
                 )
@@ -1131,7 +1131,7 @@ class SaleOrderLine(models.Model):
                         hours_val, _("Horas")
                     )
                 else:
-                    hours_val = Policy.validate_hours_strictly_positive(
+                    hours_val = Policy.validate_hours_non_negative(
                         hours_val, _("Horas")
                     )
             elif hours_val < 0.0:
@@ -1252,7 +1252,7 @@ class SaleOrderLine(models.Model):
         for line in self:
             if not line._quoter_manual_total_mode():
                 continue
-            value = Policy.validate_hours_strictly_positive(
+            value = Policy.validate_hours_non_negative(
                 line.quoter_total_hours, _("Total horas")
             )
             line._quoter_sync_range_hours()

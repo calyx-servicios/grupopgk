@@ -373,6 +373,7 @@ class QuoterSaleOrderArea(models.Model):
         """Fila sección por etiqueta y productos debajo; conserva ids de sección existentes."""
         ctx = dict(quoter_skip_separator_rebuild=True, quoter_skip_chatter_log=True)
         Line = self.env["sale.order.line"].with_context(ctx)
+        ServiceLine = self.env["quoter.service.line"]
         for block in self:
             order = block.order_id
             area = block.area_id
@@ -383,19 +384,52 @@ class QuoterSaleOrderArea(models.Model):
                 or not isinstance(order.id, int)
             ):
                 continue
-            area_lines = block.order_line_ids.exists()
+            block_id = block.id if isinstance(block.id, int) else False
+            # Re-vincula líneas del área que quedaron fuera del bloque (datos históricos/caché).
+            if block_id:
+                stray_lines = order.order_line.filtered(
+                    lambda l, a=area, b=block: l.quoter_tab_area_id == a
+                    and l.quoter_block_id != b
+                    and not l.quoter_is_area_discount_total_line
+                )
+                if stray_lines:
+                    stray_lines.with_context(ctx).write({"quoter_block_id": block_id})
+
+            area_lines = order.order_line.exists().filtered(
+                lambda l, a=area, bid=block_id: l.quoter_tab_area_id == a
+                and (not bid or (l.quoter_block_id and l.quoter_block_id.id == bid))
+            )
             sections = area_lines.filtered(
                 lambda l: l.display_type == "line_section"
                 and l.quoter_separator_section_tag_id
             )
             base_lines = area_lines.filtered(lambda l: not l.display_type)
+
+            # Algunas líneas quedan sin quoter_separator_tag_id por relación del producto;
+            # tomar la etiqueta real desde quoter.service.line del área.
+            service_by_tmpl = {}
+            service_lines = ServiceLine.search([("area_id", "=", area.id)])
+            for qsl in service_lines:
+                if qsl.product_tmpl_id:
+                    service_by_tmpl[qsl.product_tmpl_id.id] = qsl
+
+            def _effective_tag(line):
+                tag = line.quoter_separator_tag_id
+                if tag:
+                    return tag
+                tmpl = line.product_id.product_tmpl_id if line.product_id else False
+                if not tmpl:
+                    return self.env["quoter.line.separator.tag"]
+                qsl = service_by_tmpl.get(tmpl.id)
+                return qsl.separator_tag_id if qsl and qsl.separator_tag_id else self.env["quoter.line.separator.tag"]
+
             tagged = base_lines.filtered(
-                lambda l: l.quoter_separator_tag_id
+                lambda l: _effective_tag(l)
                 and l.product_id
                 and not l.quoter_is_area_discount_total_line
             )
             untagged = base_lines.filtered(
-                lambda l: not l.quoter_separator_tag_id
+                lambda l: not _effective_tag(l)
                 and not l.quoter_is_area_discount_total_line
             )
             discount = base_lines.filtered("quoter_is_area_discount_total_line")
@@ -414,25 +448,20 @@ class QuoterSaleOrderArea(models.Model):
                 else:
                     section_by_tag[tid] = sec
 
-            tag_order = []
-            seen = set()
-            for line in tagged.sorted(key=lambda l: (int(l.sequence or 0), l.id)):
-                tid = line.quoter_separator_tag_id.id
-                if tid not in seen:
-                    seen.add(tid)
-                    tag_order.append(line.quoter_separator_tag_id)
-            needed_tag_ids = set(seen)
+            tag_order = tagged.mapped(lambda l: _effective_tag(l)).filtered(
+                lambda t: t
+            ).sorted(key=lambda t: t.id)
+            needed_tag_ids = set(tag_order.ids)
             for tid in list(section_by_tag.keys()):
                 if tid not in needed_tag_ids:
                     section_by_tag[tid].with_context(ctx).unlink()
                     del section_by_tag[tid]
 
             style_mode = area.separator_visual_mode or "none"
-            block_id = block.id if isinstance(block.id, int) else False
             ordered_rows = []
             for tag in tag_order:
                 prods = tagged.filtered(
-                    lambda l, t=tag: l.quoter_separator_tag_id == t
+                    lambda l, t=tag: _effective_tag(l) == t
                 ).sorted(key=lambda l: (int(l.sequence or 0), l.id))
                 section = section_by_tag.get(tag.id)
                 if not section or not section.exists():

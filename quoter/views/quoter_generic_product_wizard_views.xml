@@ -54,8 +54,8 @@
                 <group string="Opciones en el área">
                     <field name="separator_tag_id" options="{'no_create': True}"/>
                     <field name="is_default_product"/>
-                    <field name="manual_load" invisible="1"/>
-                    <field name="manual_total_load"/>
+                    <field name="manual_load"/>
+                    <field name="manual_total_load" invisible="1"/>
                 </group>
                 <footer>
                     <button name="action_add_to_area" string="Agregar al área" type="object" class="btn-primary"/>
