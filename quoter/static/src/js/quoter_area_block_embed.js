@@ -482,11 +482,19 @@ odoo.define("quoter.area_block_embed", function (require) {
     ];
 
     function quoterIsCanBeSaveFalseError(err) {
-        const msg =
+        const raw =
             err === null || err === undefined
                 ? ""
                 : err.message || err.reason || String(err);
-        return msg.indexOf("canBeSave") >= 0;
+        let msg = raw;
+        if (typeof msg !== "string") {
+            try {
+                msg = JSON.stringify(msg);
+            } catch (_e) {
+                msg = String(msg);
+            }
+        }
+        return (msg || "").indexOf("canBeSave") >= 0;
     }
 
     function quoterResolveO2mListId(fieldValue) {

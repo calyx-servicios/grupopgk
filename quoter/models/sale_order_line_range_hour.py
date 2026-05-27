@@ -55,7 +55,7 @@ class SaleOrderLineRangeHour(models.Model):
                 if line._quoter_is_new_line_record():
                     Policy.validate_hours_non_negative(row.hours, _("Horas"))
                 else:
-                    Policy.validate_hours_strictly_positive(row.hours, _("Horas"))
+                    Policy.validate_hours_non_negative(row.hours, _("Horas"))
             elif line._quoter_manual_total_mode():
                 Policy.validate_hours_non_negative(row.hours, _("Horas"))
             elif (row.hours or 0.0) < 0.0:
@@ -98,7 +98,7 @@ class SaleOrderLineRangeHour(models.Model):
                 if line._quoter_is_new_line_record():
                     Policy.validate_hours_non_negative(hours, _("Horas"))
                 else:
-                    Policy.validate_hours_strictly_positive(hours, _("Horas"))
+                    Policy.validate_hours_non_negative(hours, _("Horas"))
             elif line._quoter_manual_total_mode():
                 Policy.validate_hours_non_negative(hours, _("Horas"))
 
@@ -121,7 +121,7 @@ class SaleOrderLineRangeHour(models.Model):
                     if line._quoter_is_new_line_record():
                         Policy.validate_hours_non_negative(hours, _("Horas"))
                     else:
-                        Policy.validate_hours_strictly_positive(hours, _("Horas"))
+                        Policy.validate_hours_non_negative(hours, _("Horas"))
                 elif line._quoter_manual_total_mode():
                     Policy.validate_hours_non_negative(hours, _("Horas"))
         rows = super().create(vals_list)
