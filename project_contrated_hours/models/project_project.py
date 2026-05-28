@@ -63,6 +63,9 @@ class ProjectProject(models.Model):
         comodel_name="account.analytic.group",
         string="Service Area"
     )
+    area = fields.Char(
+        string="Area"
+    )
     project_manager = fields.Char(
         string="PM"
     )
@@ -264,26 +267,31 @@ class ProjectProject(models.Model):
             action['res_id'] = invoices.id
         return action
 
-    @api.depends('invoice_count')
+    @api.depends('analytic_account_id')
     def _compute_real_billing(self):
-        """ Compute real billing by subtracting credit notes from invoices """
+        """Compute billing amount and billed hours from posted income lines."""
         for rec in self:
-            rec.real_billing = False
+            rec.real_billing = 0.0
             rec.billing_hours = 0
-            
-            action_invoices = rec.action_open_project_invoices_with_credits()
-            invoices_domain = action_invoices["domain"]
-            invoices_domain.append(('state', '=', 'posted'))
-            invoices = self.env['account.move'].search(invoices_domain)
-            for invoice in invoices:
-                for line in invoice.invoice_line_ids:
-                    if (line.analytic_account_id and line.analytic_account_id.id == rec.analytic_account_id.id):
-                        if invoice.move_type == 'out_refund':
-                            rec.billing_hours -= line.quantity
-                            rec.real_billing -= line.price_subtotal
-                        else:
-                            rec.billing_hours += line.quantity
-                            rec.real_billing += line.price_subtotal
+            if not rec.analytic_account_id:
+                continue
+
+            move_lines = self.env['account.move.line'].search([
+                ('analytic_account_id', '=', rec.analytic_account_id.id),
+                ('move_id.state', '=', 'posted'),
+                ('account_id.internal_group', '=', 'income'),
+                ('display_type', '=', False),
+                ('exclude_from_invoice_tab', '=', False),
+            ])
+
+            for line in move_lines:
+                line_amount = line.credit - line.debit
+                rec.real_billing += line_amount
+
+                if line_amount > 0:
+                    rec.billing_hours += line.quantity
+                elif line_amount < 0:
+                    rec.billing_hours -= line.quantity
 
     @api.depends('expected_go_live_date', 'real_go_live_date')
     def _compute_delivery_time_deviation(self):
