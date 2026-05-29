@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quoter_generic_product_wizard_form" model="ir.ui.view">
+        <field name="name">quoter.generic.product.wizard.form</field>
+        <field name="model">quoter.generic.product.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Crear producto genérico">
+                <group>
+                    <p colspan="2" class="text-muted">
+                        Crea un producto reutilizable en varias áreas. Después agreguelo en cada área
+                        con «Agregar producto genérico».
+                    </p>
+                    <field name="name" placeholder="Nombre del servicio…"/>
+                </group>
+                <footer>
+                    <button name="action_create_product" string="Crear" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quoter_generic_product_wizard" model="ir.actions.act_window">
+        <field name="name">Crear producto genérico</field>
+        <field name="res_model">quoter.generic.product.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_quoter_add_generic_to_area_wizard_form" model="ir.ui.view">
+        <field name="name">quoter.add.generic.to.area.wizard.form</field>
+        <field name="model">quoter.add.generic.to.area.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Agregar producto genérico al área">
+                <group>
+                    <field name="area_id" readonly="1" options="{'no_open': True}"/>
+                </group>
+                <group string="Producto genérico existente">
+                    <field name="product_tmpl_id"
+                           options="{'no_create': True}"
+                           domain="[('is_quoter_generic_product', '=', True)]"/>
+                </group>
+                <group string="Crear producto genérico nuevo">
+                    <p colspan="2" class="text-muted">
+                        Si no está en la lista, indique un nombre y pulse «Crear producto genérico»
+                        (mismo asistente que en el menú Productos).
+                    </p>
+                    <field name="new_generic_name" placeholder="Nombre del servicio…"/>
+                    <button name="action_create_generic_product"
+                            string="Crear producto genérico"
+                            type="object"
+                            class="btn-secondary"/>
+                </group>
+                <group string="Opciones en el área">
+                    <field name="separator_tag_id" options="{'no_create': True}"/>
+                    <field name="is_default_product"/>
+                    <field name="manual_load"/>
+                    <field name="manual_total_load" invisible="1"/>
+                </group>
+                <footer>
+                    <button name="action_add_to_area" string="Agregar al área" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quoter_add_generic_to_area_wizard" model="ir.actions.act_window">
+        <field name="name">Agregar producto genérico</field>
+        <field name="res_model">quoter.add.generic.to.area.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

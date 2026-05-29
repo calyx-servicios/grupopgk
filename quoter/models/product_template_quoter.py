@@ -1,6 +1,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0.html)
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class ProductAttributeValue(models.Model):
@@ -43,6 +44,39 @@ class ProductTemplate(models.Model):
         return chosen.ids
 
     @api.model
+    def quoter_create_generic_product(self, name):
+        """Crea un producto genérico del cotizador (catálogo reutilizable entre áreas)."""
+        general_categ = self.env.ref("quoter.product_category_quoter_general", raise_if_not_found=False)
+        if not general_categ:
+            raise UserError(_("No está configurada la categoría General (Cotizador)."))
+        name = (name or "").strip()
+        if not name:
+            raise UserError(_("Indique un nombre para el producto."))
+        if self.search(
+            [("is_quoter_generic_product", "=", True), ("name", "=", name)], limit=1
+        ):
+            raise UserError(_("Ya existe un producto genérico con ese nombre."))
+        uom_unit = self.env.ref("uom.product_uom_unit", raise_if_not_found=False)
+        tmpl_vals = {
+            "name": name,
+            "type": "service",
+            "sale_ok": True,
+            "purchase_ok": False,
+            "default_code": "QR-G-%s" % (name[:40].replace(" ", "-") or "GEN"),
+            "is_quoter_product": True,
+            "is_quoter_generic_product": True,
+            "quoter_area_id": False,
+            "quoter_service_line_id": False,
+            "categ_id": general_categ.id,
+        }
+        if uom_unit:
+            tmpl_vals["uom_id"] = uom_unit.id
+            tmpl_vals["uom_po_id"] = uom_unit.id
+        tmpl = self.create(tmpl_vals)
+        self.quoter_apply_default_sale_taxes(tmpl)
+        return tmpl
+
+    @api.model
     def quoter_apply_default_sale_taxes(self, templates):
         """Asigna impuesto de venta 0%% a plantillas generadas por el cotizador."""
         for tmpl in templates:
@@ -57,6 +91,11 @@ class ProductTemplate(models.Model):
         string="Producto del cotizador",
         index=True,
         help="Generado automáticamente por el módulo Quoter; no suele editarse a mano.",
+    )
+    is_quoter_generic_product = fields.Boolean(
+        string="Producto genérico del cotizador",
+        index=True,
+        help="Producto reutilizable en cualquier área (categoría General del cotizador).",
     )
 
     quoter_area_id = fields.Many2one(
@@ -78,6 +117,23 @@ class ProductTemplate(models.Model):
         index=True,
         help="Identifica el producto plantilla predeterminado para usar en venta.",
     )
+    quoter_formula_config_ids = fields.One2many(
+        comodel_name="quoter.formula.product.config",
+        inverse_name="product_tmpl_id",
+        string="Configuración por volumen",
+        copy=False,
+    )
+    quoter_formula_config_id = fields.Many2one(
+        comodel_name="quoter.formula.product.config",
+        string="Configuración por volumen",
+        compute="_compute_quoter_formula_config_id",
+        help="Registro único de configuración por volumen (fórmula o horas fijas).",
+    )
+
+    @api.depends("quoter_formula_config_ids")
+    def _compute_quoter_formula_config_id(self):
+        for tmpl in self:
+            tmpl.quoter_formula_config_id = tmpl.quoter_formula_config_ids[:1]
 
 
 class ProductProduct(models.Model):
@@ -132,3 +188,48 @@ class ProductProduct(models.Model):
             rec.related_variant_ids = rec.product_tmpl_id.product_variant_ids.filtered(
                 lambda v: v.id != rec.id
             )
+
+    @api.model
+    def _quoter_product_ids_for_area_picker(self, area, order, exclude_line_id=None):
+        """Productos del área aún no usados en otra línea de la misma cotización."""
+        if not area or not order:
+            return []
+        QuoterLine = self.env["quoter.service.line"]
+        products = (
+            QuoterLine.search([("area_id", "=", area.id)])
+            .mapped("product_id")
+            .filtered(
+                lambda p: p
+                and p.sale_ok
+                and getattr(p, "is_quoter_product", False)
+                and not getattr(p, "is_quoter_range_rate_product", False)
+            )
+        )
+        area_lines = order.order_line.filtered(
+            lambda l, a=area: l.quoter_tab_area_id == a
+            and not l.display_type
+            and l.product_id
+            and not l.quoter_is_area_discount_total_line
+        )
+        if exclude_line_id and isinstance(exclude_line_id, int):
+            used = area_lines.filtered(lambda l, eid=exclude_line_id: l.id != eid).mapped(
+                "product_id"
+            )
+        else:
+            used = area_lines.mapped("product_id")
+        return (products - used).ids
+
+    @api.model
+    def name_search(self, name="", args=None, operator="ilike", limit=100):
+        args = list(args or [])
+        ctx = self.env.context
+        if ctx.get("quoter_product_picker"):
+            area = self.env["quoter.professional.area"].browse(ctx.get("quoter_area_id"))
+            order = self.env["sale.order"].browse(ctx.get("quoter_order_id"))
+            exclude_line_id = ctx.get("quoter_exclude_line_id")
+            if area and order:
+                ids = self._quoter_product_ids_for_area_picker(
+                    area, order, exclude_line_id=exclude_line_id
+                )
+                args.append(("id", "in", ids or [0]))
+        return super().name_search(name, args, operator, limit)

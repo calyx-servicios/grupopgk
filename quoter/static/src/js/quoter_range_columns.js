@@ -1,6 +1,11 @@
 odoo.define("quoter.range_columns", function (require) {
     "use strict";
 
+    const QUOTER_DISABLE_RANGE_COLUMNS = false;
+    if (QUOTER_DISABLE_RANGE_COLUMNS) {
+        return;
+    }
+
     const rpc = require("web.rpc");
     const FormRenderer = require("web.FormRenderer");
     const ListRenderer = require("web.ListRenderer");
@@ -102,7 +107,11 @@ odoo.define("quoter.range_columns", function (require) {
         }
         const $form = $(renderer.el);
         for (let slot = 1; slot <= 5; slot++) {
-            const areaId = idFromM2o(data["quoter_slot_" + slot + "_area_id"]);
+            const key = "quoter_slot_" + slot + "_area_id";
+            if (!(key in data)) {
+                continue;
+            }
+            const areaId = idFromM2o(data[key]);
             const ranges = await fetchAreaRanges(areaId);
             const names = ranges.map((r) => r.name);
             const $marker = $form.find('.o_quoter_slot_tab_marker[data-quoter-slot="' + slot + '"]').first();
@@ -111,6 +120,16 @@ odoo.define("quoter.range_columns", function (require) {
             if (!$pane.length) continue;
             applySlotHourColumnTitles($pane, names, "quoter_range_");
         }
+    }
+
+    async function updateQuoterAreaBlockFormHeaders(renderer) {
+        if (!renderer || !renderer.state || renderer.state.model !== "quoter.sale.order.area") {
+            return;
+        }
+        const areaId = idFromM2o((renderer.state.data || {}).area_id);
+        const ranges = await fetchAreaRanges(areaId);
+        const names = ranges.map((r) => r.name);
+        applySlotHourColumnTitles($(renderer.el), names, "quoter_range_");
     }
 
     function getFirstAreaIdFromLevelRangeList(renderer) {
@@ -155,6 +174,7 @@ odoo.define("quoter.range_columns", function (require) {
             const self = this;
             function run() {
                 updateAllSlotRangeHeaders(self);
+                updateQuoterAreaBlockFormHeaders(self);
             }
             if (res && typeof res.then === "function") {
                 return res.then(function () {

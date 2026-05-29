@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quoter_formula_product_config_range_form_popup" model="ir.ui.view">
+        <field name="name">quoter.formula.product.config.range.form.popup</field>
+        <field name="model">quoter.formula.product.config.range</field>
+        <field name="arch" type="xml">
+            <form string="Fórmula por rol">
+                <sheet>
+                    <group>
+                        <field name="config_id" invisible="1"/>
+                        <field name="area_range_id" readonly="1"/>
+                        <field name="formula_active"/>
+                        <field name="formula_kind"
+                               attrs="{'invisible': [('formula_active', '=', False)], 'required': [('formula_active', '=', True)]}"/>
+                    </group>
+                    <group string="Vista previa" attrs="{'invisible': [('formula_active', '=', False)]}">
+                        <field name="formula_composed" nolabel="1" readonly="1" colspan="2"/>
+                    </group>
+                    <group string="Parámetros (nº)"
+                           attrs="{'invisible': ['|', ('formula_active', '=', False), ('formula_kind', '=', False)]}">
+                        <field name="param_ids" nolabel="1" colspan="2"
+                               attrs="{'readonly': [('formula_active', '=', False)]}">
+                            <tree editable="bottom" create="0" delete="0">
+                                <field name="sequence" invisible="1"/>
+                                <field name="code" readonly="1"/>
+                                <field name="value"/>
+                            </tree>
+                        </field>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="Guardar" special="save" class="btn-primary"/>
+                    <button string="Cerrar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_quoter_service_line_form_formula" model="ir.ui.view">
+        <field name="name">quoter.service.line.form.formula</field>
+        <field name="model">quoter.service.line</field>
+        <field name="inherit_id" ref="quoter.view_quoter_service_line_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group[last()]" position="after">
+                <group string="Configuración por volumen (producto)"
+                       attrs="{'invisible': ['|', ('area_hour_matrix_mode', '!=', 'formula'), ('product_tmpl_id', '=', False)]}">
+                    <field name="area_hour_matrix_mode" invisible="1"/>
+                    <field name="product_tmpl_id" invisible="1"/>
+                    <field name="quoter_formula_config_id" invisible="1"/>
+                    <group>
+                        <field name="quoter_formula_tipo_calculo"/>
+                        <field name="quoter_formula_referencia_volumen"/>
+                        <field name="quoter_formula_volumen_default"/>
+                    </group>
+                    <group string="Fórmula por rol del área" colspan="2">
+                        <p class="text-muted" colspan="2">
+                            Configure cada rol en la matriz del área (icono de enlace) o aquí.
+                        </p>
+                        <field name="quoter_formula_range_line_ids" nolabel="1" colspan="2"
+                               attrs="{'readonly': [('area_quoter_config_edit_mode', '=', False)]}">
+                            <tree create="0" delete="0">
+                                <field name="area_range_id" force_save="1" readonly="1"/>
+                                <field name="formula_active"
+                                       attrs="{'column_invisible': [('parent.quoter_formula_tipo_calculo', '=', 'fija')]}"/>
+                                <field name="formula_kind"
+                                       attrs="{'column_invisible': [('parent.quoter_formula_tipo_calculo', '=', 'fija')]}"/>
+                                <field name="formula_composed"
+                                       attrs="{'column_invisible': [('parent.quoter_formula_tipo_calculo', '=', 'fija')]}"/>
+                                <field name="horas_fijas"
+                                       attrs="{'column_invisible': [('parent.quoter_formula_tipo_calculo', '!=', 'fija')]}"/>
+                            </tree>
+                        </field>
+                    </group>
+                </group>
+                <p class="text-muted"
+                   attrs="{'invisible': ['|', ('area_hour_matrix_mode', '!=', 'formula'), ('product_tmpl_id', '!=', False)]}">
+                    Guarde la línea para generar el producto y configurar fórmulas por rol.
+                </p>
+            </xpath>
+            <xpath expr="//button[@name='action_open_level_ranges']" position="attributes">
+                <attribute name="attrs">{'invisible': [('area_hour_matrix_mode', '=', 'formula')]}</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

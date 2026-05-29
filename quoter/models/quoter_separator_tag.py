@@ -5,11 +5,11 @@ from odoo import fields, models
 
 class QuoterLineSeparatorTag(models.Model):
     _name = "quoter.line.separator.tag"
-    _description = "Etiqueta separadora (líneas de cotización)"
+    _description = "Sección de cotizador (líneas de cotización)"
     _order = "name"
 
     name = fields.Char(
-        string="Etiqueta",
+        string="Sección",
         required=True,
         translate=True,
         help="Se usará como separador visual en líneas del pedido de venta.",

@@ -31,7 +31,7 @@
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_open_quoter_lines" type="object" class="oe_stat_button" icon="fa-list">
-                            <field name="line_count" widget="statinfo" string="Líneas"/>
+                            <field name="line_count" widget="statinfo" string="Productos"/>
                         </button>
                         <button name="action_open_quoter_products" type="object" class="oe_stat_button" icon="fa-cubes">
                             <field name="quoter_product_count" widget="statinfo" string="Productos"/>
@@ -63,88 +63,128 @@
                             <field name="cerrado" invisible="1"/>
                             <field name="cerrado" groups="quoter.group_quoter_manager"
                                    attrs="{'invisible': [('quoter_config_complete', '=', False)]}"/>
-                        </group>
-                    </group>
-                    <group string="Política de horas (matrices)">
-                        <field name="hour_matrix_mode" widget="radio"
-                               attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
-                        <field name="table_a_layout"
-                               attrs="{'invisible': [('hour_matrix_mode', '!=', 'combined')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
-                        <field name="table_b_kind"
-                               attrs="{'invisible': [('hour_matrix_mode', '!=', 'combined')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
-                        <p class="text-muted" colspan="2">
-                            Regular: horas finales por producto y nivel. Combinada: tabla A × tabla B por rango;
-                            el detalle se edita en «Horas por nivel» con el botón de tablas.
-                        </p>
-                    </group>
-                    <group>
-                        <group string="Niveles de complejidad">
-                            <field name="complexity_level_ids"
-                                   widget="many2many_tags"
-                                   options="{'color_field': 'color'}"
-                                   nolabel="1"
-                                   colspan="2"
-                                   placeholder="Defina los niveles (bajo / medio / alto, etc.) para variantes y colores en el pedido…"/>
-                        </group>
-                        <group string="Etiquetas">
-                            <field name="separator_visual_mode"/>
-                            <field name="separator_tag_ids"
-                                   widget="many2many_tags"
-                                   options="{'color_field': 'color'}"
-                                   nolabel="1"
-                                   colspan="2"
-                                   placeholder="Etiquetas separador para líneas de esta área…"/>
+                            <field name="table_rules_status" readonly="1"/>
+                            <field name="bulk_line_load"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="Líneas cotizador" name="area_tab_lines"
+                        <page string="Vista de matrices" name="area_tab_matrix_view">
+                            <separator string="Matriz de horas resultado (cotizador)"
+                                       attrs="{'invisible': ['|', ('id', '=', False), ('hour_matrix_mode', '=', 'formula')]}"/>
+                            <div class="o_quoter_area_hours_matrix_root"
+                                 attrs="{'invisible': ['|', ('id', '=', False), ('hour_matrix_mode', '=', 'formula')]}"/>
+                            <field name="quoter_config_edit_mode" invisible="1"/>
+                            <div class="o_quoter_formula_area_matrix_root"
+                                 attrs="{'invisible': ['|', ('id', '=', False), ('hour_matrix_mode', '!=', 'formula')]}"/>
+                            <p class="text-muted" attrs="{'invisible': [('id', '!=', False)]}">
+                                Guarde el área para ver la matriz de horas por producto, nivel y rol.
+                            </p>
+                        </page>
+                        <page string="Productos" name="area_tab_products"
                               attrs="{'invisible': [('id', '=', False)]}">
+                            <group attrs="{'invisible': [('hour_matrix_mode', '!=', 'combined')]}">
+                                <field name="hour_matrix_mode" invisible="1"/>
+                                <field name="matrix_unify_branch_values"
+                                       attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="matrix_shared_b_calculation"
+                                       attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <p class="text-muted mb-0" colspan="2">
+                                    «Unifica valor» y «Productos varios» en cada fila solo aplican si la opción
+                                    correspondiente está activa (edítelas en <strong>Reglas de tablas</strong>).
+                                </p>
+                            </group>
+                            <div class="mb-2">
+                                <button name="%(quoter.action_quoter_add_generic_to_area_wizard)d"
+                                        type="action"
+                                        string="Agregar producto genérico"
+                                        class="btn-primary"
+                                        context="{'default_area_id': active_id}"
+                                        attrs="{'invisible': [('id', '=', False)]}"/>
+                            </div>
                             <field name="line_ids"
                                    context="{'default_area_id': active_id}"
                                    attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}"
                                    mode="tree,form">
-                                <tree string="Líneas" editable="bottom">
+                                <tree string="Líneas" editable="bottom" delete="0">
                                     <field name="sequence" widget="handle"/>
-                                    <field name="separator_tag_id" optional="show"/>
-                                    <field name="name"/>
+                                    <field name="is_generic_link" invisible="1"/>
+                                    <field name="separator_tag_id" optional="show" required="1"/>
+                                    <field name="name"
+                                           attrs="{'readonly': [('is_generic_link', '=', True)]}"/>
                                     <field name="is_default_product" optional="show"/>
+                                    <field name="unify_value"
+                                           attrs="{'column_invisible': [('parent.matrix_unify_branch_values', '=', False)], 'readonly': [('parent.quoter_config_edit_mode', '=', False)]}"/>
+                                    <field name="shared_b_calc"
+                                           string="Productos varios"
+                                           attrs="{'column_invisible': [('parent.matrix_shared_b_calculation', '=', False)], 'readonly': [('parent.quoter_config_edit_mode', '=', False)]}"/>
                                     <field name="manual_load" optional="show"/>
                                     <field name="manual_total_load" invisible="1"/>
-                                    <field name="product_tmpl_id" readonly="1" optional="show"/>
+                                    <field name="product_tmpl_id" invisible="1"/>
+                                    <field name="product_id" invisible="1"/>
                                     <button name="action_open_level_ranges"
                                             type="object"
                                             string=" "
                                             icon="fa-clock-o"
-                                            title="Horas por nivel (hasta 4 rangos del área)"/>
+                                            title="Horas por nivel (hasta 4 roles del área)"
+                                            attrs="{'invisible': [('parent.hour_matrix_mode', '=', 'formula')]}"/>
+                                    <button name="action_remove_from_area"
+                                            type="object"
+                                            string=" "
+                                            icon="fa-times"
+                                            class="text-danger"
+                                            title="Eliminar producto"
+                                            confirm="¿Eliminar este producto del área?"
+                                            attrs="{'invisible': ['|', ('parent.quoter_config_edit_mode', '=', False), ('id', '=', False)]}"/>
                                 </tree>
                                 <form string="Línea">
                                     <field name="area_id" invisible="1"/>
+                                    <field name="area_quoter_config_edit_mode" invisible="1"/>
+                                    <header>
+                                        <button name="action_remove_from_area"
+                                                type="object"
+                                                string="Eliminar"
+                                                icon="fa-times"
+                                                class="btn-secondary text-danger"
+                                                confirm="¿Eliminar este producto del área?"
+                                                attrs="{'invisible': [('area_quoter_config_edit_mode', '=', False)]}"/>
+                                    </header>
                                     <group>
                                         <group>
+                                            <field name="is_generic_link" invisible="1"/>
                                             <field name="sequence"/>
-                                            <field name="name"/>
-                                            <field name="separator_tag_id"/>
+                                            <field name="product_tmpl_id"
+                                                   attrs="{'readonly': [('is_generic_link', '=', True)]}"
+                                                   options="{'no_create': True}"
+                                                   domain="[('is_quoter_generic_product', '=', True)]"/>
+                                            <field name="name"
+                                                   attrs="{'readonly': [('is_generic_link', '=', True)]}"/>
+                                            <field name="separator_tag_id" required="1"/>
                                             <field name="is_default_product"/>
+                                            <field name="unify_value"
+                                                   attrs="{'invisible': [('parent.matrix_unify_branch_values', '=', False)], 'readonly': [('area_quoter_config_edit_mode', '=', False)]}"/>
+                                            <field name="shared_b_calc"
+                                                   string="Productos varios"
+                                                   attrs="{'invisible': [('parent.matrix_shared_b_calculation', '=', False)], 'readonly': [('area_quoter_config_edit_mode', '=', False)]}"/>
                                             <field name="manual_load"/>
                                             <field name="manual_total_load" invisible="1"/>
-                                            <field name="product_tmpl_id" readonly="1"/>
+                                            <field name="product_id" invisible="1"/>
                                         </group>
                                     </group>
                                     <group string="Referencia (no alimenta el cotizador)">
                                         <p class="text-muted" colspan="2">
                                             Las horas que usa el pedido al elegir el nivel están en
-                                            <strong>Horas por nivel (rangos del área)</strong> (botón siguiente).
+                                            <strong>Horas por nivel (roles del área)</strong> (botón siguiente).
                                         </p>
                                         <field name="range_hour_ids" nolabel="1" colspan="2">
                                             <tree editable="bottom" create="0" delete="0">
-                                                <field name="area_range_id" force_save="1" readonly="1" string="Rango"/>
+                                                <field name="area_range_id" force_save="1" readonly="1" string="Categoría de recursos"/>
                                                 <field name="hours"/>
                                             </tree>
                                         </field>
                                     </group>
                                     <group>
                                         <button name="action_open_level_ranges" type="object"
-                                                string="Horas por nivel (rangos del área)" icon="fa-clock-o" class="btn-primary"/>
+                                                string="Horas por nivel (roles del área)" icon="fa-clock-o" class="btn-primary"/>
                                         <button name="action_open_product_variant" type="object"
                                                 string="Plantilla producto (técnico)" icon="fa-cube"
                                                 groups="base.group_system"/>
@@ -152,14 +192,116 @@
                                 </form>
                             </field>
                         </page>
+                        <page string="Reglas de tablas" name="area_tab_table_rules">
+                            <group>
+                                <group string="Niveles de complejidad">
+                                    <field name="complexity_level_ids"
+                                           widget="many2many_tags"
+                                           options="{'color_field': 'color'}"
+                                           nolabel="1"
+                                           colspan="2"
+                                           placeholder="Defina los niveles (bajo / medio / alto, etc.) para variantes y colores en el pedido…"/>
+                                </group>
+                                <group string="Ramas">
+                                    <field name="branch_ids"
+                                           widget="many2many_tags"
+                                           domain="[('selectable', '=', True)]"
+                                           options="{'color_field': 'color'}"
+                                           nolabel="1"
+                                           colspan="2"
+                                           placeholder="Opcional. Si no define ramas, se usará Rama única."/>
+                                </group>
+                                <group string="Secciones de cotizador">
+                                    <field name="separator_visual_mode"/>
+                                    <field name="separator_tag_ids"
+                                           widget="many2many_tags"
+                                           options="{'color_field': 'color'}"
+                                           nolabel="1"
+                                           colspan="2"
+                                           placeholder="Secciones de cotizador para líneas de esta área…"/>
+                                </group>
+                            </group>
+                            <group string="Horas resultado (salida)" colspan="2">
+                                <field name="output_hours_minimum"
+                                       attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="allow_change_complexity_level"
+                                       attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="formula_test_volume"
+                                       attrs="{'invisible': [('hour_matrix_mode', '!=', 'formula')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                            </group>
+                            <group string="Política de horas (matrices)">
+                                <field name="hour_matrix_mode" widget="radio"
+                                       attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="table_a_layout"
+                                       attrs="{'invisible': [('hour_matrix_mode', '!=', 'combined')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="table_b_kind"
+                                       attrs="{'invisible': [('hour_matrix_mode', '!=', 'combined')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="table_b_percent_mode"
+                                       attrs="{'invisible': ['|', ('hour_matrix_mode', '!=', 'combined'), ('table_b_kind', '!=', 'percent')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="table_b_percent_basis"
+                                       attrs="{'invisible': ['|', ('hour_matrix_mode', '!=', 'combined'), ('table_b_kind', '!=', 'percent')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="matrix_a_unify_role_values"
+                                       attrs="{'invisible': ['|', ('hour_matrix_mode', '!=', 'combined'), ('table_a_layout', '!=', 'normal')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="matrix_a_hide_repeated_columns"
+                                       attrs="{'invisible': ['|', '|', ('hour_matrix_mode', '!=', 'combined'), ('table_a_layout', '!=', 'normal'), ('matrix_a_unify_role_values', '=', False)], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="matrix_a_unify_category_values"
+                                       attrs="{'invisible': ['|', ('hour_matrix_mode', '!=', 'combined'), ('table_a_layout', '!=', 'normal')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="matrix_a_hide_repeated_category_columns"
+                                       attrs="{'invisible': ['|', '|', ('hour_matrix_mode', '!=', 'combined'), ('table_a_layout', '!=', 'normal'), ('matrix_a_unify_category_values', '=', False)], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="matrix_b_unify_role_values"
+                                       attrs="{'invisible': [('hour_matrix_mode', '!=', 'combined')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="matrix_b_hide_repeated_columns"
+                                       attrs="{'invisible': ['|', ('hour_matrix_mode', '!=', 'combined'), ('matrix_b_unify_role_values', '=', False)], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="matrix_unify_branch_values"
+                                       attrs="{'invisible': [('hour_matrix_mode', '!=', 'combined')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <field name="matrix_shared_b_calculation"
+                                       attrs="{'invisible': [('hour_matrix_mode', '!=', 'combined')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                <p class="text-muted" colspan="2">
+                                    Regular: horas finales por producto y nivel. Combinada: tabla A × tabla B por rol.
+                                    Fórmula: volumen × minutos por rol (sin matrices A/B); configure cada producto en la pestaña Productos.
+                                </p>
+                            </group>
+                            <group string="Tabla B - configuración avanzada"
+                                   col="1"
+                                   attrs="{'invisible': [('hour_matrix_mode', '!=', 'combined')]}">
+                                <group string="Reglas base por rol" colspan="2">
+                                    <field name="matrix_b_role_rule_ids"
+                                           nolabel="1"
+                                           colspan="2"
+                                           context="{'default_area_id': active_id}"
+                                           attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}">
+                                        <tree editable="bottom">
+                                            <field name="area_id" invisible="1" force_save="1"/>
+                                            <field name="area_range_id" options="{'no_create': True}"/>
+                                            <field name="default_factor"/>
+                                            <field name="is_fixed"/>
+                                            <field name="is_hidden"/>
+                                        </tree>
+                                    </field>
+                                </group>
+                                <group string="Excepciones por nivel" colspan="2">
+                                    <field name="matrix_b_level_exception_ids"
+                                           nolabel="1"
+                                           colspan="2"
+                                           context="{'default_area_id': active_id}"
+                                           attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}">
+                                        <tree editable="bottom">
+                                            <field name="area_id" invisible="1" force_save="1"/>
+                                            <field name="area_complexity_level_ids" invisible="1"/>
+                                            <field name="area_range_option_ids" invisible="1"/>
+                                            <field name="complexity_level_id"
+                                                   options="{'no_create': True}"
+                                                   domain="[('id', 'in', area_complexity_level_ids)]"/>
+                                            <field name="area_range_id"
+                                                   options="{'no_create': True}"
+                                                   domain="[('id', 'in', area_range_option_ids)]"/>
+                                            <field name="factor_override"/>
+                                        </tree>
+                                    </field>
+                                </group>
+                            </group>
+                        </page>
                     </notebook>
-                    <separator string="Matriz de horas resultado (cotizador)"
-                               attrs="{'invisible': [('id', '=', False)]}"/>
-                    <div class="o_quoter_area_hours_matrix_root"
-                         attrs="{'invisible': [('id', '=', False)]}"/>
-                    <p class="text-muted" attrs="{'invisible': [('id', '!=', False)]}">
-                        Guarde el área para ver la matriz de horas por producto, nivel y rango.
-                    </p>
                     <p class="text-muted">
                         Si asigna un grupo, solo los usuarios con ese grupo verán esta área,
                         sus líneas del cotizador y productos asociados. «Cerrado» solo indica que el área puede
@@ -181,8 +323,7 @@
         <field name="name">quoter.area.complexity.range.tree</field>
         <field name="model">quoter.area.complexity.range</field>
         <field name="arch" type="xml">
-            <tree string="Rangos por área">
-                <field name="sequence" widget="handle"/>
+            <tree string="Categorías de recursos">
                 <field name="name"/>
             </tree>
         </field>
@@ -192,11 +333,11 @@
         <field name="name">quoter.area.complexity.range.form</field>
         <field name="model">quoter.area.complexity.range</field>
         <field name="arch" type="xml">
-            <form string="Rango del área">
+            <form string="Categoría de recursos">
                 <sheet>
                     <group>
                         <field name="name"/>
-                        <field name="sequence"/>
+                        <field name="sequence" invisible="1"/>
                     </group>
                 </sheet>
             </form>
@@ -204,7 +345,7 @@
     </record>
 
     <record id="action_quoter_area_complexity_range" model="ir.actions.act_window">
-        <field name="name">Rangos por área</field>
+        <field name="name">Categorías de recursos</field>
         <field name="res_model">quoter.area.complexity.range</field>
         <field name="view_mode">tree,form</field>
     </record>
@@ -214,7 +355,7 @@
         <field name="name">quoter.line.separator.tag.tree</field>
         <field name="model">quoter.line.separator.tag</field>
         <field name="arch" type="xml">
-            <tree string="Etiquetas separador">
+            <tree string="Secciones de cotizador">
                 <field name="name"/>
                 <field name="color" widget="color_picker"/>
             </tree>
@@ -225,7 +366,7 @@
         <field name="name">quoter.line.separator.tag.form</field>
         <field name="model">quoter.line.separator.tag</field>
         <field name="arch" type="xml">
-            <form string="Etiqueta">
+            <form string="Sección de cotizador">
                 <sheet>
                     <group>
                         <field name="name"/>
@@ -240,7 +381,7 @@
     </record>
 
     <record id="action_quoter_line_separator_tag" model="ir.actions.act_window">
-        <field name="name">Etiquetas separador</field>
+        <field name="name">Secciones de cotizador</field>
         <field name="res_model">quoter.line.separator.tag</field>
         <field name="view_mode">tree,form</field>
     </record>
@@ -251,7 +392,6 @@
         <field name="model">quoter.complexity.level</field>
         <field name="arch" type="xml">
             <tree string="Niveles de complejidad" default_order="sequence,name">
-                <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="color" widget="color_picker"/>
             </tree>
@@ -265,7 +405,7 @@
             <form string="Nivel de complejidad">
                 <sheet>
                     <group>
-                        <field name="sequence"/>
+                        <field name="sequence" invisible="1"/>
                         <field name="name"/>
                         <field name="color" widget="color_picker"/>
                     </group>
@@ -283,19 +423,67 @@
         <field name="view_mode">tree,form</field>
     </record>
 
+    <record id="view_quoter_area_branch_tree" model="ir.ui.view">
+        <field name="name">quoter.area.branch.tree</field>
+        <field name="model">quoter.area.branch</field>
+        <field name="arch" type="xml">
+            <tree string="Ramas" default_order="sequence,name">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="color" widget="color_picker"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_quoter_area_branch_form" model="ir.ui.view">
+        <field name="name">quoter.area.branch.form</field>
+        <field name="model">quoter.area.branch</field>
+        <field name="arch" type="xml">
+            <form string="Rama">
+                <sheet>
+                    <group>
+                        <field name="sequence"/>
+                        <field name="name"/>
+                        <field name="color" widget="color_picker"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quoter_area_branch" model="ir.actions.act_window">
+        <field name="name">Ramas</field>
+        <field name="res_model">quoter.area.branch</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
     <!-- Líneas: acceso directo -->
     <record id="view_quoter_service_line_tree" model="ir.ui.view">
         <field name="name">quoter.service.line.tree</field>
         <field name="model">quoter.service.line</field>
         <field name="arch" type="xml">
-            <tree string="Líneas de servicio">
+            <tree string="Líneas de servicio" delete="0">
+                <field name="area_quoter_config_edit_mode" invisible="1"/>
                 <field name="area_id"/>
                 <field name="name"/>
-                <field name="separator_tag_id" optional="hide"/>
+                <field name="separator_tag_id" optional="hide" required="1"/>
                 <field name="is_default_product" optional="show"/>
                 <field name="manual_load" optional="show"/>
                 <field name="manual_total_load" invisible="1"/>
                 <field name="product_tmpl_id" optional="show"/>
+                <button name="action_open_level_ranges"
+                        type="object"
+                        string=" "
+                        icon="fa-clock-o"
+                        title="Horas por nivel"/>
+                <button name="action_remove_from_area"
+                        type="object"
+                        string=" "
+                        icon="fa-times"
+                        class="text-danger"
+                        title="Eliminar producto"
+                        confirm="¿Eliminar este producto del área?"
+                        attrs="{'invisible': ['|', ('area_quoter_config_edit_mode', '=', False), ('id', '=', False)]}"/>
             </tree>
         </field>
     </record>
@@ -305,27 +493,44 @@
         <field name="model">quoter.service.line</field>
         <field name="arch" type="xml">
             <form string="Línea de servicio">
+                <field name="area_quoter_config_edit_mode" invisible="1"/>
+                <header>
+                    <button name="action_remove_from_area"
+                            type="object"
+                            string="Eliminar"
+                            icon="fa-times"
+                            class="btn-secondary text-danger"
+                            confirm="¿Eliminar este producto del área?"
+                            attrs="{'invisible': [('area_quoter_config_edit_mode', '=', False)]}"/>
+                </header>
                 <sheet>
                     <group>
                         <field name="area_id"/>
                         <field name="name"/>
-                        <field name="separator_tag_id"/>
-                        <field name="is_default_product"/>
-                        <field name="manual_load"/>
-                        <field name="manual_total_load" invisible="1"/>
-                        <field name="product_tmpl_id" readonly="1"/>
+                        <field name="separator_tag_id" required="1"/>
+                <field name="is_default_product"/>
+                <field name="area_matrix_unify_branch_values" invisible="1"/>
+                <field name="unify_value"
+                       attrs="{'invisible': [('area_matrix_unify_branch_values', '=', False)]}"/>
+                <field name="area_matrix_shared_b_calculation" invisible="1"/>
+                <field name="shared_b_calc"
+                       string="Productos varios"
+                       attrs="{'invisible': [('area_matrix_shared_b_calculation', '=', False)]}"/>
+                <field name="manual_load"/>
+                <field name="manual_total_load" invisible="1"/>
+                <field name="product_tmpl_id" readonly="1"/>
                     </group>
                     <group string="Referencia interna (opcional)">
                         <field name="range_hour_ids" nolabel="1">
                             <tree editable="bottom" create="0" delete="0">
-                                <field name="area_range_id" force_save="1" readonly="1" string="Rango"/>
+                                <field name="area_range_id" force_save="1" readonly="1" string="Rol"/>
                                 <field name="hours"/>
                             </tree>
                         </field>
                     </group>
                     <group>
                         <button name="action_open_level_ranges" type="object"
-                                string="Horas por nivel (rangos del área)" class="btn-primary" icon="fa-clock-o"/>
+                                string="Horas por nivel (roles del área)" class="btn-primary" icon="fa-clock-o"/>
                         <button name="action_open_product_variant" type="object"
                                 string="Plantilla producto (técnico)" class="oe_link" icon="fa-cube"
                                 groups="base.group_system"/>

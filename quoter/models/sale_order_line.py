@@ -7,6 +7,23 @@ from odoo.exceptions import AccessError, ValidationError
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
 
+    _QUOTER_RANGE_HOUR_FIELD_NAMES = frozenset(
+        {
+            "quoter_range_1_hours",
+            "quoter_range_2_hours",
+            "quoter_range_3_hours",
+            "quoter_range_4_hours",
+        }
+    )
+
+    @api.model
+    def _quoter_is_real_db_id(self, record_id):
+        return isinstance(record_id, int) and record_id > 0
+
+    def read(self, fields=None, load="_classic_read"):
+        """Evita MissingError cuando el formulario web pide líneas ya borradas (p. ej. tras unlink en bloque)."""
+        return super(SaleOrderLine, self.exists()).read(fields=fields, load=load)
+
     def _quoter_range_hour_sudo(self):
         """ACL de horas por rango: lectura para vendedores; escritura técnica vía sudo en sincronización."""
         return self.env["sale.order.line.range.hour"].sudo()
@@ -16,6 +33,20 @@ class SaleOrderLine(models.Model):
         if not vals or vals.get("display_type"):
             return
         vals["product_uom_qty"] = 1.0
+
+    @staticmethod
+    def _quoter_ensure_accountable_required_fields(vals, product):
+        """Completa mínimos para evitar check SQL sale_order_line_accountable_required_fields."""
+        if not vals or vals.get("display_type") or not product:
+            return
+        vals.setdefault("product_id", product.id)
+        vals.setdefault("product_uom_qty", 1.0)
+        if not vals.get("product_uom"):
+            vals["product_uom"] = product.uom_id.id
+        if not vals.get("name"):
+            vals["name"] = (
+                product.get_product_multiline_description_sale() or product.display_name
+            )
 
     quoter_is_adjustment_line = fields.Boolean(
         string="Es ajuste",
@@ -59,14 +90,24 @@ class SaleOrderLine(models.Model):
     )
     quoter_separator_tag_id = fields.Many2one(
         comodel_name="quoter.line.separator.tag",
-        string="Etiqueta separadora",
+        string="Sección de cotizador",
         related="product_id.product_tmpl_id.quoter_service_line_id.separator_tag_id",
         store=True,
         readonly=True,
     )
+    quoter_product_separator_tag_color = fields.Integer(
+        string="Color sección (producto)",
+        related="quoter_separator_tag_id.color",
+        readonly=True,
+    )
+    quoter_area_separator_visual_mode = fields.Selection(
+        related="quoter_tab_area_id.separator_visual_mode",
+        string="Visual separador (área)",
+        readonly=True,
+    )
     quoter_separator_section_tag_id = fields.Many2one(
         comodel_name="quoter.line.separator.tag",
-        string="Etiqueta sección",
+        string="Sección de cotizador",
         copy=False,
         index=True,
     )
@@ -98,14 +139,12 @@ class SaleOrderLine(models.Model):
     )
     quoter_manual_load = fields.Boolean(
         string="Carga manual (cotizador)",
-        related="product_id.product_tmpl_id.quoter_service_line_id.manual_load",
-        store=True,
+        compute="_compute_quoter_manual_flags",
         readonly=True,
     )
     quoter_manual_total_load = fields.Boolean(
         string="Horas totales manual (cotizador)",
-        related="product_id.product_tmpl_id.quoter_service_line_id.manual_total_load",
-        store=True,
+        compute="_compute_quoter_manual_flags",
         readonly=True,
     )
     quoter_can_edit_range_hours = fields.Boolean(
@@ -154,6 +193,26 @@ class SaleOrderLine(models.Model):
         readonly=True,
         index=True,
     )
+    quoter_formula_volume = fields.Float(
+        string="Volumen",
+        default=1.0,
+        copy=True,
+        help="Volumen en cotización para fórmula por volumen. Por defecto 1; productos "
+        "de horas fijas usan 0.",
+    )
+    quoter_formula_is_fixed = fields.Boolean(
+        string="Horas fijas (fórmula)",
+        compute="_compute_quoter_formula_is_fixed",
+    )
+    quoter_formula_referencia = fields.Char(
+        string="Referencia volumen",
+        related="product_id.product_tmpl_id.quoter_formula_config_id.referencia_volumen",
+        readonly=True,
+    )
+    quoter_tab_area_is_formula = fields.Boolean(
+        string="Área fórmula (pestaña)",
+        compute="_compute_quoter_tab_area_is_formula",
+    )
     quoter_tab_area_id = fields.Many2one(
         comodel_name="quoter.professional.area",
         string="Área (pestaña cotizador)",
@@ -162,6 +221,30 @@ class SaleOrderLine(models.Model):
         index=True,
         help="Área de la pestaña donde se creó la línea; filtra líneas por área sin depender del producto.",
     )
+    quoter_block_id = fields.Many2one(
+        comodel_name="quoter.sale.order.area",
+        string="Bloque cotizador",
+        copy=False,
+        ondelete="set null",
+        index=True,
+    )
+
+    def _quoter_block_for_tab_area(self):
+        self.ensure_one()
+        order = self.order_id
+        area = self.quoter_tab_area_id
+        if not order or not area:
+            return self.env["quoter.sale.order.area"]
+        return order.quoter_area_block_ids.filtered(lambda b, a=area: b.area_id == a)[:1]
+
+    def _quoter_sync_line_block_link(self):
+        """Asocia la línea al bloque del pedido según `quoter_tab_area_id`."""
+        for line in self:
+            block = line._quoter_block_for_tab_area()
+            if line.quoter_block_id != block:
+                super(SaleOrderLine, line.with_context(quoter_skip_line_block_sync=True)).write(
+                    {"quoter_block_id": block.id if block else False}
+                )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -170,107 +253,488 @@ class SaleOrderLine(models.Model):
             if not order_id:
                 continue
             order = self.env["sale.order"].browse(order_id)
+            product = self.env["product.product"].browse(vals.get("product_id"))
+            if product.exists():
+                self._quoter_ensure_accountable_required_fields(vals, product)
             if order.exists() and order.is_quotation:
                 self._quoter_force_qty_one_in_vals(vals)
         self._quoter_prepare_sequences_on_create_vals(vals_list)
         lines = super().create(vals_list)
+        post_ctx = dict(self.env.context, quoter_skip_chatter_log=True)
+        lines.filtered(lambda l: l.order_id).with_context(
+            post_ctx, quoter_skip_line_block_sync=True
+        )._quoter_sync_line_block_link()
         qty_lines = lines.filtered(
             lambda l: l.order_id.is_quotation
             and not l.display_type
             and l.product_uom_qty != 1.0
         )
         if qty_lines:
-            super(SaleOrderLine, qty_lines).write({"product_uom_qty": 1.0})
+            super(SaleOrderLine, qty_lines.with_context(post_ctx)).write({"product_uom_qty": 1.0})
         quoter_lines = lines.filtered(
             lambda l: l.order_id.is_quotation
             and l.quoter_tab_area_id
             and l.product_id
             and getattr(l.product_id, "is_quoter_product", False)
         )
-        for line in quoter_lines:
+        for line in quoter_lines.with_context(post_ctx):
             line._quoter_sync_range_hours()
-            if not line.quoter_is_adjustment_line:
-                line._quoter_apply_level_template_hours()
+            area = line._quoter_effective_tab_area()
+            if (
+                not line.quoter_is_adjustment_line
+                and not line._quoter_manual_ranges_mode()
+                and not line._quoter_manual_total_mode()
+            ):
+                if area and area.hour_matrix_mode == "formula":
+                    line._quoter_apply_formula_hours()
+                else:
+                    line._quoter_apply_level_template_hours()
+            elif line._quoter_manual_ranges_mode() and not line.quoter_is_adjustment_line:
+                line._quoter_sync_slots_to_hour_rows_from_columns()
         for line in quoter_lines:
+            line.with_context(quoter_allow_zero_hours=line.quoter_is_adjustment_line)._quoter_prepare_hours_and_price()
             price, _warn = line._quoter_compute_unit_price_from_ranges()
-            line.write({"price_unit": price})
-        if not self.env.context.get("quoter_skip_separator_rebuild"):
-            lines._quoter_rebuild_separator_sections()
+            super(SaleOrderLine, line.with_context(post_ctx)).write({"price_unit": price})
+        quoter_lines.filtered("quoter_is_adjustment_line")._quoter_validate_adjustment_hours_balance()
+        if not self.env.context.get("quoter_skip_chatter_log"):
+            lines._quoter_log_lines_created()
+        if not self.env.context.get("quoter_skip_block_product_refresh"):
+            lines.mapped("order_id")._quoter_refresh_block_selectable_products()
         return lines
+
+    def _quoter_effective_order(self):
+        """Pedido cotización en onchange (form embebido puede omitir order_id en el payload)."""
+        self.ensure_one()
+        if self.order_id:
+            return self.order_id
+        order_id = self.env.context.get("default_order_id")
+        if order_id:
+            return self.env["sale.order"].browse(order_id)
+        if self.quoter_block_id:
+            return self.quoter_block_id.order_id
+        return self.env["sale.order"]
+
+    def _quoter_effective_tab_area(self):
+        """Área de pestaña en onchange (default del bloque / contexto)."""
+        self.ensure_one()
+        if self.quoter_tab_area_id:
+            return self.quoter_tab_area_id
+        area_id = self.env.context.get("default_quoter_tab_area_id")
+        if area_id:
+            return self.env["quoter.professional.area"].browse(area_id)
+        if self.quoter_block_id and self.quoter_block_id.area_id:
+            return self.quoter_block_id.area_id
+        return self.quoter_area_id
 
     def _quoter_block_level_for_line(self):
         self.ensure_one()
-        order = self.order_id
-        area = self.quoter_tab_area_id
+        order = self._quoter_effective_order()
+        area = self._quoter_effective_tab_area()
         if not order or not area:
             return self.env["quoter.complexity.level"]
         block = order.quoter_area_block_ids.filtered(lambda b, a=area: b.area_id == a)[:1]
+        if not block and self.quoter_block_id:
+            block = self.quoter_block_id
         return block.complexity_level_id if block else self.env["quoter.complexity.level"]
+
+    def _quoter_block_branch_for_line(self):
+        self.ensure_one()
+        order = self._quoter_effective_order()
+        area = self._quoter_effective_tab_area()
+        if not order or not area:
+            return self.env["quoter.area.branch"]
+        block = order.quoter_area_block_ids.filtered(lambda b, a=area: b.area_id == a)[:1]
+        if not block and self.quoter_block_id:
+            block = self.quoter_block_id
+        if block and block.branch_id:
+            return block.branch_id
+        return area._resolve_matrix_branch()
+
+    def _quoter_service_line(self):
+        """Línea de servicio del producto en el área de la pestaña (no el genérico del tmpl)."""
+        self.ensure_one()
+        if not self.product_id:
+            return self.env["quoter.service.line"]
+        tmpl = self.product_id.product_tmpl_id
+        QLine = self.env["quoter.service.line"]
+        area = self._quoter_effective_tab_area()
+        if area:
+            line = QLine.search(
+                [("product_tmpl_id", "=", tmpl.id), ("area_id", "=", area.id)],
+                limit=1,
+            )
+            if line:
+                return line
+        return tmpl.quoter_service_line_id
 
     def _quoter_manual_total_mode(self):
         self.ensure_one()
-        return bool(
-            self.order_id
-            and self.order_id.is_quotation
+        if self.quoter_is_adjustment_line:
+            return False
+        order = self._quoter_effective_order()
+        if not (
+            order
+            and order.is_quotation
             and self.product_id
             and getattr(self.product_id, "is_quoter_product", False)
-            and self.quoter_manual_total_load
-        )
+        ):
+            return False
+        qsl = self._quoter_service_line()
+        return bool(qsl and getattr(qsl, "manual_total_load", False))
 
     def _quoter_manual_ranges_mode(self):
         self.ensure_one()
+        if self.quoter_is_adjustment_line:
+            return False
+        order = self._quoter_effective_order()
         return bool(
-            self.order_id
-            and self.order_id.is_quotation
+            order
+            and order.is_quotation
             and self.product_id
             and getattr(self.product_id, "is_quoter_product", False)
             and self.quoter_manual_load
             and not self.quoter_manual_total_load
         )
 
+    def _quoter_is_new_line_record(self):
+        """Línea aún no persistida (NewId en x2many del bloque embebido)."""
+        self.ensure_one()
+        return not self._quoter_is_real_db_id(self.id)
+
+    def _quoter_should_validate_hours_on_edit(self):
+        """Validación por celda solo en líneas guardadas; la suma se controla al guardar."""
+        self.ensure_one()
+        if self.quoter_is_adjustment_line:
+            return False
+        if self.env.context.get("quoter_allow_zero_hours"):
+            return False
+        return not self._quoter_is_new_line_record()
+
+    def _quoter_bypass_per_role_hours_validation(self):
+        """Líneas de ajuste: sin validación >0 por celda; solo balance base+ajuste."""
+        self.ensure_one()
+        return bool(self.quoter_is_adjustment_line)
+
+    def _quoter_range_hours_sum(self):
+        self.ensure_one()
+        return sum(float(h.hours or 0.0) for h in self.quoter_range_hour_ids)
+
+    def _quoter_validate_quotation_line_hours_sum(self):
+        """Al guardar bloque/pedido: suma > 0 en líneas base; ajustes excluidos."""
+        Policy = self.env["quoter.hours.policy"].with_context(
+            quoter_allow_zero_hours=False
+        )
+        for line in self.exists():
+            if line.quoter_is_adjustment_line:
+                continue
+            if not line.order_id or not line.order_id.is_quotation:
+                continue
+            if line.display_type or not line.product_id:
+                continue
+            if not getattr(line.product_id, "is_quoter_product", False):
+                continue
+            if line._quoter_manual_total_mode():
+                Policy.validate_hours_non_negative(
+                    line.quoter_total_hours,
+                    _("Total horas"),
+                )
+                continue
+            if line._quoter_manual_ranges_mode():
+                Policy.validate_quotation_line_hours_sum(
+                    line._quoter_range_hours_sum(),
+                    line.product_id.display_name,
+                )
+                continue
+            Policy.validate_quotation_line_hours_sum(
+                line._quoter_range_hours_sum(),
+                line.product_id.display_name,
+            )
+
+    @api.depends(
+        "quoter_tab_area_id",
+        "quoter_tab_area_id.hour_matrix_mode",
+        "quoter_block_id",
+        "quoter_block_id.area_id",
+        "quoter_block_id.area_id.hour_matrix_mode",
+    )
+    def _compute_quoter_tab_area_is_formula(self):
+        for line in self:
+            area = line._quoter_effective_tab_area()
+            line.quoter_tab_area_is_formula = bool(
+                area and area.hour_matrix_mode == "formula"
+            )
+
+    def _quoter_formula_config_for_line(self):
+        self.ensure_one()
+        if not self.product_id:
+            return self.env["quoter.formula.product.config"]
+        area = self._quoter_effective_tab_area()
+        if not area or area.hour_matrix_mode != "formula":
+            return self.env["quoter.formula.product.config"]
+        return self.env["quoter.formula.product.config"].get_config_for_template(
+            self.product_id.product_tmpl_id, area
+        )
+
+    @api.depends(
+        "product_id",
+        "quoter_tab_area_id",
+        "quoter_block_id",
+        "quoter_block_id.area_id",
+    )
+    def _compute_quoter_formula_is_fixed(self):
+        for line in self:
+            config = line._quoter_formula_config_for_line()
+            line.quoter_formula_is_fixed = bool(
+                config and config.tipo_calculo == "fija"
+            )
+
+    def _quoter_formula_hours_map_for_config(self, config, area, volume):
+        """
+        Horas por rol según volumen en cotización.
+        Si volumen es 0 y el producto no es de horas fijas, todas las horas son 0
+        (evita horas «por debajo del umbral» de la fórmula con volumen 0).
+        """
+        if not config:
+            return {}
+        area = area or config.area_id
+        ranges = config._ordered_area_ranges(area=area)
+        if config.tipo_calculo == "fija":
+            return config.compute_hours_by_range(volume, area=area)
+        if float(volume or 0.0) <= 0.0:
+            return {r.id: 0.0 for r in ranges}
+        return config.compute_hours_by_range(volume, area=area)
+
+    def _quoter_apply_formula_output_hours(self, area, config, volume, raw_hours):
+        """
+        Horas finales por rol en cotización.
+        Volumen 0 (producto no fijo): siempre 0, sin piso de «mínimo tabla resultado».
+        """
+        if config and config.tipo_calculo != "fija" and float(volume or 0.0) <= 0.0:
+            return 0.0
+        return area._apply_output_hours_minimum(raw_hours)
+
+    def _quoter_is_formula_variable_volume_line(self):
+        """Producto de área fórmula con volumen (no horas fijas)."""
+        self.ensure_one()
+        if self.quoter_is_adjustment_line:
+            return False
+        area = self._quoter_effective_tab_area()
+        if not area or area.hour_matrix_mode != "formula" or not self.product_id:
+            return False
+        config = self._quoter_formula_config_for_line()
+        return bool(config and config.tipo_calculo != "fija")
+
+    def _quoter_effective_formula_volume(self):
+        """Volumen usado en fórmulas: mínimo 1 salvo productos de horas fijas (0)."""
+        self.ensure_one()
+        vol = float(self.quoter_formula_volume or 0.0)
+        if self._quoter_is_formula_variable_volume_line():
+            return vol if vol > 0.0 else 1.0
+        area = self._quoter_effective_tab_area()
+        if area and area.hour_matrix_mode == "formula":
+            config = self._quoter_formula_config_for_line()
+            if config and config.tipo_calculo == "fija":
+                return 0.0
+        return vol
+
+    def _quoter_write_formula_hour_columns_direct(self, range_hours):
+        """Persiste columnas de horas de fórmula sin inverse (evita pisar al guardar)."""
+        self.ensure_one()
+        if not isinstance(self.id, int):
+            return
+        merged = {}
+        hours_list = list(range_hours or [])[:4]
+        while len(hours_list) < 4:
+            hours_list.append(0.0)
+        for i in range(1, 5):
+            merged["quoter_range_%s_hours" % i] = float(hours_list[i - 1] or 0.0)
+        total = sum(merged.values())
+        assignments = ["%s = %%s" % key for key in merged]
+        params = list(merged.values()) + [total, self.id]
+        assignments.append("quoter_total_hours = %s")
+        self.env.cr.execute(
+            "UPDATE sale_order_line SET %s WHERE id = %%s" % ", ".join(assignments),
+            params,
+        )
+        self.invalidate_cache(
+            list(merged.keys()) + ["quoter_total_hours", "quoter_range_hour_ids"]
+        )
+
+    def _quoter_apply_formula_hours(self):
+        """Calcula horas por rol desde configuración por fórmula y volumen de la línea."""
+        FormulaConfig = self.env["quoter.formula.product.config"]
+        for line in self:
+            if line.quoter_is_adjustment_line:
+                continue
+            if line.quoter_manual_load or line.quoter_manual_total_load:
+                continue
+            order = line._quoter_effective_order()
+            if not order or not order.is_quotation:
+                continue
+            if not line.product_id or not getattr(line.product_id, "is_quoter_product", False):
+                continue
+            area = line._quoter_effective_tab_area()
+            if not area or area.hour_matrix_mode != "formula":
+                continue
+            tmpl = line.product_id.product_tmpl_id
+            config = FormulaConfig.get_config_for_template(tmpl, area)
+            if not config:
+                continue
+            volume = line._quoter_effective_formula_volume()
+            hours_map = line._quoter_formula_hours_map_for_config(config, area, volume)
+            line._quoter_sync_range_hours()
+            ranges = line._quoter_first_area_ranges(limit=4)
+            col_hours = []
+            for area_range in ranges:
+                raw = float(hours_map.get(area_range.id, 0.0))
+                h = line._quoter_apply_formula_output_hours(
+                    area, config, volume, raw
+                )
+                col_hours.append(h)
+                row = line.quoter_range_hour_ids.filtered(
+                    lambda hrow, a=area_range: hrow.area_range_id == a
+                )[:1]
+                if row:
+                    if line._quoter_is_real_db_id(row.id):
+                        line._quoter_range_hour_sudo().browse(row.ids).write(
+                            {"hours": h}
+                        )
+                    else:
+                        row.sudo().write({"hours": h})
+            if isinstance(line.id, int):
+                line._quoter_write_formula_hour_columns_direct(col_hours)
+            else:
+                for idx, h in enumerate(col_hours, start=1):
+                    line["quoter_range_%s_hours" % idx] = h
+                line.quoter_total_hours = sum(col_hours)
+
     def _quoter_apply_level_template_hours(self):
         """Copia horas de quoter.product.level.range (plantilla por nivel) a las filas de esta línea."""
         for line in self:
             if line.quoter_is_adjustment_line:
                 continue
-            if not line.order_id.is_quotation:
+            if line.quoter_manual_load or line.quoter_manual_total_load:
+                continue
+            order = line._quoter_effective_order()
+            if not order or not order.is_quotation:
                 continue
             if not line.product_id or not getattr(line.product_id, "is_quoter_product", False):
                 continue
-            area = line.quoter_tab_area_id
+            area = line._quoter_effective_tab_area()
             if not area:
                 continue
+            if area.hour_matrix_mode == "formula":
+                continue
             level = line._quoter_block_level_for_line()
+            branch = line._quoter_block_branch_for_line()
             if not level:
                 continue
             tmpl = line.product_id.product_tmpl_id
-            plr = line.env["quoter.product.level.range"].search(
-                [
-                    ("product_tmpl_id", "=", tmpl.id),
-                    ("complexity_level_id", "=", level.id),
-                ],
-                limit=1,
-            )
+            domain = [
+                ("product_tmpl_id", "=", tmpl.id),
+                ("complexity_level_id", "=", level.id),
+            ]
+            if branch:
+                domain.append(("branch_id", "=", branch.id))
+            plr = line.env["quoter.product.level.range"].search(domain, limit=1)
+            if not plr and branch:
+                plr = line.env["quoter.product.level.range"].search(
+                    [
+                        ("product_tmpl_id", "=", tmpl.id),
+                        ("complexity_level_id", "=", level.id),
+                    ],
+                    limit=1,
+                )
             if not plr:
                 continue
             line._quoter_sync_range_hours()
             for tmpl_row in plr.output_line_ids:
                 ar = tmpl_row.area_range_id
-                h = float(tmpl_row.hours)
+                h = area._apply_output_hours_minimum(tmpl_row.hours)
                 row = line.quoter_range_hour_ids.filtered(
                     lambda hrow, a=ar: hrow.area_range_id == a
                 )[:1]
                 if row:
-                    line._quoter_range_hour_sudo().browse(row.ids).write({"hours": h})
+                    if line._quoter_is_real_db_id(row.id):
+                        line._quoter_range_hour_sudo().browse(row.ids).write(
+                            {"hours": h}
+                        )
+                    else:
+                        row.sudo().write({"hours": h})
 
-    @api.onchange("product_id")
+    def _quoter_product_id_domain(self):
+        """Dominio de producto en cotización por área (excluye ya usados en otras líneas)."""
+        order = self.order_id
+        area = self.quoter_tab_area_id or self._quoter_effective_tab_area()
+        if not order or not order.is_quotation or not area:
+            return []
+        if area.hour_matrix_mode == "formula":
+            exclude_id = self.id if isinstance(self.id, int) else False
+            ids = self.env["product.product"]._quoter_product_ids_for_area_picker(
+                area, order, exclude_line_id=exclude_id
+            )
+            if self.product_id and self.product_id.id not in ids:
+                ids = list(ids) + [self.product_id.id]
+            return [
+                ("sale_ok", "=", True),
+                ("is_quoter_range_rate_product", "=", False),
+                ("id", "in", ids or [0]),
+            ]
+        if not self._quoter_block_level_for_line():
+            return [("id", "in", [])]
+        exclude_id = self.id if isinstance(self.id, int) else False
+        ids = self.env["product.product"]._quoter_product_ids_for_area_picker(
+            area, order, exclude_line_id=exclude_id
+        )
+        if self.product_id and self.product_id.id not in ids:
+            ids = list(ids) + [self.product_id.id]
+        return [
+            ("sale_ok", "=", True),
+            ("is_quoter_range_rate_product", "=", False),
+            ("id", "in", ids or [0]),
+        ]
+
+    @api.onchange("product_id", "quoter_tab_area_id", "order_id", "quoter_block_id")
     def _onchange_product_id_quoter_tab_area(self):
-        tmpl = self.product_id.product_tmpl_id
+        self = self.with_context(quoter_allow_zero_hours=True)
+        tmpl = self.product_id.product_tmpl_id if self.product_id else False
         if self.product_id and tmpl and tmpl.quoter_area_id and not self.quoter_tab_area_id:
             self.quoter_tab_area_id = tmpl.quoter_area_id
+        self._compute_quoter_manual_flags()
+        self._compute_quoter_can_edit_range_hours()
+        self._compute_quoter_can_edit_total_hours()
         self._quoter_sync_range_hours()
-        self._quoter_apply_level_template_hours()
-        self._quoter_onchange_compute_price_from_ranges()
+        area = self._quoter_effective_tab_area()
+        if not self._quoter_manual_ranges_mode() and not self._quoter_manual_total_mode():
+            if area and area.hour_matrix_mode == "formula":
+                cfg = (
+                    self.env["quoter.formula.product.config"].get_config_for_template(
+                        tmpl, area
+                    )
+                    if self.product_id and tmpl
+                    else self.env["quoter.formula.product.config"]
+                )
+                if cfg and cfg.tipo_calculo == "fija":
+                    self.quoter_formula_volume = 0.0
+                elif float(self.quoter_formula_volume or 0.0) <= 0.0:
+                    self.quoter_formula_volume = 1.0
+                self._quoter_apply_formula_hours()
+            else:
+                self._quoter_apply_level_template_hours()
+        elif self._quoter_manual_ranges_mode():
+            for idx in range(1, 5):
+                setattr(self, "quoter_range_%s_hours" % idx, 0.0)
+            self.quoter_total_hours = 0.0
+        chres = self._quoter_onchange_compute_price_from_ranges()
+        result = dict(chres) if isinstance(chres, dict) else {}
+        result["value"] = {
+            **(result.get("value") or {}),
+            **self._quoter_onchange_line_client_value(),
+        }
+        order = self._quoter_effective_order()
+        if order and order.is_quotation and self.quoter_tab_area_id:
+            result.setdefault("domain", {})["product_id"] = self._quoter_product_id_domain()
+        return result
 
     @api.onchange(
         "quoter_tab_area_id",
@@ -284,32 +748,14 @@ class SaleOrderLine(models.Model):
         if not order:
             return {}
         self._quoter_sync_range_hours()
-        self._quoter_apply_level_template_hours()
+        area = self._quoter_effective_tab_area()
+        if area and area.hour_matrix_mode == "formula":
+            self._quoter_apply_formula_hours()
+        else:
+            self._quoter_apply_level_template_hours()
         self._quoter_onchange_compute_price_from_ranges()
         if order.is_quotation and self.quoter_tab_area_id:
-            if not self._quoter_block_level_for_line():
-                return {"domain": {"product_id": [("id", "in", [])]}}
-            area = self.quoter_tab_area_id
-            svc_lines = self.env["quoter.service.line"].search([("area_id", "=", area.id)])
-            product_ids = svc_lines.mapped("product_id").filtered(
-                lambda p: p
-                and p.sale_ok
-                and not getattr(p, "is_quoter_range_rate_product", False)
-            )
-            used_products = order.order_line.filtered(
-                lambda l, a=area, current=self: l.quoter_tab_area_id == a
-                and not l.display_type
-                and l != current
-                and l.product_id
-                and not l.quoter_is_area_discount_total_line
-            ).mapped("product_id")
-            selectable = (product_ids - used_products) | self.product_id
-            domain = [
-                ("sale_ok", "=", True),
-                ("is_quoter_range_rate_product", "=", False),
-                ("id", "in", selectable.ids),
-            ]
-            return {"domain": {"product_id": domain}}
+            return {"domain": {"product_id": self._quoter_product_id_domain()}}
         if order.pricelist_id:
             domain = [
                 ("area_id.pricelist_id", "=", order.pricelist_id.id),
@@ -345,6 +791,68 @@ class SaleOrderLine(models.Model):
             }
         }
 
+    def _quoter_hours_by_range_for_price(self):
+        """Horas por rango para precio: O2M + columnas (form embebido / NewId)."""
+        self.ensure_one()
+        hours_by_range = {
+            h.area_range_id.id: float(h.hours or 0.0)
+            for h in self.quoter_range_hour_ids
+            if h.area_range_id
+        }
+        ranges = self._quoter_first_area_ranges(limit=4)
+        for idx, area_range in enumerate(ranges, start=1):
+            col_hours = float(getattr(self, "quoter_range_%s_hours" % idx, 0.0) or 0.0)
+            if col_hours:
+                hours_by_range[area_range.id] = col_hours
+        return hours_by_range
+
+    def _quoter_prepare_hours_and_price(self, for_onchange=False):
+        """Sincroniza horas (plantilla/manual) antes de calcular precio."""
+        for line in self:
+            if not line.product_id or not getattr(
+                line.product_id, "is_quoter_product", False
+            ):
+                continue
+            order = line._quoter_effective_order()
+            if not order or not order.is_quotation:
+                continue
+            if line._quoter_manual_ranges_mode() or line.quoter_is_adjustment_line:
+                if not for_onchange:
+                    ctx = dict(self.env.context)
+                    if line.quoter_is_adjustment_line:
+                        ctx["quoter_allow_zero_hours"] = True
+                    line.with_context(ctx)._quoter_sync_slots_to_hour_rows_from_columns()
+                if not line.quoter_is_adjustment_line:
+                    line._quoter_sync_range_hours()
+            else:
+                line._quoter_sync_range_hours()
+                area = line._quoter_effective_tab_area()
+                if not line._quoter_manual_total_mode():
+                    if area and area.hour_matrix_mode == "formula":
+                        line._quoter_apply_formula_hours()
+                    else:
+                        line._quoter_apply_level_template_hours()
+
+    @api.onchange("quoter_formula_volume")
+    def _onchange_quoter_formula_volume(self):
+        self = self.with_context(quoter_allow_zero_hours=True)
+        area = self._quoter_effective_tab_area()
+        if not area or area.hour_matrix_mode != "formula":
+            return {}
+        config = self._quoter_formula_config_for_line()
+        if config and config.tipo_calculo == "fija":
+            return {}
+        if float(self.quoter_formula_volume or 0.0) <= 0.0:
+            self.quoter_formula_volume = 1.0
+        self._quoter_apply_formula_hours()
+        chres = self._quoter_onchange_compute_price_from_ranges()
+        result = dict(chres) if isinstance(chres, dict) else {}
+        result["value"] = {
+            **(result.get("value") or {}),
+            **self._quoter_onchange_line_client_value(),
+        }
+        return result
+
     def _quoter_range_rate_variant(self, area, range_rec):
         """Variante del producto técnico tarifa/h para (área, rango)."""
         tmpl = self.env["product.template"].search(
@@ -362,22 +870,21 @@ class SaleOrderLine(models.Model):
         product = self.product_id
         if not product or not getattr(product, "is_quoter_product", False):
             return 0.0, False
-        order = self.order_id
+        order = self._quoter_effective_order()
         if not order:
             return 0.0, False
-        if not self.quoter_tab_area_id:
+        area = self._quoter_effective_tab_area()
+        if not area:
             return 0.0, False
 
         ranges = self._quoter_first_area_ranges(limit=4)
         if not ranges:
             return 0.0, False
-
-        area = self.quoter_tab_area_id
         partner = order.partner_id or self.env["res.partner"]
         pl = area.pricelist_id or order.pricelist_id
         if not pl:
             return 0.0, self._quoter_price_warning_no_pricelist()
-        hours_by_range = {h.area_range_id.id: h.hours for h in self.quoter_range_hour_ids if h.area_range_id}
+        hours_by_range = self._quoter_hours_by_range_for_price()
 
         total = 0.0
         for r in ranges:
@@ -394,6 +901,56 @@ class SaleOrderLine(models.Model):
             total += float(hours_by_range.get(r.id, 0.0)) * float(price_h)
         return total, False
 
+    def _quoter_sync_slots_to_hour_rows_from_columns(self):
+        """Carga manual / ajuste: persiste columnas en O2M (onchange, antes del precio)."""
+        for line in self:
+            if not (
+                line._quoter_manual_ranges_mode() or line.quoter_is_adjustment_line
+            ):
+                continue
+            ctx = self.env.context
+            if line.quoter_is_adjustment_line:
+                ctx = dict(ctx, quoter_allow_zero_hours=True)
+            for idx in range(1, 5):
+                line.with_context(ctx)._quoter_set_range_hours_by_index(
+                    idx, getattr(line, "quoter_range_%s_hours" % idx)
+                )
+            if line.quoter_is_adjustment_line and line._quoter_is_real_db_id(line.id):
+                line._quoter_validate_adjustment_hours_balance()
+
+    def _quoter_onchange_line_client_value(self):
+        """Valores para el form embebido: flags de edición, horas, precio y subtotal."""
+        line = self[:1]
+        if not line:
+            return {}
+        line._compute_quoter_manual_flags()
+        line._compute_quoter_can_edit_range_hours()
+        line._compute_quoter_can_edit_total_hours()
+        line._compute_quoter_formula_is_fixed()
+        values = {
+            "quoter_manual_load": line.quoter_manual_load,
+            "quoter_manual_total_load": line.quoter_manual_total_load,
+            "quoter_formula_is_fixed": line.quoter_formula_is_fixed,
+            "quoter_can_edit_range_hours": line.quoter_can_edit_range_hours,
+            "quoter_can_edit_total_hours": line.quoter_can_edit_total_hours,
+            "quoter_range_1_hours": line.quoter_range_1_hours,
+            "quoter_range_2_hours": line.quoter_range_2_hours,
+            "quoter_range_3_hours": line.quoter_range_3_hours,
+            "quoter_range_4_hours": line.quoter_range_4_hours,
+            "quoter_total_hours": line.quoter_total_hours,
+            "price_unit": line.price_unit,
+        }
+        order = line._quoter_effective_order()
+        if order and order.is_quotation:
+            line.product_uom_qty = 1.0
+            line._compute_amount()
+            values["price_subtotal"] = line.price_subtotal
+        return values
+
+    def _quoter_onchange_line_hours_value(self):
+        """Alias: parche de onchange de horas/precio en línea."""
+        return self._quoter_onchange_line_client_value()
+
     @api.onchange(
         "product_id",
         "quoter_tab_area_id",
@@ -407,156 +964,299 @@ class SaleOrderLine(models.Model):
         "quoter_range_hour_ids.hours",
     )
     def _quoter_onchange_compute_price_from_ranges(self):
-        for line in self:
+        warn = {}
+        ctx = dict(self.env.context, quoter_allow_zero_hours=True)
+        for line in self.with_context(ctx):
             if not line.product_id or not getattr(line.product_id, "is_quoter_product", False):
                 continue
-            price, warn = line._quoter_compute_unit_price_from_ranges()
+            order = line._quoter_effective_order()
+            if order and order.is_quotation:
+                line._quoter_prepare_hours_and_price(for_onchange=True)
+            price, w = line._quoter_compute_unit_price_from_ranges()
             line.price_unit = price
-            if warn:
-                return warn
-        return {}
+            if order and order.is_quotation and not line.display_type:
+                line.product_uom_qty = 1.0
+                line._compute_amount()
+            if line._quoter_manual_ranges_mode() or line.quoter_is_adjustment_line:
+                line.quoter_total_hours = sum(
+                    float(getattr(line, "quoter_range_%s_hours" % i, 0.0) or 0.0)
+                    for i in range(1, 5)
+                )
+            else:
+                line.quoter_total_hours = line._quoter_range_hours_sum()
+            if w and not warn:
+                warn = w
+        result = dict(warn) if isinstance(warn, dict) else {}
+        if len(self) == 1 and self.product_id:
+            result["value"] = dict(
+                result.get("value") or {},
+                **self._quoter_onchange_line_client_value(),
+            )
+        return result
+
+    def _quoter_commands_only_zero_adjustment_hours(self, commands):
+        """True si los comandos O2M solo ponen hours=0 (payload espurio del form web)."""
+        if not commands or not isinstance(commands, (list, tuple)):
+            return False
+        saw_hour_write = False
+        for cmd in commands:
+            if not isinstance(cmd, (list, tuple)) or len(cmd) < 2:
+                continue
+            if cmd[0] == 6:
+                return False
+            if cmd[0] in (0, 1) and len(cmd) >= 3 and isinstance(cmd[2], dict):
+                if "hours" in cmd[2]:
+                    saw_hour_write = True
+                    if float(cmd[2].get("hours") or 0.0) != 0.0:
+                        return False
+            elif cmd[0] in (2, 3, 4, 5):
+                return False
+        return saw_hour_write
+
+    def _quoter_filter_stale_adjustment_hour_vals(self, line, vals):
+        """Evita que el form embebido pise horas ya guardadas con ceros desincronizados."""
+        if not line.quoter_is_adjustment_line:
+            return vals
+        if self.env.context.get("quoter_force_adjustment_hours_write"):
+            return vals
+        vals = dict(vals)
+        hour_keys = self._QUOTER_RANGE_HOUR_FIELD_NAMES & set(vals.keys())
+        for key in hour_keys:
+            incoming = float(vals.get(key) or 0.0)
+            stored = float(line[key] or 0.0)
+            if incoming == 0.0 and stored != 0.0:
+                vals.pop(key, None)
+        if "quoter_range_hour_ids" in vals and self._quoter_commands_only_zero_adjustment_hours(
+            vals.get("quoter_range_hour_ids")
+        ):
+            if any(float(line[f] or 0.0) != 0.0 for f in self._QUOTER_RANGE_HOUR_FIELD_NAMES):
+                vals.pop("quoter_range_hour_ids", None)
+        elif "quoter_range_hour_ids" in vals and line.quoter_is_adjustment_line:
+            vals.pop("quoter_range_hour_ids", None)
+        return vals
 
     def write(self, vals):
+        """Ignora escrituras sobre líneas ya borradas (p. ej. BasicModel tras unlink en bloque)."""
+        recs = self.exists()
+        if not recs:
+            return True
+        vals = dict(vals or {})
+        adj_recs = recs.filtered("quoter_is_adjustment_line")
+        if adj_recs and len(adj_recs) == len(recs) and vals:
+            for line in adj_recs:
+                vals = line._quoter_filter_stale_adjustment_hour_vals(line, vals)
+            if not vals:
+                return True
         if vals and "product_uom_qty" in vals:
-            if any(line.order_id.is_quotation and not line.display_type for line in self):
+            if any(line.order_id.is_quotation and not line.display_type for line in recs):
                 vals = dict(vals)
                 vals["product_uom_qty"] = 1.0
-        res = super().write(vals)
+        if vals and "quoter_formula_volume" in vals and not self.env.context.get(
+            "quoter_skip_formula_vol_normalize"
+        ):
+            vol_in = float(vals.get("quoter_formula_volume") or 0.0)
+            if vol_in <= 0.0 and recs.filtered(
+                lambda l: l._quoter_is_formula_variable_volume_line()
+            ):
+                vals = dict(vals)
+                vals["quoter_formula_volume"] = 1.0
+        log_vals = dict(vals) if vals else {}
+        sync_range_cols = self._QUOTER_RANGE_HOUR_FIELD_NAMES & set(vals.keys())
+        res = super(SaleOrderLine, recs).write(vals)
+        if self.env.context.get("quoter_skip_quoter_line_write_hooks"):
+            trigger_hours = {
+                "quoter_range_1_hours",
+                "quoter_range_2_hours",
+                "quoter_range_3_hours",
+                "quoter_range_4_hours",
+                "quoter_range_hour_ids",
+                "quoter_total_hours",
+            }
+            if set(vals or {}) & trigger_hours:
+                recs.filtered(
+                    "quoter_is_adjustment_line"
+                )._quoter_validate_adjustment_hours_balance()
+            return res
+        if sync_range_cols:
+            for line in recs:
+                if line.quoter_is_adjustment_line:
+                    line.with_context(
+                        quoter_allow_zero_hours=True
+                    )._quoter_sync_slots_to_hour_rows_from_columns()
+                elif line._quoter_manual_ranges_mode():
+                    line._quoter_sync_slots_to_hour_rows_from_columns()
+        quoter_reprice = recs.filtered(
+            lambda l: l._quoter_effective_order().is_quotation
+            and l.product_id
+            and getattr(l.product_id, "is_quoter_product", False)
+        )
+        prepared_from_range_cols = self.env["sale.order.line"]
+        if sync_range_cols and quoter_reprice:
+            for line in quoter_reprice.filtered(lambda l: not l.quoter_is_adjustment_line):
+                line.with_context(self.env.context)._quoter_prepare_hours_and_price()
+                prepared_from_range_cols |= line
+            adj_reprice = quoter_reprice.filtered("quoter_is_adjustment_line")
+            if adj_reprice:
+                ctx = dict(self.env.context, quoter_allow_zero_hours=True)
+                adj_reprice.with_context(ctx)._quoter_sync_slots_to_hour_rows_from_columns()
+                for line in adj_reprice:
+                    price, _warn = line._quoter_compute_unit_price_from_ranges()
+                    super(SaleOrderLine, line).write({"price_unit": price})
+                prepared_from_range_cols |= adj_reprice
         trigger_fields = {
             "product_id",
             "order_id",
             "quoter_tab_area_id",
+            "quoter_formula_volume",
             "quoter_range_hour_ids",
             "quoter_range_1_hours",
             "quoter_range_2_hours",
             "quoter_range_3_hours",
             "quoter_range_4_hours",
+            "quoter_total_hours",
         }
+        if "quoter_formula_volume" in vals:
+            formula_lines = recs.filtered(
+                lambda l: l._quoter_effective_tab_area().hour_matrix_mode == "formula"
+                and not l.quoter_is_adjustment_line
+                and not l._quoter_manual_ranges_mode()
+                and not l._quoter_manual_total_mode()
+            )
+            if formula_lines:
+                formula_lines._quoter_apply_formula_hours()
         if set(vals.keys()) & trigger_fields:
-            for line in self:
-                if not line.product_id or not getattr(line.product_id, "is_quoter_product", False):
+            for line in recs.filtered(
+                lambda l: l.product_id
+                and getattr(l.product_id, "is_quoter_product", False)
+            ):
+                if not line._quoter_effective_order().is_quotation:
                     continue
+                if sync_range_cols and line in prepared_from_range_cols:
+                    price, _warn = line._quoter_compute_unit_price_from_ranges()
+                    super(SaleOrderLine, line).write({"price_unit": price})
+                    continue
+                if line.quoter_is_adjustment_line:
+                    ctx = dict(self.env.context, quoter_allow_zero_hours=True)
+                    line.with_context(ctx)._quoter_sync_slots_to_hour_rows_from_columns()
+                else:
+                    line.with_context(self.env.context)._quoter_prepare_hours_and_price()
                 price, _warn = line._quoter_compute_unit_price_from_ranges()
                 super(SaleOrderLine, line).write({"price_unit": price})
-        if (
-            not self.env.context.get("quoter_skip_separator_rebuild")
-            and {"product_id", "quoter_tab_area_id", "sequence", "display_type"} & set(vals.keys())
-        ):
-            self._quoter_rebuild_separator_sections()
+        if not self.env.context.get("quoter_skip_line_block_sync") and vals:
+            if {"quoter_tab_area_id", "order_id"} & set(vals.keys()):
+                recs.filtered(lambda l: l.order_id).with_context(
+                    quoter_skip_line_block_sync=True
+                )._quoter_sync_line_block_link()
+        if log_vals and not self.env.context.get("quoter_skip_chatter_log"):
+            recs._quoter_log_line_change(log_vals)
+        if set(vals or {}) & {"product_id", "quoter_tab_area_id", "order_id"}:
+            if not self.env.context.get("quoter_skip_block_product_refresh"):
+                recs.mapped("order_id")._quoter_refresh_block_selectable_products()
+        low_vol = recs.filtered(
+            lambda l: l._quoter_is_formula_variable_volume_line()
+            and float(l.quoter_formula_volume or 0.0) <= 0.0
+        )
+        if low_vol and not self.env.context.get("quoter_skip_formula_vol_normalize"):
+            low_vol.with_context(
+                quoter_skip_formula_vol_normalize=True,
+                quoter_skip_chatter_log=True,
+            ).write({"quoter_formula_volume": 1.0})
+            low_vol._quoter_apply_formula_hours()
+            for line in low_vol:
+                price, _warn = line._quoter_compute_unit_price_from_ranges()
+                super(SaleOrderLine, line).write({"price_unit": price})
+        trigger_hours = {
+            "quoter_range_1_hours",
+            "quoter_range_2_hours",
+            "quoter_range_3_hours",
+            "quoter_range_4_hours",
+            "quoter_range_hour_ids",
+            "quoter_total_hours",
+        }
+        if set(vals or {}) & trigger_hours:
+            recs.filtered("quoter_is_adjustment_line")._quoter_validate_adjustment_hours_balance()
         return res
 
     def unlink(self):
-        orders = self.mapped("order_id")
-        res = super().unlink()
-        if not self.env.context.get("quoter_skip_separator_rebuild") and orders:
-            self.with_context(quoter_skip_separator_rebuild=True)._quoter_rebuild_separator_sections_for_orders(
-                orders
-            )
+        recs = self.exists()
+        if not recs:
+            return True
+        orders = recs.mapped("order_id")
+        removed_logs = []
+        if not self.env.context.get("quoter_skip_chatter_log"):
+            for line in recs:
+                order = line.order_id
+                if (
+                    not order
+                    or not order.is_quotation
+                    or line.display_type
+                    or line.quoter_is_area_discount_total_line
+                    or not line.quoter_tab_area_id
+                ):
+                    continue
+                product_name = (
+                    line.product_id.display_name
+                    if line.product_id
+                    else (line.name or _("Línea"))
+                )
+                removed_logs.append(
+                    (order.id, line.quoter_tab_area_id.display_name, product_name)
+                )
+        orders_to_refresh = orders
+        res = super(SaleOrderLine, recs).unlink()
+        if not self.env.context.get("quoter_skip_block_product_refresh"):
+            orders_to_refresh._quoter_refresh_block_selectable_products()
+        if removed_logs:
+            for order_id, area_name, product_name in removed_logs:
+                order = self.env["sale.order"].browse(order_id)
+                if order.exists():
+                    order._quoter_message_post(
+                        _("<b>%s</b><br/>%s: %s")
+                        % (area_name, _("Producto eliminado"), product_name)
+                    )
         return res
-
-    @api.model
-    def _quoter_rebuild_separator_sections_for_orders(self, orders):
-        for order in orders.filtered("is_quotation"):
-            area_ids = order.order_line.mapped("quoter_tab_area_id")
-            for area in area_ids:
-                if not area:
-                    continue
-                order_lines = order.order_line.sorted(key=lambda l: (int(l.sequence or 0), l.id))
-                area_lines = order_lines.filtered(lambda l, a=area: l.quoter_tab_area_id == a)
-                section_lines = area_lines.filtered(
-                    lambda l: l.display_type == "line_section" and l.quoter_separator_section_tag_id
-                )
-                if section_lines:
-                    section_lines.with_context(quoter_skip_separator_rebuild=True).unlink()
-                    order_lines = order.order_line.sorted(key=lambda l: (int(l.sequence or 0), l.id))
-                    area_lines = order_lines.filtered(lambda l, a=area: l.quoter_tab_area_id == a)
-
-                base_lines = area_lines.filtered(lambda l: not l.display_type)
-                tagged_lines = base_lines.filtered(
-                    lambda l: l.product_id
-                    and l.quoter_separator_tag_id
-                    and not l.quoter_is_area_discount_total_line
-                )
-                if not base_lines:
-                    continue
-
-                # 1) Reordenar líneas por etiqueta (agrupación real).
-                ordered_product_lines = []
-                untagged_lines = base_lines.filtered(
-                    lambda l: not l.quoter_separator_tag_id and not l.quoter_is_area_discount_total_line
-                )
-                discount_total_lines = base_lines.filtered("quoter_is_area_discount_total_line")
-                grouped = []
-                seen_tag_ids = set()
-                for line in tagged_lines:
-                    tag = line.quoter_separator_tag_id
-                    if tag.id in seen_tag_ids:
-                        continue
-                    seen_tag_ids.add(tag.id)
-                    grouped.append(tag)
-                for tag in grouped:
-                    ordered_product_lines += tagged_lines.filtered(
-                        lambda l, t=tag: l.quoter_separator_tag_id == t
-                    ).sorted(key=lambda l: (int(l.sequence or 0), l.id))
-                ordered_lines = (
-                    ordered_product_lines
-                    + list(untagged_lines.sorted(key=lambda l: (int(l.sequence or 0), l.id)))
-                    + list(discount_total_lines.sorted(key=lambda l: (int(l.sequence or 0), l.id)))
-                )
-                if ordered_lines:
-                    start_seq = int(min([(line.sequence or 10) for line in ordered_lines]))
-                    for idx, line in enumerate(ordered_lines):
-                        target_seq = start_seq + idx
-                        if int(line.sequence or 0) != target_seq:
-                            line.with_context(quoter_skip_separator_rebuild=True).write(
-                                {"sequence": target_seq}
-                            )
-
-                # 2) Insertar separadores delante del primer producto de cada etiqueta.
-                for tag in grouped:
-                    first_line = order.order_line.filtered(
-                        lambda l, a=area, t=tag: l.quoter_tab_area_id == a
-                        and not l.display_type
-                        and l.product_id
-                        and l.quoter_separator_tag_id == t
-                        and not l.quoter_is_area_discount_total_line
-                    ).sorted(key=lambda l: (int(l.sequence or 0), l.id))[:1]
-                    if not first_line:
-                        continue
-                    pivot = int(first_line.sequence or 0)
-                    to_shift = order.order_line.filtered(
-                        lambda l, p=pivot: int(l.sequence or 0) >= p
-                    )
-                    for rec in to_shift.sorted(key=lambda l: (int(l.sequence or 0), l.id), reverse=True):
-                        rec.with_context(quoter_skip_separator_rebuild=True).write(
-                            {"sequence": int(rec.sequence or 0) + 1}
-                        )
-                    self.with_context(quoter_skip_separator_rebuild=True).create(
-                        {
-                            "order_id": order.id,
-                            "display_type": "line_section",
-                            "name": tag.display_name,
-                            "sequence": pivot,
-                            "quoter_tab_area_id": area.id,
-                            "quoter_separator_section_tag_id": tag.id,
-                            "quoter_separator_style_mode": area.separator_visual_mode or "none",
-                            "quoter_separator_color": int(tag.color or 0),
-                        }
-                    )
-
-    def _quoter_rebuild_separator_sections(self):
-        orders = self.mapped("order_id")
-        if orders:
-            self.with_context(quoter_skip_separator_rebuild=True)._quoter_rebuild_separator_sections_for_orders(
-                orders
-            )
 
     def _quoter_first_area_ranges(self, limit=4):
         self.ensure_one()
-        area = self.quoter_tab_area_id
+        area = self._quoter_effective_tab_area()
         if not area:
             return self.env["quoter.area.complexity.range"].browse()
         return area.area_range_ids.sorted(key=lambda r: (r.sequence, r.id))[:limit]
+
+    def _quoter_ensure_range_hour_rows(self):
+        """Crea filas de horas faltantes sin borrar las existentes (carga manual / onchange)."""
+        for line in self:
+            ranges = line._quoter_first_area_ranges(limit=4)
+            if not ranges:
+                continue
+            keep_ids = set(ranges.ids)
+            existing_rows = line.quoter_range_hour_ids
+            existing_by_range = {
+                h.area_range_id.id: h for h in existing_rows if h.area_range_id
+            }
+            in_db = isinstance(line.id, int)
+            if in_db:
+                existing = set(line.quoter_range_hour_ids.mapped("area_range_id").ids)
+                for r in ranges:
+                    if r.id not in existing:
+                        line._quoter_range_hour_sudo().create(
+                            {
+                                "sale_line_id": line.id,
+                                "area_range_id": r.id,
+                                "hours": 0.0,
+                            }
+                        )
+                line._quoter_range_hour_sudo().browse(
+                    existing_rows.filtered(
+                        lambda h: h.area_range_id.id not in keep_ids
+                    ).ids
+                ).unlink()
+            else:
+                for r in ranges:
+                    if r.id not in existing_by_range:
+                        line.quoter_range_hour_ids = [
+                            (0, 0, {"area_range_id": r.id, "hours": 0.0})
+                        ]
 
     def _quoter_sync_range_hours(self):
         """Alinear quoter_range_hour_ids con los rangos del área (máx. 4)."""
@@ -598,40 +1298,215 @@ class SaleOrderLine(models.Model):
                     commands.append((0, 0, {"area_range_id": r.id, "hours": hours}))
                 line.quoter_range_hour_ids = commands
 
-    @api.depends("quoter_range_hour_ids", "quoter_range_hour_ids.hours")
+    @api.depends(
+        "quoter_range_hour_ids",
+        "quoter_range_hour_ids.hours",
+        "quoter_range_1_hours",
+        "quoter_range_2_hours",
+        "quoter_range_3_hours",
+        "quoter_range_4_hours",
+        "quoter_is_adjustment_line",
+        "quoter_manual_load",
+    )
     def _compute_quoter_total_hours(self):
         for line in self:
-            line.quoter_total_hours = sum(line.quoter_range_hour_ids.mapped("hours"))
+            if line._quoter_manual_ranges_mode() or line.quoter_is_adjustment_line:
+                line.quoter_total_hours = sum(
+                    float(getattr(line, "quoter_range_%s_hours" % i, 0.0) or 0.0)
+                    for i in range(1, 5)
+                )
+            else:
+                line.quoter_total_hours = line._quoter_range_hours_sum()
+
+    @api.depends(
+        "quoter_tab_area_id",
+        "quoter_formula_volume",
+        "quoter_range_hour_ids",
+        "quoter_range_hour_ids.hours",
+        "quoter_range_hour_ids.area_range_id",
+        "quoter_range_hour_ids.area_range_id.sequence",
+    )
+    def _compute_quoter_range_hours(self):
+        # Ajuste / carga manual: columnas las define el usuario; no copiar desde O2M
+        # (si no, al crear filas O2M en 0 el compute almacenado pisa las columnas).
+        lines = self.filtered(
+            lambda l: not l._quoter_manual_ranges_mode()
+            and not l.quoter_is_adjustment_line
+        )
+        for line in lines:
+            vals = [0.0, 0.0, 0.0, 0.0]
+            ranges = line._quoter_first_area_ranges(limit=4)
+            if ranges:
+                by_range = {
+                    h.area_range_id.id: float(h.hours or 0.0)
+                    for h in line.quoter_range_hour_ids
+                    if h.area_range_id
+                }
+                for i, r in enumerate(ranges):
+                    vals[i] = by_range.get(r.id, 0.0)
+            line.quoter_range_1_hours = vals[0]
+            line.quoter_range_2_hours = vals[1]
+            line.quoter_range_3_hours = vals[2]
+            line.quoter_range_4_hours = vals[3]
+
+    def _quoter_write_adjustment_hour_columns_direct(self, hour_vals):
+        """Persiste columnas de horas en ajuste sin pasar por compute/inverse del form."""
+        self.ensure_one()
+        if not self.quoter_is_adjustment_line or not isinstance(self.id, int):
+            return
+        hour_vals = dict(hour_vals or {})
+        if not hour_vals:
+            return
+        merged = {}
+        for i in range(1, 5):
+            key = "quoter_range_%s_hours" % i
+            if key in hour_vals:
+                merged[key] = float(hour_vals[key] or 0.0)
+            else:
+                merged[key] = float(getattr(self, key, 0.0) or 0.0)
+        total = sum(merged.values())
+        assignments = ["%s = %%s" % key for key in merged]
+        params = list(merged.values()) + [total, self.id]
+        assignments.append("quoter_total_hours = %s")
+        self.env.cr.execute(
+            "UPDATE sale_order_line SET %s WHERE id = %%s"
+            % ", ".join(assignments),
+            params,
+        )
+        self.invalidate_cache(
+            list(merged.keys()) + ["quoter_total_hours", "quoter_range_hour_ids"]
+        )
+
+    def _quoter_set_range_hours_by_index(self, index_1based, value):
+        Policy = self.env["quoter.hours.policy"]
+        for line in self:
+            area = line._quoter_effective_tab_area()
+            if not area:
+                continue
+            if line.quoter_is_adjustment_line:
+                line._quoter_ensure_range_hour_rows()
+            else:
+                line._quoter_sync_range_hours()
+            ranges = line._quoter_first_area_ranges(limit=4)
+            if len(ranges) < index_1based:
+                continue
+            r = ranges[index_1based - 1]
+            row = line.quoter_range_hour_ids.filtered(
+                lambda h, ar=r: h.area_range_id == ar
+            )[:1]
+            hours_val = float(value or 0.0)
+            if not line._quoter_should_validate_hours_on_edit():
+                pass
+            elif line.quoter_is_adjustment_line:
+                pass
+            elif line._quoter_manual_ranges_mode():
+                if line._quoter_is_new_line_record():
+                    hours_val = Policy.validate_hours_non_negative(
+                        hours_val, _("Horas")
+                    )
+                else:
+                    hours_val = Policy.validate_hours_non_negative(
+                        hours_val, _("Horas")
+                    )
+            elif hours_val < 0.0:
+                raise ValidationError(_("Las horas no pueden ser negativas."))
+            if row:
+                # browse().write no actualiza filas O2M en NewId; usar el recordset en memoria.
+                row_ctx = self.env.context
+                if line.quoter_is_adjustment_line:
+                    row_ctx = dict(row_ctx, quoter_allow_zero_hours=True)
+                if self._quoter_is_real_db_id(row.id):
+                    line._quoter_range_hour_sudo().browse(row.ids).with_context(
+                        row_ctx
+                    ).write({"hours": hours_val})
+                else:
+                    row.with_context(row_ctx).sudo().write({"hours": hours_val})
+                continue
+            create_ctx = self.env.context
+            if line.quoter_is_adjustment_line:
+                create_ctx = dict(create_ctx, quoter_allow_zero_hours=True)
+            if isinstance(line.id, int):
+                line.with_context(create_ctx)._quoter_range_hour_sudo().create(
+                    {
+                        "sale_line_id": line.id,
+                        "area_range_id": r.id,
+                        "hours": hours_val,
+                    }
+                )
+            else:
+                line.quoter_range_hour_ids = [
+                    (0, 0, {"area_range_id": r.id, "hours": hours_val})
+                ]
+
+    def _inverse_quoter_range_1_hours(self):
+        for line in self:
+            line._quoter_set_range_hours_by_index(1, line.quoter_range_1_hours)
+
+    def _inverse_quoter_range_2_hours(self):
+        for line in self:
+            line._quoter_set_range_hours_by_index(2, line.quoter_range_2_hours)
+
+    def _inverse_quoter_range_3_hours(self):
+        for line in self:
+            line._quoter_set_range_hours_by_index(3, line.quoter_range_3_hours)
+
+    def _inverse_quoter_range_4_hours(self):
+        for line in self:
+            line._quoter_set_range_hours_by_index(4, line.quoter_range_4_hours)
+
+    @api.depends(
+        "product_id",
+        "quoter_tab_area_id",
+        "quoter_area_id",
+        "product_id.product_tmpl_id",
+    )
+    def _compute_quoter_manual_flags(self):
+        for line in self:
+            qsl = line._quoter_service_line()
+            line.quoter_manual_load = bool(qsl and getattr(qsl, "manual_load", False))
+            line.quoter_manual_total_load = bool(
+                qsl and getattr(qsl, "manual_total_load", False)
+            )
 
     @api.depends(
         "order_id.is_quotation",
         "product_id",
         "product_id.product_tmpl_id.is_quoter_product",
-        "product_id.product_tmpl_id.quoter_service_line_id.manual_load",
-        "product_id.product_tmpl_id.quoter_service_line_id.manual_total_load",
+        "quoter_manual_load",
+        "quoter_manual_total_load",
         "quoter_is_adjustment_line",
+        "quoter_block_id",
     )
     def _compute_quoter_can_edit_range_hours(self):
         for line in self:
-            if line.quoter_is_adjustment_line and line.order_id.is_quotation:
+            order = line._quoter_effective_order()
+            if line.quoter_is_adjustment_line and order.is_quotation:
                 line.quoter_can_edit_range_hours = True
-                continue
-            line.quoter_can_edit_range_hours = line._quoter_manual_ranges_mode()
+            elif line._quoter_manual_ranges_mode() and order and order.is_quotation:
+                line.quoter_can_edit_range_hours = True
+            else:
+                line.quoter_can_edit_range_hours = False
 
     @api.depends(
         "order_id.is_quotation",
         "product_id",
         "product_id.product_tmpl_id.is_quoter_product",
-        "product_id.product_tmpl_id.quoter_service_line_id.manual_total_load",
+        "quoter_manual_total_load",
         "quoter_tab_area_id",
         "quoter_is_adjustment_line",
+        "quoter_block_id",
     )
     def _compute_quoter_can_edit_total_hours(self):
         for line in self:
-            if line.quoter_is_adjustment_line and line.order_id.is_quotation:
+            order = line._quoter_effective_order()
+            if line.quoter_is_adjustment_line and order.is_quotation:
                 line.quoter_can_edit_total_hours = False
-                continue
-            line.quoter_can_edit_total_hours = line._quoter_manual_total_mode()
+            elif (
+                line._quoter_manual_total_mode() and line._quoter_is_new_line_record()
+            ):
+                line.quoter_can_edit_total_hours = True
+            else:
+                line.quoter_can_edit_total_hours = False
 
     @api.depends(
         "quoter_manual_load",
@@ -647,10 +1522,13 @@ class SaleOrderLine(models.Model):
                 line.quoter_manual_mode_note = ""
 
     def _inverse_quoter_total_hours(self):
+        Policy = self.env["quoter.hours.policy"]
         for line in self:
             if not line._quoter_manual_total_mode():
                 continue
-            value = float(line.quoter_total_hours or 0.0)
+            value = Policy.validate_hours_non_negative(
+                line.quoter_total_hours, _("Total horas")
+            )
             line._quoter_sync_range_hours()
             rows = line.quoter_range_hour_ids.sorted(key=lambda r: (r.area_range_id.sequence, r.id))
             if not rows:
@@ -665,59 +1543,8 @@ class SaleOrderLine(models.Model):
                 new_vals = [each] * len(rows)
             for row, new_h in zip(rows, new_vals):
                 row.write({"hours": new_h})
-            line._quoter_onchange_compute_price_from_ranges()
-
-    @api.depends(
-        "quoter_tab_area_id",
-        "quoter_range_hour_ids",
-        "quoter_range_hour_ids.hours",
-        "quoter_range_hour_ids.area_range_id",
-        "quoter_range_hour_ids.area_range_id.sequence",
-    )
-    def _compute_quoter_range_hours(self):
-        for line in self:
-            vals = [0.0, 0.0, 0.0, 0.0]
-            ranges = line._quoter_first_area_ranges(limit=4)
-            if ranges:
-                by_range = {h.area_range_id.id: h.hours for h in line.quoter_range_hour_ids}
-                for i, r in enumerate(ranges):
-                    vals[i] = float(by_range.get(r.id, 0.0))
-            line.quoter_range_1_hours = vals[0]
-            line.quoter_range_2_hours = vals[1]
-            line.quoter_range_3_hours = vals[2]
-            line.quoter_range_4_hours = vals[3]
-
-    def _quoter_set_range_hours_by_index(self, index_1based, value):
-        for line in self:
-            ranges = line._quoter_first_area_ranges(limit=4)
-            if len(ranges) < index_1based:
-                continue
-            r = ranges[index_1based - 1]
-            row = line.quoter_range_hour_ids.filtered(lambda h: h.area_range_id == r)[:1]
-            if row:
-                row.write({"hours": value or 0.0})
-                continue
-            if isinstance(line.id, int):
-                line._quoter_range_hour_sudo().create(
-                    {"sale_line_id": line.id, "area_range_id": r.id, "hours": value or 0.0}
-                )
-            else:
-                # en memoria (NewId): agregar fila
-                line.quoter_range_hour_ids = [
-                    (0, 0, {"area_range_id": r.id, "hours": value or 0.0})
-                ]
-
-    def _inverse_quoter_range_1_hours(self):
-        self._quoter_set_range_hours_by_index(1, self.quoter_range_1_hours)
-
-    def _inverse_quoter_range_2_hours(self):
-        self._quoter_set_range_hours_by_index(2, self.quoter_range_2_hours)
-
-    def _inverse_quoter_range_3_hours(self):
-        self._quoter_set_range_hours_by_index(3, self.quoter_range_3_hours)
-
-    def _inverse_quoter_range_4_hours(self):
-        self._quoter_set_range_hours_by_index(4, self.quoter_range_4_hours)
+            price, _warn = line._quoter_compute_unit_price_from_ranges()
+            line.price_unit = price
 
     def _prepare_invoice_line(self, **optional_values):
         res = super()._prepare_invoice_line(**optional_values)
@@ -744,6 +1571,151 @@ class SaleOrderLine(models.Model):
             if line.quoter_is_adjustment_line and not (line.quoter_adjustment_note or "").strip():
                 raise ValidationError(
                     _("La observación es obligatoria en líneas de ajuste.")
+                )
+
+    @api.constrains(
+        "product_id",
+        "quoter_tab_area_id",
+        "order_id",
+        "display_type",
+        "quoter_is_area_discount_total_line",
+    )
+    def _check_unique_product_per_area(self):
+        for line in self:
+            if (
+                not line.order_id.is_quotation
+                or line.display_type
+                or not line.product_id
+                or not line.quoter_tab_area_id
+                or line.quoter_is_area_discount_total_line
+                or line.quoter_is_adjustment_line
+            ):
+                continue
+            dup = self.search(
+                [
+                    ("order_id", "=", line.order_id.id),
+                    ("quoter_tab_area_id", "=", line.quoter_tab_area_id.id),
+                    ("product_id", "=", line.product_id.id),
+                    ("id", "!=", line.id),
+                    ("display_type", "=", False),
+                    ("quoter_is_area_discount_total_line", "=", False),
+                    ("quoter_is_adjustment_line", "=", False),
+                ],
+                limit=1,
+            )
+            if dup:
+                raise ValidationError(
+                    _("El producto «%s» ya está en esta área de la cotización.")
+                    % line.product_id.display_name
+                )
+
+    def _quoter_validate_adjustment_hours_balance(self):
+        """Las horas de ajuste no pueden dejar el total por rol por debajo de cero."""
+        for line in self.filtered("quoter_is_adjustment_line"):
+            parent = line.quoter_adjustment_parent_line_id
+            if not parent or not line.quoter_tab_area_id:
+                continue
+            ranges = line._quoter_first_area_ranges(limit=4)
+            parent_by_range = {
+                h.area_range_id.id: float(h.hours or 0.0)
+                for h in parent.quoter_range_hour_ids
+                if h.area_range_id
+            }
+            adj_by_range = {
+                h.area_range_id.id: float(h.hours or 0.0)
+                for h in line.quoter_range_hour_ids
+                if h.area_range_id
+            }
+            for ar in ranges:
+                adj_h = adj_by_range.get(ar.id, 0.0)
+                total = parent_by_range.get(ar.id, 0.0) + adj_h
+                if total < 0.0:
+                    raise ValidationError(
+                        _(
+                            "Las horas de ajuste en «%s» no pueden superar las horas base "
+                            "del producto en la categoría de recursos «%s»."
+                        )
+                        % (line.display_name, ar.display_name)
+                    )
+            base_total = sum(parent_by_range.get(ar.id, 0.0) for ar in ranges)
+            adj_total = sum(adj_by_range.get(ar.id, 0.0) for ar in ranges)
+            if base_total + adj_total < 0.0:
+                raise ValidationError(
+                    _("El ajuste de horas no puede dejar un total negativo en la línea.")
+                )
+
+    def _quoter_log_lines_created(self):
+        """Chatter al agregar líneas de producto en una cotización por área."""
+        for line in self:
+            order = line.order_id
+            if (
+                not order
+                or not order.is_quotation
+                or line.display_type
+                or line.quoter_is_area_discount_total_line
+                or not line.quoter_tab_area_id
+            ):
+                continue
+            area_name = line.quoter_tab_area_id.display_name
+            product_name = (
+                line.product_id.display_name
+                if line.product_id
+                else (line.name or _("Línea"))
+            )
+            parts = [_("Producto agregado: %s") % product_name]
+            if line.quoter_is_adjustment_line:
+                parts[0] = _("Línea de ajuste agregada: %s") % product_name
+            total_h = float(line.quoter_total_hours or 0.0)
+            if total_h:
+                parts.append("%s: %s" % (_("Total horas"), total_h))
+            order._quoter_message_post(
+                _("<b>%s</b><br/>%s") % (area_name, "<br/>".join(parts))
+            )
+
+    def _quoter_log_line_change(self, vals):
+        tracked = {
+            "product_id": _("Producto"),
+            "quoter_total_hours": _("Total horas"),
+            "quoter_adjustment_note": _("Observación ajuste"),
+            "price_unit": _("Precio unitario"),
+            "quoter_manual_load": _("Carga manual por rol"),
+            "quoter_manual_total_load": _("Carga manual total"),
+        }
+        hour_fields = {
+            "quoter_range_1_hours",
+            "quoter_range_2_hours",
+            "quoter_range_3_hours",
+            "quoter_range_4_hours",
+        }
+        for line in self:
+            order = line.order_id
+            if not order or not order.is_quotation or not line.quoter_tab_area_id:
+                continue
+            parts = []
+            area_name = line.quoter_tab_area_id.display_name
+            for fname in hour_fields:
+                if fname in vals:
+                    parts.append(
+                        "%s: %s → %s"
+                        % (_("Horas por categoría"), line[fname], vals[fname])
+                    )
+            for fname, label in tracked.items():
+                if fname not in vals:
+                    continue
+                old = line[fname]
+                new = vals[fname]
+                if fname == "product_id":
+                    old_disp = old.display_name if old else "-"
+                    new_p = self.env["product.product"].browse(new) if new else False
+                    new_disp = new_p.display_name if new_p else "-"
+                    if old_disp != new_disp:
+                        parts.append("%s: %s → %s" % (label, old_disp, new_disp))
+                elif old != new:
+                    parts.append("%s: %s → %s" % (label, old, new))
+            if parts:
+                order._quoter_message_post(
+                    _("<b>%s</b> — %s<br/>%s")
+                    % (area_name, line.name or line.product_id.display_name or "", "<br/>".join(parts))
                 )
 
     @api.depends("quoter_adjustment_child_line_ids")
@@ -816,6 +1788,8 @@ class SaleOrderLine(models.Model):
 
     def _quoter_validate_adjustment_create_permissions(self):
         self.ensure_one()
+        if self.display_type:
+            raise ValidationError(_("No se pueden crear ajustes sobre una línea separadora."))
         if self.quoter_is_adjustment_line:
             raise ValidationError(_("Solo se pueden crear ajustes desde una línea base."))
         if not self.order_id or not self.order_id.is_quotation:
@@ -844,26 +1818,75 @@ class SaleOrderLine(models.Model):
         base_seq = self._quoter_ensure_odd_sequence_for_adjustment_parent()
         self._quoter_shift_sequences_after(base_seq)
         adj_seq = int(self.sequence) + 1
-        new_line = self.create(
-            {
-                "order_id": self.order_id.id,
-                "product_id": self.product_id.id,
-                "name": _("Ajuste - %s") % (self.name or self.product_id.display_name),
-                "product_uom_qty": 1.0,
-                "product_uom": self.product_uom.id if self.product_uom else self.product_id.uom_id.id,
-                "tax_id": [(6, 0, self.tax_id.ids)],
-                "discount": 0.0,
-                "sequence": adj_seq,
-                "quoter_tab_area_id": self.quoter_tab_area_id.id,
-                "quoter_is_adjustment_line": True,
-                "quoter_adjustment_parent_line_id": self.id,
-                "quoter_adjustment_note": note,
-            }
-        )
+        adj_vals = {
+            "order_id": self.order_id.id,
+            "product_id": self.product_id.id,
+            "name": _("Ajuste - %s") % (self.name or self.product_id.display_name),
+            "product_uom_qty": 1.0,
+            "product_uom": self.product_uom.id if self.product_uom else self.product_id.uom_id.id,
+            "tax_id": [(6, 0, self.tax_id.ids)],
+            "discount": 0.0,
+            "sequence": adj_seq,
+            "quoter_tab_area_id": self.quoter_tab_area_id.id,
+            "quoter_is_adjustment_line": True,
+            "quoter_adjustment_parent_line_id": self.id,
+            "quoter_adjustment_note": note,
+        }
+        if self.quoter_block_id:
+            adj_vals["quoter_block_id"] = self.quoter_block_id.id
+        else:
+            block = self._quoter_block_for_tab_area()
+            if block:
+                adj_vals["quoter_block_id"] = block.id
+        new_line = self.with_context(quoter_allow_zero_hours=True).create(adj_vals)
+        if not new_line.quoter_block_id:
+            new_line._quoter_sync_line_block_link()
         new_line._quoter_sync_range_hours()
         for rh in new_line.quoter_range_hour_ids:
-            rh.write({"hours": 0.0})
+            rh.with_context(quoter_allow_zero_hours=True).write({"hours": 0.0})
         new_line._quoter_onchange_compute_price_from_ranges()
+        return new_line.id
+
+    @api.model
+    def quoter_persist_adjustment_line_hours_batch(self, payloads):
+        """Persiste horas de columnas en líneas de ajuste (form embebido antes de guardar)."""
+        if not payloads:
+            return True
+        hour_fields = self._QUOTER_RANGE_HOUR_FIELD_NAMES
+        ctx = dict(
+            self.env.context,
+            quoter_allow_zero_hours=True,
+            quoter_skip_chatter_log=True,
+            quoter_skip_block_product_refresh=True,
+            quoter_force_adjustment_hours_write=True,
+            quoter_skip_quoter_line_write_hooks=True,
+        )
+        Line = self.env["sale.order.line"].with_context(ctx)
+        for item in payloads:
+            if not isinstance(item, dict):
+                continue
+            line_id = item.get("id")
+            if not line_id:
+                continue
+            line = Line.browse(int(line_id)).exists()
+            if not line or not line.quoter_is_adjustment_line:
+                continue
+            hour_vals = {
+                key: float(item[key] or 0.0)
+                for key in hour_fields
+                if key in item
+            }
+            note = (item.get("quoter_adjustment_note") or "").strip()
+            if not hour_vals and not note:
+                continue
+            if hour_vals:
+                line._quoter_write_adjustment_hour_columns_direct(hour_vals)
+                line._quoter_sync_slots_to_hour_rows_from_columns()
+                price, _warn = line._quoter_compute_unit_price_from_ranges()
+                line.with_context(ctx).write({"price_unit": price})
+            if note:
+                line.with_context(ctx).write({"quoter_adjustment_note": note})
+            line._quoter_validate_adjustment_hours_balance()
         return True
 
     def action_quoter_add_adjustment_line(self):

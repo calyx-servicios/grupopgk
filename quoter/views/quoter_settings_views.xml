@@ -14,7 +14,7 @@
                             <div class="o_setting_right_pane">
                                 <span class="o_form_label">Ajustes de grupos</span>
                                 <div class="text-muted">
-                                    Gestionar grupos Gerente, Socio y grupos por área (TAX, Auditoría, BPO, Payroll).
+                                    Gestionar grupos Gerente, Socio y grupos por área (TAX, Auditoría, Fórmula, Payroll).
                                 </div>
                                 <div class="mt8">
                                     <button type="action"
