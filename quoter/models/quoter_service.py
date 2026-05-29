@@ -6,7 +6,7 @@ from odoo.exceptions import UserError, ValidationError
 
 class QuoterServiceLineRangeHour(models.Model):
     _name = "quoter.service.line.range.hour"
-    _description = "Horas de una línea por rango del área"
+    _description = "Horas de una línea por rol del área"
     _order = "area_range_sequence, id"
 
     line_id = fields.Many2one(
@@ -18,7 +18,7 @@ class QuoterServiceLineRangeHour(models.Model):
 
     area_range_id = fields.Many2one(
         comodel_name="quoter.area.complexity.range",
-        string="Rango del área",
+        string="Categoría de recursos",
         required=True,
         ondelete="cascade",
         index=True,
@@ -36,9 +36,15 @@ class QuoterServiceLineRangeHour(models.Model):
         (
             "uniq_line_area_range",
             "UNIQUE(line_id, area_range_id)",
-            "Ya hay horas cargadas para ese rango en esta línea.",
+            "Ya hay horas cargadas para ese rol en esta línea.",
         )
     ]
+
+    @api.constrains("hours")
+    def _check_hours_non_negative(self):
+        for row in self:
+            if (row.hours or 0.0) < 0.0:
+                raise ValidationError(_("Las horas no pueden ser negativas."))
 
     @api.constrains("area_range_id", "line_id")
     def _check_range_belongs_to_line_area(self):
@@ -48,7 +54,7 @@ class QuoterServiceLineRangeHour(models.Model):
                 continue
             if row.area_range_id not in area.area_range_ids:
                 raise ValidationError(
-                    _("El rango debe pertenecer a los rangos configurados en el área de la línea.")
+                    _("El rol debe pertenecer a los roles configurados en el área de la línea.")
                 )
 
 
@@ -77,8 +83,9 @@ class QuoterServiceLine(models.Model):
 
     separator_tag_id = fields.Many2one(
         comodel_name="quoter.line.separator.tag",
-        string="Etiqueta separadora",
-        ondelete="set null",
+        string="Sección de cotizador",
+        required=True,
+        ondelete="restrict",
         help="Para agrupar en vistas del pedido (se usará como separador entre líneas).",
     )
     is_default_product = fields.Boolean(
@@ -91,33 +98,36 @@ class QuoterServiceLine(models.Model):
         string="Carga manual",
         default=False,
         help="Indica que las horas de esta línea se cargan manualmente (p. ej. en pedido). "
-        "La aplicación en sale.order se puede enlazar después; conceptualmente similar a rangos unificados.",
+        "La aplicación en sale.order se puede enlazar después; conceptualmente similar a roles unificados.",
     )
-    manual_total_load = fields.Boolean(
-        string="Horas totales manual",
+    area_matrix_unify_branch_values = fields.Boolean(
+        related="area_id.matrix_unify_branch_values",
+        readonly=True,
+    )
+    area_matrix_shared_b_calculation = fields.Boolean(
+        related="area_id.matrix_shared_b_calculation",
+        readonly=True,
+    )
+    unify_value = fields.Boolean(
+        string="Unifica valor",
         default=False,
-        help="Permite editar horas totales en la cotización. Al cambiar el total, se redistribuye "
-        "proporcionalmente entre los rangos sin alterar la tabla resultado del área.",
+        help="Horas por rama (tabla debajo de A); no tiene filas propias en A ni B.",
     )
-
-    @api.onchange("manual_total_load")
-    def _onchange_manual_total_load(self):
-        for line in self:
-            if line.manual_total_load:
-                line.manual_load = False
-
-    @api.constrains("manual_load", "manual_total_load")
-    def _check_manual_modes_exclusive(self):
-        for line in self:
-            if line.manual_load and line.manual_total_load:
-                raise ValidationError(
-                    _("Seleccione solo un modo manual: rangos o total.")
-                )
+    shared_b_calc = fields.Boolean(
+        string="Productos varios",
+        default=False,
+        help="Entra en la fila «Productos varios» de tabla B; el resultado usa el factor B compartido.",
+    )
+    unify_branch_hour_ids = fields.One2many(
+        comodel_name="quoter.service.line.unify.branch.hour",
+        inverse_name="line_id",
+        string="Horas unificadas por rama",
+    )
 
     range_hour_ids = fields.One2many(
         comodel_name="quoter.service.line.range.hour",
         inverse_name="line_id",
-        string="Horas por rango del área",
+        string="Horas por rol del área",
     )
 
     product_id = fields.Many2one(
@@ -128,13 +138,164 @@ class QuoterServiceLine(models.Model):
     )
     product_tmpl_id = fields.Many2one(
         comodel_name="product.template",
-        string="Producto",
-        readonly=True,
+        string="Producto genérico",
         copy=False,
+        help="Enlace a un producto genérico del catálogo. Si se deja vacío, se genera un producto propio del área.",
+    )
+    is_generic_link = fields.Boolean(
+        string="Enlace genérico",
+        compute="_compute_is_generic_link",
+        store=True,
+    )
+    area_quoter_config_edit_mode = fields.Boolean(
+        related="area_id.quoter_config_edit_mode",
+        readonly=True,
+    )
+    area_hour_matrix_mode = fields.Selection(
+        related="area_id.hour_matrix_mode",
+        readonly=True,
+    )
+    quoter_formula_config_id = fields.Many2one(
+        related="product_tmpl_id.quoter_formula_config_id",
+        readonly=False,
+    )
+    quoter_formula_range_line_ids = fields.One2many(
+        related="quoter_formula_config_id.range_line_ids",
+        readonly=False,
+    )
+    quoter_formula_tipo_calculo = fields.Selection(
+        related="quoter_formula_config_id.tipo_calculo",
+        readonly=False,
+    )
+    quoter_formula_formula_kind = fields.Selection(
+        related="quoter_formula_config_id.formula_kind",
+        readonly=False,
+    )
+    quoter_formula_referencia_volumen = fields.Char(
+        related="quoter_formula_config_id.referencia_volumen",
+        readonly=False,
+    )
+    quoter_formula_volumen_default = fields.Float(
+        related="quoter_formula_config_id.volumen_default",
+        readonly=False,
+    )
+    quoter_formula_valor_minimo_volumen = fields.Float(
+        related="quoter_formula_config_id.valor_minimo_volumen",
+        readonly=False,
+    )
+    quoter_formula_horas_si_menor = fields.Float(
+        related="quoter_formula_config_id.horas_si_menor",
+        readonly=False,
+    )
+    quoter_formula_horas_base_si_mayor = fields.Float(
+        related="quoter_formula_config_id.horas_base_si_mayor",
+        readonly=False,
+    )
+    quoter_formula_minutos_excedente = fields.Float(
+        related="quoter_formula_config_id.minutos_por_unidad_excedente",
+        readonly=False,
+    )
+    quoter_formula_minutos_ae = fields.Float(
+        related="quoter_formula_config_id.minutos_ae",
+        readonly=False,
+    )
+    quoter_formula_minutos_sr = fields.Float(
+        related="quoter_formula_config_id.minutos_sr",
+        readonly=False,
+    )
+    quoter_formula_minutos_gte = fields.Float(
+        related="quoter_formula_config_id.minutos_gte",
+        readonly=False,
+    )
+    quoter_formula_minutos_socio = fields.Float(
+        related="quoter_formula_config_id.minutos_socio",
+        readonly=False,
+    )
+    quoter_formula_horas_ae = fields.Float(
+        related="quoter_formula_config_id.horas_ae",
+        readonly=False,
+    )
+    quoter_formula_horas_sr = fields.Float(
+        related="quoter_formula_config_id.horas_sr",
+        readonly=False,
+    )
+    quoter_formula_horas_gte = fields.Float(
+        related="quoter_formula_config_id.horas_gte",
+        readonly=False,
+    )
+    quoter_formula_horas_socio = fields.Float(
+        related="quoter_formula_config_id.horas_socio",
+        readonly=False,
     )
 
+    @api.depends("product_tmpl_id", "product_tmpl_id.is_quoter_generic_product")
+    def _compute_is_generic_link(self):
+        for line in self:
+            tmpl = line.product_tmpl_id
+            line.is_generic_link = bool(
+                tmpl and getattr(tmpl, "is_quoter_generic_product", False)
+            )
+
+    def _sync_unify_branch_hour_lines(self):
+        """Filas de horas por rama para productos con «Unifica valor»."""
+        UnifyHour = self.env["quoter.service.line.unify.branch.hour"]
+        for line in self:
+            if not line.unify_value:
+                line.unify_branch_hour_ids.unlink()
+                continue
+            area = line.area_id
+            if not area:
+                continue
+            branches = area._effective_branch_ids()
+            if not branches:
+                branches = area._default_quoter_branch()
+            keep_ids = set(branches.ids)
+            line.unify_branch_hour_ids.filtered(
+                lambda h: h.branch_id.id not in keep_ids
+            ).unlink()
+            existing = set(line.unify_branch_hour_ids.mapped("branch_id").ids)
+            for branch in branches.sorted(key=lambda b: (b.sequence, b.id)):
+                if branch.id not in existing:
+                    UnifyHour.create(
+                        {
+                            "line_id": line.id,
+                            "branch_id": branch.id,
+                            "hours": 0.0,
+                        }
+                    )
+
+    def _apply_unify_branch_hours_to_level_ranges(self, branch_id, hours):
+        """Propaga horas de la tabla por rama a todas las salidas del producto (todos los niveles y roles)."""
+        self.ensure_one()
+        if not self.unify_value or not self.product_tmpl_id:
+            return
+        area = self.area_id
+        LevelRange = self.env["quoter.product.level.range"]
+        tmpl_id = self.product_tmpl_id.id
+        if self.is_generic_link:
+            lrs = LevelRange.search(
+                [
+                    ("area_id", "=", False),
+                    ("product_tmpl_id", "=", tmpl_id),
+                    ("branch_id", "=", branch_id),
+                ]
+            )
+        else:
+            lrs = LevelRange.search(
+                [
+                    ("area_id", "=", area.id),
+                    ("product_tmpl_id", "=", tmpl_id),
+                    ("branch_id", "=", branch_id),
+                ]
+            )
+        h = area._apply_output_hours_minimum(float(hours or 0.0))
+        ctx = dict(self.env.context, quoter_skip_output_hours_guard=True)
+        for lr in lrs:
+            if lr.output_line_ids:
+                lr.output_line_ids.with_context(ctx).write({"hours": h})
+
     def _sync_range_hour_lines(self):
-        """Filas de horas alineadas con los rangos definidos en el área."""
+        """Filas de horas alineadas con los roles definidos en el área."""
         Hour = self.env["quoter.service.line.range.hour"]
         for line in self:
             ranges = line.area_id.area_range_ids
@@ -157,7 +318,7 @@ class QuoterServiceLine(models.Model):
                     )
 
     def _sync_product_level_ranges(self):
-        """Crear filas quoter.product.level.range por nivel del área (sin borrar)."""
+        """Crear filas quoter.product.level.range por nivel × rama del área (sin borrar)."""
         LevelRange = self.env["quoter.product.level.range"]
         for line in self:
             tmpl = line.product_tmpl_id or (line.product_id and line.product_id.product_tmpl_id)
@@ -165,21 +326,29 @@ class QuoterServiceLine(models.Model):
             if not tmpl or not area:
                 continue
             levels = area._complexity_levels_ordered()
+            branches = area._effective_branch_ids()
             if not levels:
                 continue
             existing = LevelRange.search(
-                [("product_tmpl_id", "=", tmpl.id), ("complexity_level_id", "in", levels.ids)]
-            ).mapped("complexity_level_id")
-            missing = levels - existing
-            if not missing:
-                continue
-            for lev in missing:
-                LevelRange.create(
-                    {
-                        "product_tmpl_id": tmpl.id,
-                        "complexity_level_id": lev.id,
-                    }
-                )
+                [
+                    ("product_tmpl_id", "=", tmpl.id),
+                    ("complexity_level_id", "in", levels.ids),
+                    ("branch_id", "in", branches.ids),
+                ]
+            )
+            existing_keys = {(r.complexity_level_id.id, r.branch_id.id) for r in existing}
+            for lev in levels:
+                for branch in branches:
+                    key = (lev.id, branch.id)
+                    if key in existing_keys:
+                        continue
+                    LevelRange.create(
+                        {
+                            "product_tmpl_id": tmpl.id,
+                            "complexity_level_id": lev.id,
+                            "branch_id": branch.id,
+                        }
+                    )
 
     def _service_title(self):
         self.ensure_one()
@@ -235,10 +404,88 @@ class QuoterServiceLine(models.Model):
         if extra:
             extra.write({"active": False})
 
+    def _is_linked_generic_product(self):
+        self.ensure_one()
+        tmpl = self.product_tmpl_id or (self.product_id and self.product_id.product_tmpl_id)
+        return bool(tmpl and getattr(tmpl, "is_quoter_generic_product", False))
+
+    @api.constrains("unify_value", "area_id")
+    def _check_unify_value_requires_area_flag(self):
+        for line in self.filtered("unify_value"):
+            if not line.area_id.matrix_unify_branch_values:
+                raise ValidationError(
+                    _(
+                        "«Unifica valor» solo puede usarse si el área tiene activada "
+                        "«Unificar valores por rama» en Reglas de tablas."
+                    )
+                )
+
+    @api.constrains("shared_b_calc", "area_id")
+    def _check_shared_b_calc_requires_area_flag(self):
+        for line in self.filtered("shared_b_calc"):
+            if not line.area_id.matrix_shared_b_calculation:
+                raise ValidationError(
+                    _(
+                        "«Productos varios» solo puede usarse si el área tiene activada "
+                        "«Productos varios en tabla B» en Reglas de tablas."
+                    )
+                )
+
+    @api.constrains("area_id", "product_tmpl_id")
+    def _check_unique_generic_product_per_area(self):
+        for line in self.filtered("product_tmpl_id"):
+            if not line._is_linked_generic_product():
+                continue
+            dup = self.search(
+                [
+                    ("area_id", "=", line.area_id.id),
+                    ("product_tmpl_id", "=", line.product_tmpl_id.id),
+                    ("id", "!=", line.id),
+                ],
+                limit=1,
+            )
+            if dup:
+                raise ValidationError(
+                    _("El producto genérico «%s» ya está en el área «%s».")
+                    % (line.product_tmpl_id.display_name, line.area_id.display_name)
+                )
+
+    def _link_generic_product_template(self):
+        """Enlaza la línea a un product.template genérico existente (sin crear plantilla nueva)."""
+        for line in self:
+            tmpl = line.product_tmpl_id
+            if not tmpl or not getattr(tmpl, "is_quoter_generic_product", False):
+                continue
+            variant = tmpl.product_variant_ids[:1]
+            if not variant:
+                raise UserError(
+                    _("El producto genérico «%s» no tiene variante.") % tmpl.display_name
+                )
+            super(QuoterServiceLine, line.with_context(quoter_skip_line_product_resync=True)).write(
+                {
+                    "name": line.name or tmpl.name,
+                    "product_id": variant.id,
+                    "product_tmpl_id": tmpl.id,
+                }
+            )
+            line._sync_range_hour_lines()
+            line._sync_product_level_ranges()
+            line._sync_default_product_flag()
+
+    @api.onchange("product_tmpl_id")
+    def _onchange_product_tmpl_id_generic_link(self):
+        if self.product_tmpl_id and self.product_tmpl_id.is_quoter_generic_product:
+            self.name = self.product_tmpl_id.name
+            self.product_id = self.product_tmpl_id.product_variant_ids[:1]
+
     def _ensure_quoter_product_simple(self):
         self.ensure_one()
         line = self
         if not line.area_id:
+            return
+        if line._is_linked_generic_product():
+            line._sync_product_template_link()
+            line._sync_default_product_flag()
             return
         Template = self.env["product.template"]
         name = line._get_quoter_product_template_name()
@@ -283,6 +530,10 @@ class QuoterServiceLine(models.Model):
         super(QuoterServiceLine, line).write({"product_id": variant.id})
         super(QuoterServiceLine, line).write({"product_tmpl_id": tmpl.id})
         line._sync_default_product_flag()
+        if line.area_id.hour_matrix_mode == "formula":
+            self.env["quoter.formula.product.config"].get_config_for_template(
+                tmpl, line.area_id
+            )
 
     def _ensure_quoter_product(self):
         for line in self:
@@ -292,6 +543,10 @@ class QuoterServiceLine(models.Model):
             line._ensure_quoter_product_simple()
             line._normalize_single_variant_product()
             line._sync_service_line_primary_variant()
+            if line.area_id.hour_matrix_mode == "formula" and line.product_tmpl_id:
+                self.env["quoter.formula.product.config"].get_config_for_template(
+                    line.product_tmpl_id, line.area_id
+                )
 
     def _sync_service_line_primary_variant(self):
         """Deja product_id en la única variante canónica del template."""
@@ -307,6 +562,7 @@ class QuoterServiceLine(models.Model):
                 super(QuoterServiceLine, line).write({"product_id": chosen.id})
 
     def _unlink_quoter_product_template(self):
+        ServiceLine = self.env["quoter.service.line"]
         for line in self:
             if not line.product_id and not line.product_tmpl_id:
                 continue
@@ -314,7 +570,11 @@ class QuoterServiceLine(models.Model):
             super(QuoterServiceLine, line).write(
                 {"product_id": False, "product_tmpl_id": False}
             )
-            if tmpl.exists() and tmpl.is_quoter_product:
+            if not tmpl.exists():
+                continue
+            if getattr(tmpl, "is_quoter_generic_product", False):
+                continue
+            if tmpl.is_quoter_product:
                 tmpl.unlink()
 
     def _quoter_notify_sale_orders_selectable_products(self):
@@ -323,13 +583,24 @@ class QuoterServiceLine(models.Model):
             return
         orders = self.env["sale.order"].search([("quoter_area_ids", "in", areas.ids)])
         if orders:
-            orders._quoter_refresh_selectable_products()
+            orders._quoter_refresh_block_selectable_products()
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get("product_tmpl_id"):
+                tmpl = self.env["product.template"].browse(vals["product_tmpl_id"])
+                if tmpl.is_quoter_generic_product:
+                    vals.setdefault("name", tmpl.name)
+                    if not vals.get("product_id") and tmpl.product_variant_ids:
+                        vals["product_id"] = tmpl.product_variant_ids[:1].id
         lines = super().create(vals_list)
-        lines._sync_range_hour_lines()
-        lines._ensure_quoter_product()
+        generic_lines = lines.filtered(lambda l: l._is_linked_generic_product())
+        area_lines = lines - generic_lines
+        generic_lines._link_generic_product_template()
+        area_lines._sync_range_hour_lines()
+        lines._sync_unify_branch_hour_lines()
+        area_lines._ensure_quoter_product()
         lines._sync_product_level_ranges()
         lines._sync_product_template_link()
         lines._sync_default_product_flag()
@@ -340,10 +611,45 @@ class QuoterServiceLine(models.Model):
         res = super().write(vals)
         if self.env.context.get("quoter_skip_line_product_resync"):
             return res
-        if "area_id" in vals:
-            self._sync_range_hour_lines()
-        if {"name", "area_id"} & set(vals.keys()):
-            self._ensure_quoter_product()
+        if "product_tmpl_id" in vals:
+            to_link = self.filtered(
+                lambda l: l.product_tmpl_id
+                and getattr(l.product_tmpl_id, "is_quoter_generic_product", False)
+            )
+            if to_link:
+                to_link._link_generic_product_template()
+            other = self - to_link
+            if other and {"name", "area_id"} & set(vals.keys()):
+                other._ensure_quoter_product()
+        else:
+            if "area_id" in vals:
+                self._sync_range_hour_lines()
+            if {"area_id", "unify_value"} & set(vals.keys()):
+                self._sync_unify_branch_hour_lines()
+            if "shared_b_calc" in vals:
+                for line in self.filtered("shared_b_calc"):
+                    if line.area_id:
+                        line.area_id._sync_shared_matrix_b_rows()
+                        line.area_id._recompute_shared_b_calc_outputs()
+            if "unify_value" in vals:
+                LevelRange = self.env["quoter.product.level.range"]
+                for line in self:
+                    if not line.area_id or not line.product_tmpl_id:
+                        continue
+                    domain = [("product_tmpl_id", "=", line.product_tmpl_id.id)]
+                    if line.is_generic_link:
+                        domain.append(("area_id", "=", False))
+                    else:
+                        domain.append(("area_id", "=", line.area_id.id))
+                    lrs = LevelRange.search(domain)
+                    if lrs:
+                        lrs.with_context(
+                            quoter_sync_matrix_area_id=line.area_id.id
+                        )._sync_matrix_rows()
+            if {"name", "area_id"} & set(vals.keys()):
+                non_generic = self.filtered(lambda l: not l._is_linked_generic_product())
+                non_generic._ensure_quoter_product()
+        if {"name", "area_id", "product_tmpl_id"} & set(vals.keys()):
             self._sync_product_level_ranges()
         if "is_default_product" in vals:
             self._sync_default_product_flag()
@@ -359,8 +665,25 @@ class QuoterServiceLine(models.Model):
         if areas:
             orders = self.env["sale.order"].search([("quoter_area_ids", "in", areas.ids)])
             if orders:
-                orders._quoter_refresh_selectable_products()
+                orders._quoter_refresh_block_selectable_products()
         return res
+
+    def action_remove_from_area(self):
+        """Eliminar producto del área (botón × en la pestaña Productos)."""
+        blocked = self.filtered(
+            lambda line: line.area_id and not line.area_id.quoter_config_edit_mode
+        )
+        if blocked:
+            raise UserError(
+                _("Use «Abrir editor de tabla» en el área para poder eliminar productos.")
+            )
+        without_id = self.filtered(lambda line: not line.id)
+        if without_id:
+            raise UserError(
+                _("Guarde el área antes de eliminar productos recién agregados.")
+            )
+        self.unlink()
+        return True
 
     def action_open_product_variant(self):
         self.ensure_one()
@@ -387,7 +710,7 @@ class QuoterServiceLine(models.Model):
             raise UserError(_("No se pudo generar el producto para esta línea."))
         return {
             "type": "ir.actions.act_window",
-            "name": _("Horas por nivel (rangos del área)"),
+            "name": _("Horas por nivel (roles del área)"),
             "res_model": "quoter.product.level.range",
             "view_mode": "tree,form",
             "domain": [("product_tmpl_id", "=", tmpl.id)],

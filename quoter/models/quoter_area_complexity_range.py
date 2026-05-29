@@ -5,7 +5,7 @@ from odoo import api, fields, models
 
 class QuoterAreaComplexityRange(models.Model):
     _name = "quoter.area.complexity.range"
-    _description = "Rango reusable para áreas (p. ej. Rango 1, Rango 2)"
+    _description = "Categoría de recursos reusable para áreas"
     _order = "sequence, id"
 
     name = fields.Char(

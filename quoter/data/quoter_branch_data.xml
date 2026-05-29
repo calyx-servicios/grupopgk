@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="quoter_area_branch_unique" model="quoter.area.branch">
+        <field name="name">Rama única</field>
+        <field name="sequence">1</field>
+        <field name="color">0</field>
+        <field name="selectable">False</field>
+    </record>
+</odoo>

@@ -3,18 +3,38 @@
 import json
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import MissingError, UserError, ValidationError
 from odoo.tools.float_utils import float_is_zero
 from odoo.tools import html_escape
 from odoo.tools.misc import formatLang
 
+from .quoter_chatter import (
+    quoter_chatter_collect_changes,
+    quoter_chatter_format_value,
+    quoter_chatter_should_log,
+)
+
 
 class SaleOrder(models.Model):
     _inherit = "sale.order"
+
+    _QUOTER_ORDER_CHATTER_FIELDS = {
+        "quoter_manager_id": _("Gerente responsable"),
+        "quoter_partner_id": _("Socio asignado"),
+        "quoter_q_competitors": _("Pregunta: otros estudios"),
+        "quoter_q_budget": _("Pregunta: presupuesto del cliente"),
+        "quoter_q_current_payment": _("Pregunta: pago al proveedor actual"),
+        "quoter_q_notes": _("Observaciones estratégicas"),
+        "date_order": _("Fecha de cotización"),
+        "validity_date": _("Fecha de expiración"),
+        "payment_term_id": _("Condición de pago"),
+        "client_order_ref": _("Referencia del cliente"),
+        "note": _("Notas"),
+    }
     
     is_quotation = fields.Boolean(
         string="Es Cotización",
-        default=False,
+        default=lambda self: bool(self.env.context.get("default_is_quotation")),
         help="Indica si esta orden es una cotización profesional",
     )
     quoter_menu_context = fields.Boolean(
@@ -40,13 +60,13 @@ class SaleOrder(models.Model):
         comodel_name="res.users",
         string="Gerente responsable",
         copy=False,
-        help="Usuario responsable (filtrado por grupo Gerente).",
+        help="Usuario responsable (grupo Quoter - Gerente).",
     )
     quoter_partner_id = fields.Many2one(
         comodel_name="res.users",
         string="Socio asignado",
         copy=False,
-        help="Usuario socio (filtrado por grupo Socio).",
+        help="Usuario socio (grupo Quoter - Socio).",
     )
 
     quoter_user_can_edit_manager = fields.Boolean(
@@ -95,6 +115,13 @@ class SaleOrder(models.Model):
         size=140,
         copy=False,
     )
+    quoter_is_first_quotation = fields.Boolean(
+        string="Primera cotización",
+        default=False,
+        copy=False,
+        help="En áreas de Auditoría, fija el nivel de riesgo al más alto (mayor id) "
+        "en los bloques del pedido.",
+    )
 
     quoter_area_ids = fields.Many2many(
         comodel_name="quoter.professional.area",
@@ -102,7 +129,7 @@ class SaleOrder(models.Model):
         column1="order_id",
         column2="area_id",
         string="Áreas",
-        domain=lambda self: self._quoter_domain_available_areas(),
+        domain="[('active', '=', True), ('cerrado', '=', True)]",
         help="Áreas de la cotización (máx. 5). Cada una tiene su pestaña en el cotizador.",
     )
     quoter_primary_area_id = fields.Many2one(
@@ -124,10 +151,10 @@ class SaleOrder(models.Model):
         help="Total de la línea de pedido que agrupa descuentos/recargos globales por área (sin impuestos).",
     )
 
-    @api.depends()
+    @api.depends("is_quotation")
     def _compute_quoter_user_can_edit_fields(self):
-        can_mgr = self.env.user.has_group("quoter.group_quoter_manager")
-        can_partner = self.env.user.has_group("quoter.group_quoter_partner")
+        can_mgr = self.env.user.has_group("quoter.group_quoter_manager") or self.env.user.has_group("base.group_system")
+        can_partner = self.env.user.has_group("quoter.group_quoter_partner") or self.env.user.has_group("base.group_system")
         current_user = self.env.user
         for order in self:
             order.quoter_user_can_edit_manager = bool(can_mgr)
@@ -141,54 +168,11 @@ class SaleOrder(models.Model):
                 and order.quoter_partner_id == current_user
             )
 
-    @api.model
-    def _quoter_user_can_see_all_areas(self):
-        user = self.env.user
-        return bool(
-            user.has_group("quoter.group_quoter_manager")
-            or user.has_group("quoter.group_quoter_partner")
-        )
-
-    @api.model
-    def _quoter_user_in_any_quoter_group(self):
-        user = self.env.user
-        return bool(
-            user.has_group("quoter.group_quoter_manager")
-            or user.has_group("quoter.group_quoter_partner")
-            or user.has_group("quoter.group_quoter_tax")
-            or user.has_group("quoter.group_quoter_auditoria")
-            or user.has_group("quoter.group_quoter_bpo")
-            or user.has_group("quoter.group_quoter_payroll")
-        )
-
-    @api.model
-    def _quoter_domain_available_areas(self):
-        domain = [("active", "=", True), ("cerrado", "=", True)]
-        if self._quoter_user_can_see_all_areas():
-            return domain
-        user_group_ids = self.env.user.groups_id.ids
-        if not user_group_ids:
-            return domain + [("id", "=", 0)]
-        return domain + [("group_id", "in", user_group_ids)]
-
-    def _quoter_validate_area_visibility_access(self):
-        if self._quoter_user_can_see_all_areas():
-            return
-        user_groups = self.env.user.groups_id
-        for order in self.filtered("is_quotation"):
-            forbidden = order.quoter_area_ids.filtered(
-                lambda a: not a.group_id or a.group_id not in user_groups
-            )
-            if forbidden:
-                raise UserError(
-                    _(
-                        "Solo puede seleccionar áreas donde esté asignado al grupo del área."
-                    )
-                )
-
     def _check_quoter_partner_adjustment_write_access(self):
-        """Descuento/recargo % por área: solo socio asignado (grupo Socio)."""
+        """Descuento/recargo % por área: solo socio asignado (grupo Socio) o administrador."""
         self.ensure_one()
+        if self.env.user.has_group("base.group_system"):
+            return
         if not self.env.user.has_group("quoter.group_quoter_partner"):
             raise UserError(
                 _("Solo usuarios del grupo Quoter - Socio pueden editar el porcentaje de descuento o recargo por área.")
@@ -222,36 +206,11 @@ class SaleOrder(models.Model):
             order.quoter_partner_candidate_user_ids = partner_users
 
     def _check_quoter_responsibles_write_access(self, vals):
-        """Refuerza en servidor la edición por grupo de campos cabecera Quoter."""
+        """Valida que gerente/socio elegidos pertenezcan a su grupo (cualquiera puede asignarlos)."""
         if not vals:
             return
-        can_mgr = self.env.user.has_group("quoter.group_quoter_manager")
-        can_partner = self.env.user.has_group("quoter.group_quoter_partner")
         manager_group = self.env.ref("quoter.group_quoter_manager", raise_if_not_found=False)
         partner_group = self.env.ref("quoter.group_quoter_partner", raise_if_not_found=False)
-        is_create = not bool(self.ids)
-        is_quotation_flow = bool(
-            vals.get("is_quotation")
-            or self.env.context.get("default_is_quotation")
-            or self.env.context.get("quoter_use_cot_sequence")
-        )
-        allow_quotation_create = bool(
-            is_create and is_quotation_flow and self._quoter_user_in_any_quoter_group()
-        )
-        if "quoter_manager_id" in vals and not can_mgr:
-            if allow_quotation_create:
-                vals.pop("quoter_manager_id", None)
-            else:
-                raise UserError(
-                    _("Solo usuarios del grupo Quoter - Gerente pueden editar Gerente responsable.")
-                )
-        if "quoter_partner_id" in vals and not can_partner:
-            if allow_quotation_create:
-                vals.pop("quoter_partner_id", None)
-            else:
-                raise UserError(
-                    _("Solo usuarios del grupo Quoter - Socio pueden editar Socio asignado.")
-                )
         if "quoter_manager_id" in vals and vals.get("quoter_manager_id"):
             manager_user = self.env["res.users"].browse(vals["quoter_manager_id"])
             if manager_group and manager_group not in manager_user.groups_id:
@@ -303,6 +262,11 @@ class SaleOrder(models.Model):
                         _("Las preguntas estratégicas son obligatorias en cotizaciones del cotizador.")
                     )
 
+    def _quoter_order_line_existing(self):
+        """Líneas del pedido que siguen en BD (evita MissingError tras borrar en bloque embebido)."""
+        self.ensure_one()
+        return self.order_line.exists()
+
     @api.constrains(
         "order_line",
         "order_line.quoter_is_adjustment_line",
@@ -311,7 +275,7 @@ class SaleOrder(models.Model):
     )
     def _check_quoter_adjustment_notes_required(self):
         for order in self.filtered("is_quotation"):
-            missing = order.order_line.filtered(
+            missing = order._quoter_order_line_existing().filtered(
                 lambda l: not l.display_type
                 and l.quoter_is_adjustment_line
                 and not (l.quoter_adjustment_note or "").strip()
@@ -330,629 +294,75 @@ class SaleOrder(models.Model):
         string="Bloques cotizador por área",
         copy=True,
     )
-
-    # Slots 1..5: área i-ésima de quoter_area_ids (orden por id), para dominios por pestaña.
-    quoter_slot_1_area_id = fields.Many2one(
-        comodel_name="quoter.professional.area",
-        compute="_compute_quoter_slot_areas",
-        string="Área pestaña 1",
+    # Solo UI (pestaña / JS): datos reales viven en quoter.sale.order.area.
+    quoter_primary_tab_area_name = fields.Char(
+        compute="_compute_quoter_primary_tab_area_meta",
+        string="Nombre área pestaña principal",
     )
-    quoter_slot_2_area_id = fields.Many2one(
-        comodel_name="quoter.professional.area",
-        compute="_compute_quoter_slot_areas",
-        string="Área pestaña 2",
+    quoter_area_block_count = fields.Integer(
+        compute="_compute_quoter_primary_tab_area_meta",
+        string="Cantidad de bloques cotizador",
     )
-    quoter_slot_3_area_id = fields.Many2one(
-        comodel_name="quoter.professional.area",
-        compute="_compute_quoter_slot_areas",
-        string="Área pestaña 3",
-    )
-    quoter_slot_4_area_id = fields.Many2one(
-        comodel_name="quoter.professional.area",
-        compute="_compute_quoter_slot_areas",
-        string="Área pestaña 4",
-    )
-    quoter_slot_5_area_id = fields.Many2one(
-        comodel_name="quoter.professional.area",
-        compute="_compute_quoter_slot_areas",
-        string="Área pestaña 5",
+    quoter_show_area_workspace = fields.Boolean(
+        string="Mostrar pestañas cotización por área",
+        compute="_compute_quoter_show_area_workspace",
+        help="En cotizaciones nuevas sin guardar, se ocultan las pestañas por área hasta el primer guardado.",
     )
 
-    # Sin store: no exige columnas nuevas en sale_order; el rendimiento se mantiene con M2M seleccionables no almacenados.
-    quoter_block_slot_1_id = fields.Many2one(
-        comodel_name="quoter.sale.order.area",
-        compute="_compute_quoter_block_slots",
-        string="Bloque slot 1",
-    )
-    quoter_block_slot_2_id = fields.Many2one(
-        comodel_name="quoter.sale.order.area",
-        compute="_compute_quoter_block_slots",
-        string="Bloque slot 2",
-    )
-    quoter_block_slot_3_id = fields.Many2one(
-        comodel_name="quoter.sale.order.area",
-        compute="_compute_quoter_block_slots",
-        string="Bloque slot 3",
-    )
-    quoter_block_slot_4_id = fields.Many2one(
-        comodel_name="quoter.sale.order.area",
-        compute="_compute_quoter_block_slots",
-        string="Bloque slot 4",
-    )
-    quoter_block_slot_5_id = fields.Many2one(
-        comodel_name="quoter.sale.order.area",
-        compute="_compute_quoter_block_slots",
-        string="Bloque slot 5",
-    )
+    @api.depends("is_quotation")
+    def _compute_quoter_show_area_workspace(self):
+        for order in self:
+            if not order.is_quotation:
+                order.quoter_show_area_workspace = True
+            else:
+                order.quoter_show_area_workspace = isinstance(order.id, int)
 
-    # La secuencia se define en la configuración del área (quoter.professional.area.sequence).
+    def _quoter_area_blocks_ordered(self):
+        """Bloques por secuencia de bloque + área; tolera NewId."""
+        self.ensure_one()
 
-    quoter_slot_1_area_level_ids = fields.Many2many(
-        comodel_name="quoter.complexity.level",
-        related="quoter_slot_1_area_id.complexity_level_ids",
-        string="Niveles área 1",
-    )
-    quoter_slot_2_area_level_ids = fields.Many2many(
-        comodel_name="quoter.complexity.level",
-        related="quoter_slot_2_area_id.complexity_level_ids",
-        string="Niveles área 2",
-    )
-    quoter_slot_3_area_level_ids = fields.Many2many(
-        comodel_name="quoter.complexity.level",
-        related="quoter_slot_3_area_id.complexity_level_ids",
-        string="Niveles área 3",
-    )
-    quoter_slot_4_area_level_ids = fields.Many2many(
-        comodel_name="quoter.complexity.level",
-        related="quoter_slot_4_area_id.complexity_level_ids",
-        string="Niveles área 4",
-    )
-    quoter_slot_5_area_level_ids = fields.Many2many(
-        comodel_name="quoter.complexity.level",
-        related="quoter_slot_5_area_id.complexity_level_ids",
-        string="Niveles área 5",
-    )
+        def sort_key(block):
+            area = block.area_id
+            seq = block.sequence or 0
+            area_seq = (area.sequence or 0) if area else 0
+            rid = area.id if area else False
+            if isinstance(rid, int):
+                return (seq, area_seq, 0, rid)
+            origin = getattr(rid, "origin", None)
+            if origin is not None:
+                return (seq, area_seq, 0, int(origin))
+            return (seq, area_seq, 1, str(rid))
 
-    quoter_slot_1_block_state = fields.Selection(
-        related="quoter_block_slot_1_id.state",
-        readonly=False,
-        string="Estado bloque 1",
-    )
-    quoter_slot_2_block_state = fields.Selection(
-        related="quoter_block_slot_2_id.state",
-        readonly=False,
-        string="Estado bloque 2",
-    )
-    quoter_slot_3_block_state = fields.Selection(
-        related="quoter_block_slot_3_id.state",
-        readonly=False,
-        string="Estado bloque 3",
-    )
-    quoter_slot_4_block_state = fields.Selection(
-        related="quoter_block_slot_4_id.state",
-        readonly=False,
-        string="Estado bloque 4",
-    )
-    quoter_slot_5_block_state = fields.Selection(
-        related="quoter_block_slot_5_id.state",
-        readonly=False,
-        string="Estado bloque 5",
-    )
+        return self.quoter_area_block_ids.sorted(key=sort_key)
 
-    quoter_slot_1_block_level_id = fields.Many2one(
-        comodel_name="quoter.complexity.level",
-        related="quoter_block_slot_1_id.complexity_level_id",
-        readonly=False,
-        domain="[('area_ids', '=', quoter_slot_1_area_id)]",
-        string="Nivel bloque 1",
+    @api.depends(
+        "quoter_area_block_ids",
+        "quoter_area_block_ids.sequence",
+        "quoter_area_block_ids.area_id",
+        "quoter_area_block_ids.area_id.name",
     )
-    quoter_slot_2_block_level_id = fields.Many2one(
-        comodel_name="quoter.complexity.level",
-        related="quoter_block_slot_2_id.complexity_level_id",
-        readonly=False,
-        domain="[('area_ids', '=', quoter_slot_2_area_id)]",
-        string="Nivel bloque 2",
-    )
-    quoter_slot_3_block_level_id = fields.Many2one(
-        comodel_name="quoter.complexity.level",
-        related="quoter_block_slot_3_id.complexity_level_id",
-        readonly=False,
-        domain="[('area_ids', '=', quoter_slot_3_area_id)]",
-        string="Nivel bloque 3",
-    )
-    quoter_slot_4_block_level_id = fields.Many2one(
-        comodel_name="quoter.complexity.level",
-        related="quoter_block_slot_4_id.complexity_level_id",
-        readonly=False,
-        domain="[('area_ids', '=', quoter_slot_4_area_id)]",
-        string="Nivel bloque 4",
-    )
-    quoter_slot_5_block_level_id = fields.Many2one(
-        comodel_name="quoter.complexity.level",
-        related="quoter_block_slot_5_id.complexity_level_id",
-        readonly=False,
-        domain="[('area_ids', '=', quoter_slot_5_area_id)]",
-        string="Nivel bloque 5",
-    )
+    def _compute_quoter_primary_tab_area_meta(self):
+        empty_block = self.env["quoter.sale.order.area"]
+        for order in self:
+            blocks = order._quoter_area_blocks_ordered()
+            order.quoter_area_block_count = len(blocks)
+            first = blocks[:1]
+            block = first[0] if first else empty_block
+            order.quoter_primary_tab_area_name = (
+                (block.area_id.name if block and block.area_id else "") or ""
+            )
 
-    quoter_slot_1_editable = fields.Boolean(
-        compute="_compute_quoter_slot_editable",
-        string="Slot 1 editable",
-    )
-    quoter_slot_2_editable = fields.Boolean(
-        compute="_compute_quoter_slot_editable",
-        string="Slot 2 editable",
-    )
-    quoter_slot_3_editable = fields.Boolean(
-        compute="_compute_quoter_slot_editable",
-        string="Slot 3 editable",
-    )
-    quoter_slot_4_editable = fields.Boolean(
-        compute="_compute_quoter_slot_editable",
-        string="Slot 4 editable",
-    )
-    quoter_slot_5_editable = fields.Boolean(
-        compute="_compute_quoter_slot_editable",
-        string="Slot 5 editable",
-    )
-
-    quoter_slot_1_structure_locked = fields.Boolean(
-        compute="_compute_quoter_slot_lock_flags",
-        string="Slot 1 estructura bloqueada",
-    )
-    quoter_slot_2_structure_locked = fields.Boolean(
-        compute="_compute_quoter_slot_lock_flags",
-        string="Slot 2 estructura bloqueada",
-    )
-    quoter_slot_3_structure_locked = fields.Boolean(
-        compute="_compute_quoter_slot_lock_flags",
-        string="Slot 3 estructura bloqueada",
-    )
-    quoter_slot_4_structure_locked = fields.Boolean(
-        compute="_compute_quoter_slot_lock_flags",
-        string="Slot 4 estructura bloqueada",
-    )
-    quoter_slot_5_structure_locked = fields.Boolean(
-        compute="_compute_quoter_slot_lock_flags",
-        string="Slot 5 estructura bloqueada",
-    )
-    quoter_slot_1_lines_frozen = fields.Boolean(
-        compute="_compute_quoter_slot_lock_flags",
-        string="Slot 1 líneas congeladas",
-    )
-    quoter_slot_2_lines_frozen = fields.Boolean(
-        compute="_compute_quoter_slot_lock_flags",
-        string="Slot 2 líneas congeladas",
-    )
-    quoter_slot_3_lines_frozen = fields.Boolean(
-        compute="_compute_quoter_slot_lock_flags",
-        string="Slot 3 líneas congeladas",
-    )
-    quoter_slot_4_lines_frozen = fields.Boolean(
-        compute="_compute_quoter_slot_lock_flags",
-        string="Slot 4 líneas congeladas",
-    )
-    quoter_slot_5_lines_frozen = fields.Boolean(
-        compute="_compute_quoter_slot_lock_flags",
-        string="Slot 5 líneas congeladas",
-    )
-
-    quoter_slot_1_line_ids = fields.One2many(
-        comodel_name="sale.order.line",
-        inverse_name="order_id",
-        string="Líneas cotizador 1",
-        domain="['&', ('quoter_tab_area_id', '=', quoter_slot_1_area_id), '|', ('display_type', '=', False), ('display_type', '=', 'line_section')]",
-        copy=False,
-    )
-    quoter_slot_2_line_ids = fields.One2many(
-        comodel_name="sale.order.line",
-        inverse_name="order_id",
-        string="Líneas cotizador 2",
-        domain="['&', ('quoter_tab_area_id', '=', quoter_slot_2_area_id), '|', ('display_type', '=', False), ('display_type', '=', 'line_section')]",
-        copy=False,
-    )
-    quoter_slot_3_line_ids = fields.One2many(
-        comodel_name="sale.order.line",
-        inverse_name="order_id",
-        string="Líneas cotizador 3",
-        domain="['&', ('quoter_tab_area_id', '=', quoter_slot_3_area_id), '|', ('display_type', '=', False), ('display_type', '=', 'line_section')]",
-        copy=False,
-    )
-    quoter_slot_4_line_ids = fields.One2many(
-        comodel_name="sale.order.line",
-        inverse_name="order_id",
-        string="Líneas cotizador 4",
-        domain="['&', ('quoter_tab_area_id', '=', quoter_slot_4_area_id), '|', ('display_type', '=', False), ('display_type', '=', 'line_section')]",
-        copy=False,
-    )
-    quoter_slot_5_line_ids = fields.One2many(
-        comodel_name="sale.order.line",
-        inverse_name="order_id",
-        string="Líneas cotizador 5",
-        domain="['&', ('quoter_tab_area_id', '=', quoter_slot_5_area_id), '|', ('display_type', '=', False), ('display_type', '=', 'line_section')]",
-        copy=False,
-    )
-
-    quoter_slot_1_selectable_product_ids = fields.Many2many(
-        comodel_name="product.product",
-        string="Productos cotizador slot 1",
-        compute="_compute_quoter_slot_selectable_products",
-    )
-    quoter_slot_2_selectable_product_ids = fields.Many2many(
-        comodel_name="product.product",
-        string="Productos cotizador slot 2",
-        compute="_compute_quoter_slot_selectable_products",
-    )
-    quoter_slot_3_selectable_product_ids = fields.Many2many(
-        comodel_name="product.product",
-        string="Productos cotizador slot 3",
-        compute="_compute_quoter_slot_selectable_products",
-    )
-    quoter_slot_4_selectable_product_ids = fields.Many2many(
-        comodel_name="product.product",
-        string="Productos cotizador slot 4",
-        compute="_compute_quoter_slot_selectable_products",
-    )
-    quoter_slot_5_selectable_product_ids = fields.Many2many(
-        comodel_name="product.product",
-        string="Productos cotizador slot 5",
-        compute="_compute_quoter_slot_selectable_products",
-    )
-
-    # --- Totales por pestaña de área (sin impuestos) + ajustes globales por bloque ---
-    quoter_slot_1_global_discount = fields.Float(
-        string="Descuento % (área 1)",
-        digits=(16, 4),
-        compute="_compute_quoter_slot_global_adjustments",
-        inverse="_inverse_quoter_slot_1_global_discount",
-    )
-    quoter_slot_1_global_surcharge = fields.Float(
-        string="Recargo % (área 1)",
-        digits=(16, 4),
-        compute="_compute_quoter_slot_global_adjustments",
-        inverse="_inverse_quoter_slot_1_global_surcharge",
-    )
-    quoter_slot_2_global_discount = fields.Float(
-        string="Descuento % (área 2)",
-        digits=(16, 4),
-        compute="_compute_quoter_slot_global_adjustments",
-        inverse="_inverse_quoter_slot_2_global_discount",
-    )
-    quoter_slot_2_global_surcharge = fields.Float(
-        string="Recargo % (área 2)",
-        digits=(16, 4),
-        compute="_compute_quoter_slot_global_adjustments",
-        inverse="_inverse_quoter_slot_2_global_surcharge",
-    )
-    quoter_slot_3_global_discount = fields.Float(
-        string="Descuento % (área 3)",
-        digits=(16, 4),
-        compute="_compute_quoter_slot_global_adjustments",
-        inverse="_inverse_quoter_slot_3_global_discount",
-    )
-    quoter_slot_3_global_surcharge = fields.Float(
-        string="Recargo % (área 3)",
-        digits=(16, 4),
-        compute="_compute_quoter_slot_global_adjustments",
-        inverse="_inverse_quoter_slot_3_global_surcharge",
-    )
-    quoter_slot_4_global_discount = fields.Float(
-        string="Descuento % (área 4)",
-        digits=(16, 4),
-        compute="_compute_quoter_slot_global_adjustments",
-        inverse="_inverse_quoter_slot_4_global_discount",
-    )
-    quoter_slot_4_global_surcharge = fields.Float(
-        string="Recargo % (área 4)",
-        digits=(16, 4),
-        compute="_compute_quoter_slot_global_adjustments",
-        inverse="_inverse_quoter_slot_4_global_surcharge",
-    )
-    quoter_slot_5_global_discount = fields.Float(
-        string="Descuento % (área 5)",
-        digits=(16, 4),
-        compute="_compute_quoter_slot_global_adjustments",
-        inverse="_inverse_quoter_slot_5_global_discount",
-    )
-    quoter_slot_5_global_surcharge = fields.Float(
-        string="Recargo % (área 5)",
-        digits=(16, 4),
-        compute="_compute_quoter_slot_global_adjustments",
-        inverse="_inverse_quoter_slot_5_global_surcharge",
-    )
-    quoter_slot_1_product_untaxed = fields.Monetary(
-        string="Subtotal productos (área 1)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_1_adjustment_untaxed = fields.Monetary(
-        string="Subtotal ajustes (área 1)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_1_total_untaxed = fields.Monetary(
-        string="Total área 1 (sin imp.)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_2_product_untaxed = fields.Monetary(
-        string="Subtotal productos (área 2)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_2_adjustment_untaxed = fields.Monetary(
-        string="Subtotal ajustes (área 2)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_2_total_untaxed = fields.Monetary(
-        string="Total área 2 (sin imp.)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_3_product_untaxed = fields.Monetary(
-        string="Subtotal productos (área 3)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_3_adjustment_untaxed = fields.Monetary(
-        string="Subtotal ajustes (área 3)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_3_total_untaxed = fields.Monetary(
-        string="Total área 3 (sin imp.)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_4_product_untaxed = fields.Monetary(
-        string="Subtotal productos (área 4)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_4_adjustment_untaxed = fields.Monetary(
-        string="Subtotal ajustes (área 4)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_4_total_untaxed = fields.Monetary(
-        string="Total área 4 (sin imp.)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_5_product_untaxed = fields.Monetary(
-        string="Subtotal productos (área 5)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_5_adjustment_untaxed = fields.Monetary(
-        string="Subtotal ajustes (área 5)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_5_total_untaxed = fields.Monetary(
-        string="Total área 5 (sin imp.)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_1_discount_line = fields.Monetary(
-        string="Importe descuento (área 1)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_2_discount_line = fields.Monetary(
-        string="Importe descuento (área 2)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_3_discount_line = fields.Monetary(
-        string="Importe descuento (área 3)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_4_discount_line = fields.Monetary(
-        string="Importe descuento (área 4)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_5_discount_line = fields.Monetary(
-        string="Importe descuento (área 5)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_1_surcharge_line = fields.Monetary(
-        string="Importe recargo (área 1)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_2_surcharge_line = fields.Monetary(
-        string="Importe recargo (área 2)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_3_surcharge_line = fields.Monetary(
-        string="Importe recargo (área 3)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_4_surcharge_line = fields.Monetary(
-        string="Importe recargo (área 4)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_5_surcharge_line = fields.Monetary(
-        string="Importe recargo (área 5)",
-        currency_field="currency_id",
-        compute="_compute_quoter_slot_area_totals_untaxed",
-    )
-    quoter_slot_1_caption_products = fields.Char(
-        string="Leyenda productos (área 1)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_1_caption_adjustments = fields.Char(
-        string="Leyenda ajustes (área 1)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_1_caption_discount = fields.Char(
-        string="Leyenda descuento (área 1)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_1_caption_surcharge = fields.Char(
-        string="Leyenda recargo (área 1)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_1_caption_total = fields.Char(
-        string="Leyenda total (área 1)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_2_caption_products = fields.Char(
-        string="Leyenda productos (área 2)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_2_caption_adjustments = fields.Char(
-        string="Leyenda ajustes (área 2)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_2_caption_discount = fields.Char(
-        string="Leyenda descuento (área 2)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_2_caption_surcharge = fields.Char(
-        string="Leyenda recargo (área 2)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_2_caption_total = fields.Char(
-        string="Leyenda total (área 2)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_3_caption_products = fields.Char(
-        string="Leyenda productos (área 3)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_3_caption_adjustments = fields.Char(
-        string="Leyenda ajustes (área 3)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_3_caption_discount = fields.Char(
-        string="Leyenda descuento (área 3)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_3_caption_surcharge = fields.Char(
-        string="Leyenda recargo (área 3)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_3_caption_total = fields.Char(
-        string="Leyenda total (área 3)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_4_caption_products = fields.Char(
-        string="Leyenda productos (área 4)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_4_caption_adjustments = fields.Char(
-        string="Leyenda ajustes (área 4)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_4_caption_discount = fields.Char(
-        string="Leyenda descuento (área 4)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_4_caption_surcharge = fields.Char(
-        string="Leyenda recargo (área 4)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_4_caption_total = fields.Char(
-        string="Leyenda total (área 4)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_5_caption_products = fields.Char(
-        string="Leyenda productos (área 5)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_5_caption_adjustments = fields.Char(
-        string="Leyenda ajustes (área 5)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_5_caption_discount = fields.Char(
-        string="Leyenda descuento (área 5)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_5_caption_surcharge = fields.Char(
-        string="Leyenda recargo (área 5)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_5_caption_total = fields.Char(
-        string="Leyenda total (área 5)",
-        compute="_compute_quoter_slot_footer_captions",
-    )
-    quoter_slot_1_area_summary_html = fields.Html(
-        string="Resumen horas/tarifas (área 1)",
-        compute="_compute_quoter_slot_area_summary_html",
-        sanitize=False,
-    )
-    quoter_slot_2_area_summary_html = fields.Html(
-        string="Resumen horas/tarifas (área 2)",
-        compute="_compute_quoter_slot_area_summary_html",
-        sanitize=False,
-    )
-    quoter_slot_3_area_summary_html = fields.Html(
-        string="Resumen horas/tarifas (área 3)",
-        compute="_compute_quoter_slot_area_summary_html",
-        sanitize=False,
-    )
-    quoter_slot_4_area_summary_html = fields.Html(
-        string="Resumen horas/tarifas (área 4)",
-        compute="_compute_quoter_slot_area_summary_html",
-        sanitize=False,
-    )
-    quoter_slot_5_area_summary_html = fields.Html(
-        string="Resumen horas/tarifas (área 5)",
-        compute="_compute_quoter_slot_area_summary_html",
-        sanitize=False,
-    )
+    def _quoter_refresh_block_selectable_products(self):
+        """Invalida listas de productos en bloques (p. ej. tras cambiar quoter.service.line)."""
+        if self.env.context.get("quoter_skip_block_product_refresh"):
+            return
+        blocks = self.mapped("quoter_area_block_ids")
+        if not blocks:
+            return
+        blocks.invalidate_cache(["selectable_product_ids"])
 
     # Se eliminó la lógica de "variantes por nivel" del pedido:
     # el producto real es único; la relación nivel+rango se gestiona en un modelo separado.
-
-    @api.depends(
-        "quoter_slot_1_area_id",
-        "quoter_slot_2_area_id",
-        "quoter_slot_3_area_id",
-        "quoter_slot_4_area_id",
-        "quoter_slot_5_area_id",
-        "quoter_slot_1_block_level_id",
-        "quoter_slot_2_block_level_id",
-        "quoter_slot_3_block_level_id",
-        "quoter_slot_4_block_level_id",
-        "quoter_slot_5_block_level_id",
-        "quoter_area_block_ids.complexity_level_id",
-    )
-    def _compute_quoter_slot_selectable_products(self):
-        """Solo variantes canónicas del área; sin nivel elegido no hay productos seleccionables."""
-        QuoterLine = self.env["quoter.service.line"]
-        empty = self.env["product.product"]
-        for order in self:
-            for n in range(1, 6):
-                area = getattr(order, "quoter_slot_%d_area_id" % n)
-                level = getattr(order, "quoter_slot_%d_block_level_id" % n)
-                fname = "quoter_slot_%d_selectable_product_ids" % n
-                if not area or not level:
-                    order[fname] = empty
-                    continue
-                products = (
-                    QuoterLine.search([("area_id", "=", area.id)])
-                    .mapped("product_id")
-                    .filtered(
-                        lambda p: p
-                        and p.sale_ok
-                        and not getattr(p, "is_quoter_range_rate_product", False)
-                    )
-                )
-                order[fname] = products
-
-    def _quoter_refresh_selectable_products(self):
-        """Recalcula listas de productos por slot (p. ej. tras cambiar líneas quoter.service.line)."""
-        self._compute_quoter_slot_selectable_products()
 
     def _quoter_refresh_area_lines_hours_from_levels(self, area):
         """Replica horas de quoter.product.level.range según el nivel del bloque del área."""
@@ -963,6 +373,8 @@ class SaleOrder(models.Model):
             lambda l, a=area: l.quoter_tab_area_id == a
             and l.product_id
             and getattr(l.product_id, "is_quoter_product", False)
+            and not l.quoter_manual_load
+            and not l.quoter_manual_total_load
         )
         for line in lines:
             line._quoter_sync_range_hours()
@@ -970,61 +382,95 @@ class SaleOrder(models.Model):
             price, _warn = line._quoter_compute_unit_price_from_ranges()
             line.write({"price_unit": price})
 
-    @api.onchange(
-        "quoter_slot_1_block_level_id",
-        "quoter_slot_2_block_level_id",
-        "quoter_slot_3_block_level_id",
-        "quoter_slot_4_block_level_id",
-        "quoter_slot_5_block_level_id",
-    )
-    def _onchange_quoter_block_levels_apply_template_hours(self):
-        """Al cambiar el nivel (o limpiarlo), horas y precio por rangos."""
-        for order in self:
-            if not order.is_quotation:
+    def _quoter_sync_date_of_issue_from_order_date(self):
+        """Cotización: fecha de emisión = fecha de cotización."""
+        if "date_of_issue" not in self._fields:
+            return
+        for order in self.filtered("is_quotation"):
+            if order.date_order:
+                order.date_of_issue = order.date_order
+
+    def _quoter_compute_validity_date_from_payment_term(self):
+        """Cotización: vencimiento = fecha cotización + plazo de pago."""
+        for order in self.filtered("is_quotation"):
+            if not order.payment_term_id or not order.date_order:
                 continue
-            for n in range(1, 6):
-                area = getattr(order, "quoter_slot_%d_area_id" % n)
-                if area:
-                    order._quoter_refresh_area_lines_hours_from_levels(area)
+            ref_dt = order.date_order
+            if isinstance(ref_dt, str):
+                ref_dt = fields.Datetime.from_string(ref_dt)
+            ref_date = ref_dt.date() if hasattr(ref_dt, "date") else ref_dt
+            terms = order.payment_term_id.compute(value=1.0, date_ref=ref_date)
+            if terms:
+                order.validity_date = terms[-1][0]
 
-    def _quoter_blocks_ordered_for_slots(self):
-        """Orden estable por secuencia del área + área; tolera NewId."""
+    def _quoter_message_post(self, body):
+        """Registra en el chatter del pedido cambios del cotizador."""
         self.ensure_one()
+        if not body or not hasattr(self, "message_post"):
+            return
+        self.message_post(body=body, subtype_xmlid="mail.mt_note")
 
-        def sort_key(block):
-            area = block.area_id
-            seq = (area.sequence or 0) if area else 0
-            rid = area.id if area else False
-            if isinstance(rid, int):
-                return (seq, 0, rid)
-            origin = getattr(rid, "origin", None)
-            if origin is not None:
-                return (seq, 0, int(origin))
-            return (seq, 1, str(rid))
+    def _quoter_log_order_field_changes(self, vals):
+        """Chatter al modificar campos del cotizador en el pedido."""
+        if not vals or not quoter_chatter_should_log(self.env):
+            return
+        labels = self._QUOTER_ORDER_CHATTER_FIELDS
+        tracked = {k: v for k, v in vals.items() if k in labels}
+        if not tracked:
+            return
+        for order in self.filtered("is_quotation"):
+            parts = quoter_chatter_collect_changes(order, tracked, labels)
+            if parts:
+                order._quoter_message_post(
+                    _("<b>Cotización</b><br/>%s") % "<br/>".join(parts)
+                )
 
-        return self.quoter_area_block_ids.sorted(key=sort_key)
-
-    @api.depends("quoter_area_ids", "quoter_area_block_ids", "quoter_area_block_ids.sequence", "quoter_area_block_ids.area_id")
-    def _compute_quoter_slot_areas(self):
-        user_group_ids = set(self.env.user.groups_id.ids)
-        can_view_all_tabs = (
-            self.env.user.has_group("quoter.group_quoter_manager")
-            or self.env.user.has_group("quoter.group_quoter_partner")
-        )
-        for order in self:
-            # Mapeo fijo: pestaña N = área con sequence == N
-            blocks = order.quoter_area_block_ids.filtered(lambda b: b.area_id)
-            by_seq = {}
-            for b in blocks:
-                # Gerente/Socio/Administrador ven todas las pestañas.
-                # El resto solo ve áreas sin grupo o de sus grupos.
-                if not can_view_all_tabs and b.area_id.group_id and b.area_id.group_id.id not in user_group_ids:
+    def _quoter_log_order_created(self):
+        """Chatter al crear una cotización con datos del cotizador."""
+        if not quoter_chatter_should_log(self.env):
+            return
+        labels = self._QUOTER_ORDER_CHATTER_FIELDS
+        for order in self.filtered("is_quotation"):
+            parts = []
+            for fname, label in labels.items():
+                val = order[fname]
+                if val in (False, None, ""):
                     continue
-                seq = b.area_id.sequence
-                if isinstance(seq, int) and 1 <= seq <= 5 and seq not in by_seq:
-                    by_seq[seq] = b.area_id
-            for n in range(1, 6):
-                setattr(order, f"quoter_slot_{n}_area_id", by_seq.get(n))
+                parts.append(
+                    "%s: %s" % (label, quoter_chatter_format_value(order, fname, val))
+                )
+            if parts:
+                order._quoter_message_post(
+                    _("<b>Cotización creada</b><br/>%s") % "<br/>".join(parts)
+                )
+
+    @api.constrains("is_quotation", "date_order", "validity_date")
+    def _check_quoter_validity_after_quotation_date(self):
+        for order in self.filtered("is_quotation"):
+            if not order.date_order or not order.validity_date:
+                continue
+            qdate = fields.Datetime.to_datetime(order.date_order).date()
+            if order.validity_date < qdate:
+                raise ValidationError(
+                    _("La fecha de expiración no puede ser anterior a la fecha de cotización.")
+                )
+
+    def _quoter_resequence_area_blocks(self):
+        for order in self:
+            ordered_areas = order.quoter_area_ids.sorted(key=lambda a: (a.sequence or 0, a.id))
+            for idx, area in enumerate(ordered_areas, start=1):
+                block = order.quoter_area_block_ids.filtered(lambda b, a=area: b.area_id == a)[:1]
+                if block and block.sequence != idx:
+                    block.sequence = idx
+
+    def _quoter_align_block_branches_with_area(self):
+        """Si el área cambia sus ramas, alinea la rama seleccionada en cada bloque."""
+        for order in self:
+            for block in order.quoter_area_block_ids.filtered(lambda b: b.area_id):
+                valid_branches = block.area_id._effective_branch_ids()
+                if block.branch_id and block.branch_id in valid_branches:
+                    continue
+                block.branch_id = block.area_id._resolve_matrix_branch().id
 
     @api.depends(
         "quoter_area_ids",
@@ -1046,28 +492,6 @@ class SaleOrder(models.Model):
                 level = block.complexity_level_id if block else self.env["quoter.complexity.level"]
             order.quoter_primary_area_id = primary_area
             order.quoter_primary_complexity_level_id = level
-
-    @api.depends(
-        "quoter_area_block_ids",
-        "quoter_area_block_ids.area_id",
-        "quoter_slot_1_area_id",
-        "quoter_slot_2_area_id",
-        "quoter_slot_3_area_id",
-        "quoter_slot_4_area_id",
-        "quoter_slot_5_area_id",
-    )
-    def _compute_quoter_block_slots(self):
-        empty_block = self.env["quoter.sale.order.area"].browse()
-        for order in self:
-            for n in range(1, 6):
-                area = getattr(order, "quoter_slot_%s_area_id" % n)
-                if not area:
-                    setattr(order, "quoter_block_slot_%s_id" % n, empty_block)
-                    continue
-                block = order.quoter_area_block_ids.filtered(
-                    lambda b, a=area: b.area_id == a
-                )[:1]
-                setattr(order, "quoter_block_slot_%s_id" % n, block)
 
     @api.model
     def _quoter_block_adjustment_amounts(self, block):
@@ -1213,11 +637,13 @@ class SaleOrder(models.Model):
         )
         adj_lines = olines.filtered(lambda l: l.quoter_is_adjustment_line)
         if len(adj_lines) == 1:
-            adj_title = _("Ajuste socio - %s") % (adj_lines[0].name or adj_lines[0].product_id.display_name or "")
+            adj_title = _("Ajuste de horas - %s") % (
+                adj_lines[0].name or adj_lines[0].product_id.display_name or ""
+            )
         elif adj_lines:
-            adj_title = _("Ajuste socio (suma de %s líneas)") % len(adj_lines)
+            adj_title = _("Ajuste de horas (suma de %s líneas)") % len(adj_lines)
         else:
-            adj_title = _("Ajuste socio")
+            adj_title = _("Ajuste de horas")
 
         rows_html = []
         # Misma base tipográfica que el bloque oe_subtotal_footer (sin "small", tamaño heredado del formulario).
@@ -1258,13 +684,13 @@ class SaleOrder(models.Model):
         rows_html.append(
             '<div class="mt-2 mb-1" '
             'style="font-weight:600;font-size:inherit;line-height:1.45;color:#1f2937;">'
-            f"{esc(_('AJUSTE SOCIO a las horas'))}</div>"
+            f"{esc(_('Ajuste de horas'))}</div>"
         )
         add_row(adj_title, cells_numeric(adj_h, decimals=2))
         add_row(_("Totales horas"), cells_numeric(tot_h, decimals=2))
         add_row(_("Tarifa online"), cells_numeric(rates, decimals=2, money=True, total_mode="none"))
-        add_row(_("Ajuste socio - descuento"), cells_pct_same(disc_pct))
-        add_row(_("Ajuste socio - aumento"), cells_pct_same(sur_pct))
+        add_row(_("Descuento"), cells_pct_same(disc_pct))
+        add_row(_("Recargo"), cells_pct_same(sur_pct))
         add_row(_("Tarifa ajustada"), cells_numeric(adj_rates, decimals=2, money=True, total_mode="none"))
         add_row(_("Valor total"), cells_numeric(final_vals, decimals=2, money=True), strong=True)
 
@@ -1273,299 +699,6 @@ class SaleOrder(models.Model):
             + "".join(rows_html)
             + "</div>"
         )
-
-    @api.depends(
-        "quoter_block_slot_1_id.global_discount_amount",
-        "quoter_block_slot_2_id.global_discount_amount",
-        "quoter_block_slot_3_id.global_discount_amount",
-        "quoter_block_slot_4_id.global_discount_amount",
-        "quoter_block_slot_5_id.global_discount_amount",
-        "quoter_block_slot_1_id.global_surcharge_amount",
-        "quoter_block_slot_2_id.global_surcharge_amount",
-        "quoter_block_slot_3_id.global_surcharge_amount",
-        "quoter_block_slot_4_id.global_surcharge_amount",
-        "quoter_block_slot_5_id.global_surcharge_amount",
-    )
-    def _compute_quoter_slot_global_adjustments(self):
-        for order in self:
-            for n in range(1, 6):
-                block = getattr(order, "quoter_block_slot_%d_id" % n)
-                disc, surcharge = order._quoter_block_adjustment_amounts(block)
-                order["quoter_slot_%d_global_discount" % n] = disc
-                order["quoter_slot_%d_global_surcharge" % n] = surcharge
-
-    def _inverse_quoter_slot_1_global_discount(self):
-        for order in self:
-            if not self.env.user.has_group("quoter.group_quoter_partner"):
-                continue
-            order._check_quoter_partner_adjustment_write_access()
-            if order.quoter_block_slot_1_id:
-                order.quoter_block_slot_1_id.global_discount_amount = max(
-                    0.0, float(order.quoter_slot_1_global_discount or 0.0)
-                )
-            if order.is_quotation:
-                order._quoter_sync_area_discount_total_line()
-
-    def _inverse_quoter_slot_2_global_discount(self):
-        for order in self:
-            if not self.env.user.has_group("quoter.group_quoter_partner"):
-                continue
-            order._check_quoter_partner_adjustment_write_access()
-            if order.quoter_block_slot_2_id:
-                order.quoter_block_slot_2_id.global_discount_amount = max(
-                    0.0, float(order.quoter_slot_2_global_discount or 0.0)
-                )
-            if order.is_quotation:
-                order._quoter_sync_area_discount_total_line()
-
-    def _inverse_quoter_slot_3_global_discount(self):
-        for order in self:
-            if not self.env.user.has_group("quoter.group_quoter_partner"):
-                continue
-            order._check_quoter_partner_adjustment_write_access()
-            if order.quoter_block_slot_3_id:
-                order.quoter_block_slot_3_id.global_discount_amount = max(
-                    0.0, float(order.quoter_slot_3_global_discount or 0.0)
-                )
-            if order.is_quotation:
-                order._quoter_sync_area_discount_total_line()
-
-    def _inverse_quoter_slot_4_global_discount(self):
-        for order in self:
-            if not self.env.user.has_group("quoter.group_quoter_partner"):
-                continue
-            order._check_quoter_partner_adjustment_write_access()
-            if order.quoter_block_slot_4_id:
-                order.quoter_block_slot_4_id.global_discount_amount = max(
-                    0.0, float(order.quoter_slot_4_global_discount or 0.0)
-                )
-            if order.is_quotation:
-                order._quoter_sync_area_discount_total_line()
-
-    def _inverse_quoter_slot_5_global_discount(self):
-        for order in self:
-            if not self.env.user.has_group("quoter.group_quoter_partner"):
-                continue
-            order._check_quoter_partner_adjustment_write_access()
-            if order.quoter_block_slot_5_id:
-                order.quoter_block_slot_5_id.global_discount_amount = max(
-                    0.0, float(order.quoter_slot_5_global_discount or 0.0)
-                )
-            if order.is_quotation:
-                order._quoter_sync_area_discount_total_line()
-
-    def _inverse_quoter_slot_1_global_surcharge(self):
-        for order in self:
-            if not self.env.user.has_group("quoter.group_quoter_partner"):
-                continue
-            order._check_quoter_partner_adjustment_write_access()
-            if order.quoter_block_slot_1_id:
-                order.quoter_block_slot_1_id.global_surcharge_amount = max(
-                    0.0, float(order.quoter_slot_1_global_surcharge or 0.0)
-                )
-            if order.is_quotation:
-                order._quoter_sync_area_discount_total_line()
-
-    def _inverse_quoter_slot_2_global_surcharge(self):
-        for order in self:
-            if not self.env.user.has_group("quoter.group_quoter_partner"):
-                continue
-            order._check_quoter_partner_adjustment_write_access()
-            if order.quoter_block_slot_2_id:
-                order.quoter_block_slot_2_id.global_surcharge_amount = max(
-                    0.0, float(order.quoter_slot_2_global_surcharge or 0.0)
-                )
-            if order.is_quotation:
-                order._quoter_sync_area_discount_total_line()
-
-    def _inverse_quoter_slot_3_global_surcharge(self):
-        for order in self:
-            if not self.env.user.has_group("quoter.group_quoter_partner"):
-                continue
-            order._check_quoter_partner_adjustment_write_access()
-            if order.quoter_block_slot_3_id:
-                order.quoter_block_slot_3_id.global_surcharge_amount = max(
-                    0.0, float(order.quoter_slot_3_global_surcharge or 0.0)
-                )
-            if order.is_quotation:
-                order._quoter_sync_area_discount_total_line()
-
-    def _inverse_quoter_slot_4_global_surcharge(self):
-        for order in self:
-            if not self.env.user.has_group("quoter.group_quoter_partner"):
-                continue
-            order._check_quoter_partner_adjustment_write_access()
-            if order.quoter_block_slot_4_id:
-                order.quoter_block_slot_4_id.global_surcharge_amount = max(
-                    0.0, float(order.quoter_slot_4_global_surcharge or 0.0)
-                )
-            if order.is_quotation:
-                order._quoter_sync_area_discount_total_line()
-
-    def _inverse_quoter_slot_5_global_surcharge(self):
-        for order in self:
-            if not self.env.user.has_group("quoter.group_quoter_partner"):
-                continue
-            order._check_quoter_partner_adjustment_write_access()
-            if order.quoter_block_slot_5_id:
-                order.quoter_block_slot_5_id.global_surcharge_amount = max(
-                    0.0, float(order.quoter_slot_5_global_surcharge or 0.0)
-                )
-            if order.is_quotation:
-                order._quoter_sync_area_discount_total_line()
-
-    @api.depends(
-        "order_line",
-        "order_line.price_subtotal",
-        "order_line.quoter_tab_area_id",
-        "order_line.quoter_is_adjustment_line",
-        "order_line.display_type",
-        "quoter_slot_1_area_id",
-        "quoter_slot_2_area_id",
-        "quoter_slot_3_area_id",
-        "quoter_slot_4_area_id",
-        "quoter_slot_5_area_id",
-        "quoter_block_slot_1_id.global_discount_amount",
-        "quoter_block_slot_2_id.global_discount_amount",
-        "quoter_block_slot_3_id.global_discount_amount",
-        "quoter_block_slot_4_id.global_discount_amount",
-        "quoter_block_slot_5_id.global_discount_amount",
-        "quoter_block_slot_1_id.global_surcharge_amount",
-        "quoter_block_slot_2_id.global_surcharge_amount",
-        "quoter_block_slot_3_id.global_surcharge_amount",
-        "quoter_block_slot_4_id.global_surcharge_amount",
-        "quoter_block_slot_5_id.global_surcharge_amount",
-    )
-    def _compute_quoter_slot_area_totals_untaxed(self):
-        for order in self:
-            for n in range(1, 6):
-                area = getattr(order, "quoter_slot_%d_area_id" % n)
-                block = getattr(order, "quoter_block_slot_%d_id" % n)
-                pname = "quoter_slot_%d_product_untaxed" % n
-                aname = "quoter_slot_%d_adjustment_untaxed" % n
-                dname = "quoter_slot_%d_discount_line" % n
-                rname = "quoter_slot_%d_surcharge_line" % n
-                tname = "quoter_slot_%d_total_untaxed" % n
-                if not area:
-                    order[pname] = 0.0
-                    order[aname] = 0.0
-                    order[dname] = 0.0
-                    order[rname] = 0.0
-                    order[tname] = 0.0
-                    continue
-                olines = order.order_line.filtered(
-                    lambda l, a=area: not l.display_type and l.quoter_tab_area_id == a
-                )
-                prod = sum(olines.filtered(lambda l: not l.quoter_is_adjustment_line).mapped("price_subtotal"))
-                adj = sum(olines.filtered(lambda l: l.quoter_is_adjustment_line).mapped("price_subtotal"))
-                sub = prod + adj
-                disc_pct, surcharge_pct = order._quoter_block_adjustment_amounts(block)
-                disc_amt = sub * (disc_pct / 100.0)
-                surcharge_amt = sub * (surcharge_pct / 100.0)
-                total = sub - disc_amt + surcharge_amt
-                order[pname] = prod
-                order[aname] = adj
-                order[dname] = disc_amt
-                order[rname] = surcharge_amt
-                order[tname] = total
-
-    @api.depends(
-        "quoter_slot_1_area_id",
-        "quoter_slot_2_area_id",
-        "quoter_slot_3_area_id",
-        "quoter_slot_4_area_id",
-        "quoter_slot_5_area_id",
-    )
-    def _compute_quoter_slot_footer_captions(self):
-        for order in self:
-            for n in range(1, 6):
-                area = getattr(order, "quoter_slot_%d_area_id" % n)
-                aname = area.name if area else ""
-                order["quoter_slot_%d_caption_products" % n] = (
-                    (_("Productos %s") % aname if aname else _("Productos")) + ":"
-                )
-                order["quoter_slot_%d_caption_adjustments" % n] = (
-                    (_("Ajustes %s") % aname if aname else _("Ajustes")) + ":"
-                )
-                order["quoter_slot_%d_caption_discount" % n] = _("Descuento:")
-                order["quoter_slot_%d_caption_surcharge" % n] = _("Recargo:")
-                order["quoter_slot_%d_caption_total" % n] = _("Total:")
-
-    @api.depends(
-        "order_line",
-        "order_line.quoter_tab_area_id",
-        "order_line.quoter_is_adjustment_line",
-        "order_line.quoter_range_hour_ids",
-        "order_line.quoter_range_hour_ids.hours",
-        "order_line.quoter_range_hour_ids.area_range_id",
-        "order_line.name",
-        "quoter_slot_1_area_id",
-        "quoter_slot_2_area_id",
-        "quoter_slot_3_area_id",
-        "quoter_slot_4_area_id",
-        "quoter_slot_5_area_id",
-        "quoter_slot_1_area_id.area_range_ids",
-        "quoter_slot_2_area_id.area_range_ids",
-        "quoter_slot_3_area_id.area_range_ids",
-        "quoter_slot_4_area_id.area_range_ids",
-        "quoter_slot_5_area_id.area_range_ids",
-        "quoter_block_slot_1_id.global_discount_amount",
-        "quoter_block_slot_2_id.global_discount_amount",
-        "quoter_block_slot_3_id.global_discount_amount",
-        "quoter_block_slot_4_id.global_discount_amount",
-        "quoter_block_slot_5_id.global_discount_amount",
-        "quoter_block_slot_1_id.global_surcharge_amount",
-        "quoter_block_slot_2_id.global_surcharge_amount",
-        "quoter_block_slot_3_id.global_surcharge_amount",
-        "quoter_block_slot_4_id.global_surcharge_amount",
-        "quoter_block_slot_5_id.global_surcharge_amount",
-        "partner_id",
-        "pricelist_id",
-        "date_order",
-    )
-    def _compute_quoter_slot_area_summary_html(self):
-        for order in self:
-            for n in range(1, 6):
-                area = getattr(order, "quoter_slot_%d_area_id" % n)
-                block = getattr(order, "quoter_block_slot_%d_id" % n)
-                fname = "quoter_slot_%d_area_summary_html" % n
-                if not area:
-                    order[fname] = False
-                else:
-                    order[fname] = order._quoter_build_area_summary_html(area, block)
-
-    @api.depends(
-        "quoter_block_slot_1_id.state",
-        "quoter_block_slot_2_id.state",
-        "quoter_block_slot_3_id.state",
-        "quoter_block_slot_4_id.state",
-        "quoter_block_slot_5_id.state",
-    )
-    def _compute_quoter_slot_editable(self):
-        """Solo en Abierto (draft): botones, nivel y cambio de estado vía flujo normal."""
-        for order in self:
-            for n in range(1, 6):
-                block = getattr(order, "quoter_block_slot_%s_id" % n)
-                # En registros nuevos (NewId) el bloque puede existir pero aún sin estado seteado.
-                editable = (not block) or (block.state in (False, "draft"))
-                setattr(order, "quoter_slot_%s_editable" % n, editable)
-
-    @api.depends(
-        "quoter_block_slot_1_id.state",
-        "quoter_block_slot_2_id.state",
-        "quoter_block_slot_3_id.state",
-        "quoter_block_slot_4_id.state",
-        "quoter_block_slot_5_id.state",
-    )
-    def _compute_quoter_slot_lock_flags(self):
-        for order in self:
-            for n in range(1, 6):
-                block = getattr(order, "quoter_block_slot_%s_id" % n)
-                st = block.state if block else False
-                structure_locked = bool(block) and st in ("published", "cancel")
-                lines_frozen = bool(block) and st == "cancel"
-                setattr(order, "quoter_slot_%s_structure_locked" % n, structure_locked)
-                setattr(order, "quoter_slot_%s_lines_frozen" % n, lines_frozen)
 
     @api.depends()
     def _compute_quoter_menu_context(self):
@@ -1782,71 +915,111 @@ class SaleOrder(models.Model):
             self._quoter_guard_quotation_name_before_sale_create(vals)
             self._quoter_apply_default_sales_setup(vals)
             self._quoter_apply_hidden_fields_policy(vals)
+            self._quoter_sanitize_quoter_area_block_commands(vals)
+            if vals.get("is_quotation") or self.env.context.get("default_is_quotation"):
+                cmds = self._quoter_filter_quotation_order_line_commands(vals.get("order_line"))
+                if cmds:
+                    vals["order_line"] = cmds
+                    self._quoter_sanitize_order_line_commands(vals)
+                else:
+                    vals.pop("order_line", None)
+            else:
+                self._quoter_sanitize_order_line_commands(vals)
         records = super().create(vals_list)
         for order, vals in zip(records, vals_list):
-            order._quoter_validate_area_visibility_access()
             order._sync_quoter_area_blocks()
             order._quoter_autoload_default_products_after_save(trigger_vals=vals)
             if order.is_quotation:
                 order._quoter_sync_area_discount_total_line()
+                order._quoter_sync_date_of_issue_from_order_date()
+                order._quoter_compute_validity_date_from_payment_term()
+                if vals.get("quoter_is_first_quotation"):
+                    order._quoter_apply_first_quotation_risk_levels()
+        records.filtered("is_quotation")._quoter_reconcile_area_ids_from_blocks()
+        records.filtered("is_quotation")._quoter_log_order_created()
         return records
 
     def write(self, vals):
         self._check_quoter_responsibles_write_access(vals)
         if vals:
+            vals = self._quoter_protect_area_ids_write_vals(vals)
+        if vals and "quoter_area_block_ids" in vals:
             vals = dict(vals)
-            discount_keys = {
-                "quoter_slot_1_global_discount",
-                "quoter_slot_2_global_discount",
-                "quoter_slot_3_global_discount",
-                "quoter_slot_4_global_discount",
-                "quoter_slot_5_global_discount",
-                "quoter_slot_1_global_surcharge",
-                "quoter_slot_2_global_surcharge",
-                "quoter_slot_3_global_surcharge",
-                "quoter_slot_4_global_surcharge",
-                "quoter_slot_5_global_surcharge",
-            }
-            if not self.env.user.has_group("quoter.group_quoter_partner"):
-                for key in discount_keys:
-                    vals.pop(key, None)
+            self._quoter_sanitize_quoter_area_block_commands(vals)
+        if vals and "order_line" in vals:
+            vals = dict(vals)
+            if self.filtered("is_quotation"):
+                # Las líneas de cotización se editan solo en quoter.sale.order.area (form embebido).
+                vals.pop("order_line", None)
+            else:
+                self._quoter_sanitize_order_line_commands(vals)
+        quotation_write = self.filtered(
+            lambda o: o.is_quotation and isinstance(o.id, int)
+        )
+        if quotation_write:
+            quotation_write.invalidate_cache(fnames=["order_line"])
         if vals is not None and self.env.context.get("quoter_use_cot_sequence"):
             vals = dict(vals)
             vals["is_quotation"] = True
-        if vals and (
-            vals.get("is_quotation")
-            or any(order.is_quotation for order in self)
-        ):
+        # Solo al marcar como cotización (create / conversión), no en cada guardado.
+        if vals and vals.get("is_quotation"):
             vals = dict(vals)
-            self._quoter_apply_hidden_fields_policy(
-                vals, force=not vals.get("is_quotation")
-            )
-        res = super().write(vals)
-        if vals and ("quoter_area_ids" in vals or "is_quotation" in vals):
-            self._quoter_validate_area_visibility_access()
+            self._quoter_apply_hidden_fields_policy(vals)
+        date_triggers = {"date_order", "payment_term_id"}
+        area_change_snapshots = []
+        if vals and "quoter_area_ids" in vals:
+            for order in self:
+                if order.is_quotation or vals.get("is_quotation"):
+                    area_change_snapshots.append((order, order.quoter_area_ids))
+        try:
+            res = super().write(vals)
+        except MissingError:
+            if not quotation_write:
+                raise
+            quotation_write.invalidate_cache(fnames=["order_line"])
+            safe_vals = dict(vals or {})
+            safe_vals.pop("order_line", None)
+            res = super().write(safe_vals)
+        if vals:
+            self.filtered(lambda o: o.is_quotation)._quoter_log_order_field_changes(vals)
+        if area_change_snapshots:
+            for order, old_areas in area_change_snapshots:
+                if not order.is_quotation:
+                    continue
+                new_areas = order.quoter_area_ids
+                added = new_areas - old_areas
+                removed = old_areas - new_areas
+                parts = []
+                if added:
+                    parts.append(
+                        _("Áreas agregadas al presupuesto: %s")
+                        % ", ".join(added.mapped("name"))
+                    )
+                if removed:
+                    parts.append(
+                        _("Áreas quitadas del presupuesto: %s")
+                        % ", ".join(removed.mapped("name"))
+                    )
+                if parts:
+                    order._quoter_message_post("<br/>".join(parts))
+        if date_triggers & set(vals.keys()):
+            self.filtered("is_quotation")._quoter_sync_date_of_issue_from_order_date()
+            self.filtered("is_quotation")._quoter_compute_validity_date_from_payment_term()
         if "quoter_area_ids" in vals or "is_quotation" in vals:
             self._sync_quoter_area_blocks()
+        self.filtered("is_quotation")._quoter_reconcile_area_ids_from_blocks()
         if vals:
             self._quoter_autoload_default_products_after_save(trigger_vals=vals)
-            discount_keys = {
-                "quoter_slot_1_global_discount",
-                "quoter_slot_2_global_discount",
-                "quoter_slot_3_global_discount",
-                "quoter_slot_4_global_discount",
-                "quoter_slot_5_global_discount",
-                "quoter_slot_1_global_surcharge",
-                "quoter_slot_2_global_surcharge",
-                "quoter_slot_3_global_surcharge",
-                "quoter_slot_4_global_surcharge",
-                "quoter_slot_5_global_surcharge",
-            }
-            if any(k in vals for k in discount_keys):
-                for order in self.filtered("is_quotation"):
-                    order._quoter_sync_area_discount_total_line()
         # Refuerzo: sincronizar siempre después de guardar para evitar que comandos
         # de order_line del formulario pisen la línea técnica.
-        for order in self.filtered(lambda o: o.is_quotation and isinstance(o.id, int)):
-            order._quoter_sync_area_discount_total_line()
+        quotation_orders = self.filtered(
+            lambda o: o.is_quotation and isinstance(o.id, int)
+        )
+        if quotation_orders:
+            quotation_orders.invalidate_cache(["order_line"])
+            quotation_orders._quoter_sync_area_discount_total_line()
+        if vals.get("quoter_is_first_quotation"):
+            self.filtered("quoter_is_first_quotation")._quoter_apply_first_quotation_risk_levels()
         # Solo registros ya guardados (id entero). Con NewId aún no hay fila en BD:
         # pedir la secuencia aquí consumía Q... al editar el formulario antes del 1er guardado.
         missing_seq = self.filtered(
@@ -1865,23 +1038,27 @@ class SaleOrder(models.Model):
         return res
 
     def _quoter_autoload_default_products_after_save(self, trigger_vals=None):
-        """Al guardar: asegurar predeterminados por área (sin depender del nivel)."""
+        """Al guardar: predeterminados solo cuando cambian las áreas (no en cada create/write)."""
         trigger_vals = trigger_vals or {}
-        should_run = bool(
-            "quoter_area_ids" in trigger_vals
-            or "is_quotation" in trigger_vals
-            or "default_is_quotation" in self.env.context
-            or self.env.context.get("quoter_use_cot_sequence")
-        )
-        if not should_run:
+        if "quoter_area_ids" not in trigger_vals:
+            return
+        if self.env.context.get("quoter_skip_autoload_default_products"):
             return
 
-        for order in self:
+        ctx = dict(
+            self.env.context,
+            quoter_skip_block_product_refresh=True,
+            quoter_skip_autoload_default_products=True,
+        )
+        for order in self.with_context(ctx):
             if not order.is_quotation:
                 continue
-            blocks = order.quoter_area_block_ids.filtered(lambda b: b.state in (False, "draft"))
+            blocks = order.quoter_area_block_ids.filtered(
+                lambda b: b.state in (False, "draft") and b.complexity_level_id
+            )
             for block in blocks:
                 block.action_quoter_load_default_products()
+            order._quoter_refresh_block_selectable_products()
 
     def _quoter_load_default_products_onchange(self):
         """En el formulario: cargar líneas predeterminadas por área (sin depender del nivel)."""
@@ -1919,6 +1096,247 @@ class SaleOrder(models.Model):
                     line_new._onchange_product_id()
                 self.order_line += line_new
 
+    @api.model
+    def _quoter_area_ids_cmds_clear_all(self, commands):
+        """True si los comandos vacían por completo el many2many de áreas."""
+        if not commands:
+            return True
+        if not isinstance(commands, list):
+            return False
+        if commands == [(5, 0, 0)]:
+            return True
+        if len(commands) == 1:
+            cmd = commands[0]
+            if isinstance(cmd, (list, tuple)) and len(cmd) >= 3 and cmd[0] == 6:
+                return not bool(cmd[2])
+        return False
+
+    def _quoter_protect_area_ids_write_vals(self, vals):
+        """Evita que un guardado del formulario borre áreas ya elegidas por error de cliente."""
+        if not vals or "quoter_area_ids" not in vals:
+            return vals
+        if self._quoter_area_ids_cmds_clear_all(vals["quoter_area_ids"]):
+            if any(
+                o.is_quotation and o.quoter_area_block_ids.mapped("area_id")
+                for o in self
+            ):
+                vals = dict(vals)
+                vals.pop("quoter_area_ids", None)
+        return vals
+
+    def _quoter_apply_first_quotation_risk_levels(self):
+        """Primera cotización: nivel de riesgo más alto en bloques de áreas Auditoría."""
+        for order in self.filtered(lambda o: o.is_quotation and o.quoter_is_first_quotation):
+            for block in order.quoter_area_block_ids:
+                if not block.area_id.is_auditoria_area:
+                    continue
+                block._quoter_apply_first_auditoria_effect()
+
+    def _quoter_reconcile_area_ids_from_blocks(self):
+        """Tras guardar: si hay bloques con área, el m2m de cabecera debe coincidir."""
+        for order in self.filtered("is_quotation"):
+            block_areas = order.quoter_area_block_ids.mapped("area_id")
+            if not block_areas:
+                continue
+            if set(block_areas.ids) != set(order.quoter_area_ids.ids):
+                order.quoter_area_ids = block_areas
+
+    def _quoter_sanitize_quoter_area_block_commands(self, vals, order=None):
+        """Descarta comandos x2many inválidos sobre ``quoter_area_block_ids``.
+
+        El formulario embebido del one2many puede dejar en el BasicModel un ``(0, 0, vals)``
+        sin ``area_id``; al guardar el pedido desde otra pestaña Odoo intentaría crear el
+        bloque y falla por el campo obligatorio. Aquí filtramos esos comandos y evitamos
+        que el cliente borre ``area_id`` en un ``(1, id, vals)``.
+        """
+        cmds = vals.get("quoter_area_block_ids")
+        if not cmds or not isinstance(cmds, list):
+            return vals
+        order_rec = (order or self)[:1]
+        order_id = order_rec.id if order_rec and isinstance(order_rec.id, int) else False
+        new_cmds = []
+        for cmd in cmds:
+            if isinstance(cmd, (list, tuple)) and len(cmd) >= 1:
+                op = cmd[0]
+                if op == 0 and len(cmd) >= 3 and isinstance(cmd[2], dict):
+                    sub = dict(cmd[2])
+                    if not sub.get("area_id"):
+                        continue
+                    if not order_id:
+                        # Cotización nueva (sin id en BD): el onchange deja (0,0) sin
+                        # pedido; _sync_quoter_area_blocks los crea tras el create.
+                        continue
+                    sub.setdefault("order_id", order_id)
+                    new_cmds.append((0, 0, sub))
+                    continue
+                if op == 1 and len(cmd) >= 3 and isinstance(cmd[2], dict):
+                    sub = dict(cmd[2])
+                    if "area_id" in sub and not sub.get("area_id"):
+                        sub.pop("area_id", None)
+                    # Las líneas del bloque se guardan solo en el form embebido; evita ids
+                    # de sección borrados en el BasicModel del pedido padre.
+                    if "order_line_ids" in sub:
+                        sub.pop("order_line_ids", None)
+                    if not sub:
+                        continue
+                    new_cmds.append((1, cmd[1], sub))
+                    continue
+            new_cmds.append(cmd)
+        if not new_cmds and cmds:
+            vals.pop("quoter_area_block_ids", None)
+        else:
+            vals["quoter_area_block_ids"] = new_cmds
+        return vals
+
+    def read(self, fields=None, load="_classic_read"):
+        """En cotizaciones el pedido no edita líneas de bloques (solo vía form embebido)."""
+        result = super().read(fields=fields, load=load)
+        if fields is None or "order_line" in fields:
+            Line = self.env["sale.order.line"]
+            for values in result:
+                order = self.browse(values["id"])
+                if not order.is_quotation:
+                    continue
+                # sudo: filtrar ids fantasma sin fallar si alguna línea no es legible.
+                parent_lines = order.sudo().order_line.filtered(
+                    lambda l: not l.quoter_block_id
+                )
+                values["order_line"] = [
+                    lid
+                    for lid in parent_lines.sorted(
+                        key=lambda l: (int(l.sequence or 0), l.id)
+                    ).ids
+                    if Line.sudo().browse(lid).exists()
+                ]
+        return result
+
+    @api.model
+    def _quoter_filter_onchange_order_line_values(self, commands):
+        """Quita comandos/ids de líneas borradas o del cotizador embebido (antes del onchange)."""
+        if not commands or not isinstance(commands, list):
+            return commands or []
+        Line = self.env["sale.order.line"]
+        filtered = []
+        for cmd in commands:
+            if not isinstance(cmd, (list, tuple)):
+                continue
+            op = cmd[0]
+            if op == 6 and len(cmd) >= 3 and isinstance(cmd[2], (list, tuple)):
+                ids = [lid for lid in cmd[2] if isinstance(lid, int)]
+                if not ids:
+                    filtered.append((6, 0, []))
+                    continue
+                lines = Line.browse(ids).exists()
+                parent_ids = lines.filtered(lambda l: not l.quoter_block_id).ids
+                filtered.append((6, 0, parent_ids))
+                continue
+            if op in (1, 2, 3, 4) and len(cmd) >= 2:
+                line = Line.browse(cmd[1])
+                if not line.exists() or line.quoter_block_id:
+                    continue
+            if op == 0 and len(cmd) >= 3 and isinstance(cmd[2], dict):
+                sub = cmd[2]
+                if sub.get("quoter_block_id") or sub.get("quoter_tab_area_id"):
+                    continue
+            filtered.append(cmd)
+        return filtered
+
+    def onchange(self, values, field_name, field_onchange):
+        """Evita MissingError cuando el cliente pide onchange con líneas ya borradas en bloque."""
+        values = dict(values or {})
+        is_quotation = values.get("is_quotation")
+        if is_quotation is None and self:
+            is_quotation = self[:1].is_quotation
+        if is_quotation:
+            if self:
+                self.invalidate_cache(fnames=["order_line"])
+            if values.get("order_line"):
+                values["order_line"] = self._quoter_filter_onchange_order_line_values(
+                    values["order_line"]
+                )
+        try:
+            result = super().onchange(values, field_name, field_onchange)
+        except MissingError:
+            if not is_quotation:
+                raise
+            result = {
+                "warning": {
+                    "title": _("Registro actualizado"),
+                    "message": _(
+                        "Se eliminó una línea de la cotización; recargue el formulario si los totales no coinciden."
+                    ),
+                },
+            }
+        if not result or not isinstance(result, dict):
+            return result
+        order_vals = result.get("value") or {}
+        if is_quotation and order_vals.get("order_line"):
+            order_vals["order_line"] = self._quoter_filter_onchange_order_line_values(
+                order_vals["order_line"]
+            )
+            result["value"] = order_vals
+        elif is_quotation and "value" in result and not order_vals:
+            # Evita que el cliente interprete value:{} como borrar todo el formulario.
+            result.pop("value", None)
+        return result
+
+    def _quoter_filter_quotation_order_line_commands(self, commands):
+        """Descarta comandos del pedido sobre líneas que gestiona quoter.sale.order.area."""
+        if not commands or not isinstance(commands, list):
+            return []
+        Line = self.env["sale.order.line"]
+        filtered = []
+        for cmd in commands:
+            if not isinstance(cmd, (list, tuple)):
+                filtered.append(cmd)
+                continue
+            op = cmd[0]
+            if op == 6:
+                continue
+            if op in (1, 2, 3, 4) and len(cmd) >= 2:
+                line = Line.browse(cmd[1])
+                if not line.exists() or line.quoter_block_id:
+                    continue
+            if op == 0 and len(cmd) >= 3 and isinstance(cmd[2], dict):
+                sub = cmd[2]
+                if sub.get("quoter_block_id") or sub.get("quoter_tab_area_id"):
+                    continue
+            filtered.append(cmd)
+        return filtered
+
+    def _quoter_sanitize_order_line_commands(self, vals):
+        """Completa campos mínimos en comandos de order_line para no violar constraints SQL."""
+        cmds = vals.get("order_line")
+        if not cmds or not isinstance(cmds, list):
+            return vals
+        Product = self.env["product.product"]
+        new_cmds = []
+        for cmd in cmds:
+            if (
+                isinstance(cmd, (list, tuple))
+                and len(cmd) >= 3
+                and cmd[0] in (0, 1)
+                and isinstance(cmd[2], dict)
+            ):
+                line_vals = dict(cmd[2])
+                if not line_vals.get("display_type"):
+                    product_id = line_vals.get("product_id")
+                    product = Product.browse(product_id) if product_id else Product
+                    if product and product.exists():
+                        line_vals.setdefault("product_uom_qty", 1.0)
+                        if not line_vals.get("product_uom"):
+                            line_vals["product_uom"] = product.uom_id.id
+                        if not line_vals.get("name"):
+                            line_vals["name"] = (
+                                product.get_product_multiline_description_sale()
+                                or product.display_name
+                            )
+                new_cmds.append((cmd[0], cmd[1], line_vals))
+                continue
+            new_cmds.append(cmd)
+        vals["order_line"] = new_cmds
+        return vals
+
     def _sync_quoter_area_blocks(self):
         Block = self.env["quoter.sale.order.area"]
         for order in self:
@@ -1930,7 +1348,15 @@ class SaleOrder(models.Model):
             have = order.quoter_area_block_ids.mapped("area_id")
             for area in keep:
                 if area not in have:
-                    Block.create({"order_id": order.id, "area_id": area.id})
+                    Block.create(
+                        {
+                            "order_id": order.id,
+                            "area_id": area.id,
+                            "branch_id": area._resolve_matrix_branch().id,
+                        }
+                    )
+            order._quoter_resequence_area_blocks()
+            order._quoter_align_block_branches_with_area()
 
     def _quoter_area_discount_line_product(self):
         return self.env.ref("quoter.product_quoter_area_discount_sum", raise_if_not_found=False)
@@ -1944,7 +1370,9 @@ class SaleOrder(models.Model):
         if not product:
             return
         line_model = self.env["sale.order.line"]
-        discount_lines = self.order_line.filtered("quoter_is_area_discount_total_line")
+        discount_lines = self._quoter_order_line_existing().filtered(
+            "quoter_is_area_discount_total_line"
+        )
         total_discount = 0.0
         total_surcharge = 0.0
         for block in self.quoter_area_block_ids:
@@ -1979,7 +1407,9 @@ class SaleOrder(models.Model):
             if len(discount_lines) > 1:
                 discount_lines[1:].unlink()
         else:
-            vals["sequence"] = (max(self.order_line.mapped("sequence") or [0]) + 1)
+            vals["sequence"] = (
+                max(self._quoter_order_line_existing().mapped("sequence") or [0]) + 1
+            )
             line_model.create(vals)
 
     def action_confirm(self):
@@ -2004,15 +1434,19 @@ class SaleOrder(models.Model):
             self.quoter_area_ids = [(5, 0, 0)]
             self.quoter_area_block_ids = [(5, 0, 0)]
 
+    @api.onchange("date_order", "payment_term_id", "is_quotation")
+    def _onchange_quoter_dates_and_payment_term(self):
+        if self.is_quotation:
+            self._quoter_sync_date_of_issue_from_order_date()
+            self._quoter_compute_validity_date_from_payment_term()
+
     @api.onchange("quoter_area_ids")
     def _onchange_quoter_area_ids(self):
         if not self.quoter_area_ids:
             self.quoter_area_block_ids = [(5, 0, 0)]
             return
-        if len(self.quoter_area_ids) > 5:
-            top5 = self._quoter_areas_ordered_for_slots()[:5]
-            self.quoter_area_ids = [(6, 0, top5.ids)]
         self._sync_quoter_area_blocks_onchange()
+        self._quoter_align_block_branches_with_area()
         self._quoter_load_default_products_onchange()
 
     def _sync_quoter_area_blocks_onchange(self):
@@ -2024,107 +1458,14 @@ class SaleOrder(models.Model):
         existing = set(self.quoter_area_block_ids.mapped("area_id").ids) & selected
         for aid in selected:
             if aid not in existing:
-                cmds.append((0, 0, {"area_id": aid}))
+                area = self.env["quoter.professional.area"].browse(aid)
+                nvals = {
+                    "area_id": aid,
+                    "branch_id": area._resolve_matrix_branch().id if area else False,
+                }
+                if isinstance(self.id, int):
+                    nvals["order_id"] = self.id
+                cmds.append((0, 0, nvals))
         if cmds:
             self.quoter_area_block_ids = cmds
-
-    def _quoter_block_for_slot(self, slot):
-        self.ensure_one()
-        area = getattr(self, "quoter_slot_%s_area_id" % slot)
-        if not area:
-            return self.env["quoter.sale.order.area"]
-        return self.quoter_area_block_ids.filtered(lambda b, a=area: b.area_id == a)[:1]
-
-    def _action_slot_load_defaults(self, slot):
-        self.ensure_one()
-        block = self._quoter_block_for_slot(slot)
-        if block:
-            return block.action_quoter_load_default_products()
-        return True
-
-    def _action_slot_publish(self, slot):
-        self.ensure_one()
-        block = self._quoter_block_for_slot(slot)
-        if block:
-            return block.action_quoter_publish()
-        return True
-
-    def _action_slot_cancel(self, slot):
-        self.ensure_one()
-        block = self._quoter_block_for_slot(slot)
-        if block:
-            return block.action_quoter_cancel_block()
-        return True
-
-    def _action_slot_reopen(self, slot):
-        self.ensure_one()
-        block = self._quoter_block_for_slot(slot)
-        if block:
-            return block.action_quoter_reopen()
-        return True
-
-    def action_quoter_slot_1_load_defaults(self):
-        return self._action_slot_load_defaults(1)
-
-    def action_quoter_slot_2_load_defaults(self):
-        return self._action_slot_load_defaults(2)
-
-    def action_quoter_slot_3_load_defaults(self):
-        return self._action_slot_load_defaults(3)
-
-    def action_quoter_slot_4_load_defaults(self):
-        return self._action_slot_load_defaults(4)
-
-    def action_quoter_slot_5_load_defaults(self):
-        return self._action_slot_load_defaults(5)
-
-    def action_quoter_slot_1_publish(self):
-        return self._action_slot_publish(1)
-
-    def action_quoter_slot_2_publish(self):
-        return self._action_slot_publish(2)
-
-    def action_quoter_slot_3_publish(self):
-        return self._action_slot_publish(3)
-
-    def action_quoter_slot_4_publish(self):
-        return self._action_slot_publish(4)
-
-    def action_quoter_slot_5_publish(self):
-        return self._action_slot_publish(5)
-
-    def action_quoter_slot_1_cancel(self):
-        return self._action_slot_cancel(1)
-
-    def action_quoter_slot_2_cancel(self):
-        return self._action_slot_cancel(2)
-
-    def action_quoter_slot_3_cancel(self):
-        return self._action_slot_cancel(3)
-
-    def action_quoter_slot_4_cancel(self):
-        return self._action_slot_cancel(4)
-
-    def action_quoter_slot_5_cancel(self):
-        return self._action_slot_cancel(5)
-
-    def action_quoter_slot_1_reopen(self):
-        return self._action_slot_reopen(1)
-
-    def action_quoter_slot_2_reopen(self):
-        return self._action_slot_reopen(2)
-
-    def action_quoter_slot_3_reopen(self):
-        return self._action_slot_reopen(3)
-
-    def action_quoter_slot_4_reopen(self):
-        return self._action_slot_reopen(4)
-
-    def action_quoter_slot_5_reopen(self):
-        return self._action_slot_reopen(5)
-
-    @api.constrains("quoter_area_ids")
-    def _check_quoter_area_ids_max_5(self):
-        for order in self:
-            if order.is_quotation and len(order.quoter_area_ids) > 5:
-                raise UserError(_("Como máximo puede seleccionar 5 áreas en una cotización."))
+        self._quoter_resequence_area_blocks()

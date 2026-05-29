@@ -1,45 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="0">
+        <!-- Grupo base: todos los roles Quoter lo heredan (menú raíz / icono de app). -->
+        <record id="group_quoter_access" model="res.groups">
+            <field name="name">Quoter - Acceso</field>
+            <field name="category_id" ref="base.module_category_sales_management"/>
+            <field name="comment">Acceso al menú principal e icono de la aplicación Cotizador.</field>
+        </record>
+
         <record id="group_quoter_manager" model="res.groups">
             <field name="name">Quoter - Gerente</field>
             <field name="category_id" ref="base.module_category_sales_management"/>
-            <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_manager'))]"/>
+            <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_manager'))]"/>
             <field name="comment">Usuarios habilitados para asignarse como gerente responsable en cotizaciones.</field>
         </record>
 
         <record id="group_quoter_partner" model="res.groups">
             <field name="name">Quoter - Socio</field>
             <field name="category_id" ref="base.module_category_sales_management"/>
-            <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_manager'))]"/>
+            <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_manager'))]"/>
             <field name="comment">Usuarios habilitados para asignarse como socio en cotizaciones.</field>
         </record>
 
         <record id="group_quoter_tax" model="res.groups">
             <field name="name">Quoter - TAX</field>
             <field name="category_id" ref="base.module_category_sales_management"/>
-            <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_salesman'))]"/>
+            <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_salesman'))]"/>
             <field name="comment">Grupo exclusivo para operar el área TAX del cotizador.</field>
         </record>
 
         <record id="group_quoter_auditoria" model="res.groups">
             <field name="name">Quoter - Auditoría</field>
             <field name="category_id" ref="base.module_category_sales_management"/>
-            <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_salesman'))]"/>
+            <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_salesman'))]"/>
             <field name="comment">Grupo exclusivo para operar el área Auditoría del cotizador.</field>
         </record>
 
-        <record id="group_quoter_bpo" model="res.groups">
+        <record id="group_quoter_formula" model="res.groups">
             <field name="name">Quoter - BPO</field>
             <field name="category_id" ref="base.module_category_sales_management"/>
-            <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_salesman'))]"/>
-            <field name="comment">Grupo exclusivo para operar el área BPO del cotizador.</field>
+            <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_salesman'))]"/>
+            <field name="comment">Grupo para el área BPO (modo de horas por volumen / fórmula).</field>
         </record>
 
         <record id="group_quoter_payroll" model="res.groups">
             <field name="name">Quoter - Payroll</field>
             <field name="category_id" ref="base.module_category_sales_management"/>
-            <field name="implied_ids" eval="[(4, ref('sales_team.group_sale_salesman'))]"/>
+            <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_salesman'))]"/>
             <field name="comment">Grupo exclusivo para operar el área Payroll del cotizador.</field>
         </record>
     </data>
