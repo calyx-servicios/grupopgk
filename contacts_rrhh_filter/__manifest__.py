@@ -1,17 +1,16 @@
 {
     "name": "Contacts RRHH Filter",
     "summary": (
-        "Restringe la vista de contactos a la propia ficha del usuario "
-        "con grupo RRHH sin ser administrador."
-        "Además, restringe la creación de empleados a los usuarios con grupo RRHH."
-        "Y el acceso a ciertos menus del modulo de empleados"
+        "Restringe la creación y edición de empleados a administradores RRHH, "
+        "el acceso a ciertos menús del módulo de empleados y las restricciones "
+        "de calendario para usuarios RRHH."
     ),
     "author": "Grupo PGK",
     "maintainers": ["Frankofe"],
     "website": "https://www.grupopgk.com.ar/",
     "license": "AGPL-3",
     "category": "Human Resources",
-    "version": "15.0.1.1.1",
+    "version": "15.0.1.1.2",
     "application": False,
     "installable": True,
     "auto_install": False,
