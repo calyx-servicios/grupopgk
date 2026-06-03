@@ -175,20 +175,19 @@ class HrLeaveType(models.Model):
             ("company_id", "=", employee_company.id),
         ])
         manual_metrics = all_types._get_manual_allocation_metrics(employee_id)
-        if not manual_metrics:
-            return [item for item in result if item[3] in all_types.ids]
 
         merged = {item[3]: item for item in result if item[3] in all_types.ids}
         for leave_type in all_types:
             metrics = manual_metrics.get(leave_type.id)
-            if not metrics:
-                continue
-            merged[leave_type.id] = (
-                leave_type.name,
-                leave_type._manual_days_request_data(metrics),
-                "yes",
-                leave_type.id,
-            )
+            if metrics:
+                merged[leave_type.id] = (
+                    leave_type.name,
+                    leave_type._manual_days_request_data(metrics),
+                    "yes",
+                    leave_type.id,
+                )
+            elif leave_type.id not in merged:
+                merged[leave_type.id] = leave_type._get_days_request()
 
         ordered_types = sorted(all_types, key=self._model_sorting_key, reverse=True)
         return [merged[leave_type.id] for leave_type in ordered_types if leave_type.id in merged]
@@ -230,4 +229,4 @@ class HrLeaveType(models.Model):
                 + (_(" hours") if record.request_unit == "hour" else _(" days")),
             }
 
-        return [(record.id, names.get(record.id, record.name)) for record in allowed_records]
+        return [(record.id, names.get(record.id, record.name)) for record in self]
