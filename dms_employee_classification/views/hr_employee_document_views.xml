@@ -22,9 +22,16 @@
                     </field>
                 </page>
                 <page name="digital_signature" string="Firma digital">
+                    <field name="can_upload_digital_signature" invisible="1"/>
                     <group name="digital_signature_group" string="Firma digital">
                         <group>
-                            <field name="digital_signature" widget="signature"/>
+                            <field name="digital_signature" widget="signature"
+                                   attrs="{'readonly': [('can_upload_digital_signature', '=', True)]}"/>
+                            <widget name="signature"
+                                    string="Cargar firma"
+                                    signature_field="digital_signature"
+                                    highlight="1"
+                                    attrs="{'invisible': [('can_upload_digital_signature', '=', False)]}"/>
                         </group>
                         <group/>
                     </group>
