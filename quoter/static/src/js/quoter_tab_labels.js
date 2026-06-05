@@ -166,17 +166,50 @@ odoo.define("quoter.tab_labels", function (require) {
         const $form = $(renderer.el);
         const parts = findQuoterAreaPaneAndNav($form);
         const $nav = parts.$nav;
-        const $link = parts.$link;
         if ($nav.length) {
             $nav.find("li.o_quoter_dyn_area_tab").remove();
         }
-        if ($link.length) {
-            $link.closest("li.nav-item").hide().removeClass("active");
-        }
+        // No ocultar li.nav-item con jQuery: Odoo setLocalState indexa nav-item y
+        // navs[activeIndex] queda undefined al guardar cotizaciones nuevas.
         const $embed = $form.find(".o_quoter_area_blocks_embed");
         if ($embed.length) {
             $embed.addClass("o_quoter_area_workspace_hidden");
         }
+    }
+
+    /** Evita navs[activeIndex] undefined tras guardar (pestañas dinámicas / attrs invisible). */
+    function quoterSanitizeNotebookLocalState(renderer, state) {
+        if (!renderer || !renderer.el || !state) {
+            return state;
+        }
+        const next = Object.assign({}, state);
+        for (const notebook of renderer.el.querySelectorAll(":scope div.o_notebook")) {
+            if (notebook.closest(".o_field_widget")) {
+                continue;
+            }
+            const name = notebook.dataset.name;
+            if (!(name in next)) {
+                continue;
+            }
+            const navs = notebook.querySelectorAll(":scope .o_notebook_headers .nav-item");
+            if (!navs.length) {
+                delete next[name];
+                continue;
+            }
+            let idx = next[name];
+            if (typeof idx !== "number" || idx < 0 || idx >= navs.length) {
+                idx = 0;
+            }
+            const nav = navs[idx];
+            if (!nav || nav.classList.contains("o_invisible_modifier")) {
+                const visibleIdx = [...navs].findIndex(
+                    (n) => n && !n.classList.contains("o_invisible_modifier")
+                );
+                idx = visibleIdx >= 0 ? visibleIdx : 0;
+            }
+            next[name] = idx;
+        }
+        return next;
     }
 
     function updateQuoterAreaTabs(renderer) {
@@ -351,6 +384,28 @@ odoo.define("quoter.tab_labels", function (require) {
     }
 
     FormRenderer.include({
+        getLocalState: function () {
+            const state = this._super.apply(this, arguments);
+            if (!this.state || this.state.model !== "sale.order") {
+                return state;
+            }
+            if (!this.state.res_id) {
+                const reset = Object.assign({}, state);
+                for (const key of Object.keys(reset)) {
+                    if (typeof reset[key] === "number") {
+                        reset[key] = 0;
+                    }
+                }
+                return reset;
+            }
+            return quoterSanitizeNotebookLocalState(this, state);
+        },
+        setLocalState: function (state) {
+            if (this.state && this.state.model === "sale.order" && state) {
+                return this._super(quoterSanitizeNotebookLocalState(this, state));
+            }
+            return this._super.apply(this, arguments);
+        },
         _renderView: function () {
             const res = this._super.apply(this, arguments);
             const self = this;

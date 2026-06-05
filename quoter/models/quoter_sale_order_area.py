@@ -1,10 +1,11 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0.html)
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools.float_utils import float_compare
 
 from .quoter_chatter import quoter_chatter_collect_changes, quoter_chatter_should_log
+from .quoter_sale_order_workflow import QUOTER_WORKFLOW_APROBADOR_BLOCK_FIELDS
 
 
 class QuoterSaleOrderArea(models.Model):
@@ -87,10 +88,73 @@ class QuoterSaleOrderArea(models.Model):
         related="area_id.hour_matrix_mode",
         readonly=True,
     )
+    area_is_formula_chain = fields.Boolean(
+        string="Área fórmula en cadena",
+        compute="_compute_area_is_formula_chain",
+    )
+    area_is_regular_manual = fields.Boolean(
+        string="Área regular manual",
+        compute="_compute_area_is_regular_manual",
+    )
+    area_show_formula_volume_fields = fields.Boolean(
+        string="Mostrar columnas volumen fórmula",
+        compute="_compute_area_show_formula_volume_fields",
+    )
+
+    @api.depends("area_hour_matrix_mode")
+    def _compute_area_show_formula_volume_fields(self):
+        for rec in self:
+            rec.area_show_formula_volume_fields = (
+                rec.area_hour_matrix_mode == "formula"
+            )
+
+    area_is_finanzas = fields.Boolean(
+        string="Área Finanzas",
+        related="area_id.is_finanzas_area",
+        readonly=True,
+    )
+    chain_employee_count = fields.Integer(
+        string="Cantidad de empleados",
+        default=1,
+        help="Define qué tabla de la cadena aplica para calcular horas por rol.",
+    )
     formula_matrix_section_title = fields.Char(
         string="Título tabla fórmula",
         compute="_compute_formula_matrix_section_title",
     )
+    chain_matrix_section_title = fields.Char(
+        string="Título tabla cadena",
+        compute="_compute_chain_matrix_section_title",
+    )
+
+    @api.depends("area_hour_matrix_mode")
+    def _compute_area_is_formula_chain(self):
+        for rec in self:
+            rec.area_is_formula_chain = rec.area_hour_matrix_mode == "formula_chain"
+
+    @api.depends("area_hour_matrix_mode")
+    def _compute_area_is_regular_manual(self):
+        for rec in self:
+            rec.area_is_regular_manual = rec.area_hour_matrix_mode == "regular_manual"
+
+    def _quoter_apply_area_configured_complexity_level(self):
+        """Asigna el nivel definido en configuración del área (p. ej. Finanzas)."""
+        for rec in self:
+            if rec.area_id.hour_matrix_mode != "regular_manual":
+                continue
+            level = rec.area_id._quoter_primary_complexity_level()
+            if level and rec.complexity_level_id != level:
+                rec.complexity_level_id = level
+
+    @api.depends("area_id", "area_id.name")
+    def _compute_chain_matrix_section_title(self):
+        for rec in self:
+            if not rec.area_is_formula_chain or not rec.area_id:
+                rec.chain_matrix_section_title = False
+                continue
+            rec.chain_matrix_section_title = _(
+                "Horas por rol (%(area)s) — cantidad de empleados"
+            ) % {"area": rec.area_id.name or ""}
     currency_id = fields.Many2one(
         comodel_name="res.currency",
         related="order_id.currency_id",
@@ -105,6 +169,11 @@ class QuoterSaleOrderArea(models.Model):
     quoter_user_is_assigned_partner = fields.Boolean(
         related="order_id.quoter_user_is_assigned_partner",
         string="Usuario es socio asignado",
+        readonly=True,
+    )
+    quoter_workflow_can_edit_adjustments = fields.Boolean(
+        related="order_id.quoter_workflow_can_edit_adjustments",
+        string="Puede editar descuento/recargo",
         readonly=True,
     )
     quoter_is_first_auditoria = fields.Boolean(
@@ -130,6 +199,12 @@ class QuoterSaleOrderArea(models.Model):
         string="Niveles del área",
         readonly=True,
     )
+    area_chain_level_ids = fields.Many2many(
+        comodel_name="quoter.complexity.level",
+        related="area_id.chain_complexity_level_ids",
+        string="Niveles cadena",
+        readonly=True,
+    )
     complexity_level_custom_label = fields.Char(
         related="area_id.complexity_level_custom_label",
         readonly=True,
@@ -138,9 +213,20 @@ class QuoterSaleOrderArea(models.Model):
         related="area_id.allow_change_complexity_level",
         readonly=True,
     )
+    show_block_complexity_level = fields.Boolean(
+        compute="_compute_show_block_complexity_level",
+    )
+    show_block_chain_complexity_level = fields.Boolean(
+        compute="_compute_show_block_chain_complexity_level",
+    )
     area_bulk_line_load = fields.Boolean(
         related="area_id.bulk_line_load",
         string="Carga múltiple de líneas",
+        readonly=True,
+    )
+    area_load_default_products = fields.Boolean(
+        related="area_id.load_default_products",
+        string="Cargar predeterminados (área)",
         readonly=True,
     )
     complexity_level_change_allowed = fields.Boolean(
@@ -224,7 +310,23 @@ class QuoterSaleOrderArea(models.Model):
     @api.constrains("complexity_level_id", "area_id")
     def _check_complexity_in_area(self):
         for rec in self:
-            if rec.complexity_level_id and rec.complexity_level_id not in rec.area_id.complexity_level_ids:
+            if not rec.complexity_level_id or not rec.area_id:
+                continue
+            if rec.area_id.hour_matrix_mode == "formula_chain":
+                if (
+                    rec.complexity_level_id
+                    and rec.complexity_level_id
+                    not in rec.area_id.chain_complexity_level_ids
+                ):
+                    raise ValidationError(
+                        _(
+                            "El nivel debe estar en la tabla de aumento %% "
+                            "del área «%s»."
+                        )
+                        % rec.area_id.display_name
+                    )
+                continue
+            if rec.complexity_level_id not in rec.area_id.complexity_level_ids:
                 raise ValidationError(
                     _("El nivel debe pertenecer a los niveles configurados en el área «%s».")
                     % rec.area_id.display_name
@@ -253,13 +355,43 @@ class QuoterSaleOrderArea(models.Model):
     def _onchange_area_id_clear_level(self):
         if not self.area_id:
             return {"domain": {"complexity_level_id": []}}
-        if self.complexity_level_id and self.complexity_level_id not in self.area_id.complexity_level_ids:
+        if self.area_id.hour_matrix_mode == "regular_manual":
+            allowed = self.area_id.complexity_level_ids
+            level = self.area_id._quoter_primary_complexity_level()
+            if level:
+                self.complexity_level_id = level
+            elif self.complexity_level_id and self.complexity_level_id not in allowed:
+                self.complexity_level_id = False
+            if not self.branch_id or self.branch_id not in self.area_id._effective_branch_ids():
+                self.branch_id = self.area_id._resolve_matrix_branch()
+            return {
+                "domain": {
+                    "complexity_level_id": [("id", "in", allowed.ids)],
+                }
+            }
+        if self.area_id.hour_matrix_mode == "formula_chain":
+            allowed = self.area_id.chain_complexity_level_ids
+            if len(allowed) == 1:
+                self.complexity_level_id = allowed[0]
+            elif self.complexity_level_id and self.complexity_level_id not in allowed:
+                self.complexity_level_id = False
+            if not self.branch_id or self.branch_id not in self.area_id._effective_branch_ids():
+                self.branch_id = self.area_id._resolve_matrix_branch()
+            return {
+                "domain": {
+                    "complexity_level_id": [("id", "in", allowed.ids)],
+                }
+            }
+        allowed = self.area_id.complexity_level_ids
+        if len(allowed) == 1:
+            self.complexity_level_id = allowed[0]
+        elif self.complexity_level_id and self.complexity_level_id not in allowed:
             self.complexity_level_id = False
         if not self.branch_id or self.branch_id not in self.area_id._effective_branch_ids():
             self.branch_id = self.area_id._resolve_matrix_branch()
         return {
             "domain": {
-                "complexity_level_id": [("id", "in", self.area_id.complexity_level_ids.ids)],
+                "complexity_level_id": [("id", "in", allowed.ids)],
             }
         }
 
@@ -312,6 +444,9 @@ class QuoterSaleOrderArea(models.Model):
                 or not order.is_quotation
                 or not level
             ):
+                continue
+            if not area.load_default_products:
+                rec._quoter_recalc_all_block_products_for_level()
                 continue
             default_lines = rec._quoter_default_service_lines()
             default_products = self.env["product.product"]
@@ -544,6 +679,28 @@ class QuoterSaleOrderArea(models.Model):
         return self._quoter_rebuild_separator_sections()
 
     @api.depends(
+        "area_level_ids",
+        "area_is_formula",
+        "area_is_formula_chain",
+        "area_is_regular_manual",
+    )
+    def _compute_show_block_complexity_level(self):
+        for rec in self:
+            rec.show_block_complexity_level = bool(
+                not rec.area_is_formula
+                and not rec.area_is_formula_chain
+                and not rec.area_is_regular_manual
+                and len(rec.area_level_ids) > 1
+            )
+
+    @api.depends("area_chain_level_ids", "area_is_formula_chain")
+    def _compute_show_block_chain_complexity_level(self):
+        for rec in self:
+            rec.show_block_chain_complexity_level = bool(
+                rec.area_is_formula_chain and len(rec.area_chain_level_ids) > 1
+            )
+
+    @api.depends(
         "block_editable",
         "area_allow_change_complexity_level",
         "area_is_auditoria",
@@ -564,6 +721,62 @@ class QuoterSaleOrderArea(models.Model):
             return self.env["quoter.complexity.level"]
         return self.area_id.complexity_level_ids.sorted(key=lambda lev: lev.id, reverse=True)[:1]
 
+    def _quoter_auto_assign_complexity_level(self):
+        """Asigna nivel automático (único nivel del área o primera auditoría)."""
+        for rec in self:
+            if not rec.area_id:
+                continue
+            mode = rec.area_id.hour_matrix_mode
+            if mode == "formula_chain":
+                if not rec.complexity_level_id:
+                    level = rec.area_id._chain_default_complexity_level()
+                    if level:
+                        rec.complexity_level_id = level
+                continue
+            if mode == "formula":
+                if not rec.complexity_level_id:
+                    level = rec.area_id._formula_default_complexity_level()
+                    if level:
+                        rec.complexity_level_id = level
+                continue
+            if mode == "regular_manual":
+                rec._quoter_apply_area_configured_complexity_level()
+                continue
+            levels = rec.area_id.complexity_level_ids
+            if len(levels) == 1 and not rec.complexity_level_id:
+                rec.complexity_level_id = levels[0]
+            elif (
+                len(levels) > 1
+                and not rec.complexity_level_id
+                and rec.area_id.is_auditoria_area
+                and rec.order_id
+                and rec.order_id.quoter_is_first_quotation
+            ):
+                level = rec._quoter_highest_complexity_level()
+                if level:
+                    rec.complexity_level_id = level
+
+    def _quoter_try_autoload_default_products(self):
+        """Carga predeterminados si hay nivel y el bloque aún no tiene productos."""
+        for rec in self:
+            if (
+                not rec.area_id
+                or not rec.area_id.load_default_products
+                or rec.area_id.hour_matrix_mode == "regular_manual"
+                or not rec.complexity_level_id
+            ):
+                continue
+            order = rec.order_id
+            if not order or not order.is_quotation or not isinstance(order.id, int):
+                continue
+            if rec.state not in (False, "draft"):
+                continue
+            has_products = rec.order_line_ids.filtered(
+                lambda l: not l.display_type and not l.quoter_is_area_discount_total_line
+            )
+            if not has_products:
+                rec.action_quoter_load_default_products()
+
     @api.onchange("quoter_is_first_auditoria")
     def _onchange_quoter_is_first_auditoria(self):
         for rec in self:
@@ -575,25 +788,21 @@ class QuoterSaleOrderArea(models.Model):
                     rec.complexity_level_id = level
 
     def _quoter_apply_first_auditoria_effect(self):
-        """Primera auditoría: forzar riesgo más alto y cargar predeterminados si el bloque está vacío."""
+        """Primera auditoría: riesgo más alto; predeterminados si el bloque está vacío."""
         for rec in self:
             if not rec.area_id or not rec.area_id.is_auditoria_area:
                 continue
             if not rec.order_id or not rec.order_id.is_quotation:
                 continue
-            if not rec.order_id.quoter_is_first_quotation:
-                continue
-            level = rec._quoter_highest_complexity_level()
-            if level and rec.complexity_level_id != level:
-                rec.write({"complexity_level_id": level.id})
-            has_product_lines = bool(
-                rec.order_line_ids.filtered(
-                    lambda l: not l.display_type and not l.quoter_is_area_discount_total_line
-                )
-            )
-            if not has_product_lines:
-                rec.action_quoter_load_default_products()
-            rec._quoter_recalc_all_block_products_for_level()
+            if rec.order_id.quoter_is_first_quotation:
+                level = rec._quoter_highest_complexity_level()
+                if level and rec.complexity_level_id != level:
+                    rec.write({"complexity_level_id": level.id})
+            else:
+                rec._quoter_auto_assign_complexity_level()
+            rec._quoter_try_autoload_default_products()
+            if rec.complexity_level_id:
+                rec._quoter_recalc_all_block_products_for_level()
 
     def _quoter_complexity_level_label(self):
         self.ensure_one()
@@ -733,14 +942,42 @@ class QuoterSaleOrderArea(models.Model):
 
     def write(self, vals):
         vals = dict(vals or {})
+        for rec in self:
+            order = rec.order_id
+            if (
+                order
+                and order.is_quotation
+                and isinstance(order.id, int)
+                and not self.env.context.get("quoter_workflow_transition")
+                and not order._quoter_workflow_is_admin()
+            ):
+                wf_vals = dict(vals)
+                wf_vals.pop("order_line_ids", None)
+                if wf_vals and not order._quoter_workflow_can_edit_content():
+                    if not (
+                        order.quoter_workflow_state in ("en_aprobacion", "aprobado_interno")
+                        and order._quoter_user_is_aprobador_profile()
+                        and set(wf_vals.keys()).issubset(QUOTER_WORKFLOW_APROBADOR_BLOCK_FIELDS)
+                    ):
+                        raise AccessError(
+                            _(
+                                "No puede modificar el bloque del área «%s» en el estado «%s»."
+                            )
+                            % (
+                                rec.area_id.display_name,
+                                order._quoter_workflow_state_label(
+                                    order.quoter_workflow_state
+                                ),
+                            )
+                        )
         first_auditoria_flag = None
         if "quoter_is_first_auditoria" in vals:
             first_auditoria_flag = bool(vals.pop("quoter_is_first_auditoria"))
             for rec in self:
                 if rec.order_id:
-                    rec.order_id.write(
-                        {"quoter_is_first_quotation": first_auditoria_flag}
-                    )
+                    rec.order_id.with_context(
+                        quoter_skip_first_quotation_risk_levels=True
+                    ).write({"quoter_is_first_quotation": first_auditoria_flag})
         if "complexity_level_id" in vals:
             for rec in self:
                 if (
@@ -801,6 +1038,14 @@ class QuoterSaleOrderArea(models.Model):
                 removed_lines_for_chatter = self.env["sale.order.line"].browse(
                     list(unlink_line_ids)
                 ).exists()
+        if first_auditoria_flag is not None:
+            # El efecto de primera auditoría recrea/sincroniza líneas en servidor;
+            # los comandos (1, id, vals) del form embebido suelen quedar obsoletos.
+            other_line_ops = []
+        if other_line_ops and len(self) == 1:
+            other_line_ops = self._quoter_drop_missing_line_commands(
+                self._quoter_sanitize_line_command_list(other_line_ops)
+            )
         res = True
         if unlink_ops:
             res = super(QuoterSaleOrderArea, write_recs).write({"order_line_ids": unlink_ops})
@@ -835,17 +1080,24 @@ class QuoterSaleOrderArea(models.Model):
             for rec in self:
                 if rec.order_id and rec.order_id.is_quotation:
                     rec.order_id._quoter_sync_area_discount_total_line()
-        if "complexity_level_id" in vals and "order_line_ids" not in vals:
+        if (
+            "complexity_level_id" in vals
+            and line_cmds is None
+            and first_auditoria_flag is None
+        ):
             changed_blocks = self.filtered(
                 lambda b: b.complexity_level_id
                 and b.order_id
                 and isinstance(b.order_id.id, int)
             )
             aud_blocks = changed_blocks.filtered(lambda b: b.area_id.is_auditoria_area)
-            other_blocks = changed_blocks - aud_blocks
+            other_blocks = (
+                changed_blocks - aud_blocks
+            ).filtered(lambda b: not b.area_is_formula_chain)
             if other_blocks:
                 other_blocks._quoter_sync_lines_for_complexity_level()
             if aud_blocks:
+                aud_blocks._quoter_sync_lines_for_complexity_level()
                 aud_blocks._quoter_recalc_all_block_products_for_level()
         elif "branch_id" in vals:
             for rec in self:
@@ -863,7 +1115,106 @@ class QuoterSaleOrderArea(models.Model):
                     rec.complexity_level_frozen = True
         if first_auditoria_flag is True:
             self._quoter_apply_first_auditoria_effect()
+        elif first_auditoria_flag is False:
+            self._quoter_auto_assign_complexity_level()
+            self._quoter_try_autoload_default_products()
+        if "area_id" in vals:
+            self.filtered("area_is_regular_manual")._quoter_apply_area_configured_complexity_level()
+        if "chain_employee_count" in vals or "complexity_level_id" in vals:
+            self.filtered("area_is_formula_chain")._quoter_apply_chain_hours_to_lines()
         return res
+
+    @api.onchange("complexity_level_id")
+    def _onchange_complexity_level_chain_hours(self):
+        self.filtered("area_is_formula_chain")._quoter_apply_chain_hours_to_lines()
+
+    @api.onchange("chain_employee_count")
+    def _onchange_chain_employee_count(self):
+        for rec in self:
+            if (
+                rec.area_is_formula_chain
+                and rec.chain_employee_count
+                and rec.chain_employee_count < 1
+            ):
+                rec.chain_employee_count = 1
+            if rec.area_is_formula_chain and rec.order_line_ids:
+                rec.order_line_ids._quoter_apply_chain_hours()
+
+    def _quoter_apply_chain_hours_to_lines(self):
+        """Propaga horas por rol desde tablas cadena (cantidad de empleados del bloque)."""
+        lines = self.env["sale.order.line"]
+        for block in self:
+            area = block.area_id
+            if not area or area.hour_matrix_mode != "formula_chain":
+                continue
+            block_lines = block.order_line_ids.filtered(
+                lambda l: not l.display_type
+                and l.product_id
+                and not l.quoter_is_adjustment_line
+                and getattr(l.product_id, "is_quoter_product", False)
+            )
+            lines |= block_lines
+        if lines:
+            lines._quoter_apply_chain_hours()
+            for line in lines:
+                if line.quoter_manual_load or line.quoter_manual_total_load:
+                    continue
+                price, _warn = line._quoter_compute_unit_price_from_ranges()
+                line.with_context(
+                    quoter_skip_chatter_log=True,
+                    quoter_skip_block_product_refresh=True,
+                ).write({"price_unit": price})
+
+    def get_chain_quotation_preview_data(self):
+        """Vista previa en cotización: tabla activa y horas por rol."""
+        self.ensure_one()
+        area = self.area_id
+        if not area or area.hour_matrix_mode != "formula_chain":
+            return {}
+        count = int(self.chain_employee_count or 1)
+        complexity_level = self.complexity_level_id
+        table = area._chain_resolve_table_for_people(count)
+        ranges = area.area_range_ids.sorted(key=lambda r: (r.sequence, r.id))
+        prod_rows = []
+        for line in self.order_line_ids.filtered(
+            lambda l: not l.display_type
+            and l.product_id
+            and not l.quoter_is_adjustment_line
+        ):
+            tmpl = line.product_id.product_tmpl_id
+            hours_map = area._chain_compute_hours_map_for_product(
+                count, tmpl, complexity_level=complexity_level
+            )
+            prod_rows.append(
+                {
+                    "product_name": line.name or line.product_id.display_name,
+                    "hours": [float(hours_map.get(r.id, 0.0)) for r in ranges],
+                }
+            )
+        return {
+            "block_id": self.id,
+            "employee_count": count,
+            "table_label": table.display_label if table else "",
+            "table_id": table.id if table else False,
+            "ranges": [{"id": r.id, "name": r.name} for r in ranges],
+            "rows": prod_rows,
+            "section_title": self.chain_matrix_section_title or "",
+        }
+
+    def matrix_preview_write_chain_employees(self, employee_count):
+        self.ensure_one()
+        try:
+            val = int(float(employee_count or 1))
+        except (TypeError, ValueError):
+            raise UserError(_("Cantidad de empleados no válida.")) from None
+        if val < 1:
+            val = 1
+        self.with_context(
+            quoter_skip_chatter_log=True,
+            quoter_skip_block_product_refresh=True,
+        ).write({"chain_employee_count": val})
+        self._quoter_apply_chain_hours_to_lines()
+        return self.get_chain_quotation_preview_data()
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -908,6 +1259,7 @@ class QuoterSaleOrderArea(models.Model):
         for rec in records:
             if rec.order_id and rec.order_id.is_quotation:
                 rec.order_id._quoter_sync_area_discount_total_line()
+            rec._quoter_auto_assign_complexity_level()
             if (
                 rec.order_id
                 and rec.order_id.quoter_is_first_quotation
@@ -916,7 +1268,6 @@ class QuoterSaleOrderArea(models.Model):
                 level = rec._quoter_highest_complexity_level()
                 if level:
                     rec.complexity_level_id = level
-                    rec._quoter_sync_lines_for_complexity_level()
             if (
                 rec.complexity_level_id
                 and rec.order_id
@@ -928,6 +1279,16 @@ class QuoterSaleOrderArea(models.Model):
                 level = rec.area_id._formula_default_complexity_level()
                 if level:
                     rec.complexity_level_id = level
+            if (
+                rec.area_id.hour_matrix_mode == "formula_chain"
+                and not rec.complexity_level_id
+            ):
+                level = rec.area_id._chain_default_complexity_level()
+                if level:
+                    rec.complexity_level_id = level
+        records._quoter_try_autoload_default_products()
+        records.filtered("area_is_formula_chain")._quoter_apply_chain_hours_to_lines()
+        records.filtered("area_is_regular_manual")._quoter_apply_area_configured_complexity_level()
         return records
 
     @api.model
@@ -1076,7 +1437,7 @@ class QuoterSaleOrderArea(models.Model):
         if not product:
             return product
         area = self.area_id
-        if area.hour_matrix_mode == "formula":
+        if area.hour_matrix_mode in ("formula", "formula_chain", "regular_manual"):
             return product
         level = self.complexity_level_id
         if not level:
@@ -1150,7 +1511,8 @@ class QuoterSaleOrderArea(models.Model):
         if not self.area_id or not self.order_id:
             raise UserError(_("Bloque o pedido incompleto."))
         if (
-            self.area_id.hour_matrix_mode != "formula"
+            self.area_id.hour_matrix_mode
+            not in ("formula", "formula_chain", "regular_manual")
             and not self.complexity_level_id
         ):
             raise UserError(
@@ -1315,6 +1677,20 @@ class QuoterSaleOrderArea(models.Model):
 
     def action_quoter_load_default_products(self):
         self.ensure_one()
+        if not self.area_id.load_default_products:
+            raise UserError(
+                _(
+                    "Esta área no utiliza carga de productos predeterminados. "
+                    "Actívelo en la configuración del área si corresponde."
+                )
+            )
+        if self.area_id.hour_matrix_mode == "regular_manual":
+            raise UserError(
+                _(
+                    "El área Finanzas (regular manual) no utiliza productos predeterminados. "
+                    "Agregue líneas manualmente."
+                )
+            )
         # En formularios nuevos el bloque puede venir con state=False hasta el primer guardado.
         if self.state not in (False, "draft"):
             raise UserError(_("Solo se pueden cargar predeterminados en borrador."))
@@ -1370,6 +1746,14 @@ class QuoterSaleOrderArea(models.Model):
                 )
             if isinstance(self.id, int):
                 vals["quoter_block_id"] = self.id
+            if area.hour_matrix_mode == "formula":
+                cfg = self.env["quoter.formula.product.config"].get_config_for_template(
+                    product.product_tmpl_id, area
+                )
+                if cfg and cfg.tipo_calculo == "fija":
+                    vals["quoter_formula_volume"] = 0.0
+                else:
+                    vals["quoter_formula_volume"] = 1.0
             created_lines |= self.env["sale.order.line"].with_context(
                 quoter_skip_separator_rebuild=True,
                 quoter_skip_chatter_log=True,
@@ -1459,13 +1843,19 @@ class QuoterSaleOrderArea(models.Model):
         self.write({"state": "cancel"})
         return True
 
-    @api.depends("state")
+    @api.depends("state", "order_id.quoter_workflow_state", "order_id.is_quotation")
     def _compute_block_lock_flags(self):
         for rec in self:
             st = rec.state or False
-            rec.block_editable = st in (False, "draft")
+            wf = (
+                rec.order_id.quoter_workflow_state
+                if rec.order_id and rec.order_id.is_quotation
+                else "en_preparacion"
+            )
+            workflow_editable = wf == "en_preparacion"
+            rec.block_editable = st in (False, "draft") and workflow_editable
             rec.structure_locked = st in ("published", "cancel")
-            rec.lines_frozen = st == "cancel"
+            rec.lines_frozen = st == "cancel" or not workflow_editable
 
     @api.depends("area_id", "area_id.name", "area_hour_matrix_mode")
     def _compute_formula_matrix_section_title(self):
@@ -1494,7 +1884,11 @@ class QuoterSaleOrderArea(models.Model):
             if not rec.area_id or not rec.order_id:
                 rec.selectable_product_ids = empty
                 continue
-            if rec.area_id.hour_matrix_mode == "formula":
+            if rec.area_id.hour_matrix_mode in (
+                "formula",
+                "formula_chain",
+                "regular_manual",
+            ):
                 rec.selectable_product_ids = Product.browse(
                     Product._quoter_product_ids_for_area_picker(rec.area_id, rec.order_id)
                 )
@@ -1581,11 +1975,7 @@ class QuoterSaleOrderArea(models.Model):
         vol = float(volume or 0.0)
         if vol <= 0.0:
             vol = 1.0
-        line.with_context(
-            quoter_skip_chatter_log=True,
-            quoter_skip_block_product_refresh=True,
-        ).write({"quoter_formula_volume": vol})
-        line._quoter_apply_formula_hours()
+        line._quoter_persist_formula_volume_value(vol)
         price, _warn = line._quoter_compute_unit_price_from_ranges()
         line.with_context(quoter_skip_chatter_log=True).write({"price_unit": price})
         return self.get_formula_matrix_preview_data()

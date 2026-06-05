@@ -369,6 +369,14 @@ class SaleOrder(models.Model):
         self.ensure_one()
         if not area:
             return
+        if area.hour_matrix_mode in ("formula_chain", "regular_manual"):
+            if area.hour_matrix_mode == "formula_chain":
+                blocks = self.quoter_area_block_ids.filtered(
+                    lambda b, a=area: b.area_id == a
+                )
+                if blocks:
+                    blocks._quoter_apply_chain_hours_to_lines()
+            return
         lines = self.order_line.filtered(
             lambda l, a=area: l.quoter_tab_area_id == a
             and l.product_id
@@ -942,6 +950,11 @@ class SaleOrder(models.Model):
     def write(self, vals):
         self._check_quoter_responsibles_write_access(vals)
         if vals:
+            for order in self.filtered(
+                lambda o: o.is_quotation and isinstance(o.id, int)
+            ):
+                order._quoter_validate_workflow_write_access(vals)
+        if vals:
             vals = self._quoter_protect_area_ids_write_vals(vals)
         if vals and "quoter_area_block_ids" in vals:
             vals = dict(vals)
@@ -1018,7 +1031,9 @@ class SaleOrder(models.Model):
         if quotation_orders:
             quotation_orders.invalidate_cache(["order_line"])
             quotation_orders._quoter_sync_area_discount_total_line()
-        if vals.get("quoter_is_first_quotation"):
+        if vals.get("quoter_is_first_quotation") and not self.env.context.get(
+            "quoter_skip_first_quotation_risk_levels"
+        ):
             self.filtered("quoter_is_first_quotation")._quoter_apply_first_quotation_risk_levels()
         # Solo registros ya guardados (id entero). Con NewId aún no hay fila en BD:
         # pedir la secuencia aquí consumía Q... al editar el formulario antes del 1er guardado.
@@ -1053,9 +1068,13 @@ class SaleOrder(models.Model):
         for order in self.with_context(ctx):
             if not order.is_quotation:
                 continue
-            blocks = order.quoter_area_block_ids.filtered(
-                lambda b: b.state in (False, "draft") and b.complexity_level_id
+            draft_blocks = order.quoter_area_block_ids.filtered(
+                lambda b: b.state in (False, "draft")
+                and b.area_id.hour_matrix_mode != "regular_manual"
+                and b.area_id.load_default_products
             )
+            draft_blocks._quoter_auto_assign_complexity_level()
+            blocks = draft_blocks.filtered("complexity_level_id")
             for block in blocks:
                 block.action_quoter_load_default_products()
             order._quoter_refresh_block_selectable_products()
@@ -1067,6 +1086,10 @@ class SaleOrder(models.Model):
             return
         QuoterLine = self.env["quoter.service.line"]
         for area in self.quoter_area_ids:
+            if area.hour_matrix_mode == "regular_manual":
+                continue
+            if not area.load_default_products:
+                continue
             default_lines = QuoterLine.search(
                 [("area_id", "=", area.id), ("is_default_product", "=", True)]
             )

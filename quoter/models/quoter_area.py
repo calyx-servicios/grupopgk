@@ -58,6 +58,20 @@ class QuoterProfessionalArea(models.Model):
         compute="_compute_is_formula_area",
         help="True si la visibilidad del área es el grupo asignado al modo fórmula (volumen).",
     )
+    is_finanzas_area = fields.Boolean(
+        string="Área Finanzas",
+        compute="_compute_is_finanzas_area",
+        help="True si la visibilidad del área es el grupo Quoter - Finanzas.",
+    )
+    is_payroll_area = fields.Boolean(
+        string="Área Payroll",
+        compute="_compute_is_payroll_area",
+        help="True si la visibilidad del área es el grupo Quoter - Payroll.",
+    )
+    is_regular_manual_area = fields.Boolean(
+        string="Área regular manual",
+        compute="_compute_is_regular_manual_area",
+    )
     formula_preview_title = fields.Char(
         string="Título vista previa (fórmula)",
         compute="_compute_formula_ui_strings",
@@ -150,14 +164,18 @@ class QuoterProfessionalArea(models.Model):
     hour_matrix_mode = fields.Selection(
         selection=[
             ("regular", "Regular"),
+            ("regular_manual", "Regular manual"),
             ("combined", "Combinada"),
             ("formula", "Fórmula"),
+            ("formula_chain", "Fórmula en cadena"),
         ],
         string="Tipo de tabla de horas",
         default="regular",
         required=True,
         help="Regular: horas finales por producto y nivel. "
-        "Combinada: tablas A y B. Fórmula: volumen × minutos por rol (sin matrices A/B).",
+        "Regular manual: cotización línea a línea con horas y precio manuales (Finanzas). "
+        "Combinada: tablas A y B. Fórmula: volumen × minutos por rol. "
+        "Fórmula en cadena: tablas por cantidad de empleados; fórmula sobre tabla padre.",
     )
     output_hours_minimum = fields.Float(
         string="Redondear el mínimo a",
@@ -295,6 +313,12 @@ class QuoterProfessionalArea(models.Model):
         help="En cotizaciones, muestra «Agregar múltiples líneas» junto a la lista de productos "
         "del bloque para cargar varios productos del área a la vez.",
     )
+    load_default_products = fields.Boolean(
+        string="Cargar predeterminados",
+        default=True,
+        help="Si está activo, en cotizaciones se muestra el botón «Cargar predeterminados» "
+        "y se pueden incorporar automáticamente los productos marcados como predeterminados.",
+    )
 
     line_ids = fields.One2many(
         comodel_name="quoter.service.line",
@@ -341,6 +365,42 @@ class QuoterProfessionalArea(models.Model):
         formula_group = self.env.ref("quoter.group_quoter_formula", raise_if_not_found=False)
         for rec in self:
             rec.is_formula_area = bool(formula_group and rec.group_id == formula_group)
+
+    @api.depends("group_id")
+    def _compute_is_finanzas_area(self):
+        finanzas_group = self.env.ref(
+            "quoter.group_quoter_finanzas", raise_if_not_found=False
+        )
+        for rec in self:
+            rec.is_finanzas_area = bool(
+                finanzas_group and rec.group_id == finanzas_group
+            )
+
+    @api.depends("group_id")
+    def _compute_is_payroll_area(self):
+        payroll_group = self.env.ref(
+            "quoter.group_quoter_payroll", raise_if_not_found=False
+        )
+        for rec in self:
+            rec.is_payroll_area = bool(
+                payroll_group and rec.group_id == payroll_group
+            )
+
+    @api.depends("hour_matrix_mode")
+    def _compute_is_regular_manual_area(self):
+        for rec in self:
+            rec.is_regular_manual_area = rec.hour_matrix_mode == "regular_manual"
+
+    @api.model
+    def _quoter_finanzas_group(self):
+        return self.env.ref("quoter.group_quoter_finanzas", raise_if_not_found=False)
+
+    def _quoter_primary_complexity_level(self):
+        """Primer nivel configurado en el área (único en Finanzas / regular manual)."""
+        self.ensure_one()
+        return self.complexity_level_ids.sorted(
+            key=lambda lev: (lev.sequence, lev.id)
+        )[:1]
 
     def _quoter_formula_area_label(self):
         """Nombre visible del área para textos de modo fórmula."""
@@ -390,11 +450,33 @@ class QuoterProfessionalArea(models.Model):
     @api.depends("sequence", "area_range_ids", "complexity_level_ids", "hour_matrix_mode")
     def _compute_quoter_config_complete(self):
         for rec in self:
-            if rec.hour_matrix_mode == "formula":
+            if rec.hour_matrix_mode in ("formula", "formula_chain"):
                 rec.quoter_config_complete = bool(rec.sequence and rec.area_range_ids)
             else:
                 rec.quoter_config_complete = bool(
                     rec.sequence and rec.area_range_ids and rec.complexity_level_ids
+                )
+
+    @api.constrains("complexity_level_ids")
+    def _check_complexity_level_ids_required(self):
+        for rec in self:
+            if not rec.complexity_level_ids:
+                raise ValidationError(
+                    _("Defina al menos un nivel de complejidad en el área.")
+                )
+
+    @api.constrains("hour_matrix_mode", "complexity_level_ids")
+    def _check_regular_manual_single_level(self):
+        for rec in self:
+            if (
+                rec.hour_matrix_mode == "regular_manual"
+                and len(rec.complexity_level_ids) > 1
+            ):
+                raise ValidationError(
+                    _(
+                        "En modo «Regular manual» configure un solo nivel "
+                        "de complejidad en el área."
+                    )
                 )
 
     @api.constrains("branch_ids")
@@ -490,6 +572,9 @@ class QuoterProfessionalArea(models.Model):
                 rec.table_rules_status = _("Falta definir tipo de tabla")
                 continue
             mode_label = mode_labels.get(rec.hour_matrix_mode, rec.hour_matrix_mode)
+            if rec.hour_matrix_mode in ("formula", "formula_chain", "regular_manual"):
+                rec.table_rules_status = mode_label
+                continue
             if rec.hour_matrix_mode != "combined":
                 rec.table_rules_status = mode_label
                 continue
@@ -570,6 +655,22 @@ class QuoterProfessionalArea(models.Model):
                 Template.quoter_apply_default_sale_taxes(tmpl)
 
     def write(self, vals):
+        closed = self.filtered("cerrado")
+        if closed:
+            if vals.get("hour_matrix_mode"):
+                raise ValidationError(
+                    _(
+                        "No puede cambiar la política de horas en un área cerrada. "
+                        "Reabra la configuración si debe modificarla."
+                    )
+                )
+            if vals.get("complexity_level_ids"):
+                raise ValidationError(
+                    _(
+                        "No puede cambiar los niveles de complejidad en un área cerrada. "
+                        "Reabra la configuración si debe modificarla."
+                    )
+                )
         policy_fields = (
             "hour_matrix_mode",
             "table_a_layout",
@@ -598,6 +699,17 @@ class QuoterProfessionalArea(models.Model):
             vals = dict(vals)
             for area in self:
                 area.line_ids.filtered("shared_b_calc").write({"shared_b_calc": False})
+        if "branch_ids" in vals:
+            for area in self:
+                branches = area._effective_branch_ids()
+                if (
+                    area.matrix_branch_id
+                    and branches
+                    and area.matrix_branch_id not in branches
+                ):
+                    area.matrix_branch_id = area._resolve_matrix_branch()
+                elif not area.matrix_branch_id and branches:
+                    area.matrix_branch_id = area._resolve_matrix_branch()
         res = super().write(vals)
         for rec in self:
             before = snapshots[rec.id]
@@ -612,6 +724,8 @@ class QuoterProfessionalArea(models.Model):
                         [("product_tmpl_id.quoter_area_id", "=", area.id)]
                     )
                     configs._sync_formula_range_lines(area=area)
+                if area.hour_matrix_mode == "formula_chain":
+                    area._chain_sync_all_table_lines()
             self._sync_range_rate_products()
             self._sync_product_level_range_hour_lines()
         if "branch_ids" in vals:
@@ -625,13 +739,13 @@ class QuoterProfessionalArea(models.Model):
                 area.line_ids._ensure_quoter_product()
                 # Crear configuraciones por nivel para productos existentes del área.
                 area.line_ids._sync_product_level_ranges()
+        if "chain_complexity_increase_ids" in vals:
+            self.filtered(
+                lambda a: a.hour_matrix_mode == "formula_chain"
+            )._chain_clear_stale_test_complexity_level()
         if "branch_ids" in vals:
             for area in self:
                 area.line_ids._sync_product_level_ranges()
-                if area.matrix_branch_id and area.matrix_branch_id not in area._effective_branch_ids():
-                    area.matrix_branch_id = area._resolve_matrix_branch().id
-                elif not area.matrix_branch_id:
-                    area.matrix_branch_id = area._resolve_matrix_branch().id
             orders = self.env["sale.order"].search([("quoter_area_ids", "in", self.ids)])
             if orders:
                 orders._quoter_align_block_branches_with_area()
@@ -674,7 +788,12 @@ class QuoterProfessionalArea(models.Model):
         LevelRange = self.env["quoter.product.level.range"]
         lrs = LevelRange.search([("area_id", "=", self.id)])
 
-        if after["hour_matrix_mode"] in ("regular", "formula"):
+        if after["hour_matrix_mode"] in (
+            "regular",
+            "regular_manual",
+            "formula",
+            "formula_chain",
+        ):
             for lr in lrs:
                 lr.output_line_ids.write({"matrix_a_id": False})
             lrs.mapped("matrix_a_ids").unlink()
@@ -685,6 +804,8 @@ class QuoterProfessionalArea(models.Model):
                         self.env["quoter.formula.product.config"].get_config_for_template(
                             line.product_tmpl_id, self
                         )
+            if after["hour_matrix_mode"] == "formula_chain":
+                self._chain_sync_all_table_lines()
             return
 
         became_combined = (
@@ -2031,6 +2152,20 @@ class QuoterProfessionalArea(models.Model):
         # True recarga el formulario en el cliente web (display_notification suele fallar en botones type="object").
         return True
 
+    def _formula_config_applies_to_area(self, config):
+        """True si la config de fórmula aplica a esta área (incl. productos genéricos)."""
+        self.ensure_one()
+        if not config:
+            return False
+        if config.area_id:
+            return config.area_id == self
+        tmpl = config.product_tmpl_id
+        if not tmpl:
+            return False
+        return bool(
+            self.line_ids.filtered(lambda line, t=tmpl: line.product_tmpl_id == t)
+        )
+
     def _formula_matrix_read_only(self):
         self.ensure_one()
         can_edit = self.env.user.has_group("quoter.group_quoter_manager")
@@ -2273,7 +2408,7 @@ class QuoterProfessionalArea(models.Model):
         rline = self.env["quoter.formula.product.config.range"].browse(
             int(range_line_id or 0)
         ).exists()
-        if not rline or rline.config_id.area_id != self:
+        if not rline or not self._formula_config_applies_to_area(rline.config_id):
             raise UserError(_("La configuración de rol no pertenece a esta área."))
         try:
             rline.apply_ui_param_values(param_values)

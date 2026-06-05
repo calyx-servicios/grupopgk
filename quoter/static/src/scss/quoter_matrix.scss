@@ -401,6 +401,119 @@ $o-quoter-matrix-bottom-bar: #e9ecef;
     background-color: #fff8e6;
 }
 
+.o_quoter_num_no_spin {
+    -moz-appearance: textfield;
+
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+}
+
+.o_quoter_chain_matrix_wrap {
+    .o_quoter_chain_tabs .nav-link {
+        cursor: pointer;
+    }
+
+    .o_quoter_chain_bounds_col .o_quoter_chain_range_hint {
+        font-weight: 500;
+    }
+}
+
+.o_quoter_chain_product_matrix {
+    // Todas las filas de producto llevan separador (incl. entre 1ª y 2ª).
+    tbody > tr:nth-child(n + 2) > td {
+        border-top: 1px solid #eaeaea !important;
+    }
+
+    th,
+    td {
+        vertical-align: middle;
+    }
+
+    td.o_quoter_chain_role_col {
+        position: relative;
+        padding: 0.35rem 1.75rem 0.35rem 0.35rem !important;
+        text-align: center;
+    }
+
+    .o_quoter_chain_role_cell {
+        position: relative;
+        width: 100%;
+        min-height: 1.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .o_quoter_chain_hours_val {
+        line-height: 1.2;
+    }
+
+    .o_quoter_chain_edit_btn {
+        position: absolute;
+        right: 2px;
+        top: 50%;
+        transform: translateY(-50%);
+        flex-shrink: 0;
+        min-width: 1.35rem;
+        min-height: 1.35rem;
+        width: 1.35rem;
+        height: 1.35rem;
+        padding: 0 !important;
+        margin: 0;
+        border-radius: 2px;
+        border-width: 1px;
+        border-style: solid;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        cursor: pointer;
+        box-shadow: none;
+
+        .o_quoter_chain_edit_plus {
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        &.o_quoter_chain_edit_btn--fixed {
+            background-color: #fff !important;
+            border-color: #ced4da !important;
+
+            .o_quoter_chain_edit_plus {
+                color: #fff !important;
+                -webkit-text-stroke: 0.55px #6c757d;
+            }
+
+            &:hover,
+            &:focus {
+                background-color: #f8f9fa !important;
+                border-color: #adb5bd !important;
+            }
+        }
+
+        &.o_quoter_chain_edit_btn--formula {
+            background-color: #fff !important;
+            border-color: #ffc107 !important;
+
+            .o_quoter_chain_edit_plus {
+                color: #ffc107 !important;
+                -webkit-text-stroke: 0;
+            }
+
+            &:hover,
+            &:focus {
+                background-color: #fffbf0 !important;
+                border-color: #e0a800 !important;
+            }
+        }
+    }
+}
+
 .modal .o_quoter_formula_popup_line {
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 1.05rem;

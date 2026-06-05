@@ -52,7 +52,10 @@
                             class="btn-secondary"/>
                 </group>
                 <group string="Opciones en el área">
-                    <field name="separator_tag_id" options="{'no_create': True}"/>
+                    <field name="area_separator_tag_ids" invisible="1"/>
+                    <field name="separator_tag_id"
+                           domain="[('id', 'in', area_separator_tag_ids)]"
+                           options="{'no_create': True}"/>
                     <field name="is_default_product"/>
                     <field name="manual_load"/>
                     <field name="manual_total_load" invisible="1"/>
