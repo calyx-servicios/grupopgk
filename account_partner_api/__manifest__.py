@@ -7,7 +7,7 @@
         "facturas e impuestos."
     ),
     "author": "GrupoPGK",
-    "version": "15.0.1.0.0",
+    "version": "15.0.1.0.1",
     "category": "Technical",
     "license": "AGPL-3",
     "depends": ["base", "account"],

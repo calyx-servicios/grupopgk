@@ -237,6 +237,14 @@ class OdooDataApiController(http.Controller):
     # Authentication helpers
     # ──────────────────────────────────────────────────────────────────────────
 
+    def _get_api_model(self, model_name: str):
+        """Return model env configured for API reads.
+
+        Uses ``sudo()`` and disables ``active_test`` to avoid implicit filtering
+        of archived records when requests come from public/no-session contexts.
+        """
+        return request.env[model_name].with_context(active_test=False).sudo()
+
     def _authenticate(self):
         """
         Validate the ``X-API-Key`` request header.
@@ -409,7 +417,7 @@ class OdooDataApiController(http.Controller):
 
         # ── 6. Query Odoo ─────────────────────────────────────────────────────
         try:
-            env_model = request.env[model].sudo()
+            env_model = self._get_api_model(model)
             total = env_model.search_count(domain)
             records = env_model.search_read(
                 domain=domain,
@@ -525,8 +533,7 @@ class OdooDataApiController(http.Controller):
         # ── 4. Query Odoo ─────────────────────────────────────────────────────
         try:
             records = (
-                request.env[model]
-                .sudo()
+                self._get_api_model(model)
                 .search_read(
                     domain=[("id", "=", record_id)],
                     fields=field_list,
