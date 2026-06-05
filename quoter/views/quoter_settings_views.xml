@@ -40,6 +40,13 @@
                                         <span class="o_form_label">Equipo de ventas por defecto (cotizador)</span>
                                         <field name="quoter_default_team_id" options="{'no_create': True}"/>
                                     </div>
+                                    <div class="mt8">
+                                        <span class="o_form_label">Compañía del informe PDF</span>
+                                        <field name="quoter_report_company_id" options="{'no_create': True}"/>
+                                        <div class="text-muted">
+                                            Logo y membrete del PDF interno (ej. Paludi Gonzalez Y Asociados).
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

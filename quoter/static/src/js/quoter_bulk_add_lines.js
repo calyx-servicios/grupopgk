@@ -329,6 +329,72 @@ odoo.define("quoter.bulk_add_lines", function (require) {
         return found;
     }
 
+    function getParentSaleOrderController(widget) {
+        let p = widget;
+        while (p) {
+            if (p.modelName === "sale.order" && p.handle) {
+                return p;
+            }
+            p = p.getParent && p.getParent();
+        }
+        return null;
+    }
+
+    function quoterEnsureParentEditMode(parentFc) {
+        if (!parentFc) {
+            return Promise.resolve();
+        }
+        if (parentFc.mode === "readonly" && typeof parentFc._setMode === "function") {
+            parentFc._setMode("edit");
+        }
+        const orderDp =
+            parentFc.model && parentFc.handle
+                ? parentFc.model.get(parentFc.handle, {raw: true})
+                : null;
+        if (orderDp && !orderDp.res_id && typeof parentFc.saveRecord === "function") {
+            return parentFc
+                .saveRecord(parentFc.handle, {
+                    stayInEdit: true,
+                    reload: false,
+                    savePoint: false,
+                })
+                .catch(function () {
+                    return Promise.resolve();
+                });
+        }
+        return Promise.resolve();
+    }
+
+    /**
+     * Persiste pedido/bloque en servidor si hace falta (sin pedir guardar la cotización al usuario).
+     */
+    function quoterEnsureBlockSavedForBulkAdd(widget, block) {
+        const formView = block.formView;
+        const host = block.host || widget;
+        if (!formView || !formView.model || !formView.handle) {
+            return Promise.resolve(false);
+        }
+        const parentFc = getParentSaleOrderController(host || widget);
+        return quoterEnsureParentEditMode(parentFc).then(function () {
+            const dp = formView.model.get(formView.handle, {raw: true});
+            if (dp && dp.res_id) {
+                block.res_id = dp.res_id;
+                return dp.res_id;
+            }
+            if (host && typeof host._quoterInvokeEmbeddedFormSave === "function") {
+                return host._quoterInvokeEmbeddedFormSave(formView).then(function () {
+                    const dp2 = formView.model.get(formView.handle, {raw: true});
+                    const rid = dp2 && dp2.res_id;
+                    if (rid) {
+                        block.res_id = rid;
+                    }
+                    return rid || false;
+                });
+            }
+            return false;
+        });
+    }
+
     function quoterAfterBulkAddLines(widget, block) {
         const host = block.host || getAreaBlocksHost(widget);
         const formView = block.formView;
@@ -345,107 +411,114 @@ odoo.define("quoter.bulk_add_lines", function (require) {
      * Diálogo HTML (sin formulario Odoo) para evitar conflictos con la lista editable.
      */
     function openBulkAddDialog(widget, block) {
-        const blockId = block.res_id;
-        if (!blockId) {
-            Dialog.alert(
-                widget,
-                _t("Guarde el bloque del área antes de cargar varios productos."),
-                {title: _t("Carga múltiple")}
-            );
-            return Promise.resolve();
-        }
-        return rpc
-            .query({
-                model: "quoter.sale.order.area",
-                method: "get_bulk_add_lines_data",
-                args: [[blockId]],
-            })
-            .then(function (payload) {
-                if (!payload || !payload.enabled) {
-                    Dialog.alert(
-                        widget,
-                        (payload && payload.message) ||
-                            _t("La carga múltiple no está disponible."),
-                        {title: _t("Carga múltiple")}
-                    );
-                    return;
-                }
-                const products = payload.products || [];
-                const dialog = new Dialog(widget, {
-                    title: _t("Agregar múltiples líneas"),
-                    size: "large",
-                    $content: $(buildBulkDialogHtml(products)),
-                    buttons: [
-                        {
-                            text: _t("Aceptar"),
-                            classes: "btn-primary",
-                            close: false,
-                            click: function () {
-                                const $content = dialog.$content;
-                                const selected = [];
-                                $content
-                                    .find(".o_quoter_bulk_add_chk:checked")
-                                    .each(function () {
-                                        const pid = $(this).data("product-id");
-                                        if (pid) {
-                                            selected.push(parseInt(pid, 10));
-                                        }
-                                    });
-                                if (!selected.length) {
-                                    Dialog.alert(
-                                        widget,
-                                        _t("Seleccione al menos un producto."),
-                                        {title: _t("Carga múltiple")}
-                                    );
-                                    return;
-                                }
-                                dialog.$footer.find("button").prop("disabled", true);
-                                return rpc
-                                    .query({
-                                        model: "quoter.sale.order.area",
-                                        method: "action_quoter_bulk_add_lines",
-                                        args: [[blockId], selected],
-                                    })
-                                    .then(function () {
-                                        dialog.close();
-                                        if (!block.host) {
-                                            block.host = getAreaBlocksHost(widget);
-                                        }
-                                        if (!block.formView && block.host) {
-                                            block.formView = getEmbedFormView(
-                                                block.host,
-                                                widget,
-                                                blockId
+        return quoterEnsureBlockSavedForBulkAdd(widget, block).then(function (blockId) {
+            if (!blockId) {
+                Dialog.alert(
+                    widget,
+                    _t(
+                        "No se pudo preparar el bloque del área. Verifique el nivel del área e intente de nuevo."
+                    ),
+                    {title: _t("Carga múltiple")}
+                );
+                return;
+            }
+            block.res_id = blockId;
+            return rpc
+                .query({
+                    model: "quoter.sale.order.area",
+                    method: "get_bulk_add_lines_data",
+                    args: [[blockId]],
+                })
+                .then(function (payload) {
+                    if (!payload || !payload.enabled) {
+                        Dialog.alert(
+                            widget,
+                            (payload && payload.message) ||
+                                _t("La carga múltiple no está disponible."),
+                            {title: _t("Carga múltiple")}
+                        );
+                        return;
+                    }
+                    const products = payload.products || [];
+                    const dialog = new Dialog(widget, {
+                        title: _t("Agregar múltiples líneas"),
+                        size: "large",
+                        $content: $(buildBulkDialogHtml(products)),
+                        buttons: [
+                            {
+                                text: _t("Aceptar"),
+                                classes: "btn-primary",
+                                close: false,
+                                click: function () {
+                                    const $content = dialog.$content;
+                                    const selected = [];
+                                    $content
+                                        .find(".o_quoter_bulk_add_chk:checked")
+                                        .each(function () {
+                                            const pid = $(this).data("product-id");
+                                            if (pid) {
+                                                selected.push(parseInt(pid, 10));
+                                            }
+                                        });
+                                    if (!selected.length) {
+                                        Dialog.alert(
+                                            widget,
+                                            _t("Seleccione al menos un producto."),
+                                            {title: _t("Carga múltiple")}
+                                        );
+                                        return;
+                                    }
+                                    dialog.$footer.find("button").prop("disabled", true);
+                                    return rpc
+                                        .query({
+                                            model: "quoter.sale.order.area",
+                                            method: "action_quoter_bulk_add_lines",
+                                            args: [[blockId], selected],
+                                        })
+                                        .then(function () {
+                                            dialog.close();
+                                            if (!block.host) {
+                                                block.host = getAreaBlocksHost(widget);
+                                            }
+                                            if (!block.formView && block.host) {
+                                                block.formView = getEmbedFormView(
+                                                    block.host,
+                                                    widget,
+                                                    blockId
+                                                );
+                                            }
+                                            const refresh = quoterAfterBulkAddLines(
+                                                block.host || widget,
+                                                block
                                             );
-                                        }
-                                        const refresh = quoterAfterBulkAddLines(
-                                            block.host || widget,
-                                            block
-                                        );
-                                        if (refresh && typeof refresh.guardedCatch === "function") {
-                                            return refresh.guardedCatch(function () {
-                                                return Promise.resolve();
-                                            });
-                                        }
-                                        return refresh;
-                                    })
-                                    .catch(function () {
-                                        dialog.$footer.find("button").prop(
-                                            "disabled",
-                                            false
-                                        );
-                                    });
+                                            if (
+                                                refresh &&
+                                                typeof refresh.guardedCatch === "function"
+                                            ) {
+                                                return refresh.guardedCatch(function () {
+                                                    return Promise.resolve();
+                                                });
+                                            }
+                                            return refresh;
+                                        })
+                                        .catch(function () {
+                                            dialog.$footer.find("button").prop(
+                                                "disabled",
+                                                false
+                                            );
+                                        });
+                                },
                             },
-                        },
-                        {
-                            text: _t("Cancelar"),
-                            close: true,
-                        },
-                    ],
+                            {
+                                text: _t("Cancelar"),
+                                close: true,
+                            },
+                        ],
+                    });
+                    bindBulkDialogEvents(dialog);
+                    dialog.open();
                 });
-                bindBulkDialogEvents(dialog);
-                dialog.open();
-            });
+        });
     }
 
     /**
@@ -475,14 +548,6 @@ odoo.define("quoter.bulk_add_lines", function (require) {
                 if (embedForm.model && embedForm.handle) {
                     const dp = embedForm.model.get(embedForm.handle, {raw: true});
                     blockId = dp && dp.res_id;
-                }
-                if (!blockId) {
-                    Dialog.alert(
-                        areaBlockField || embedForm,
-                        _t("Guarde el bloque del área antes de cargar varios productos."),
-                        {title: _t("Carga múltiple")}
-                    );
-                    return Promise.resolve();
                 }
                 return openBulkAddDialog(areaBlockField || embedForm, {
                     res_id: blockId,

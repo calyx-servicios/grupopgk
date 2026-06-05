@@ -88,6 +88,12 @@ class QuoterServiceLine(models.Model):
         ondelete="restrict",
         help="Para agrupar en vistas del pedido (se usará como separador entre líneas).",
     )
+    area_separator_tag_ids = fields.Many2many(
+        comodel_name="quoter.line.separator.tag",
+        related="area_id.separator_tag_ids",
+        string="Secciones del área",
+        readonly=True,
+    )
     is_default_product = fields.Boolean(
         string="Producto predeterminado",
         default=False,
@@ -409,6 +415,29 @@ class QuoterServiceLine(models.Model):
         tmpl = self.product_tmpl_id or (self.product_id and self.product_id.product_tmpl_id)
         return bool(tmpl and getattr(tmpl, "is_quoter_generic_product", False))
 
+    @api.constrains("separator_tag_id", "area_id")
+    def _check_separator_tag_belongs_to_area(self):
+        for line in self:
+            if not line.separator_tag_id or not line.area_id:
+                continue
+            if line.separator_tag_id not in line.area_id.separator_tag_ids:
+                raise ValidationError(
+                    _(
+                        "La sección «%s» no está configurada en el área «%s». "
+                        "Asígnela en Reglas de tablas → Secciones del cotizador."
+                    )
+                    % (line.separator_tag_id.display_name, line.area_id.display_name)
+                )
+
+    @api.onchange("area_id")
+    def _onchange_area_id_separator_tag(self):
+        tags = self.area_id.separator_tag_ids
+        if self.separator_tag_id and self.separator_tag_id not in tags:
+            self.separator_tag_id = tags[:1] if len(tags) == 1 else False
+        elif not self.separator_tag_id and len(tags) == 1:
+            self.separator_tag_id = tags[0]
+        return {"domain": {"separator_tag_id": [("id", "in", tags.ids)]}}
+
     @api.constrains("unify_value", "area_id")
     def _check_unify_value_requires_area_flag(self):
         for line in self.filtered("unify_value"):
@@ -471,6 +500,10 @@ class QuoterServiceLine(models.Model):
             line._sync_range_hour_lines()
             line._sync_product_level_ranges()
             line._sync_default_product_flag()
+            if line.area_id.hour_matrix_mode == "formula":
+                self.env["quoter.formula.product.config"].get_config_for_template(
+                    tmpl, line.area_id
+                )
 
     @api.onchange("product_tmpl_id")
     def _onchange_product_tmpl_id_generic_link(self):
@@ -547,6 +580,8 @@ class QuoterServiceLine(models.Model):
                 self.env["quoter.formula.product.config"].get_config_for_template(
                     line.product_tmpl_id, line.area_id
                 )
+            if line.area_id.hour_matrix_mode == "formula_chain" and line.product_tmpl_id:
+                line.area_id._chain_sync_all_table_lines()
 
     def _sync_service_line_primary_variant(self):
         """Deja product_id en la única variante canónica del template."""

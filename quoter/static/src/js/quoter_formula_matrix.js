@@ -195,16 +195,33 @@ odoo.define("quoter.formula_matrix", function (require) {
         return values;
     }
 
+    function quoterFormatRpcError(err, fallback) {
+        if (err && err.data && err.data.message) {
+            return String(err.data.message);
+        }
+        if (err && err.message && typeof err.message === "string") {
+            return err.message;
+        }
+        if (typeof err === "string") {
+            return err;
+        }
+        return fallback || _t("Error desconocido.");
+    }
+
     function showFormulaError(controller, message) {
+        const text =
+            typeof message === "string"
+                ? message
+                : quoterFormatRpcError(message, _t("No se pudo guardar la fórmula."));
         if (controller && controller.displayNotification) {
             controller.displayNotification({
                 title: _t("Fórmula"),
-                message: message,
+                message: text,
                 type: "danger",
             });
             return;
         }
-        Dialog.alert(controller, message, {title: _t("Fórmula")});
+        Dialog.alert(controller, text, {title: _t("Fórmula")});
     }
 
     function buildRoleFormulaCell(cell, isFixed, canEdit, areaId) {
@@ -722,11 +739,13 @@ odoo.define("quoter.formula_matrix", function (require) {
                                     }
                                 })
                                 .guardedCatch(function (err) {
-                                    const msg =
-                                        (err && err.data && err.data.message) ||
-                                        (err && err.message) ||
-                                        _t("No se pudo guardar la fórmula.");
-                                    showFormulaError(controller, msg);
+                                    showFormulaError(
+                                        controller,
+                                        quoterFormatRpcError(
+                                            err,
+                                            _t("No se pudo guardar la fórmula.")
+                                        )
+                                    );
                                 });
                         },
                     },

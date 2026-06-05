@@ -21,3 +21,10 @@ class ResConfigSettings(models.TransientModel):
         string="Equipo de ventas por defecto (cotizador)",
         config_parameter="quoter.default_team_id",
     )
+    quoter_report_company_id = fields.Many2one(
+        comodel_name="res.company",
+        string="Compañía del informe PDF (cotizador)",
+        config_parameter="quoter.report_company_id",
+        help="Logo y membrete del PDF interno. Use Paludi Gonzalez Y Asociados "
+        "aunque la cotización pertenezca a otra compañía del grupo.",
+    )
