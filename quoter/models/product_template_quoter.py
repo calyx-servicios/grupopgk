@@ -117,6 +117,23 @@ class ProductTemplate(models.Model):
         index=True,
         help="Identifica el producto plantilla predeterminado para usar en venta.",
     )
+    quoter_formula_config_ids = fields.One2many(
+        comodel_name="quoter.formula.product.config",
+        inverse_name="product_tmpl_id",
+        string="Configuración por volumen",
+        copy=False,
+    )
+    quoter_formula_config_id = fields.Many2one(
+        comodel_name="quoter.formula.product.config",
+        string="Configuración por volumen",
+        compute="_compute_quoter_formula_config_id",
+        help="Registro único de configuración por volumen (fórmula o horas fijas).",
+    )
+
+    @api.depends("quoter_formula_config_ids")
+    def _compute_quoter_formula_config_id(self):
+        for tmpl in self:
+            tmpl.quoter_formula_config_id = tmpl.quoter_formula_config_ids[:1]
 
 
 class ProductProduct(models.Model):
@@ -184,6 +201,7 @@ class ProductProduct(models.Model):
             .filtered(
                 lambda p: p
                 and p.sale_ok
+                and getattr(p, "is_quoter_product", False)
                 and not getattr(p, "is_quoter_range_rate_product", False)
             )
         )

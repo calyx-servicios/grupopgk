@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quoter_rejection_wizard_form" model="ir.ui.view">
+        <field name="name">quoter.rejection.wizard.form</field>
+        <field name="model">quoter.rejection.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Rechazar cotización">
+                <group>
+                    <field name="order_id" invisible="1"/>
+                    <field name="reject_mode" invisible="1"/>
+                    <field name="rejection_reason" placeholder="Indique el motivo del rechazo…"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" string="Confirmar rechazo" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_order_form_quoter_workflow_inherit" model="ir.ui.view">
+        <field name="name">sale.order.form.quoter.workflow.inherit</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="quoter.view_order_form_quoter_inherit"/>
+        <field name="priority" eval="120"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='is_quotation']" position="after">
+                <field name="quoter_workflow_can_edit_content" invisible="1"/>
+                <field name="quoter_workflow_can_edit_adjustments" invisible="1"/>
+                <field name="quoter_workflow_can_transition" invisible="1"/>
+                <field name="quoter_user_is_cotizador_profile" invisible="1"/>
+                <field name="quoter_user_is_aprobador_profile" invisible="1"/>
+                <field name="quoter_user_is_contratos_profile" invisible="1"/>
+                <field name="quoter_rejection_reason" invisible="1"/>
+            </xpath>
+
+            <xpath expr="//header" position="inside">
+                <button name="action_quoter_submit_for_approval"
+                        string="Enviar a aprobación"
+                        type="object"
+                        class="btn-primary"
+                        groups="quoter.group_quoter_cotizador,quoter.group_quoter_manager,quoter.group_quoter_director,quoter.group_quoter_partner"
+                        attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_workflow_state', '!=', 'en_preparacion')]}"/>
+                <button name="action_quoter_internal_approve"
+                        string="Aprobar internamente"
+                        type="object"
+                        class="btn-primary"
+                        groups="quoter.group_quoter_aprobador,quoter.group_quoter_partner"
+                        attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_workflow_state', '!=', 'en_aprobacion')]}"/>
+                <button name="action_quoter_send_to_client"
+                        string="Enviar al cliente"
+                        type="object"
+                        class="btn-primary"
+                        groups="quoter.group_quoter_contratos"
+                        attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_workflow_state', '!=', 'aprobado_interno')]}"/>
+                <button name="action_quoter_client_approved"
+                        string="Cliente aprobó"
+                        type="object"
+                        class="btn-primary"
+                        groups="quoter.group_quoter_contratos"
+                        attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_workflow_state', '!=', 'enviado_cliente')]}"/>
+                <button name="action_quoter_open_reject_wizard"
+                        string="Rechazar"
+                        type="object"
+                        class="btn-secondary"
+                        groups="quoter.group_quoter_aprobador,quoter.group_quoter_partner,quoter.group_quoter_contratos"
+                        attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_workflow_state', 'not in', ('en_aprobacion', 'aprobado_interno', 'enviado_cliente'))]}"/>
+                <button name="action_quoter_resume_preparation"
+                        string="Retomar preparación"
+                        type="object"
+                        class="btn-primary"
+                        groups="quoter.group_quoter_cotizador,quoter.group_quoter_manager,quoter.group_quoter_director,quoter.group_quoter_partner"
+                        attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_workflow_state', '!=', 'rechazado_cliente')]}"/>
+                <button name="%(quoter.action_report_quoter_quotation)d"
+                        string="Imprimir cotización interna"
+                        type="action"
+                        class="btn-secondary"
+                        groups="quoter.group_quoter_aprobador,quoter.group_quoter_partner,quoter.group_quoter_admin,quoter.group_quoter_manager,quoter.group_quoter_director"
+                        attrs="{'invisible': [('is_quotation', '=', False)]}"/>
+            </xpath>
+
+            <!-- Cotización: barra de estado propia en el lugar de la estándar de ventas. -->
+            <xpath expr="//header/field[@name='state']" position="replace">
+                <field name="state"
+                       widget="statusbar"
+                       statusbar_visible="draft,sent,sale"
+                       attrs="{'invisible': [('is_quotation', '=', True)]}"/>
+                <field name="quoter_workflow_state"
+                       widget="statusbar"
+                       statusbar_visible="en_preparacion,en_aprobacion,aprobado_interno,enviado_cliente,aprobado_cliente,rechazado_cliente"
+                       attrs="{'invisible': [('is_quotation', '=', False)]}"/>
+            </xpath>
+
+            <xpath expr="//header//button[@name='action_quotation_send']" position="attributes">
+                <attribute name="attrs">{'invisible': [('is_quotation', '=', True)]}</attribute>
+            </xpath>
+
+            <xpath expr="//button[@name='action_confirm']" position="attributes">
+                <attribute name="attrs">{'invisible': ['|', ('is_quotation', '=', True), ('state', 'not in', ('draft', 'sent'))]}</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_cancel']" position="attributes">
+                <attribute name="attrs">{'invisible': ['|', ('is_quotation', '=', True), ('state', 'not in', ('draft', 'sent', 'sale'))]}</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='partner_id']" position="attributes">
+                <attribute name="attrs">{'readonly': ['|', ('quoter_workflow_can_edit_content', '=', False), ('state', 'in', ('done', 'cancel'))], 'required': [('is_quotation', '=', True)]}</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='quoter_manager_id']" position="attributes">
+                <attribute name="attrs">{'invisible': [('is_quotation', '=', False)], 'readonly': [('quoter_workflow_can_edit_content', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='quoter_partner_id']" position="attributes">
+                <attribute name="attrs">{'invisible': [('is_quotation', '=', False)], 'readonly': [('quoter_workflow_can_edit_content', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='quoter_area_ids']" position="attributes">
+                <attribute name="attrs">{'invisible': [('is_quotation', '=', False)], 'readonly': [('quoter_workflow_can_edit_content', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='date_order']" position="attributes">
+                <attribute name="attrs">{'invisible': [('is_quotation', '=', False)], 'readonly': ['|', ('quoter_workflow_can_edit_content', '=', False), ('state', 'in', ('done', 'cancel'))]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='payment_term_id']" position="attributes">
+                <attribute name="attrs">{'invisible': [('is_quotation', '=', False)], 'required': [('is_quotation', '=', True)], 'readonly': [('quoter_workflow_can_edit_content', '=', False)]}</attribute>
+            </xpath>
+
+            <xpath expr="//page[@name='quoter_strategy']" position="inside">
+                <group string="Rechazo" attrs="{'invisible': [('quoter_rejection_reason', '=', False)]}">
+                    <field name="quoter_rejection_reason"
+                           readonly="1"
+                           nolabel="1"
+                           attrs="{'invisible': [('quoter_rejection_reason', '=', False)]}"/>
+                </group>
+            </xpath>
+
+            <xpath expr="//page[@name='quoter_strategy']//field[@name='quoter_q_competitors']" position="attributes">
+                <attribute name="attrs">{'required': [('is_quotation', '=', True)], 'readonly': [('quoter_workflow_can_edit_content', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//page[@name='quoter_strategy']//field[@name='quoter_q_budget']" position="attributes">
+                <attribute name="attrs">{'required': [('is_quotation', '=', True)], 'readonly': [('quoter_workflow_can_edit_content', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//page[@name='quoter_strategy']//field[@name='quoter_q_current_payment']" position="attributes">
+                <attribute name="attrs">{'required': [('is_quotation', '=', True)], 'readonly': [('quoter_workflow_can_edit_content', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//page[@name='quoter_strategy']//field[@name='quoter_q_notes']" position="attributes">
+                <attribute name="attrs">{'required': [('is_quotation', '=', True)], 'readonly': [('quoter_workflow_can_edit_content', '=', False)]}</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='quoter_user_is_assigned_partner']" position="after">
+                <field name="quoter_workflow_can_edit_adjustments" invisible="1"/>
+            </xpath>
+
+            <xpath expr="//field[@name='global_discount_amount']" position="attributes">
+                <attribute name="attrs">{'readonly': ['|', ('quoter_workflow_can_edit_adjustments', '=', False), ('area_is_formula_chain', '=', True)], 'invisible': [('area_is_formula_chain', '=', True)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='global_surcharge_amount']" position="attributes">
+                <attribute name="attrs">{'readonly': ['|', ('quoter_workflow_can_edit_adjustments', '=', False), ('area_is_formula_chain', '=', True)], 'invisible': [('area_is_formula_chain', '=', True)]}</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_quotation_tree_workflow" model="ir.ui.view">
+        <field name="name">sale.order.tree.quoter.workflow</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="quoter.view_quotation_tree_quoter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='quotation_sequence']" position="after">
+                <field name="quoter_workflow_state" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -63,6 +63,15 @@ class QuoterHoursPolicy(models.AbstractModel):
         return float(value or 0.0)
 
     @api.model
+    def apply_output_hours_minimum(self, hours, minimum):
+        """Piso de horas en tabla resultado: si minimum > 0 y hours < minimum, devuelve minimum."""
+        h = float(hours or 0.0)
+        m = float(minimum or 0.0)
+        if m > 0.0 and h < m:
+            return m
+        return h
+
+    @api.model
     def validate_matrix_b_factor_positive(self, value, table_b_kind="percent"):
         if self._quoter_skip_strict_hours_validation():
             return float(value or 0.0)

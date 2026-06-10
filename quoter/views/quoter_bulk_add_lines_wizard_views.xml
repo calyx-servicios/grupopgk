@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quoter_bulk_add_lines_wizard_form" model="ir.ui.view">
+        <field name="name">quoter.bulk.add.lines.wizard.form</field>
+        <field name="model">quoter.bulk.add.lines.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Agregar múltiples líneas" class="o_quoter_bulk_add_wizard_form">
+                <field name="block_id" invisible="1"/>
+                <p class="text-muted" colspan="2">
+                    Productos del área que aún no están en este bloque. Desmarque los que no desea cargar.
+                </p>
+                <field name="select_all" invisible="1"/>
+                <field name="line_ids" nolabel="1">
+                    <tree editable="bottom"
+                          create="0"
+                          delete="0"
+                          default_order="section_sort,product_name,id"
+                          class="o_quoter_bulk_add_wizard_tree">
+                        <field name="selected" widget="boolean" nolabel="1" string="" readonly="1"/>
+                        <field name="product_id" invisible="1" force_save="1"/>
+                        <field name="separator_tag_id" invisible="1" force_save="1"/>
+                        <field name="section_label" invisible="1" force_save="1"/>
+                        <field name="separator_color" invisible="1" force_save="1"/>
+                        <field name="section_sort" invisible="1" force_save="1"/>
+                        <field name="product_name" readonly="1" string="Producto"/>
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_confirm" type="object" string="Aceptar" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

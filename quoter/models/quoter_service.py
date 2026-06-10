@@ -88,6 +88,12 @@ class QuoterServiceLine(models.Model):
         ondelete="restrict",
         help="Para agrupar en vistas del pedido (se usará como separador entre líneas).",
     )
+    area_separator_tag_ids = fields.Many2many(
+        comodel_name="quoter.line.separator.tag",
+        related="area_id.separator_tag_ids",
+        string="Secciones del área",
+        readonly=True,
+    )
     is_default_product = fields.Boolean(
         string="Producto predeterminado",
         default=False,
@@ -99,6 +105,29 @@ class QuoterServiceLine(models.Model):
         default=False,
         help="Indica que las horas de esta línea se cargan manualmente (p. ej. en pedido). "
         "La aplicación en sale.order se puede enlazar después; conceptualmente similar a roles unificados.",
+    )
+    area_matrix_unify_branch_values = fields.Boolean(
+        related="area_id.matrix_unify_branch_values",
+        readonly=True,
+    )
+    area_matrix_shared_b_calculation = fields.Boolean(
+        related="area_id.matrix_shared_b_calculation",
+        readonly=True,
+    )
+    unify_value = fields.Boolean(
+        string="Unifica valor",
+        default=False,
+        help="Horas por rama (tabla debajo de A); no tiene filas propias en A ni B.",
+    )
+    shared_b_calc = fields.Boolean(
+        string="Productos varios",
+        default=False,
+        help="Entra en la fila «Productos varios» de tabla B; el resultado usa el factor B compartido.",
+    )
+    unify_branch_hour_ids = fields.One2many(
+        comodel_name="quoter.service.line.unify.branch.hour",
+        inverse_name="line_id",
+        string="Horas unificadas por rama",
     )
 
     range_hour_ids = fields.One2many(
@@ -128,6 +157,82 @@ class QuoterServiceLine(models.Model):
         related="area_id.quoter_config_edit_mode",
         readonly=True,
     )
+    area_hour_matrix_mode = fields.Selection(
+        related="area_id.hour_matrix_mode",
+        readonly=True,
+    )
+    quoter_formula_config_id = fields.Many2one(
+        related="product_tmpl_id.quoter_formula_config_id",
+        readonly=False,
+    )
+    quoter_formula_range_line_ids = fields.One2many(
+        related="quoter_formula_config_id.range_line_ids",
+        readonly=False,
+    )
+    quoter_formula_tipo_calculo = fields.Selection(
+        related="quoter_formula_config_id.tipo_calculo",
+        readonly=False,
+    )
+    quoter_formula_formula_kind = fields.Selection(
+        related="quoter_formula_config_id.formula_kind",
+        readonly=False,
+    )
+    quoter_formula_referencia_volumen = fields.Char(
+        related="quoter_formula_config_id.referencia_volumen",
+        readonly=False,
+    )
+    quoter_formula_volumen_default = fields.Float(
+        related="quoter_formula_config_id.volumen_default",
+        readonly=False,
+    )
+    quoter_formula_valor_minimo_volumen = fields.Float(
+        related="quoter_formula_config_id.valor_minimo_volumen",
+        readonly=False,
+    )
+    quoter_formula_horas_si_menor = fields.Float(
+        related="quoter_formula_config_id.horas_si_menor",
+        readonly=False,
+    )
+    quoter_formula_horas_base_si_mayor = fields.Float(
+        related="quoter_formula_config_id.horas_base_si_mayor",
+        readonly=False,
+    )
+    quoter_formula_minutos_excedente = fields.Float(
+        related="quoter_formula_config_id.minutos_por_unidad_excedente",
+        readonly=False,
+    )
+    quoter_formula_minutos_ae = fields.Float(
+        related="quoter_formula_config_id.minutos_ae",
+        readonly=False,
+    )
+    quoter_formula_minutos_sr = fields.Float(
+        related="quoter_formula_config_id.minutos_sr",
+        readonly=False,
+    )
+    quoter_formula_minutos_gte = fields.Float(
+        related="quoter_formula_config_id.minutos_gte",
+        readonly=False,
+    )
+    quoter_formula_minutos_socio = fields.Float(
+        related="quoter_formula_config_id.minutos_socio",
+        readonly=False,
+    )
+    quoter_formula_horas_ae = fields.Float(
+        related="quoter_formula_config_id.horas_ae",
+        readonly=False,
+    )
+    quoter_formula_horas_sr = fields.Float(
+        related="quoter_formula_config_id.horas_sr",
+        readonly=False,
+    )
+    quoter_formula_horas_gte = fields.Float(
+        related="quoter_formula_config_id.horas_gte",
+        readonly=False,
+    )
+    quoter_formula_horas_socio = fields.Float(
+        related="quoter_formula_config_id.horas_socio",
+        readonly=False,
+    )
 
     @api.depends("product_tmpl_id", "product_tmpl_id.is_quoter_generic_product")
     def _compute_is_generic_link(self):
@@ -136,6 +241,64 @@ class QuoterServiceLine(models.Model):
             line.is_generic_link = bool(
                 tmpl and getattr(tmpl, "is_quoter_generic_product", False)
             )
+
+    def _sync_unify_branch_hour_lines(self):
+        """Filas de horas por rama para productos con «Unifica valor»."""
+        UnifyHour = self.env["quoter.service.line.unify.branch.hour"]
+        for line in self:
+            if not line.unify_value:
+                line.unify_branch_hour_ids.unlink()
+                continue
+            area = line.area_id
+            if not area:
+                continue
+            branches = area._effective_branch_ids()
+            if not branches:
+                branches = area._default_quoter_branch()
+            keep_ids = set(branches.ids)
+            line.unify_branch_hour_ids.filtered(
+                lambda h: h.branch_id.id not in keep_ids
+            ).unlink()
+            existing = set(line.unify_branch_hour_ids.mapped("branch_id").ids)
+            for branch in branches.sorted(key=lambda b: (b.sequence, b.id)):
+                if branch.id not in existing:
+                    UnifyHour.create(
+                        {
+                            "line_id": line.id,
+                            "branch_id": branch.id,
+                            "hours": 0.0,
+                        }
+                    )
+
+    def _apply_unify_branch_hours_to_level_ranges(self, branch_id, hours):
+        """Propaga horas de la tabla por rama a todas las salidas del producto (todos los niveles y roles)."""
+        self.ensure_one()
+        if not self.unify_value or not self.product_tmpl_id:
+            return
+        area = self.area_id
+        LevelRange = self.env["quoter.product.level.range"]
+        tmpl_id = self.product_tmpl_id.id
+        if self.is_generic_link:
+            lrs = LevelRange.search(
+                [
+                    ("area_id", "=", False),
+                    ("product_tmpl_id", "=", tmpl_id),
+                    ("branch_id", "=", branch_id),
+                ]
+            )
+        else:
+            lrs = LevelRange.search(
+                [
+                    ("area_id", "=", area.id),
+                    ("product_tmpl_id", "=", tmpl_id),
+                    ("branch_id", "=", branch_id),
+                ]
+            )
+        h = area._apply_output_hours_minimum(float(hours or 0.0))
+        ctx = dict(self.env.context, quoter_skip_output_hours_guard=True)
+        for lr in lrs:
+            if lr.output_line_ids:
+                lr.output_line_ids.with_context(ctx).write({"hours": h})
 
     def _sync_range_hour_lines(self):
         """Filas de horas alineadas con los roles definidos en el área."""
@@ -252,6 +415,51 @@ class QuoterServiceLine(models.Model):
         tmpl = self.product_tmpl_id or (self.product_id and self.product_id.product_tmpl_id)
         return bool(tmpl and getattr(tmpl, "is_quoter_generic_product", False))
 
+    @api.constrains("separator_tag_id", "area_id")
+    def _check_separator_tag_belongs_to_area(self):
+        for line in self:
+            if not line.separator_tag_id or not line.area_id:
+                continue
+            if line.separator_tag_id not in line.area_id.separator_tag_ids:
+                raise ValidationError(
+                    _(
+                        "La sección «%s» no está configurada en el área «%s». "
+                        "Asígnela en Reglas de tablas → Secciones del cotizador."
+                    )
+                    % (line.separator_tag_id.display_name, line.area_id.display_name)
+                )
+
+    @api.onchange("area_id")
+    def _onchange_area_id_separator_tag(self):
+        tags = self.area_id.separator_tag_ids
+        if self.separator_tag_id and self.separator_tag_id not in tags:
+            self.separator_tag_id = tags[:1] if len(tags) == 1 else False
+        elif not self.separator_tag_id and len(tags) == 1:
+            self.separator_tag_id = tags[0]
+        return {"domain": {"separator_tag_id": [("id", "in", tags.ids)]}}
+
+    @api.constrains("unify_value", "area_id")
+    def _check_unify_value_requires_area_flag(self):
+        for line in self.filtered("unify_value"):
+            if not line.area_id.matrix_unify_branch_values:
+                raise ValidationError(
+                    _(
+                        "«Unifica valor» solo puede usarse si el área tiene activada "
+                        "«Unificar valores por rama» en Reglas de tablas."
+                    )
+                )
+
+    @api.constrains("shared_b_calc", "area_id")
+    def _check_shared_b_calc_requires_area_flag(self):
+        for line in self.filtered("shared_b_calc"):
+            if not line.area_id.matrix_shared_b_calculation:
+                raise ValidationError(
+                    _(
+                        "«Productos varios» solo puede usarse si el área tiene activada "
+                        "«Productos varios en tabla B» en Reglas de tablas."
+                    )
+                )
+
     @api.constrains("area_id", "product_tmpl_id")
     def _check_unique_generic_product_per_area(self):
         for line in self.filtered("product_tmpl_id"):
@@ -292,6 +500,10 @@ class QuoterServiceLine(models.Model):
             line._sync_range_hour_lines()
             line._sync_product_level_ranges()
             line._sync_default_product_flag()
+            if line.area_id.hour_matrix_mode == "formula":
+                self.env["quoter.formula.product.config"].get_config_for_template(
+                    tmpl, line.area_id
+                )
 
     @api.onchange("product_tmpl_id")
     def _onchange_product_tmpl_id_generic_link(self):
@@ -351,6 +563,10 @@ class QuoterServiceLine(models.Model):
         super(QuoterServiceLine, line).write({"product_id": variant.id})
         super(QuoterServiceLine, line).write({"product_tmpl_id": tmpl.id})
         line._sync_default_product_flag()
+        if line.area_id.hour_matrix_mode == "formula":
+            self.env["quoter.formula.product.config"].get_config_for_template(
+                tmpl, line.area_id
+            )
 
     def _ensure_quoter_product(self):
         for line in self:
@@ -360,6 +576,12 @@ class QuoterServiceLine(models.Model):
             line._ensure_quoter_product_simple()
             line._normalize_single_variant_product()
             line._sync_service_line_primary_variant()
+            if line.area_id.hour_matrix_mode == "formula" and line.product_tmpl_id:
+                self.env["quoter.formula.product.config"].get_config_for_template(
+                    line.product_tmpl_id, line.area_id
+                )
+            if line.area_id.hour_matrix_mode == "formula_chain" and line.product_tmpl_id:
+                line.area_id._chain_sync_all_table_lines()
 
     def _sync_service_line_primary_variant(self):
         """Deja product_id en la única variante canónica del template."""
@@ -412,6 +634,7 @@ class QuoterServiceLine(models.Model):
         area_lines = lines - generic_lines
         generic_lines._link_generic_product_template()
         area_lines._sync_range_hour_lines()
+        lines._sync_unify_branch_hour_lines()
         area_lines._ensure_quoter_product()
         lines._sync_product_level_ranges()
         lines._sync_product_template_link()
@@ -436,6 +659,28 @@ class QuoterServiceLine(models.Model):
         else:
             if "area_id" in vals:
                 self._sync_range_hour_lines()
+            if {"area_id", "unify_value"} & set(vals.keys()):
+                self._sync_unify_branch_hour_lines()
+            if "shared_b_calc" in vals:
+                for line in self.filtered("shared_b_calc"):
+                    if line.area_id:
+                        line.area_id._sync_shared_matrix_b_rows()
+                        line.area_id._recompute_shared_b_calc_outputs()
+            if "unify_value" in vals:
+                LevelRange = self.env["quoter.product.level.range"]
+                for line in self:
+                    if not line.area_id or not line.product_tmpl_id:
+                        continue
+                    domain = [("product_tmpl_id", "=", line.product_tmpl_id.id)]
+                    if line.is_generic_link:
+                        domain.append(("area_id", "=", False))
+                    else:
+                        domain.append(("area_id", "=", line.area_id.id))
+                    lrs = LevelRange.search(domain)
+                    if lrs:
+                        lrs.with_context(
+                            quoter_sync_matrix_area_id=line.area_id.id
+                        )._sync_matrix_rows()
             if {"name", "area_id"} & set(vals.keys()):
                 non_generic = self.filtered(lambda l: not l._is_linked_generic_product())
                 non_generic._ensure_quoter_product()

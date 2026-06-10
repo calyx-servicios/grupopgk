@@ -1,7 +1,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0.html)
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class QuoterGenericProductWizard(models.TransientModel):
@@ -48,6 +48,12 @@ class QuoterAddGenericToAreaWizard(models.TransientModel):
         string="Sección de cotizador",
         ondelete="set null",
     )
+    area_separator_tag_ids = fields.Many2many(
+        comodel_name="quoter.line.separator.tag",
+        related="area_id.separator_tag_ids",
+        string="Secciones del área",
+        readonly=True,
+    )
     is_default_product = fields.Boolean(string="Producto predeterminado", default=False)
     manual_load = fields.Boolean(string="Carga manual", default=False)
     manual_total_load = fields.Boolean(string="Horas totales manual", default=False)
@@ -58,7 +64,19 @@ class QuoterAddGenericToAreaWizard(models.TransientModel):
         area_id = self.env.context.get("default_area_id") or self.env.context.get("active_id")
         if area_id and "area_id" in fields_list:
             res["area_id"] = area_id
+            area = self.env["quoter.professional.area"].browse(area_id).exists()
+            if area and "separator_tag_id" in fields_list and len(area.separator_tag_ids) == 1:
+                res["separator_tag_id"] = area.separator_tag_ids.id
         return res
+
+    @api.onchange("area_id")
+    def _onchange_area_id_separator_tag(self):
+        tags = self.area_id.separator_tag_ids
+        if self.separator_tag_id and self.separator_tag_id not in tags:
+            self.separator_tag_id = tags[:1] if len(tags) == 1 else False
+        elif not self.separator_tag_id and len(tags) == 1:
+            self.separator_tag_id = tags[0]
+        return {"domain": {"separator_tag_id": [("id", "in", tags.ids)]}}
 
     def _quoter_resolve_generic_template(self):
         """Producto existente o recién creado a partir del nombre nuevo."""
@@ -95,6 +113,14 @@ class QuoterAddGenericToAreaWizard(models.TransientModel):
             raise UserError(_("Seleccione área y producto genérico."))
         if not tmpl.is_quoter_generic_product:
             raise UserError(_("El producto elegido no es un producto genérico del cotizador."))
+        if self.separator_tag_id and self.separator_tag_id not in area.separator_tag_ids:
+            raise ValidationError(
+                _(
+                    "La sección «%s» no está configurada en el área «%s». "
+                    "Asígnela en Reglas de tablas → Secciones del cotizador."
+                )
+                % (self.separator_tag_id.display_name, area.display_name)
+            )
         ServiceLine = self.env["quoter.service.line"]
         existing = ServiceLine.search(
             [("area_id", "=", area.id), ("product_tmpl_id", "=", tmpl.id)], limit=1

@@ -6,7 +6,9 @@ odoo.define("quoter.area_block_embed", function (require) {
     const FieldOne2Many = require("web.relational_fields").FieldOne2Many;
     const view_registry = require("web.view_registry");
     const core = require("web.core");
+    const Dialog = require("web.Dialog");
     const quoterPreserveActive = require("quoter.preserve_active_record");
+    const _t = core._t;
 
     // Modo contingencia: desactivar embed para recuperar UI cuando hay crash global.
     // Rehabilitar cambiando a `false`.
@@ -156,6 +158,192 @@ odoo.define("quoter.area_block_embed", function (require) {
         return null;
     }
 
+    function quoterM2oId(val) {
+        if (val === null || val === undefined || val === false) {
+            return null;
+        }
+        if (Array.isArray(val)) {
+            return val[0] || null;
+        }
+        if (typeof val === "object") {
+            if (val.res_id) {
+                return val.res_id;
+            }
+            if (val.data && val.data.id) {
+                return val.data.id;
+            }
+        }
+        if (typeof val === "number") {
+            return val;
+        }
+        return null;
+    }
+
+    function quoterM2oDisplayName(val) {
+        if (Array.isArray(val) && val.length >= 2) {
+            return val[1];
+        }
+        if (val && val.data && val.data.display_name) {
+            return val.data.display_name;
+        }
+        return "";
+    }
+
+    function quoterAreaTabNavInForm($form) {
+        const $pane = $form
+            .find('.o_field_one2many[name="quoter_area_block_ids"]')
+            .closest(".tab-pane")
+            .first();
+        if (!$pane.length) {
+            return $();
+        }
+        return $pane.closest(".o_notebook").find("ul.nav-tabs").first();
+    }
+
+    function quoterActiveTabAreaIdInForm($form) {
+        const $nav = quoterAreaTabNavInForm($form);
+        if (!$nav.length) {
+            return null;
+        }
+        const $active = $nav.find("a.nav-link.active").first();
+        if (!$active.length) {
+            return null;
+        }
+        const aid = parseInt($active.attr("data-quoter-area-id"), 10);
+        return Number.isFinite(aid) ? aid : null;
+    }
+
+    function quoterResolveLineByAreaId(lines, fieldW, areaId) {
+        if (!areaId || !lines || !lines.length) {
+            return null;
+        }
+        const fc = getFormControllerFromField(fieldW);
+        if (!fc) {
+            return null;
+        }
+        for (let i = 0; i < lines.length; i++) {
+            const localId = quoterListRowLocalId(lines[i]);
+            if (!localId) {
+                continue;
+            }
+            const row = fc.model.get(localId);
+            if (!row || !row.data) {
+                continue;
+            }
+            if (quoterM2oId(row.data.area_id) === areaId) {
+                return localId;
+            }
+        }
+        return null;
+    }
+
+    function getOrderedBlockRows(renderer) {
+        const ctrl = getSaleOrderFormControllerFromRenderer(renderer);
+        if (!ctrl || !ctrl.model) {
+            return [];
+        }
+        const $wrap = $(renderer.el).find(".o_quoter_area_blocks_embed");
+        const fieldW = findQuoterAreaBlockField(renderer, $wrap);
+        if (!fieldW || !fieldW.value || !fieldW.value.id) {
+            return [];
+        }
+        const listDp = ctrl.model.get(fieldW.value.id);
+        if (!listDp || !listDp.data || !listDp.data.length) {
+            return [];
+        }
+        const rows = [];
+        listDp.data.forEach(function (localId) {
+            const row = ctrl.model.get(localId);
+            if (!row || !row.data) {
+                return;
+            }
+            rows.push({
+                localId: localId,
+                res_id: row.res_id,
+                sequence: parseInt(row.data.sequence, 10) || 0,
+                area_id: quoterM2oId(row.data.area_id),
+                area_name: quoterM2oDisplayName(row.data.area_id),
+            });
+        });
+        rows.sort(function (a, b) {
+            if (a.sequence !== b.sequence) {
+                return a.sequence - b.sequence;
+            }
+            return (a.area_id || 0) - (b.area_id || 0);
+        });
+        return rows;
+    }
+
+    function switchEmbedToArea(renderer, areaId) {
+        if (!areaId || !renderer) {
+            return Promise.resolve();
+        }
+        const $wrap = $(renderer.el).find(".o_quoter_area_blocks_embed");
+        const fieldW = findQuoterAreaBlockField(renderer, $wrap);
+        if (!fieldW || !fieldW._quoterMountEmbedForDatapoint) {
+            return Promise.resolve();
+        }
+        let lines = fieldW.value && fieldW.value.data;
+        const fc = getFormControllerFromField(fieldW);
+        if ((!lines || !lines.length) && fieldW.value && fieldW.value.id && fc) {
+            const listDp = fc.model.get(fieldW.value.id);
+            if (listDp && listDp.data && listDp.data.length) {
+                lines = listDp.data;
+            }
+        }
+        const targetId = quoterResolveLineByAreaId(lines, fieldW, areaId);
+        if (!targetId) {
+            return Promise.resolve();
+        }
+        fieldW.__quoterEmbedActiveDatapointId = targetId;
+        const row = fc && fc.model.get(targetId, {raw: true});
+        if (row) {
+            fieldW.__quoterEmbedActiveResId = row.res_id;
+        }
+        return Promise.resolve(fieldW._quoterMountEmbedForDatapoint(targetId));
+    }
+
+    function syncEmbedToActiveTab(renderer) {
+        const $form = $(renderer.el);
+        const $pane = $form
+            .find('.o_field_one2many[name="quoter_area_block_ids"]')
+            .closest(".tab-pane")
+            .first();
+        if ($pane.length && !$pane.hasClass("active") && !$pane.hasClass("show")) {
+            return Promise.resolve();
+        }
+        const areaId = quoterActiveTabAreaIdInForm($form);
+        if (areaId) {
+            return switchEmbedToArea(renderer, areaId);
+        }
+        const rows = getOrderedBlockRows(renderer);
+        if (rows.length && rows[0].area_id) {
+            return switchEmbedToArea(renderer, rows[0].area_id);
+        }
+        return Promise.resolve();
+    }
+
+    function bindQuoterAreaTabNav(renderer) {
+        const $form = $(renderer.el);
+        const $nav = quoterAreaTabNavInForm($form);
+        if (!$nav.length) {
+            return;
+        }
+        $nav.off("shown.bs.tab.quoterAreaBlock click.quoterAreaBlock");
+        $nav.on("shown.bs.tab.quoterAreaBlock click.quoterAreaBlock", "a.nav-link", function () {
+            const $a = $(this);
+            const areaId = parseInt($a.attr("data-quoter-area-id"), 10);
+            if (!Number.isFinite(areaId)) {
+                return;
+            }
+            $nav.find("li.o_quoter_dyn_area_tab a.nav-link").removeClass(
+                "o_quoter_area_subtab_selected"
+            );
+            $a.addClass("o_quoter_area_subtab_selected");
+            switchEmbedToArea(renderer, areaId);
+        });
+    }
+
     /**
      * El form embebido (quoter.sale.order.area) no debe hacer _pushState con su res_id:
      * F5/sessionStorage quedarían con el id del bloque en lugar del sale.order.
@@ -171,6 +359,10 @@ odoo.define("quoter.area_block_embed", function (require) {
             quoterPreserveActive.quoterPushSaleOrderFormState(parentFc);
         };
         quoterPatchEmbedFormLineObjectButtons(embedForm, areaBlockField);
+        const bulkAdd = require("quoter.bulk_add_lines");
+        if (bulkAdd && typeof bulkAdd.quoterPatchEmbedFormBulkAddButton === "function") {
+            bulkAdd.quoterPatchEmbedFormBulkAddButton(embedForm, areaBlockField);
+        }
     }
 
     /**
@@ -331,6 +523,14 @@ odoo.define("quoter.area_block_embed", function (require) {
             return;
         }
         const custom = String(rec.data.complexity_level_custom_label || "").trim();
+        const isAuditoria = !!rec.data.area_is_auditoria;
+        const labelText = custom
+            ? custom
+            : isAuditoria
+            ? _t("Nivel de riesgo")
+            : rec.data.area_is_tax
+            ? _t("Nivel de complejidad")
+            : _t("Nivel del área");
         $body.find("label[for^='complexity_level_id']").each(function () {
             const $lbl = $(this);
             const taxInvisible = $lbl.closest(".o_wrap_field, .o_row, tr").find(
@@ -345,18 +545,95 @@ odoo.define("quoter.area_block_embed", function (require) {
             if (isHidden) {
                 return;
             }
-            if (custom) {
-                $lbl.text(custom);
-            }
+            $lbl.text(labelText);
         });
         $body.find(".o_quoter_block_complexity_level").each(function () {
             const $inp = $(this);
             const $wrap = $inp.closest(".o_wrap_field, .o_row, tr");
             const $lbl = $wrap.find("label").first();
-            if (custom && $lbl.length) {
-                $lbl.text(custom);
+            if ($lbl.length) {
+                $lbl.text(labelText);
             }
         });
+    }
+
+    function quoterComplexityLevelIdFromData(data) {
+        if (!data || !data.complexity_level_id) {
+            return false;
+        }
+        const v = data.complexity_level_id;
+        if (Array.isArray(v)) {
+            return v[0] || false;
+        }
+        if (typeof v === "number") {
+            return v;
+        }
+        if (v.data && v.data.id) {
+            return v.data.id;
+        }
+        if (v.res_id) {
+            return v.res_id;
+        }
+        return false;
+    }
+
+    function quoterBindEmbedComplexityLevelConfirm(formView, areaBlockField) {
+        if (!formView || formView.__quoterComplexityConfirmBound) {
+            return;
+        }
+        if (!formView.model || typeof formView._onFieldChanged !== "function") {
+            return;
+        }
+        formView.__quoterComplexityConfirmBound = true;
+        let confirmedLevelId = quoterComplexityLevelIdFromData(
+            formView.model.get(formView.handle).data
+        );
+        const originalOnFieldChanged = formView._onFieldChanged.bind(formView);
+        formView._onFieldChanged = function (event) {
+            const changes = event && event.data && event.data.changes;
+            if (changes) {
+                quoterEnsureParentSaleOrderEditMode(areaBlockField || formView);
+                quoterMarkParentSaleOrderDirty(areaBlockField || formView);
+            }
+            if (
+                !changes ||
+                !Object.prototype.hasOwnProperty.call(changes, "complexity_level_id")
+            ) {
+                return originalOnFieldChanged(event);
+            }
+            const handle = (event && event.data && event.data.dataPointID) || formView.handle;
+            const rec = formView.model.get(handle);
+            const newId = changes.complexity_level_id;
+            if (!rec || !rec.data || !rec.data.area_is_auditoria) {
+                confirmedLevelId = newId;
+                return originalOnFieldChanged(event);
+            }
+            if (!confirmedLevelId) {
+                confirmedLevelId = quoterComplexityLevelIdFromData(rec.data);
+            }
+            if (formView.__quoterRiskLevelReverting) {
+                formView.__quoterRiskLevelReverting = false;
+                return originalOnFieldChanged(event);
+            }
+            const prevId = confirmedLevelId;
+            if (!prevId || prevId === newId) {
+                confirmedLevelId = newId;
+                return originalOnFieldChanged(event);
+            }
+            Dialog.confirm(formView, _t("¿Desea modificar el nivel de riesgo?"), {
+                confirm_callback: function () {
+                    confirmedLevelId = newId;
+                    originalOnFieldChanged(event);
+                },
+                cancel_callback: function () {
+                    formView.__quoterRiskLevelReverting = true;
+                    formView.model.notifyChanges(handle, {
+                        complexity_level_id: prevId,
+                    });
+                },
+            });
+            return Promise.resolve();
+        };
     }
 
     function quoterSanitizeEmbedFormButtons($container) {
@@ -588,6 +865,14 @@ odoo.define("quoter.area_block_embed", function (require) {
         if (!data.is_quotation) {
             return;
         }
+        if (!data.quoter_show_area_workspace) {
+            const $wrapHidden = $(renderer.el).find(".o_quoter_area_blocks_embed");
+            const fieldW = findQuoterAreaBlockField(renderer, $wrapHidden);
+            if (fieldW && fieldW._quoterDestroyEmbedForm) {
+                fieldW._quoterDestroyEmbedForm();
+            }
+            return;
+        }
         const $wrap = $(renderer.el).find(".o_quoter_area_blocks_embed");
         if (!$wrap.length) {
             return;
@@ -635,6 +920,7 @@ odoo.define("quoter.area_block_embed", function (require) {
                 quoterSafeEnsureVisible(fieldW, "renderer:" + String(ms));
             }, ms);
         }
+        bindQuoterAreaTabNav(renderer);
         // Pestaña lazy: el o2m puede montarse después del primer render.
         tryEmbed(0);
         tryEmbed(80);
@@ -729,6 +1015,7 @@ odoo.define("quoter.area_block_embed", function (require) {
                     k === "quoter_area_block_ids" ||
                     k === "quoter_primary_tab_area_name" ||
                     k === "quoter_area_block_count" ||
+                    k === "quoter_show_area_workspace" ||
                     k === "quoter_area_ids"
                 );
             });
@@ -1477,9 +1764,6 @@ odoo.define("quoter.area_block_embed", function (require) {
             return self
                 ._quoterCommitEmbeddedOrderLineEdits()
                 .then(function () {
-                    return self._quoterPersistAdjustmentLineHoursBeforeSave(formView);
-                })
-                .then(function () {
                     return self._quoterSaveEmbeddedBeforeParentCore(formView);
                 });
         },
@@ -1761,6 +2045,70 @@ odoo.define("quoter.area_block_embed", function (require) {
             return harvested;
         },
 
+        /**
+         * Lee volumen fórmula desde inputs visibles (BasicModel puede quedar desincronizado).
+         */
+        _quoterHarvestFormulaVolumeFromDom: function (lw, formView) {
+            const harvested = {};
+            if (!lw || !lw.$el || !formView || !formView.model) {
+                return harvested;
+            }
+            const model = formView.model;
+            const $tbody = lw.$el.find("table.o_list_table tbody").first();
+            const $rows = $tbody.length ? $tbody.find("tr") : lw.$el.find("tbody tr");
+            $rows.each(function () {
+                const $tr = $(this);
+                if (
+                    $tr.hasClass("o_group_header") ||
+                    $tr.hasClass("o_list_table_grouped") ||
+                    !$tr.is(":visible")
+                ) {
+                    return;
+                }
+                let localId = $tr.data("id");
+                if (!localId) {
+                    const $withId = $tr.find("[data-id]").first();
+                    if ($withId.length) {
+                        localId = $withId.data("id");
+                    }
+                }
+                const row = localId ? quoterGetRawDatapoint(model, localId) : null;
+                const data = row
+                    ? Object.assign({}, row.data || {}, row._changes || {})
+                    : {};
+                if (data.quoter_formula_is_fixed || data.display_type) {
+                    return;
+                }
+                const resId = row && row.res_id;
+                if (typeof resId !== "number" || resId <= 0) {
+                    return;
+                }
+                let $input = $tr.find('input[name="quoter_formula_volume"]');
+                if (!$input.length) {
+                    $input = $tr.find('[name="quoter_formula_volume"] input');
+                }
+                if (!$input.length) {
+                    $input = $tr.find('td[name="quoter_formula_volume"] input');
+                }
+                if (!$input.length) {
+                    $input = $tr.find('td.o_data_cell[name="quoter_formula_volume"] input');
+                }
+                if (!$input.length) {
+                    return;
+                }
+                const raw = $input.val();
+                if (raw === undefined || raw === null || raw === "") {
+                    return;
+                }
+                const num = parseFloat(String(raw).replace(",", "."));
+                if (isNaN(num)) {
+                    return;
+                }
+                harvested[resId] = num;
+            });
+            return harvested;
+        },
+
         _quoterStripAdjustmentHourFieldChanges: function (formView) {
             if (!formView || !formView.model) {
                 return;
@@ -1788,6 +2136,34 @@ odoo.define("quoter.area_block_embed", function (require) {
                 delete row._changes.quoter_range_hour_ids;
                 delete row._changes.quoter_total_hours;
                 delete row._changes.price_unit;
+                if (!Object.keys(row._changes).length) {
+                    delete row._changes;
+                }
+            });
+        },
+
+        _quoterStripFormulaVolumeFieldChanges: function (formView) {
+            if (!formView || !formView.model) {
+                return;
+            }
+            const model = formView.model;
+            const block = quoterGetRawDatapoint(model, formView.handle);
+            const listId = quoterResolveO2mListId(
+                block && block.data && block.data.order_line_ids
+            );
+            const list = quoterGetRawListDatapoint(model, listId);
+            if (!list || !Array.isArray(list.data)) {
+                return;
+            }
+            list.data.forEach(function (lid) {
+                const row = quoterGetRawDatapoint(model, lid);
+                if (!row || !row.data || row.data.quoter_formula_is_fixed) {
+                    return;
+                }
+                if (!row._changes) {
+                    return;
+                }
+                delete row._changes.quoter_formula_volume;
                 if (!Object.keys(row._changes).length) {
                     delete row._changes;
                 }
@@ -1852,6 +2228,57 @@ odoo.define("quoter.area_block_embed", function (require) {
             return payloads;
         },
 
+        _quoterCollectFormulaVolumePayloads: function (formView) {
+            const payloads = [];
+            if (!formView || !formView.model) {
+                return payloads;
+            }
+            const lw = this._quoterFindBlockOrderLineListWidget();
+            const domByResId = this._quoterHarvestFormulaVolumeFromDom(lw, formView);
+            const model = formView.model;
+            const block = quoterGetRawDatapoint(model, formView.handle);
+            const listId = quoterResolveO2mListId(
+                block && block.data && block.data.order_line_ids
+            );
+            const list = quoterGetRawListDatapoint(model, listId);
+            if (!list || !Array.isArray(list.data)) {
+                return payloads;
+            }
+            const self = this;
+            list.data.forEach(function (lid) {
+                const row = quoterGetRawDatapoint(model, lid);
+                if (!row) {
+                    return;
+                }
+                const data = self._quoterMergeLineRowData(row);
+                if (data.quoter_formula_is_fixed || data.display_type) {
+                    return;
+                }
+                const resId = row.res_id;
+                if (typeof resId !== "number" || resId <= 0) {
+                    return;
+                }
+                let volume = null;
+                if (
+                    domByResId[resId] !== undefined &&
+                    domByResId[resId] !== null &&
+                    !isNaN(domByResId[resId])
+                ) {
+                    volume = domByResId[resId];
+                } else if (
+                    data.quoter_formula_volume !== undefined &&
+                    data.quoter_formula_volume !== null
+                ) {
+                    volume = data.quoter_formula_volume;
+                }
+                if (volume === null) {
+                    return;
+                }
+                payloads.push({id: resId, quoter_formula_volume: volume});
+            });
+            return payloads;
+        },
+
         _quoterApplyAdjustmentHoursReadToEmbed: function (formView, readRows) {
             if (!formView || !formView.model || !readRows || !readRows.length) {
                 return;
@@ -1891,6 +2318,12 @@ odoo.define("quoter.area_block_embed", function (require) {
                         }
                     }
                 });
+                if (rec.quoter_formula_volume !== undefined) {
+                    dp.data.quoter_formula_volume = rec.quoter_formula_volume;
+                    if (dp._changes && "quoter_formula_volume" in dp._changes) {
+                        delete dp._changes.quoter_formula_volume;
+                    }
+                }
                 if (rec.quoter_total_hours !== undefined) {
                     dp.data.quoter_total_hours = rec.quoter_total_hours;
                     if (dp._changes && "quoter_total_hours" in dp._changes) {
@@ -1944,6 +2377,44 @@ odoo.define("quoter.area_block_embed", function (require) {
                 });
         },
 
+        _quoterPersistFormulaVolumeBeforeSave: function (formView) {
+            const self = this;
+            const payloads = self._quoterCollectFormulaVolumePayloads(formView);
+            if (!payloads.length) {
+                return Promise.resolve();
+            }
+            const lineIds = payloads.map(function (p) {
+                return p.id;
+            });
+            const readFields = ["quoter_formula_volume"].concat(
+                QUOTER_RANGE_HOUR_FIELD_NAMES,
+                ["quoter_total_hours", "price_unit"]
+            );
+            return self
+                ._rpc({
+                    model: "sale.order.line",
+                    method: "quoter_persist_formula_volume_batch",
+                    args: [payloads],
+                })
+                .then(function () {
+                    return self._rpc({
+                        model: "sale.order.line",
+                        method: "read",
+                        args: [lineIds, readFields],
+                    });
+                })
+                .then(function (rows) {
+                    self._quoterApplyAdjustmentHoursReadToEmbed(formView, rows);
+                    self._quoterStripFormulaVolumeFieldChanges(formView);
+                })
+                .catch(function (err) {
+                    if (window.console && console.warn) {
+                        console.warn("[quoter] persist formula volume failed:", err);
+                    }
+                    return Promise.resolve();
+                });
+        },
+
         /**
          * Confirma la fila en edición del listado (horas, nota) antes de guardar o abrir wizard.
          */
@@ -1986,7 +2457,10 @@ odoo.define("quoter.area_block_embed", function (require) {
                     if (!formView) {
                         return Promise.resolve();
                     }
-                    return self._quoterPersistAdjustmentLineHoursBeforeSave(formView);
+                    return Promise.all([
+                        self._quoterPersistAdjustmentLineHoursBeforeSave(formView),
+                        self._quoterPersistFormulaVolumeBeforeSave(formView),
+                    ]);
                 });
         },
 
@@ -2266,6 +2740,17 @@ odoo.define("quoter.area_block_embed", function (require) {
          * Tras crear una línea de ajuste en servidor (wizard): recargar bloque y lista
          * order_line_ids para mostrarla sin guardar el pedido completo.
          */
+        /**
+         * Tras carga múltiple RPC: refresca líneas del bloque sin saveRecord del pedido
+         * (evita formulario embebido en blanco).
+         */
+        _quoterAfterBulkLinesAdded: function (formView) {
+            const self = this;
+            quoterEnsureParentSaleOrderEditMode(self);
+            quoterMarkParentSaleOrderDirty(self);
+            return self._quoterRefreshAfterAdjustmentLine(formView);
+        },
+
         _quoterRefreshAfterAdjustmentLine: function (formView) {
             const host = this;
             const fc = getFormControllerFromField(host);
@@ -2594,12 +3079,20 @@ odoo.define("quoter.area_block_embed", function (require) {
                 return Promise.resolve();
             }
             const $b = $wrap.find(".o_quoter_area_block_form_body");
-            let targetId = quoterResolveLineDatapointId(
-                lines,
-                this,
-                this.__quoterEmbedActiveDatapointId,
-                this.__quoterEmbedActiveResId
-            );
+            const $formRoot = $wrap.closest("form, .o_form_view");
+            let targetId = null;
+            const tabAreaId = quoterActiveTabAreaIdInForm($formRoot);
+            if (tabAreaId) {
+                targetId = quoterResolveLineByAreaId(lines, this, tabAreaId);
+            }
+            if (!targetId) {
+                targetId = quoterResolveLineDatapointId(
+                    lines,
+                    this,
+                    this.__quoterEmbedActiveDatapointId,
+                    this.__quoterEmbedActiveResId
+                );
+            }
             if (!targetId) {
                 this._quoterDestroyEmbedForm();
                 return Promise.resolve();
@@ -2698,6 +3191,7 @@ odoo.define("quoter.area_block_embed", function (require) {
                             return;
                         }
                         self.__quoterEmbedForm = formView;
+                        formView.__quoterAreaBlockHostField = self;
                         quoterPatchEmbedFormPushState(formView, self);
                         return formView.appendTo($body[0]).then(function () {
                             if (self.__quoterMountRequestId !== mountReqId) {
@@ -2706,6 +3200,7 @@ odoo.define("quoter.area_block_embed", function (require) {
                             }
                             quoterSanitizeEmbedFormButtons($body);
                             quoterPatchEmbedComplexityLevelLabel($body, formView);
+                            quoterBindEmbedComplexityLevelConfirm(formView, self);
                             if (embedMode === "edit") {
                                 quoterEnsureParentSaleOrderEditMode(self);
                             }
@@ -2869,6 +3364,22 @@ odoo.define("quoter.area_block_embed", function (require) {
                     return fromData;
                 }
             }
+            const $blockBody = this.$el.closest(".o_quoter_area_block_form_body");
+            if ($blockBody.length) {
+                const embedCtrl = getFormControllerFromField(this);
+                if (embedCtrl && embedCtrl.__quoterAreaBlockHostField) {
+                    return embedCtrl.__quoterAreaBlockHostField;
+                }
+                const $wrap = $blockBody.closest(".o_quoter_area_blocks_embed");
+                if ($wrap.length) {
+                    const fromWrap = $wrap
+                        .find('.o_field_one2many[name="quoter_area_block_ids"]')
+                        .data("quoterAreaBlockO2M");
+                    if (fromWrap) {
+                        return fromWrap;
+                    }
+                }
+            }
             const fc = getFormControllerFromField(this);
             if (fc && fc.renderer) {
                 const $wrap = $(fc.renderer.el).find(".o_quoter_area_blocks_embed");
@@ -2890,6 +3401,76 @@ odoo.define("quoter.area_block_embed", function (require) {
                 quoterEnsureParentSaleOrderEditMode(this);
             }
             return this._super.apply(this, arguments);
+        },
+
+        _quoterScheduleFormulaVolumeRpc: function (lineLocalId, volume) {
+            const host = this._quoterGetAreaBlocksHostField();
+            const formView = host && host.__quoterEmbedForm;
+            if (!host || !formView || !formView.model || !lineLocalId) {
+                return;
+            }
+            const row = quoterGetRawDatapoint(formView.model, lineLocalId);
+            if (!row || !row.data || row.data.quoter_formula_is_fixed) {
+                return;
+            }
+            const resId = row.res_id;
+            if (typeof resId !== "number" || resId <= 0) {
+                return;
+            }
+            const lw = host._quoterFindBlockOrderLineListWidget
+                ? host._quoterFindBlockOrderLineListWidget()
+                : null;
+            const domHarvest = host._quoterHarvestFormulaVolumeFromDom
+                ? host._quoterHarvestFormulaVolumeFromDom(lw, formView)
+                : {};
+            let payloadVol = volume;
+            if (
+                (payloadVol === undefined || payloadVol === null) &&
+                domHarvest[resId] !== undefined &&
+                domHarvest[resId] !== null &&
+                !isNaN(domHarvest[resId])
+            ) {
+                payloadVol = domHarvest[resId];
+            }
+            if (payloadVol === undefined || payloadVol === null) {
+                const merged = this._quoterMergeLineRowData(row);
+                payloadVol = merged.quoter_formula_volume;
+            }
+            if (host.__quoterFormulaVolRpcTimer) {
+                clearTimeout(host.__quoterFormulaVolRpcTimer);
+            }
+            const capturedVol = payloadVol;
+            host.__quoterFormulaVolRpcTimer = setTimeout(function () {
+                host.__quoterFormulaVolRpcTimer = null;
+                host
+                    ._rpc({
+                        model: "sale.order.line",
+                        method: "quoter_persist_formula_volume_batch",
+                        args: [[{id: resId, quoter_formula_volume: capturedVol}]],
+                    })
+                    .then(function () {
+                        return host._rpc({
+                            model: "sale.order.line",
+                            method: "read",
+                            args: [
+                                [resId],
+                                ["quoter_formula_volume"].concat(
+                                    QUOTER_RANGE_HOUR_FIELD_NAMES,
+                                    ["quoter_total_hours", "price_unit"]
+                                ),
+                            ],
+                        });
+                    })
+                    .then(function (rows) {
+                        host._quoterApplyAdjustmentHoursReadToEmbed(formView, rows);
+                        host._quoterStripFormulaVolumeFieldChanges(formView);
+                    })
+                    .catch(function (err) {
+                        if (window.console && console.warn) {
+                            console.warn("[quoter] auto-save formula volume failed:", err);
+                        }
+                    });
+            }, 100);
         },
 
         _quoterScheduleAdjustmentHoursRpc: function (lineLocalId, changes) {
@@ -2972,6 +3553,35 @@ odoo.define("quoter.area_block_embed", function (require) {
                     this._quoterScheduleAdjustmentHoursRpc(
                         event.data.dataPointID,
                         changes
+                    );
+                }
+                if (
+                    Object.prototype.hasOwnProperty.call(changes, "quoter_formula_volume") &&
+                    event.data.dataPointID
+                ) {
+                    let mergedVol = changes.quoter_formula_volume;
+                    if (mergedVol === undefined || mergedVol === null) {
+                        const hostField = this._quoterGetAreaBlocksHostField
+                            ? this._quoterGetAreaBlocksHostField()
+                            : null;
+                        const embedForm =
+                            hostField && hostField.__quoterEmbedForm
+                                ? hostField.__quoterEmbedForm
+                                : null;
+                        if (embedForm && embedForm.model) {
+                            const volRow = quoterGetRawDatapoint(
+                                embedForm.model,
+                                event.data.dataPointID
+                            );
+                            if (volRow) {
+                                mergedVol =
+                                    this._quoterMergeLineRowData(volRow).quoter_formula_volume;
+                            }
+                        }
+                    }
+                    this._quoterScheduleFormulaVolumeRpc(
+                        event.data.dataPointID,
+                        mergedVol
                     );
                 }
             }
@@ -3099,4 +3709,11 @@ odoo.define("quoter.area_block_embed", function (require) {
             return this._quoterMountEmbedForDatapoint(ev.data.id);
         },
     });
+
+    return {
+        getOrderedBlockRows: getOrderedBlockRows,
+        bindQuoterAreaTabNav: bindQuoterAreaTabNav,
+        syncEmbedToActiveTab: syncEmbedToActiveTab,
+        switchEmbedToArea: switchEmbedToArea,
+    };
 });
