@@ -31,7 +31,7 @@
                                     string="Cargar firma"
                                     signature_field="digital_signature"
                                     highlight="1"
-                                    attrs="{'invisible': [('can_upload_digital_signature', '=', False)]}"/>
+                                    attrs="{'invisible': ['|', ('can_upload_digital_signature', '=', False), ('digital_signature', '!=', False)]}"/>
                         </group>
                         <group/>
                     </group>
