@@ -36,11 +36,11 @@
             <field name="comment">Grupo exclusivo para operar el área Auditoría del cotizador.</field>
         </record>
 
-        <record id="group_quoter_bpo" model="res.groups">
+        <record id="group_quoter_formula" model="res.groups">
             <field name="name">Quoter - BPO</field>
             <field name="category_id" ref="base.module_category_sales_management"/>
             <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_salesman'))]"/>
-            <field name="comment">Grupo exclusivo para operar el área BPO del cotizador.</field>
+            <field name="comment">Grupo para el área BPO (modo de horas por volumen / fórmula).</field>
         </record>
 
         <record id="group_quoter_payroll" model="res.groups">
@@ -48,6 +48,41 @@
             <field name="category_id" ref="base.module_category_sales_management"/>
             <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_salesman'))]"/>
             <field name="comment">Grupo exclusivo para operar el área Payroll del cotizador.</field>
+        </record>
+
+        <record id="group_quoter_finanzas" model="res.groups">
+            <field name="name">Quoter - Finanzas</field>
+            <field name="category_id" ref="base.module_category_sales_management"/>
+            <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_salesman'))]"/>
+            <field name="comment">Grupo exclusivo para operar el área Finanzas (modo Regular manual).</field>
+        </record>
+
+        <record id="group_quoter_director" model="res.groups">
+            <field name="name">Quoter - Director</field>
+            <field name="category_id" ref="base.module_category_sales_management"/>
+            <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_manager'))]"/>
+            <field name="comment">Usuarios habilitados como Director en cotizaciones (perfil Cotizador).</field>
+        </record>
+
+        <record id="group_quoter_cotizador" model="res.groups">
+            <field name="name">Quoter - Cotizador</field>
+            <field name="category_id" ref="base.module_category_sales_management"/>
+            <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_salesman'))]"/>
+            <field name="comment">Puede crear y editar cotizaciones solo en estado En preparación.</field>
+        </record>
+
+        <record id="group_quoter_aprobador" model="res.groups">
+            <field name="name">Quoter - Aprobador</field>
+            <field name="category_id" ref="base.module_category_sales_management"/>
+            <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('group_quoter_partner'))]"/>
+            <field name="comment">Puede editar descuentos y recargos en En aprobación y Aprobado interno.</field>
+        </record>
+
+        <record id="group_quoter_contratos" model="res.groups">
+            <field name="name">Quoter - Contratos</field>
+            <field name="category_id" ref="base.module_category_sales_management"/>
+            <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_salesman'))]"/>
+            <field name="comment">Solo puede cambiar el estado de la cotización (transiciones del flujo).</field>
         </record>
     </data>
 </odoo>

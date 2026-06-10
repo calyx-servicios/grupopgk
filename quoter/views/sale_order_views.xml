@@ -42,6 +42,7 @@
                        attrs="{'invisible': [('is_quotation', '=', False)]}"
                        domain="[('share', '=', False), ('active', '=', True), ('groups_id', 'in', [%(quoter.group_quoter_partner)d])]"
                        options="{'no_create': True, 'no_open': True}"/>
+                <field name="quoter_show_area_workspace" invisible="1"/>
                 <field name="quoter_area_ids"
                        attrs="{'invisible': [('is_quotation', '=', False)]}"
                        widget="many2many_tags"
@@ -50,9 +51,9 @@
                        string="Fecha de cotización"
                        widget="datetime"
                        attrs="{'invisible': [('is_quotation', '=', False)], 'readonly': [('state', 'in', ('done', 'cancel'))]}"/>
-                <!-- Plazo de pago (editable) → calcula Expiración en servidor -->
+                <!-- Plazo de vigencia (editable) → calcula Expiración en servidor -->
                 <field name="payment_term_id"
-                       string="Plazo de pago"
+                       string="Plazo de vigencia"
                        options="{'no_create': True}"
                        attrs="{'invisible': [('is_quotation', '=', False)], 'required': [('is_quotation', '=', True)]}"/>
                 <field name="validity_date"
@@ -137,13 +138,9 @@
                 </page>
                 <page string="Cotización por área" name="quoter_area"
                       class="o_quoter_area_tab_pane"
-                      attrs="{'invisible': [('is_quotation', '=', False)]}">
+                      attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_show_area_workspace', '=', False)]}">
                     <field name="quoter_primary_tab_area_name" invisible="1"/>
                     <field name="quoter_area_block_count" invisible="1"/>
-                    <div class="alert alert-warning" role="alert"
-                         attrs="{'invisible': [('quoter_area_block_ids', '!=', False)]}">
-                        Elija al menos un área profesional en la cabecera del presupuesto para habilitar los bloques de cotización.
-                    </div>
                     <div class="o_quoter_area_blocks_embed position-relative">
                     <field name="quoter_area_block_ids"
                            mode="tree,form"
@@ -175,6 +172,11 @@
                                         string="Cargar predeterminados"
                                         type="object"
                                         class="btn-secondary"
+                                        attrs="{'invisible': ['|', '|', '|', ('area_is_regular_manual', '=', True), ('area_load_default_products', '=', False), ('block_editable', '=', False), ('state', 'not in', (False, 'draft'))]}"/>
+                                <button name="action_quoter_open_bulk_add_wizard"
+                                        string="Agregar múltiples líneas"
+                                        type="object"
+                                        class="btn-secondary"
                                         attrs="{'invisible': ['|', ('block_editable', '=', False), ('state', 'not in', (False, 'draft'))]}"/>
                                 <field name="state" widget="statusbar"
                                        statusbar_visible="draft,published,cancel"
@@ -188,26 +190,47 @@
                                 <field name="complexity_level_custom_label" invisible="1"/>
                                 <field name="area_allow_change_complexity_level" invisible="1"/>
                                 <field name="complexity_level_change_allowed" invisible="1"/>
+                                <field name="show_block_complexity_level" invisible="1"/>
+                                <field name="show_block_chain_complexity_level" invisible="1"/>
                                 <field name="area_use_branching" invisible="1"/>
                                 <field name="area_is_tax" invisible="1"/>
+                                <field name="area_is_auditoria" invisible="1"/>
+                                <field name="area_is_formula" invisible="1"/>
+                                <field name="area_is_formula_chain" invisible="1"/>
+                                <field name="area_is_regular_manual" invisible="1"/>
+                                <field name="area_show_formula_volume_fields" invisible="1"/>
+                                <field name="area_is_finanzas" invisible="1"/>
+                                <field name="area_bulk_line_load" invisible="1"/>
+                                <field name="area_load_default_products" invisible="1"/>
+                                <field name="area_hour_matrix_mode" invisible="1"/>
                                 <field name="order_id" invisible="1"/>
                                 <field name="area_branch_ids" invisible="1"/>
+                                <field name="area_level_ids" invisible="1"/>
+                                <field name="area_chain_level_ids" invisible="1"/>
                                 <field name="selectable_product_ids" invisible="1"/>
                                 <field name="quoter_user_is_assigned_manager" invisible="1"/>
                                 <field name="quoter_user_is_assigned_partner" invisible="1"/>
                                 <group string="Cotización por área">
                                     <group>
                                         <field name="area_id" readonly="1" options="{'no_open': True}"/>
+                                        <field name="quoter_is_first_auditoria"
+                                               attrs="{'invisible': [('area_is_auditoria', '=', False)]}"/>
+                                        <field name="chain_employee_count"
+                                               class="o_quoter_block_chain_employees"
+                                               string="Cantidad de empleados"
+                                               attrs="{'invisible': [('area_is_formula_chain', '=', False)], 'readonly': [('block_editable', '=', False)]}"/>
                                         <field name="complexity_level_id"
-                                               class="o_quoter_block_complexity_level"
-                                               string="Nivel de complejidad"
+                                               class="o_quoter_block_chain_complexity_level"
+                                               string="Nivel del área"
+                                               domain="[('id', 'in', area_chain_level_ids)]"
                                                options="{'no_create': True, 'no_open': True}"
-                                               attrs="{'invisible': [('area_is_tax', '=', False)], 'readonly': [('complexity_level_change_allowed', '=', False)]}"/>
+                                               attrs="{'invisible': ['|', ('area_is_formula_chain', '=', False), ('show_block_chain_complexity_level', '=', False)], 'readonly': [('complexity_level_change_allowed', '=', False)]}"/>
                                         <field name="complexity_level_id"
                                                class="o_quoter_block_complexity_level"
                                                string="Nivel del área"
+                                               domain="[('id', 'in', area_level_ids)]"
                                                options="{'no_create': True, 'no_open': True}"
-                                               attrs="{'invisible': [('area_is_tax', '=', True)], 'readonly': [('complexity_level_change_allowed', '=', False)]}"/>
+                                               attrs="{'invisible': ['|', '|', '|', ('area_is_formula', '=', True), ('area_is_formula_chain', '=', True), ('area_is_regular_manual', '=', True), ('show_block_complexity_level', '=', False)], 'readonly': ['|', ('area_is_regular_manual', '=', True), ('complexity_level_change_allowed', '=', False)]}"/>
                                         <field name="branch_id"
                                                string="Rama"
                                                options="{'no_create': True}"
@@ -215,23 +238,23 @@
                                                attrs="{'readonly': [('block_editable', '=', False)], 'invisible': ['|', ('area_use_branching', '=', False), ('complexity_level_id', '=', False)]}"/>
                                         <field name="global_discount_amount"
                                                string="Descuento %"
-                                               attrs="{'readonly': ['|', ('block_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('complexity_level_id', '=', False)]}"/>
+                                               attrs="{'readonly': ['|', ('block_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('area_is_formula_chain', '=', True)]}"/>
                                         <field name="global_surcharge_amount"
                                                string="Recargo %"
-                                               attrs="{'readonly': ['|', ('block_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('complexity_level_id', '=', False)]}"/>
+                                               attrs="{'readonly': ['|', ('block_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('area_is_formula_chain', '=', True)]}"/>
                                     </group>
                                 </group>
                                 <div class="alert alert-info" role="alert"
-                                     attrs="{'invisible': ['|', ('complexity_level_id', '!=', False), ('area_is_tax', '=', True)]}">
+                                     attrs="{'invisible': ['|', '|', '|', '|', ('area_is_formula', '=', True), ('area_is_formula_chain', '=', True), ('area_is_regular_manual', '=', True), ('complexity_level_id', '!=', False), ('area_is_tax', '=', True)]}">
                                     Seleccione el nivel del área y guarde el bloque para habilitar productos y líneas.
                                 </div>
                                 <div class="alert alert-info" role="alert"
-                                     attrs="{'invisible': ['|', ('complexity_level_id', '!=', False), ('area_is_tax', '=', False)]}">
+                                     attrs="{'invisible': ['|', '|', '|', ('area_is_formula', '=', True), ('area_is_formula_chain', '=', True), ('complexity_level_id', '!=', False), ('area_is_tax', '=', False)]}">
                                     Seleccione el nivel de complejidad y guarde el bloque para habilitar productos y líneas.
                                 </div>
                                 <field name="order_line_ids"
                                        context="{'default_quoter_tab_area_id': area_id, 'default_quoter_block_id': id, 'default_order_id': order_id}"
-                                       attrs="{'invisible': [('complexity_level_id', '=', False)], 'readonly': [('lines_frozen', '=', True)]}">
+                                       attrs="{'invisible': ['&amp;', ('area_is_formula', '=', False), ('area_is_formula_chain', '=', False), ('area_is_regular_manual', '=', False), ('complexity_level_id', '=', False)], 'readonly': [('lines_frozen', '=', True)]}">
                                     <tree editable="bottom" decoration-bf="display_type == 'line_section'">
                                         <field name="company_id" invisible="1"/>
                                         <field name="display_type" invisible="1"/>
@@ -243,6 +266,9 @@
                                         <field name="quoter_separator_color" invisible="1"/>
                                         <field name="quoter_product_separator_tag_color" invisible="1"/>
                                         <field name="quoter_area_separator_visual_mode" invisible="1"/>
+                                        <field name="quoter_tab_area_is_formula" invisible="1"/>
+                                        <field name="quoter_show_formula_volume" invisible="1"/>
+                                        <field name="quoter_formula_is_fixed" invisible="1"/>
                                         <field name="quoter_manual_load" invisible="1"/>
                                         <field name="quoter_can_edit_range_hours" invisible="1"/>
                                         <field name="quoter_can_edit_total_hours" invisible="1"/>
@@ -266,7 +292,14 @@
                                         <field name="name"
                                                attrs="{'readonly': ['|', ('parent.lines_frozen', '=', True), ('display_type', '!=', False)]}"/>
                                         <field name="product_uom_qty" invisible="1"/>
-                                        <field name="price_unit" invisible="1" force_save="1"/>
+                                        <field name="price_unit"
+                                               string="Precio unitario"
+                                               force_save="1"
+                                               attrs="{'invisible': [('display_type', '!=', False)], 'readonly': [('parent.lines_frozen', '=', True)], 'column_invisible': [('parent.area_is_regular_manual', '=', False)]}"/>
+                                        <field name="quoter_formula_referencia" optional="show" readonly="1"
+                                               attrs="{'invisible': [('display_type', '!=', False)], 'column_invisible': [('parent.area_show_formula_volume_fields', '=', False)]}"/>
+                                        <field name="quoter_formula_volume" optional="show" force_save="1"
+                                               attrs="{'invisible': ['|', ('display_type', '!=', False), ('quoter_formula_is_fixed', '=', True)], 'readonly': [('parent.lines_frozen', '=', True)], 'column_invisible': [('parent.area_show_formula_volume_fields', '=', False)]}"/>
                                         <field name="quoter_range_1_hours" optional="show" force_save="1"
                                                attrs="{'invisible': [('display_type', '!=', False)], 'readonly': ['|', ('parent.lines_frozen', '=', True), ('quoter_can_edit_range_hours', '=', False)]}"/>
                                         <field name="quoter_range_2_hours" optional="show" force_save="1"

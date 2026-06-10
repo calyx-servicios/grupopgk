@@ -8,6 +8,9 @@ def _apply_matrix_b_policy_for_areas(records):
     areas = records.mapped("area_id").exists()
     if areas:
         areas._apply_matrix_b_advanced_rules_to_level_ranges()
+        shared = areas.filtered("matrix_shared_b_calculation")
+        shared._apply_matrix_b_policy_to_shared_matrix_b()
+        shared._recompute_shared_b_calc_outputs()
 
 
 class QuoterAreaMatrixBRoleRule(models.Model):
@@ -37,6 +40,14 @@ class QuoterAreaMatrixBRoleRule(models.Model):
     default_factor = fields.Float(string="Valor por defecto", default=0.0)
     is_fixed = fields.Boolean(string="Fijo", default=False)
     is_hidden = fields.Boolean(string="Oculto", default=False)
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        area_id = self.env.context.get("default_area_id")
+        if area_id and not res.get("area_id"):
+            res["area_id"] = area_id
+        return res
 
     _sql_constraints = [
         (
@@ -109,7 +120,15 @@ class QuoterAreaMatrixBBranchException(models.Model):
         store=True,
         readonly=True,
     )
-    factor_override = fields.Float(string="Valor excepci?n", default=0.0)
+    factor_override = fields.Float(string="Valor excepción", default=0.0)
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        area_id = self.env.context.get("default_area_id")
+        if area_id and not res.get("area_id"):
+            res["area_id"] = area_id
+        return res
 
     _sql_constraints = [
         (
@@ -160,6 +179,18 @@ class QuoterAreaMatrixBLevelException(models.Model):
         ondelete="cascade",
         index=True,
     )
+    area_complexity_level_ids = fields.Many2many(
+        comodel_name="quoter.complexity.level",
+        related="area_id.complexity_level_ids",
+        string="Niveles del área",
+        readonly=True,
+    )
+    area_range_option_ids = fields.Many2many(
+        comodel_name="quoter.area.complexity.range",
+        related="area_id.area_range_ids",
+        string="Roles del área",
+        readonly=True,
+    )
     complexity_level_id = fields.Many2one(
         comodel_name="quoter.complexity.level",
         string="Nivel",
@@ -184,7 +215,15 @@ class QuoterAreaMatrixBLevelException(models.Model):
         store=True,
         readonly=True,
     )
-    factor_override = fields.Float(string="Valor excepci?n", default=0.0)
+    factor_override = fields.Float(string="Valor excepción", default=0.0)
+
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        area_id = self.env.context.get("default_area_id")
+        if area_id and not res.get("area_id"):
+            res["area_id"] = area_id
+        return res
 
     _sql_constraints = [
         (

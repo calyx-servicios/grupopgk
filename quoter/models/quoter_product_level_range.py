@@ -94,15 +94,13 @@ class QuoterProductLevelRangeMatrixB(models.Model):
                     continue
                 lr._check_matrix_b_percent_split_cap()
         if "factor" in vals:
-            lrs = self.mapped("level_range_id")
-            ars = self.mapped("area_range_id")
-            outs = self.env["quoter.product.level.range.output"].search(
-                [
-                    ("level_range_id", "in", lrs.ids),
-                    ("area_range_id", "in", ars.ids),
-                ]
-            )
-            outs._recompute_combined_hours()
+            for area in self.mapped("level_range_id").mapped(
+                lambda lr: lr._resolve_sync_matrix_area()
+            ).filtered("id"):
+                area_lrs = self.mapped("level_range_id").filtered(
+                    lambda lr, a=area: lr._resolve_sync_matrix_area() == a
+                )
+                area._matrix_recompute_after_write(area_lrs)
         return res
 
 
@@ -176,7 +174,7 @@ class QuoterProductLevelRangeMatrixA(models.Model):
         if not Policy._quoter_skip_strict_hours_validation():
             for vals in vals_list:
                 if "hours" in vals:
-                    Policy.validate_hours_strictly_positive(
+                    Policy.validate_hours_non_negative(
                         vals["hours"], _("Horas tabla A")
                     )
         return super().create(vals_list)
@@ -185,10 +183,16 @@ class QuoterProductLevelRangeMatrixA(models.Model):
         if "hours" in vals:
             Policy = self.env["quoter.hours.policy"]
             if not Policy._quoter_skip_strict_hours_validation():
-                Policy.validate_hours_strictly_positive(vals["hours"], _("Horas tabla A"))
+                Policy.validate_hours_non_negative(vals["hours"], _("Horas tabla A"))
         res = super().write(vals)
         if "hours" in vals:
-            self.output_line_ids._recompute_combined_hours()
+            for area in self.mapped("level_range_id").mapped(
+                lambda lr: lr._resolve_sync_matrix_area()
+            ).filtered("id"):
+                area_lrs = self.mapped("level_range_id").filtered(
+                    lambda lr, a=area: lr._resolve_sync_matrix_area() == a
+                )
+                area._matrix_recompute_after_write(area_lrs)
         return res
 
 
@@ -245,24 +249,8 @@ class QuoterProductLevelRangeOutput(models.Model):
                 )
 
     def _recompute_combined_hours(self):
-        for rec in self:
-            lr = rec.level_range_id
-            area = lr._resolve_sync_matrix_area()
-            if not area or area.hour_matrix_mode != "combined":
-                continue
-            if not rec.matrix_a_id:
-                continue
-            brow = lr.matrix_b_ids.filtered(
-                lambda b, ar=rec.area_range_id: b.area_range_id == ar
-            )[:1]
-            if not brow:
-                continue
-            h = lr._final_hours_from_a_and_b(
-                rec.matrix_a_id.hours,
-                brow.factor,
-            )
-            if float(rec.hours or 0.0) != float(h):
-                super(QuoterProductLevelRangeOutput, rec).write({"hours": h})
+        for lr in self.mapped("level_range_id"):
+            lr._recompute_combined_output_hours()
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -270,7 +258,7 @@ class QuoterProductLevelRangeOutput(models.Model):
         if not Policy._quoter_skip_strict_hours_validation():
             for vals in vals_list:
                 if "hours" in vals:
-                    Policy.validate_hours_strictly_positive(
+                    Policy.validate_hours_non_negative(
                         vals["hours"], _("Horas finales")
                     )
         return super().create(vals_list)
@@ -287,7 +275,7 @@ class QuoterProductLevelRangeOutput(models.Model):
                 locked = self.filtered(lambda r: r._is_combined_locked())
                 unlocked = self - locked
                 if unlocked:
-                    Policy.validate_hours_strictly_positive(
+                    Policy.validate_hours_non_negative(
                         vals["hours"], _("Horas finales")
                     )
         if "hours" not in vals:
@@ -391,6 +379,11 @@ class QuoterProductLevelRange(models.Model):
     area_table_b_percent_mode = fields.Selection(
         related="area_id.table_b_percent_mode",
         string="Modo porcentaje B (área)",
+        readonly=True,
+    )
+    area_table_b_percent_basis = fields.Selection(
+        related="area_id.table_b_percent_basis",
+        string="Base porcentaje B (área)",
         readonly=True,
     )
 
@@ -540,6 +533,18 @@ class QuoterProductLevelRange(models.Model):
             and self.area_id.table_a_layout in ("compact", "global")
             and self.area_id.table_b_kind == "percent"
             and self.area_id.table_b_percent_mode == "exact"
+            and self.area_id.table_b_percent_basis == "table_a"
+        )
+
+    def _uses_table_b_percent_cascade(self):
+        """Porcentaje B aplicado en cadena sobre el resultado del rol anterior (mismo nivel/rama)."""
+        self.ensure_one()
+        area = self._resolve_sync_matrix_area()
+        return bool(
+            area
+            and area.hour_matrix_mode == "combined"
+            and area.table_b_kind == "percent"
+            and area.table_b_percent_basis == "previous_role"
         )
 
     def _check_matrix_b_percent_split_cap(self):
@@ -606,11 +611,13 @@ class QuoterProductLevelRange(models.Model):
         for rec in self:
             if not rec._is_area_combined_compact_a():
                 continue
-            val = self.env["quoter.hours.policy"].validate_hours_strictly_positive(
+            val = self.env["quoter.hours.policy"].validate_hours_non_negative(
                 rec.compact_hours_a, _("Horas tabla A")
             )
             rec._sync_matrix_rows()
-            rec.matrix_a_ids.write({"hours": val})
+            rec.matrix_a_ids.with_context(quoter_allow_zero_hours=True).write(
+                {"hours": val}
+            )
             rec.output_line_ids._recompute_combined_hours()
 
     def _table_b_kind(self):
@@ -629,8 +636,69 @@ class QuoterProductLevelRange(models.Model):
             return a * b
         return a
 
+    def _area_ranges_for_combined_output(self):
+        self.ensure_one()
+        area = self._resolve_sync_matrix_area()
+        if not area:
+            return self.env["quoter.area.complexity.range"]
+        return area.area_range_ids.sorted(key=lambda r: (r.sequence, r.id))[:4]
+
+    def _quoter_line_unify_value(self):
+        self.ensure_one()
+        area = self._resolve_sync_matrix_area()
+        if not area or not self.product_tmpl_id:
+            return False
+        line = area.line_ids.filtered(
+            lambda l, t=self.product_tmpl_id: l.product_tmpl_id == t
+        )[:1]
+        return bool(line and line.unify_value)
+
+    def _quoter_line_shared_b_calc(self):
+        self.ensure_one()
+        area = self._resolve_sync_matrix_area()
+        if not area or not area.matrix_shared_b_calculation or not self.product_tmpl_id:
+            return False
+        line = area.line_ids.filtered(
+            lambda l, t=self.product_tmpl_id: l.product_tmpl_id == t
+        )[:1]
+        return bool(line and line.shared_b_calc)
+
+    def _recompute_combined_output_hours(self):
+        """Recalcula todas las salidas del nivel×rama (cascada B o directo sobre A)."""
+        self.ensure_one()
+        if self._quoter_line_unify_value() or self._quoter_line_shared_b_calc():
+            return
+        area = self._resolve_sync_matrix_area()
+        if not area or area.hour_matrix_mode != "combined":
+            return
+        cascade = self._uses_table_b_percent_cascade()
+        prev_output = None
+        for ar in self._area_ranges_for_combined_output():
+            out = self.output_line_ids.filtered(
+                lambda o, role=ar: o.area_range_id == role
+            )[:1]
+            if not out or not out.matrix_a_id:
+                continue
+            brow = self.matrix_b_ids.filtered(
+                lambda b, role=ar: b.area_range_id == role
+            )[:1]
+            if not brow:
+                continue
+            hours_a = float(out.matrix_a_id.hours or 0.0)
+            factor = float(brow.factor or 0.0)
+            if cascade:
+                base = prev_output if prev_output is not None else hours_a
+                h = base * (factor / 100.0) if factor else 0.0
+            else:
+                h = self._final_hours_from_a_and_b(hours_a, factor)
+            prev_output = h
+            h = area._apply_output_hours_minimum(h)
+            if float(out.hours or 0.0) != float(h):
+                super(QuoterProductLevelRangeOutput, out).write({"hours": h})
+
     def _apply_combined_output_hours(self):
-        self.output_line_ids._recompute_combined_hours()
+        for rec in self:
+            rec._recompute_combined_output_hours()
 
     def _apply_combined_final_all(self):
         for rec in self:
@@ -645,9 +713,12 @@ class QuoterProductLevelRange(models.Model):
         if not outs:
             return
         if not any(float(o.matrix_a_id.hours or 0.0) for o in outs if o.matrix_a_id):
+            zero_ctx = dict(self.env.context, quoter_allow_zero_hours=True)
             for o in outs:
                 if o.matrix_a_id:
-                    o.matrix_a_id.hours = float(o.hours or 0.0)
+                    o.matrix_a_id.with_context(zero_ctx).write(
+                        {"hours": float(o.hours or 0.0)}
+                    )
         kind = self._table_b_kind()
         if not any(float(b.factor or 0.0) for b in self.matrix_b_ids):
             ctx = dict(
@@ -751,7 +822,7 @@ class QuoterProductLevelRange(models.Model):
                 lambda h, a=ar: h.area_range_id == a
             )[:1]
             if row:
-                hours = self.env["quoter.hours.policy"].validate_hours_strictly_positive(
+                hours = self.env["quoter.hours.policy"].validate_hours_non_negative(
                     value, _("Horas finales")
                 )
                 row.with_context(quoter_skip_output_hours_guard=True).write(
@@ -839,7 +910,21 @@ class QuoterProductLevelRange(models.Model):
             rec.matrix_a_ids.filtered(lambda a: a.area_range_id.id not in keep_ids).unlink()
             rec.matrix_b_ids.filtered(lambda b: b.area_range_id.id not in keep_ids).unlink()
             combined = area.hour_matrix_mode == "combined"
+            unify_value = rec._quoter_line_unify_value()
             for ar in ranges:
+                if combined and unify_value:
+                    zero_ctx = dict(self.env.context, quoter_allow_zero_hours=True)
+                    orow = rec.output_line_ids.filtered(lambda o: o.area_range_id == ar)[:1]
+                    if not orow:
+                        O.with_context(zero_ctx).create(
+                            {
+                                "level_range_id": rec.id,
+                                "area_range_id": ar.id,
+                                "matrix_a_id": False,
+                                "hours": 0.0,
+                            }
+                        )
+                    continue
                 if combined:
                     brow = rec.matrix_b_ids.filtered(lambda b: b.area_range_id == ar)[:1]
                     zero_ctx = dict(self.env.context, quoter_allow_zero_hours=True)
@@ -893,7 +978,10 @@ class QuoterProductLevelRange(models.Model):
                         )
                     elif orow.matrix_a_id:
                         orow.write({"matrix_a_id": False})
-            if combined:
+            if combined and unify_value:
+                rec.matrix_a_ids.unlink()
+                rec.matrix_b_ids.unlink()
+            if combined and not unify_value and not rec._quoter_line_shared_b_calc():
                 rec._apply_combined_output_hours()
 
     @api.model_create_multi

@@ -14,7 +14,7 @@
                             <div class="o_setting_right_pane">
                                 <span class="o_form_label">Ajustes de grupos</span>
                                 <div class="text-muted">
-                                    Gestionar grupos Gerente, Socio y grupos por área (TAX, Auditoría, BPO, Payroll).
+                                    Gestionar grupos Gerente, Socio y grupos por área (TAX, Auditoría, Fórmula, Payroll).
                                 </div>
                                 <div class="mt8">
                                     <button type="action"
@@ -39,6 +39,13 @@
                                     <div class="mt8">
                                         <span class="o_form_label">Equipo de ventas por defecto (cotizador)</span>
                                         <field name="quoter_default_team_id" options="{'no_create': True}"/>
+                                    </div>
+                                    <div class="mt8">
+                                        <span class="o_form_label">Compañía del informe PDF</span>
+                                        <field name="quoter_report_company_id" options="{'no_create': True}"/>
+                                        <div class="text-muted">
+                                            Logo y membrete del PDF interno (ej. Paludi Gonzalez Y Asociados).
+                                        </div>
                                     </div>
                                 </div>
                             </div>

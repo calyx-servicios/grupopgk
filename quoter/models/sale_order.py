@@ -115,6 +115,13 @@ class SaleOrder(models.Model):
         size=140,
         copy=False,
     )
+    quoter_is_first_quotation = fields.Boolean(
+        string="Primera cotización",
+        default=False,
+        copy=False,
+        help="En áreas de Auditoría, fija el nivel de riesgo al más alto (mayor id) "
+        "en los bloques del pedido.",
+    )
 
     quoter_area_ids = fields.Many2many(
         comodel_name="quoter.professional.area",
@@ -296,6 +303,19 @@ class SaleOrder(models.Model):
         compute="_compute_quoter_primary_tab_area_meta",
         string="Cantidad de bloques cotizador",
     )
+    quoter_show_area_workspace = fields.Boolean(
+        string="Mostrar pestañas cotización por área",
+        compute="_compute_quoter_show_area_workspace",
+        help="En cotizaciones nuevas sin guardar, se ocultan las pestañas por área hasta el primer guardado.",
+    )
+
+    @api.depends("is_quotation")
+    def _compute_quoter_show_area_workspace(self):
+        for order in self:
+            if not order.is_quotation:
+                order.quoter_show_area_workspace = True
+            else:
+                order.quoter_show_area_workspace = isinstance(order.id, int)
 
     def _quoter_area_blocks_ordered(self):
         """Bloques por secuencia de bloque + área; tolera NewId."""
@@ -348,6 +368,14 @@ class SaleOrder(models.Model):
         """Replica horas de quoter.product.level.range según el nivel del bloque del área."""
         self.ensure_one()
         if not area:
+            return
+        if area.hour_matrix_mode in ("formula_chain", "regular_manual"):
+            if area.hour_matrix_mode == "formula_chain":
+                blocks = self.quoter_area_block_ids.filtered(
+                    lambda b, a=area: b.area_id == a
+                )
+                if blocks:
+                    blocks._quoter_apply_chain_hours_to_lines()
             return
         lines = self.order_line.filtered(
             lambda l, a=area: l.quoter_tab_area_id == a
@@ -913,12 +941,19 @@ class SaleOrder(models.Model):
                 order._quoter_sync_area_discount_total_line()
                 order._quoter_sync_date_of_issue_from_order_date()
                 order._quoter_compute_validity_date_from_payment_term()
+                if vals.get("quoter_is_first_quotation"):
+                    order._quoter_apply_first_quotation_risk_levels()
         records.filtered("is_quotation")._quoter_reconcile_area_ids_from_blocks()
         records.filtered("is_quotation")._quoter_log_order_created()
         return records
 
     def write(self, vals):
         self._check_quoter_responsibles_write_access(vals)
+        if vals:
+            for order in self.filtered(
+                lambda o: o.is_quotation and isinstance(o.id, int)
+            ):
+                order._quoter_validate_workflow_write_access(vals)
         if vals:
             vals = self._quoter_protect_area_ids_write_vals(vals)
         if vals and "quoter_area_block_ids" in vals:
@@ -996,6 +1031,10 @@ class SaleOrder(models.Model):
         if quotation_orders:
             quotation_orders.invalidate_cache(["order_line"])
             quotation_orders._quoter_sync_area_discount_total_line()
+        if vals.get("quoter_is_first_quotation") and not self.env.context.get(
+            "quoter_skip_first_quotation_risk_levels"
+        ):
+            self.filtered("quoter_is_first_quotation")._quoter_apply_first_quotation_risk_levels()
         # Solo registros ya guardados (id entero). Con NewId aún no hay fila en BD:
         # pedir la secuencia aquí consumía Q... al editar el formulario antes del 1er guardado.
         missing_seq = self.filtered(
@@ -1029,9 +1068,13 @@ class SaleOrder(models.Model):
         for order in self.with_context(ctx):
             if not order.is_quotation:
                 continue
-            blocks = order.quoter_area_block_ids.filtered(
-                lambda b: b.state in (False, "draft") and b.complexity_level_id
+            draft_blocks = order.quoter_area_block_ids.filtered(
+                lambda b: b.state in (False, "draft")
+                and b.area_id.hour_matrix_mode != "regular_manual"
+                and b.area_id.load_default_products
             )
+            draft_blocks._quoter_auto_assign_complexity_level()
+            blocks = draft_blocks.filtered("complexity_level_id")
             for block in blocks:
                 block.action_quoter_load_default_products()
             order._quoter_refresh_block_selectable_products()
@@ -1043,6 +1086,10 @@ class SaleOrder(models.Model):
             return
         QuoterLine = self.env["quoter.service.line"]
         for area in self.quoter_area_ids:
+            if area.hour_matrix_mode == "regular_manual":
+                continue
+            if not area.load_default_products:
+                continue
             default_lines = QuoterLine.search(
                 [("area_id", "=", area.id), ("is_default_product", "=", True)]
             )
@@ -1099,6 +1146,14 @@ class SaleOrder(models.Model):
                 vals = dict(vals)
                 vals.pop("quoter_area_ids", None)
         return vals
+
+    def _quoter_apply_first_quotation_risk_levels(self):
+        """Primera cotización: nivel de riesgo más alto en bloques de áreas Auditoría."""
+        for order in self.filtered(lambda o: o.is_quotation and o.quoter_is_first_quotation):
+            for block in order.quoter_area_block_ids:
+                if not block.area_id.is_auditoria_area:
+                    continue
+                block._quoter_apply_first_auditoria_effect()
 
     def _quoter_reconcile_area_ids_from_blocks(self):
         """Tras guardar: si hay bloques con área, el m2m de cabecera debe coincidir."""

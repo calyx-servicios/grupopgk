@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_quoter_internal" model="report.paperformat">
+        <field name="name">Cotizador interno A4</field>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">8</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_quoter_quotation" model="ir.actions.report">
+        <field name="name">Cotizaci&#243;n interna PGK</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quoter.report_quoter_quotation_document</field>
+        <field name="report_file">quoter.report_quoter_quotation_document</field>
+        <field name="print_report_name">'Cotizacion - %s' % (object.quotation_sequence or object.name)</field>
+        <field name="paperformat_id" ref="quoter.paperformat_quoter_internal"/>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+        <field name="groups_id" eval="[(6, 0, [ref('quoter.group_quoter_aprobador'), ref('quoter.group_quoter_partner'), ref('quoter.group_quoter_admin')])]"/>
+    </record>
+
+    <!-- Membrete interno: solo logo PGK, sin datos de la compañía. -->
+    <template id="quoter_internal_report_layout">
+        <t t-set="company" t-value="company or doc._quoter_report_layout_company()"/>
+        <div class="o_quoter_report_header">
+            <img t-if="company.logo"
+                 t-att-src="image_data_uri(company.logo)"
+                 class="o_quoter_report_logo"
+                 alt="Logo"/>
+        </div>
+        <t t-out="0"/>
+    </template>
+
+    <template id="report_quoter_quotation_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="matrix" t-value="doc._quoter_report_matrix_rows()"/>
+                <t t-set="questions" t-value="doc._quoter_report_strategic_questions()"/>
+                <t t-set="budget_blocks" t-value="doc._quoter_report_budget_blocks()"/>
+                <t t-set="company" t-value="doc._quoter_report_layout_company()"/>
+                <t t-call="quoter.quoter_internal_report_layout">
+                    <style>
+                        .o_quoter_report { font-family: Helvetica, Arial, sans-serif; color: #1f2937; font-size: 12px; font-weight: normal; }
+                        .o_quoter_report strong, .o_quoter_report b { font-weight: normal; }
+                        .o_quoter_report_header { margin: 0 0 6px 0; padding: 0 0 4px 0; border-bottom: 1px solid #111827; line-height: 1; }
+                        .o_quoter_report_logo { max-height: 28px; max-width: 160px; display: block; }
+                        .o_quoter_meta { color: #4b5563; font-size: 12px; line-height: 1.4; margin-bottom: 10px; }
+                        .o_quoter_meta h2 { color: #6b4c7a; font-size: 20px; font-weight: normal; margin: 0 0 8px 0; }
+                        .o_quoter_meta p { margin: 0 0 4px 0; font-size: 12px; }
+                        .o_quoter_meta .o_meta_lbl { color: #374151; }
+                        .o_quoter_report h4 { color: #6b4c7a; font-size: 12px; font-weight: normal; margin: 16px 0 6px; border-bottom: 2px solid #6b4c7a; padding-bottom: 3px; }
+                        .o_quoter_report h5 { color: #374151; font-size: 12px; font-weight: normal; margin: 8px 0 6px; }
+                        .o_quoter_area_sep { border-top: 1px solid #cbd5e1; margin: 14px 0 10px; }
+                        .o_quoter_tbl { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 12px; font-weight: normal; }
+                        .o_quoter_tbl th, .o_quoter_tbl td { border: 1px solid #d1d5db; padding: 5px 7px; vertical-align: middle; font-weight: normal; }
+                        .o_quoter_tbl .text-end { text-align: right; }
+                        .o_quoter_tbl .text-center { text-align: center; }
+                        .o_quoter_matrix th { background: #6b4c7a; color: #fff; }
+                        .o_quoter_matrix td:first-child { background: #f9fafb; }
+                        .o_quoter_questions .o_q_num { width: 28px; text-align: center; color: #6b7280; background: #f3f4f6; border-right: 2px solid #d1d5db; }
+                        .o_quoter_questions .o_q_label { background: #f3f4f6; width: 48%; }
+                        .o_quoter_budget thead tr { background: #6b4c7a; color: #fff; }
+                        .o_quoter_budget thead th { border-color: #5a3d66; }
+                        .o_quoter_budget .o_q_section { background: #ede4f3; color: #5a3d66; }
+                        .o_quoter_budget .o_q_line td { background: #fff; }
+                        .o_quoter_budget .o_q_adj_section { background: #d1fae5; color: #065f46; }
+                        .o_quoter_budget .o_q_adj_line td { background: #ecfdf5; }
+                        .o_quoter_budget .o_q_totals td { background: #111827; color: #fff; border-color: #111827; }
+                        .o_quoter_budget .o_q_rates td { background: #f9fafb; color: #6b7280; }
+                        .o_quoter_budget .o_q_subtotal td { background: #6b4c7a; color: #fff; border-color: #5a3d66; }
+                        .o_quoter_budget .o_q_disc td { background: #fef9f0; }
+                        .o_quoter_budget .o_q_disc .o_q_pct { color: #dc2626; text-align: right; }
+                        .o_quoter_budget .o_q_disc .o_q_pct_pos { color: #059669; text-align: right; }
+                        .o_quoter_budget .o_q_final td { background: #1f3b4d; color: #fff; border-color: #1f3b4d; }
+                        .o_quoter_matrix .o_q_empty { color: #9ca3af; }
+                    </style>
+                    <div class="page o_quoter_report">
+                        <div class="o_quoter_meta">
+                            <h2>Cotizaci&#243;n interna</h2>
+                            <p><span class="o_meta_lbl">Nro. cotizaci&#243;n:</span> <span t-esc="doc.quotation_sequence or doc.name"/></p>
+                            <p><span class="o_meta_lbl">Cliente:</span> <span t-field="doc.partner_id"/></p>
+                            <p t-if="doc.quoter_partner_id"><span class="o_meta_lbl">Socio aprobador:</span> <span t-field="doc.quoter_partner_id"/></p>
+                            <p t-if="doc.quoter_manager_id"><span class="o_meta_lbl">Gerente responsable:</span> <span t-field="doc.quoter_manager_id"/></p>
+                            <p><span class="o_meta_lbl">Estado:</span> <span t-esc="doc._quoter_workflow_state_label(doc.quoter_workflow_state)"/></p>
+                        </div>
+
+                        <h4>1. &#193;reas cotizadas</h4>
+                        <table class="o_quoter_tbl o_quoter_matrix">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <t t-foreach="matrix['areas']" t-as="area">
+                                        <th class="text-center" t-esc="area.name"/>
+                                    </t>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="matrix['rows']" t-as="row">
+                                    <tr>
+                                        <td t-esc="row['label']"/>
+                                        <t t-foreach="row['cells']" t-as="cell">
+                                            <td t-attf-class="text-center #{'o_q_empty' if cell == '-' else ''}" t-esc="cell"/>
+                                        </t>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <h4>2. Informaci&#243;n estrat&#233;gica</h4>
+                        <table class="o_quoter_tbl o_quoter_questions">
+                            <tbody>
+                                <t t-foreach="questions" t-as="q">
+                                    <tr>
+                                        <td class="o_q_num" t-esc="q['number']"/>
+                                        <td class="o_q_label" t-esc="q['label']"/>
+                                        <td>
+                                            <span t-esc="q['answer']"/>
+                                            <div t-if="q['attachments']" style="color:#6b7280;font-size:12px;margin-top:4px;">
+                                                <span t-esc="q['attachments']"/>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <h4>3. Presupuesto por &#225;rea cotizada</h4>
+                        <t t-foreach="budget_blocks" t-as="block">
+                            <t t-if="block_index">
+                                <div class="o_quoter_area_sep"/>
+                            </t>
+                            <h5 t-esc="block['area_name']"/>
+                            <table class="o_quoter_tbl o_quoter_budget">
+                                <thead>
+                                    <tr>
+                                        <th>&#205;tem</th>
+                                        <t t-foreach="block['range_labels']" t-as="rlabel">
+                                            <th class="text-end" t-esc="rlabel"/>
+                                        </t>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="o_q_section">
+                                        <td t-att-colspan="block['col_count']">
+                                            <span t-esc="block['area_name']"/> - Horas por rol
+                                        </td>
+                                    </tr>
+                                    <t t-foreach="block['lines']" t-as="line">
+                                        <tr t-if="not line.get('is_adjustment')" class="o_q_line">
+                                            <td t-esc="line['name']"/>
+                                            <t t-foreach="line['hours']" t-as="hval">
+                                                <td class="text-end" t-esc="doc._quoter_report_format_number(hval)"/>
+                                            </t>
+                                            <td class="text-end" t-esc="doc._quoter_report_format_number(line['total_hours'])"/>
+                                        </tr>
+                                    </t>
+                                    <t t-if="block['has_adjustment_lines']">
+                                        <tr class="o_q_adj_section">
+                                            <td t-att-colspan="block['col_count']">Ajuste</td>
+                                        </tr>
+                                        <t t-foreach="block['lines']" t-as="line">
+                                            <tr t-if="line.get('is_adjustment')" class="o_q_adj_line">
+                                                <td t-esc="line['name']"/>
+                                                <t t-foreach="line['hours']" t-as="hval">
+                                                    <td class="text-end" t-esc="doc._quoter_report_format_number(hval)"/>
+                                                </t>
+                                                <td class="text-end" t-esc="doc._quoter_report_format_number(line['total_hours'])"/>
+                                            </tr>
+                                        </t>
+                                    </t>
+                                    <tr class="o_q_totals">
+                                        <td>Totales</td>
+                                        <t t-foreach="block['totals_hours']" t-as="thval">
+                                            <td class="text-end" t-esc="doc._quoter_report_format_number(thval)"/>
+                                        </t>
+                                        <td class="text-end" t-esc="doc._quoter_report_format_number(block['total_hours_sum'])"/>
+                                    </tr>
+                                    <tr class="o_q_rates">
+                                        <td>Tarifa online</td>
+                                        <t t-foreach="block['rates']" t-as="rate">
+                                            <td class="text-end" t-esc="doc._quoter_report_format_money(rate)"/>
+                                        </t>
+                                        <td></td>
+                                    </tr>
+                                    <tr class="o_q_subtotal">
+                                        <td>Valor total</td>
+                                        <t t-foreach="block['base_values']" t-as="bval">
+                                            <td class="text-end" t-esc="doc._quoter_report_format_money(bval)"/>
+                                        </t>
+                                        <td class="text-end" t-esc="doc._quoter_report_format_money(block['grand_total'])"/>
+                                    </tr>
+                                    <tr class="o_q_disc">
+                                        <td>Descuento / Recargo</td>
+                                        <t t-foreach="block['adjustment_pct_cells']" t-as="pct">
+                                            <td t-attf-class="text-end #{pct['css_class']}">
+                                                <span t-esc="pct['text']"/>
+                                            </td>
+                                        </t>
+                                        <td></td>
+                                    </tr>
+                                    <tr class="o_q_final">
+                                        <td>Valor total ajustado</td>
+                                        <t t-foreach="block['final_values']" t-as="fval">
+                                            <td class="text-end" t-esc="doc._quoter_report_format_money(fval)"/>
+                                        </t>
+                                        <td class="text-end" t-esc="doc._quoter_report_format_money(block['adjusted_total'])"/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- Cotizaciones profesionales: solo el informe interno PGK en el menú Imprimir. -->
+    <record id="report_custom.action_report_saleorder_custom" model="ir.actions.report">
+        <field name="binding_model_id" eval="False"/>
+    </record>
+</odoo>

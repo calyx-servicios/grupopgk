@@ -3,6 +3,7 @@ odoo.define("quoter.tab_labels", function (require) {
 
     const FormRenderer = require("web.FormRenderer");
     const FormController = require("web.FormController");
+    const quoterAreaBlockEmbed = require("quoter.area_block_embed");
 
     // Modo contingencia: desactivar parches de pestañas para descartar crash en bootstrap.
     // Rehabilitar cambiando a `false`.
@@ -64,6 +65,27 @@ odoo.define("quoter.tab_labels", function (require) {
         return areas;
     }
 
+    /** Pestañas alineadas a bloques por sequence (1 → pestaña 1, …), no al orden de las etiquetas m2m. */
+    function collectAreasForTabs(renderer) {
+        const rows = quoterAreaBlockEmbed.getOrderedBlockRows(renderer);
+        if (rows.length) {
+            return rows.map(function (row, idx) {
+                return {
+                    id: row.area_id,
+                    name: row.area_name || "",
+                    tabIndex: idx,
+                };
+            });
+        }
+        return collectAreasFromTags($(renderer.el)).map(function (area, idx) {
+            return {
+                id: area.id,
+                name: area.name,
+                tabIndex: idx,
+            };
+        });
+    }
+
     /** Pestaña cotización por área: buscar por el o2m (no depende de class en tab-pane). */
     function findQuoterAreaPaneAndNav($form) {
         const $pane = $form
@@ -95,9 +117,110 @@ odoo.define("quoter.tab_labels", function (require) {
         return {$pane: $pane, $nav: $nav, $link: $link};
     }
 
+    function isQuoterAreaPaneVisible($pane) {
+        if (!$pane || !$pane.length) {
+            return false;
+        }
+        return $pane.hasClass("active") || $pane.hasClass("show");
+    }
+
+    /** Solo una sub-pestaña de área con estilo activo cuando el panel «cotización por área» está visible. */
+    function refreshQuoterAreaSubtabActiveState(renderer) {
+        const $form = $(renderer.el);
+        const parts = findQuoterAreaPaneAndNav($form);
+        const $pane = parts.$pane;
+        const $nav = parts.$nav;
+        if (!$pane.length || !$nav.length) {
+            return false;
+        }
+        const paneVisible = isQuoterAreaPaneVisible($pane);
+        const $dynLinks = $nav.find("li.o_quoter_dyn_area_tab a.nav-link");
+        const $staticLink = parts.$link;
+
+        $dynLinks.removeClass("active");
+        if ($staticLink.length) {
+            $staticLink.removeClass("active");
+        }
+
+        if (!paneVisible) {
+            return false;
+        }
+
+        let $mark = $dynLinks.filter(".o_quoter_area_subtab_selected");
+        if (!$mark.length) {
+            $mark = $dynLinks.first();
+        }
+        if ($mark.length) {
+            $mark.addClass("active");
+            const isTax = /\btax\b/i.test(($mark.text() || "").trim());
+            $pane.toggleClass("o_quoter_slot_tax", isTax);
+        } else if ($staticLink.length && $staticLink.closest("li.nav-item").is(":visible")) {
+            $staticLink.addClass("active");
+            const isTax = /\btax\b/i.test(($staticLink.text() || "").trim());
+            $pane.toggleClass("o_quoter_slot_tax", isTax);
+        }
+        return true;
+    }
+
+    function quoterHideAreaTabsUntilSaved(renderer) {
+        const $form = $(renderer.el);
+        const parts = findQuoterAreaPaneAndNav($form);
+        const $nav = parts.$nav;
+        if ($nav.length) {
+            $nav.find("li.o_quoter_dyn_area_tab").remove();
+        }
+        // No ocultar li.nav-item con jQuery: Odoo setLocalState indexa nav-item y
+        // navs[activeIndex] queda undefined al guardar cotizaciones nuevas.
+        const $embed = $form.find(".o_quoter_area_blocks_embed");
+        if ($embed.length) {
+            $embed.addClass("o_quoter_area_workspace_hidden");
+        }
+    }
+
+    /** Evita navs[activeIndex] undefined tras guardar (pestañas dinámicas / attrs invisible). */
+    function quoterSanitizeNotebookLocalState(renderer, state) {
+        if (!renderer || !renderer.el || !state) {
+            return state;
+        }
+        const next = Object.assign({}, state);
+        for (const notebook of renderer.el.querySelectorAll(":scope div.o_notebook")) {
+            if (notebook.closest(".o_field_widget")) {
+                continue;
+            }
+            const name = notebook.dataset.name;
+            if (!(name in next)) {
+                continue;
+            }
+            const navs = notebook.querySelectorAll(":scope .o_notebook_headers .nav-item");
+            if (!navs.length) {
+                delete next[name];
+                continue;
+            }
+            let idx = next[name];
+            if (typeof idx !== "number" || idx < 0 || idx >= navs.length) {
+                idx = 0;
+            }
+            const nav = navs[idx];
+            if (!nav || nav.classList.contains("o_invisible_modifier")) {
+                const visibleIdx = [...navs].findIndex(
+                    (n) => n && !n.classList.contains("o_invisible_modifier")
+                );
+                idx = visibleIdx >= 0 ? visibleIdx : 0;
+            }
+            next[name] = idx;
+        }
+        return next;
+    }
+
     function updateQuoterAreaTabs(renderer) {
         const $form = $(renderer.el);
-        const areas = collectAreasFromTags($form);
+        const data = renderer.state && renderer.state.data;
+        if (!data || !data.quoter_show_area_workspace) {
+            quoterHideAreaTabsUntilSaved(renderer);
+            return;
+        }
+        $form.find(".o_quoter_area_blocks_embed").removeClass("o_quoter_area_workspace_hidden");
+        const areas = collectAreasForTabs(renderer);
         const parts = findQuoterAreaPaneAndNav($form);
         const $pane = parts.$pane;
         const $nav = parts.$nav;
@@ -123,9 +246,22 @@ odoo.define("quoter.tab_labels", function (require) {
                 if (($link.text() || "").trim() !== tabTitle) {
                     $link.text(tabTitle);
                 }
+                if (areas[0].id) {
+                    $link.attr("data-quoter-area-id", areas[0].id);
+                    $link.attr("data-quoter-tab-index", "0");
+                }
             }
             $staticLi.show().removeClass("d-none");
-            $pane.toggleClass("o_quoter_slot_tax", /\btax\b/i.test(areas[0].name));
+            if (areas[0].id) {
+                $link.addClass("o_quoter_area_subtab_selected");
+            }
+            quoterAreaBlockEmbed.bindQuoterAreaTabNav(renderer);
+            const paneVisible = refreshQuoterAreaSubtabActiveState(renderer);
+            if (paneVisible) {
+                setTimeout(function () {
+                    quoterAreaBlockEmbed.syncEmbedToActiveTab(renderer);
+                }, 60);
+            }
             return;
         }
 
@@ -135,15 +271,23 @@ odoo.define("quoter.tab_labels", function (require) {
             const $a = $('<a class="nav-link" role="tab" data-toggle="tab"/>')
                 .attr("href", href)
                 .text(area.name);
+            if (area.id) {
+                $a.attr("data-quoter-area-id", area.id);
+            }
+            $a.attr("data-quoter-tab-index", String(area.tabIndex != null ? area.tabIndex : idx));
             if (idx === 0) {
-                $a.addClass("active");
+                $a.addClass("o_quoter_area_subtab_selected");
             }
             $li.append($a);
             $nav.append($li);
-            if (idx === 0) {
-                $pane.toggleClass("o_quoter_slot_tax", /\btax\b/i.test(area.name));
-            }
         });
+        quoterAreaBlockEmbed.bindQuoterAreaTabNav(renderer);
+        const paneVisible = refreshQuoterAreaSubtabActiveState(renderer);
+        if (paneVisible) {
+            setTimeout(function () {
+                quoterAreaBlockEmbed.syncEmbedToActiveTab(renderer);
+            }, 60);
+        }
     }
 
     function updateLabels(renderer) {
@@ -165,13 +309,18 @@ odoo.define("quoter.tab_labels", function (require) {
         updateQuoterAreaTabs(renderer);
         $form.find(".tab-pane").has('[name="quoter_area_block_ids"]').each(function () {
             const $pane = $(this);
-            const $active = $pane.closest(".o_notebook").find("a.nav-link.active");
+            if (!isQuoterAreaPaneVisible($pane)) {
+                return;
+            }
+            const $active = $pane
+                .closest(".o_notebook")
+                .find("li.o_quoter_dyn_area_tab a.nav-link.active, a.nav-link.o_quoter_area_subtab_selected.active")
+                .first();
             const title = ($active.text() || "").trim();
             if (!title) {
                 return;
             }
-            const isTax = /\btax\b/i.test(String(title));
-            $pane.toggleClass("o_quoter_slot_tax", !!isTax);
+            $pane.toggleClass("o_quoter_slot_tax", /\btax\b/i.test(String(title)));
         });
         $form.find(".o_quoter_slot_tab_marker").each(function () {
             const slot = parseInt($(this).attr("data-quoter-slot"), 10);
@@ -235,6 +384,28 @@ odoo.define("quoter.tab_labels", function (require) {
     }
 
     FormRenderer.include({
+        getLocalState: function () {
+            const state = this._super.apply(this, arguments);
+            if (!this.state || this.state.model !== "sale.order") {
+                return state;
+            }
+            if (!this.state.res_id) {
+                const reset = Object.assign({}, state);
+                for (const key of Object.keys(reset)) {
+                    if (typeof reset[key] === "number") {
+                        reset[key] = 0;
+                    }
+                }
+                return reset;
+            }
+            return quoterSanitizeNotebookLocalState(this, state);
+        },
+        setLocalState: function (state) {
+            if (this.state && this.state.model === "sale.order" && state) {
+                return this._super(quoterSanitizeNotebookLocalState(this, state));
+            }
+            return this._super.apply(this, arguments);
+        },
         _renderView: function () {
             const res = this._super.apply(this, arguments);
             const self = this;
@@ -245,6 +416,30 @@ odoo.define("quoter.tab_labels", function (require) {
                 });
             }
             run();
+            return res;
+        },
+        _onNotebookTabChanged: function () {
+            const res = this._super.apply(this, arguments);
+            if (this.state && this.state.model === "sale.order") {
+                const self = this;
+                setTimeout(function () {
+                    const $form = $(self.el);
+                    const parts = findQuoterAreaPaneAndNav($form);
+                    const $clicked = parts.$nav.find("a.nav-link.active").filter(function () {
+                        return !!$(this).attr("data-quoter-area-id");
+                    });
+                    if ($clicked.length) {
+                        parts.$nav
+                            .find("li.o_quoter_dyn_area_tab a.nav-link")
+                            .removeClass("o_quoter_area_subtab_selected");
+                        $clicked.addClass("o_quoter_area_subtab_selected");
+                    }
+                    const paneVisible = refreshQuoterAreaSubtabActiveState(self);
+                    if (paneVisible) {
+                        quoterAreaBlockEmbed.syncEmbedToActiveTab(self);
+                    }
+                }, 40);
+            }
             return res;
         },
     });
@@ -264,6 +459,7 @@ odoo.define("quoter.tab_labels", function (require) {
                     k === "quoter_area_block_ids" ||
                     k === "quoter_primary_tab_area_name" ||
                     k === "quoter_area_block_count" ||
+                    k === "quoter_show_area_workspace" ||
                     k === "is_quotation" ||
                     k === "date_order" ||
                     (k.startsWith("quoter_slot_") && k.endsWith("_area_id"))

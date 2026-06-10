@@ -379,18 +379,27 @@ odoo.define("quoter.area_hours_matrix", function (require) {
         return '<td class="' + cls + '">' + content + "</td>";
     }
 
-    function cellInput(writeKind, levelRangeId, areaRangeId, value, extraClass) {
-        return (
-            '<input type="number" step="any" class="q-matrix-cell o_quoter_matrix_num_input o_list_number ' +
-            (extraClass || "") +
-            '" style="width:100%;min-width:0;padding:0 2px;height:auto;text-align:right;line-height:inherit;"' +
+    function cellInput(writeKind, levelRangeId, areaRangeId, value, extraClass, levelId, branchId) {
+        let attrs =
             ' data-write-kind="' +
             escapeAttr(writeKind) +
             '" data-level-range-id="' +
             escapeAttr(levelRangeId) +
             '" data-area-range-id="' +
             escapeAttr(areaRangeId) +
-            '" value="' +
+            '"';
+        if (levelId) {
+            attrs += ' data-complexity-level-id="' + escapeAttr(levelId) + '"';
+        }
+        if (branchId) {
+            attrs += ' data-branch-id="' + escapeAttr(branchId) + '"';
+        }
+        return (
+            '<input type="number" step="any" class="q-matrix-cell o_quoter_matrix_num_input o_list_number ' +
+            (extraClass || "") +
+            '" style="width:100%;min-width:0;padding:0 2px;height:auto;text-align:right;line-height:inherit;"' +
+            attrs +
+            ' value="' +
             escapeAttr(value) +
             '"/>'
         );
@@ -430,7 +439,8 @@ odoo.define("quoter.area_hours_matrix", function (require) {
                         const v = cells[ri] != null ? cells[ri] : 0;
                         const arId = rangeIds[ri] || 0;
                         const oid = outIds[ri] || 0;
-                        const canEdit = rowMatrixEditable(row, readOnly) && !combined && lrId;
+                        const canEdit =
+                            rowMatrixEditable(row, readOnly) && lrId && !combined;
                         let inner;
                         if (canEdit) {
                             inner = cellInput("output", lrId, arId, v);
@@ -575,19 +585,39 @@ odoo.define("quoter.area_hours_matrix", function (require) {
                     const meta = metaList[li] || {};
                     const lrIdsPerCol = meta.matrix_b_level_range_ids || [];
                     const bIds = meta.matrix_b_ids || [];
+                    const levelIdsCol = meta.level_ids || [];
+                    const branchIdsCol = meta.branch_ids || [];
                     ranges.forEach(function (r, ri) {
                         const v = cells[ri] != null ? cells[ri] : 0;
                         const arId = rangeIds[ri] || 0;
                         const bid = bIds[ri] || 0;
+                        const levelId =
+                            levelIdsCol.length > ri ? Number(levelIdsCol[ri]) || 0 : 0;
+                        const branchId =
+                            branchIdsCol.length > ri ? Number(branchIdsCol[ri]) || 0 : 0;
                         const lrPerCol =
                             lrIdsPerCol.length > ri ? Number(lrIdsPerCol[ri]) || 0 : 0;
                         const lrId = lrPerCol || meta.level_range_id || 0;
                         const useSingleCellWrite = lrPerCol > 0;
-                        const writeKind = useSingleCellWrite ? "matrix_b_single" : "matrix_b";
-                        const canEdit = rowMatrixEditable(row, readOnly) && combined && lrId && bid;
+                        let writeKind = useSingleCellWrite ? "matrix_b_single" : "matrix_b";
+                        if (row.is_shared_b_row) {
+                            writeKind = "matrix_b_shared";
+                        }
+                        const canEdit =
+                            rowMatrixEditable(row, readOnly) &&
+                            combined &&
+                            (row.is_shared_b_row ? bid || arId : lrId && bid);
                         let inner;
                         if (canEdit) {
-                            inner = cellInput(writeKind, lrId, arId, v);
+                            inner = cellInput(
+                                writeKind,
+                                lrId,
+                                arId,
+                                v,
+                                "",
+                                row.is_shared_b_row ? levelId : 0,
+                                row.is_shared_b_row ? branchId : 0
+                            );
                         } else {
                             inner = escapeHtml(formatNum(v));
                         }
@@ -630,34 +660,76 @@ odoo.define("quoter.area_hours_matrix", function (require) {
         );
     }
 
-    function tableOptionsHtml(tableKey, opts, readOnly) {
-        const unifyKey = "matrix_" + tableKey + "_unify_role_values";
-        const hideKey = "matrix_" + tableKey + "_hide_repeated_columns";
-        const unifyChecked = !!opts[unifyKey];
-        const hideChecked = !!opts[hideKey];
+    function matrixOptionCheckbox(optionName, label, checked, readOnly) {
         const disabledAttr = readOnly ? ' disabled="disabled"' : "";
-        let html =
-            '<div class="o_quoter_matrix_options text-muted small mb-1">' +
+        return (
             '<label class="mr-3 mb-0">' +
             '<input type="checkbox" class="q-matrix-opt mr-1" data-option-name="' +
-            escapeAttr(unifyKey) +
+            escapeAttr(optionName) +
             '" ' +
-            (unifyChecked ? 'checked="checked"' : "") +
+            (checked ? 'checked="checked"' : "") +
             disabledAttr +
             "/>" +
-            escapeHtml(_t("Unificar valores por rol")) +
-            "</label>";
-        if (unifyChecked) {
-            html +=
-                '<label class="mb-0">' +
-                '<input type="checkbox" class="q-matrix-opt mr-1" data-option-name="' +
-                escapeAttr(hideKey) +
-                '" ' +
-                (hideChecked ? 'checked="checked"' : "") +
-                disabledAttr +
-                "/>" +
-                escapeHtml(_t("Ocultar columnas repetidas")) +
-                "</label>";
+            escapeHtml(label) +
+            "</label>"
+        );
+    }
+
+    function tableOptionsHtml(tableKey, opts, readOnly) {
+        const unifyRoleKey = "matrix_" + tableKey + "_unify_role_values";
+        const hideRoleKey = "matrix_" + tableKey + "_hide_repeated_columns";
+        const unifyRoleChecked = !!opts[unifyRoleKey];
+        const hideRoleChecked = !!opts[hideRoleKey];
+        let html = '<div class="o_quoter_matrix_options text-muted small mb-1">';
+        if (tableKey === "a") {
+            html += matrixOptionCheckbox(
+                unifyRoleKey,
+                _t("Unificar valores por rol"),
+                unifyRoleChecked,
+                readOnly
+            );
+            if (unifyRoleChecked) {
+                html += matrixOptionCheckbox(
+                    hideRoleKey,
+                    _t("Ocultar columnas repetidas"),
+                    hideRoleChecked,
+                    readOnly
+                );
+            }
+            const unifyCategoryKey = "matrix_a_unify_category_values";
+            const hideCategoryKey = "matrix_a_hide_repeated_category_columns";
+            const unifyCategoryChecked = !!opts[unifyCategoryKey];
+            const hideCategoryChecked = !!opts[hideCategoryKey];
+            html += matrixOptionCheckbox(
+                unifyCategoryKey,
+                _t("Unificar valores por nivel de complejidad"),
+                unifyCategoryChecked,
+                readOnly
+            );
+            if (unifyCategoryChecked) {
+                html += matrixOptionCheckbox(
+                    hideCategoryKey,
+                    _t("Ocultar roles repetidos"),
+                    hideCategoryChecked,
+                    readOnly
+                );
+            }
+            html += "</div>";
+            return html;
+        }
+        html += matrixOptionCheckbox(
+            unifyRoleKey,
+            _t("Unificar valores por rol"),
+            unifyRoleChecked,
+            readOnly
+        );
+        if (unifyRoleChecked) {
+            html += matrixOptionCheckbox(
+                hideRoleKey,
+                _t("Ocultar columnas repetidas"),
+                hideRoleChecked,
+                readOnly
+            );
         }
         html += "</div>";
         return html;
@@ -724,6 +796,43 @@ odoo.define("quoter.area_hours_matrix", function (require) {
         };
     }
 
+    function collapseABForRepeatedCategories(rows, levels, ranges, sourceKey, idKey) {
+        const R = (ranges || []).length;
+        if (!R || !(levels || []).length) {
+            return {
+                levels: levels || [],
+                ranges: ranges || [],
+                rows: rows || [],
+            };
+        }
+        const collapsedRanges = [ranges[0]];
+        const collapsedRows = (rows || []).map(function (row) {
+            const src = row[sourceKey] || [];
+            const meta = row.levels_meta || [];
+            const newSrc = src.map(function (levelVals) {
+                const vals = levelVals || [];
+                const chosen = vals.length ? vals[0] : 0;
+                return [chosen != null ? chosen : 0];
+            });
+            const newMeta = meta.map(function (metaLine) {
+                const idsLine = metaLine[idKey] || [];
+                const chosenId = idsLine.length ? idsLine[0] : 0;
+                const patch = { output_ids: metaLine.output_ids || [] };
+                patch[idKey] = [chosenId || 0];
+                return Object.assign({}, metaLine, patch);
+            });
+            const out = Object.assign({}, row);
+            out[sourceKey] = newSrc;
+            out.levels_meta = newMeta;
+            return out;
+        });
+        return {
+            levels: levels,
+            ranges: collapsedRanges,
+            rows: collapsedRows,
+        };
+    }
+
     function collapseABForRepeatedRoles(rows, levels, ranges, sourceKey, idKey) {
         const R = (ranges || []).length;
         if (!R || !(levels || []).length) {
@@ -785,6 +894,98 @@ odoo.define("quoter.area_hours_matrix", function (require) {
         };
     }
 
+    function rowsExcludingUnifyValue(rows) {
+        return (rows || []).filter(function (row) {
+            return !row.unify_value;
+        });
+    }
+
+    /** Tabla resultado: excluye solo «Unifica valor» sin «Productos varios». */
+    function rowsForOutputTable(rows) {
+        return (rows || []).filter(function (row) {
+            return !row.unify_value || row.shared_b_calc;
+        });
+    }
+
+    function rowsForTableB(data) {
+        const normal = (data.rows || []).filter(function (row) {
+            return !row.unify_value && !row.shared_b_calc;
+        });
+        const shared = data.matrix_b_shared_row;
+        if (shared) {
+            return [shared].concat(normal);
+        }
+        return normal;
+    }
+
+    function cellInputUnifyBranch(lineId, branchId, value) {
+        return (
+            '<input type="number" step="any" class="q-matrix-cell o_quoter_matrix_num_input o_list_number" ' +
+            'style="width:100%;min-width:0;padding:0 2px;height:auto;text-align:right;line-height:inherit;"' +
+            ' data-write-kind="unify_branch" data-line-id="' +
+            escapeAttr(String(lineId)) +
+            '" data-branch-id="' +
+            escapeAttr(String(branchId)) +
+            '" value="' +
+            escapeAttr(value != null ? value : 0) +
+            '"/>'
+        );
+    }
+
+    function theadHtmlUnifyBranch(branches, labels) {
+        let html = "<thead><tr>";
+        html += '<th class="o_quoter_matrix_handle_cell o_quoter_matrix_handle"></th>';
+        html +=
+            '<th class="o_quoter_matrix_th_line o_quoter_matrix_line_head">' +
+            escapeHtml(sentenceCase(labels.task || _t("Tarea"))) +
+            "</th>";
+        branches.forEach(function (b) {
+            html +=
+                '<th class="o_quoter_matrix_th_range text-center o_quoter_matrix_branch_head">' +
+                escapeHtml(sentenceCase(b.name || "")) +
+                "</th>";
+        });
+        html += "</tr></thead>";
+        return html;
+    }
+
+    function tbodyUnifyBranch(rows, branches, emptyMessage, readOnly) {
+        const B = branches.length;
+        let html = "<tbody>";
+        if (!rows.length) {
+            html +=
+                '<tr><td colspan="' +
+                (2 + B) +
+                '" class="o_quoter_matrix_cell text-muted">' +
+                escapeHtml(sentenceCase(emptyMessage || "")) +
+                "</td></tr>";
+        } else {
+            rows.forEach(function (row) {
+                html += trOpen();
+                html += tdHandle();
+                html += tdCell("left", escapeHtml(sentenceCase(row.line_name || "")), "o_quoter_matrix_line_cell");
+                const cells = row.cells || [];
+                branches.forEach(function (b, bi) {
+                    const c = cells[bi] || {};
+                    const v = c.hours != null ? c.hours : 0;
+                    const lineId = row.line_id || 0;
+                    const branchId = c.branch_id || b.branch_id || 0;
+                    const canEdit = rowMatrixEditable(row, readOnly) && lineId && branchId;
+                    let inner;
+                    if (canEdit) {
+                        inner = cellInputUnifyBranch(lineId, branchId, v);
+                    } else {
+                        inner = escapeHtml(formatNum(v));
+                    }
+                    html += tdCell("number", inner);
+                });
+                html += "</tr>";
+            });
+        }
+        html += "</tbody>";
+        return html;
+    }
+
     function buildMatrixHtml(data) {
         if (!data) {
             return "";
@@ -799,21 +1000,48 @@ odoo.define("quoter.area_hours_matrix", function (require) {
         const showAB = !!data.show_matrix_ab;
         const readOnly = !!data.matrix_read_only;
         const combined = showAB;
-        const abPrepared = prepareABData(data);
+        const abPrepared = prepareABData(
+            Object.assign({}, data, {rows: rowsExcludingUnifyValue(data.rows)})
+        );
+        const bPrepared = prepareABData(
+            Object.assign({}, data, {rows: rowsForTableB(data)})
+        );
         const levelsAB = abPrepared.levelsAB;
         const rowsAB = abPrepared.rowsAB;
+        const rowsOutput = rowsForOutputTable(data.rows || []);
 
         let levelsA = levelsAB;
         let rowsA = rowsAB;
-        let levelsB = levelsAB;
-        let rowsB = rowsAB;
+        let rangesA = ranges;
+        let levelsB = bPrepared.levelsAB;
+        let rowsB = bPrepared.rowsAB;
         let rangesB = ranges;
         let rangeIdsB = rangeIds;
         let useCompactBThead = false;
-        const hideA = !!data.matrix_a_hide_repeated_columns;
+        const unifyRoleA = !!data.matrix_a_unify_role_values;
+        const unifyCategoryA = !!data.matrix_a_unify_category_values;
+        const hideRoleA = unifyRoleA && !!data.matrix_a_hide_repeated_columns;
+        const hideCategoryA = unifyCategoryA && !!data.matrix_a_hide_repeated_category_columns;
         const hideB = !!data.matrix_b_hide_repeated_columns;
-        if (hideA && !globalA) {
-            const cA = collapseABForRepeatedRoles(rowsAB, levelsAB, ranges, "levels_matrix_a", "matrix_a_ids");
+        if (hideCategoryA && !globalA) {
+            const cCat = collapseABForRepeatedCategories(
+                rowsA,
+                levelsA,
+                rangesA,
+                "levels_matrix_a",
+                "matrix_a_ids"
+            );
+            rowsA = cCat.rows;
+            rangesA = cCat.ranges;
+        }
+        if (hideRoleA && !unifyCategoryA && !globalA) {
+            const cA = collapseABForRepeatedRoles(
+                rowsA,
+                levelsA,
+                rangesA,
+                "levels_matrix_a",
+                "matrix_a_ids"
+            );
             levelsA = cA.levels;
             rowsA = cA.rows;
         }
@@ -830,7 +1058,7 @@ odoo.define("quoter.area_hours_matrix", function (require) {
             rangeIdsB = compactCols.map(function (c) {
                 return c.area_range_id || 0;
             });
-            rowsB = (data.rows || []).map(function (row) {
+            rowsB = rowsForTableB(data).map(function (row) {
                 const cells = row.matrix_b_compact_cells || [];
                 const vals = cells.map(function (c) {
                     return c.value != null ? c.value : 0;
@@ -880,7 +1108,7 @@ odoo.define("quoter.area_hours_matrix", function (require) {
         }
 
         const dataColsOutput = levelsAB.length * ranges.length;
-        const dataColsA = levelsA.length * ranges.length;
+        const dataColsA = levelsA.length * rangesA.length;
         const dataColsB = levelsB.length * rangesB.length;
         if (!dataColsOutput) {
             return (
@@ -896,12 +1124,12 @@ odoo.define("quoter.area_hours_matrix", function (require) {
         const thOutput = theadHtml(levelsAB, ranges, labels, dataColsOutput, true, false, showBranchesInHeaders);
         const thMatrixA = theadHtml(
             levelsA,
-            ranges,
+            rangesA,
             labels,
             dataColsA,
             !(compactA || globalA),
-            hideA,
-            false
+            hideRoleA,
+            showBranchesInHeaders
         );
         const thMatrixB = useCompactBThead
             ? theadHtmlMatrixBCompact(
@@ -927,7 +1155,7 @@ odoo.define("quoter.area_hours_matrix", function (require) {
             sentenceCase(labels.output_title || _t("Salida (horas resultado)")),
             cgOutput,
             thOutput,
-            tbodyOutput(rowsAB, levelsAB, ranges, rangeIds, data.empty_message, readOnly, combined),
+            tbodyOutput(rowsOutput, levelsAB, ranges, rangeIds, data.empty_message, readOnly, combined),
             "",
             {}
         );
@@ -943,7 +1171,7 @@ odoo.define("quoter.area_hours_matrix", function (require) {
                 tbodyMatrixA(
                     rowsA,
                     levelsA,
-                    ranges,
+                    rangesA,
                     rangeIds,
                     compactA,
                     globalA,
@@ -954,6 +1182,23 @@ odoo.define("quoter.area_hours_matrix", function (require) {
                 optionsA,
                 {}
             );
+
+            const unifyRows = data.unify_branch_rows || [];
+            const unifyBranches = data.unify_branch_branches || [];
+            if (unifyRows.length && unifyBranches.length) {
+                const cgUnify = colgroupHtml(unifyBranches.length);
+                out += oneTable(
+                    sentenceCase(
+                        labels.unify_branch_title || _t("Horas por rama (unifica valor)")
+                    ),
+                    cgUnify,
+                    theadHtmlUnifyBranch(unifyBranches, labels),
+                    tbodyUnifyBranch(unifyRows, unifyBranches, data.empty_message, readOnly),
+                    "",
+                    {}
+                );
+            }
+
             out += oneTable(
                 sentenceCase(labels.matrix_b_title || _t("Tabla B")),
                 cgB,
@@ -1021,7 +1266,13 @@ odoo.define("quoter.area_hours_matrix", function (require) {
             return _t("Error al guardar.");
         }
         const d = err.data || {};
-        let msg = pickErrorText(d.arguments && d.arguments.length ? d.arguments : d.message);
+        let msg = pickErrorText(
+            typeof d.message === "string" && d.message && d.message !== "Odoo Server Error"
+                ? d.message
+                : d.arguments && d.arguments.length
+                  ? d.arguments
+                  : d.message
+        );
         if (!msg) {
             msg = pickErrorText(err.message);
         }
@@ -1067,8 +1318,102 @@ odoo.define("quoter.area_hours_matrix", function (require) {
             .on("change.quoterMatrix", "input.q-matrix-cell", function (ev) {
                 const $inp = $(ev.target);
                 const kind = $inp.data("writeKind");
+                if (kind === "unify_branch") {
+                    const lineId = $inp.data("lineId");
+                    const branchId = $inp.data("branchId");
+                    if (!lineId || !branchId) {
+                        return;
+                    }
+                    const rawUb = $inp.val();
+                    let numUb = parseFloat(String(rawUb).replace(",", "."));
+                    if (Number.isNaN(numUb)) {
+                        numUb = 0;
+                    }
+                    const $cellsUb = $roots.find("input.q-matrix-cell");
+                    $cellsUb.prop("disabled", true);
+                    const qUb = rpc.query({
+                        model: "quoter.professional.area",
+                        method: "matrix_preview_write_unify_branch",
+                        args: [[areaId], lineId, branchId, numUb],
+                    });
+                    qUb.then(function () {
+                        return rpc.query({
+                            model: "quoter.professional.area",
+                            method: "get_hours_matrix_preview_data",
+                            args: [[areaId]],
+                        });
+                    })
+                        .then(function (fresh) {
+                            $roots.html(buildMatrixHtml(fresh));
+                            bindMatrixSave($roots, areaId);
+                        })
+                        .catch(function (err) {
+                            $roots.find(".o_quoter_matrix_err").remove();
+                            $roots.prepend(
+                                '<div class="alert alert-danger alert-dismissible fade show o_quoter_matrix_err" role="alert">' +
+                                    escapeHtml(matrixRpcErrorMessage(err)) +
+                                    '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
+                                    '<span aria-hidden="true">&times;</span></button></div>'
+                            );
+                        })
+                        .finally(function () {
+                            $cellsUb.prop("disabled", false);
+                        });
+                    return;
+                }
                 const lrId = $inp.data("levelRangeId");
                 const arId = $inp.data("areaRangeId");
+                if (kind === "matrix_b_shared") {
+                    if (!arId) {
+                        return;
+                    }
+                    const levelId = Number($inp.data("complexityLevelId")) || 0;
+                    const branchId = Number($inp.data("branchId")) || 0;
+                    const rawSb = $inp.val();
+                    let numSb = parseFloat(String(rawSb).replace(",", "."));
+                    if (Number.isNaN(numSb)) {
+                        numSb = 0;
+                    }
+                    const $cellsSb = $roots.find("input.q-matrix-cell");
+                    $cellsSb.prop("disabled", true);
+                    rpc.query({
+                        model: "quoter.professional.area",
+                        method: "matrix_preview_write_cell",
+                        args: [
+                            [areaId],
+                            0,
+                            arId,
+                            "matrix_b_shared",
+                            numSb,
+                            levelId,
+                            branchId,
+                        ],
+                    })
+                        .then(function () {
+                            return rpc.query({
+                                model: "quoter.professional.area",
+                                method: "get_hours_matrix_preview_data",
+                                args: [[areaId]],
+                            });
+                        })
+                        .then(function (fresh) {
+                            $roots.html(buildMatrixHtml(fresh));
+                            bindMatrixSave($roots, areaId);
+                        })
+                        .catch(function (err) {
+                            $roots.find(".o_quoter_matrix_err").remove();
+                            $roots.prepend(
+                                '<div class="alert alert-danger alert-dismissible fade show o_quoter_matrix_err" role="alert">' +
+                                    escapeHtml(matrixRpcErrorMessage(err)) +
+                                    '<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
+                                    '<span aria-hidden="true">&times;</span></button></div>'
+                            );
+                        })
+                        .finally(function () {
+                            $cellsSb.prop("disabled", false);
+                        });
+                    return;
+                }
                 if (!kind || !lrId || !arId) {
                     return;
                 }
