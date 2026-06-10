@@ -9,7 +9,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.7.0.3",
+    "version": "15.0.7.0.4",
     "application": False,
     "installable": True,
     "depends": ['hr_holidays',
