@@ -583,12 +583,19 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         missing_found = False
         paid_invoice_found = False
         partial_invoice_found = False
+        missing_invoice_numbers = []
         
         if not json_lines:
             errors.append("No se encontraron líneas en el JSON.")
             log_item.write({'message': "\n".join(errors)})
         else:
-            missing_found, paid_invoice_found, partial_invoice_found = self._find_and_attach_invoices(
+            (
+                missing_found,
+                paid_invoice_found,
+                partial_invoice_found,
+                matched_invoice_count,
+                missing_invoice_numbers,
+            ) = self._find_and_attach_invoices(
                 payment_group, json_lines, errors=errors
             )
         
@@ -948,20 +955,32 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         else:
             _logger.info(f"No se procesa tolerancia: datareader_auto_payment_post={partner_id.datareader_auto_payment_post}, pay_method={pay_method}")
 
-        # Publicar al final por faltante de facturas solo si no hubo facturas ya pagas.
+        # Publicar al final por faltante de facturas.
+        # Si falta una o más facturas, el recibo se publica como pago a cuenta.
         if (
             missing_found
             and not paid_invoice_found
-            and post_when_missing_invoice == 'yes'
             and payment_group.state == 'draft'
         ):
+            if payment_group:
+                listed_numbers = ', '.join(str(n) for n in missing_invoice_numbers) if missing_invoice_numbers else _("sin número informado")
+                payment_group.sudo().message_post(
+                    body=_(
+                        "No se identificaron todas las facturas con coincidencia exacta (100%%) para esta orden. "
+                        "El recibo se publicó completamente como pago a cuenta del cliente para conciliación posterior. "
+                        "Comprobantes informados: %s"
+                    ) % listed_numbers,
+                    message_type='notification',
+                    subtype_xmlid='mail.mt_note',
+                )
+
             try:
                 payment_group.post()
                 if log_item:
                     log_item.readed = True
                     _logger.info(
-                        "Payment group %s publicado por configuración de faltante de facturas.",
-                        payment_group.id
+                        "Payment group %s publicado como pago a cuenta por faltante de facturas.",
+                        payment_group.id,
                     )
             except Exception as e:
                 _logger.exception(
@@ -975,22 +994,42 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         ):
             if partial_invoice_found:
                 partial_paid_msg = _(
-                    "El recibo quedó en borrador porque se detectaron facturas con pago parcial, "
-                    "por lo que no se publicará automáticamente."
+                    "Se detectaron facturas con pago parcial/no disponibles para imputar. "
+                    "El recibo se publicará sin imputaciones como pago a cuenta del contacto."
                 )
             else:
                 partial_paid_msg = _(
-                    "El recibo quedó en borrador porque se detectaron facturas ya pagadas/canceladas, "
-                    "por lo que no se publicará automáticamente."
+                    "Se detectaron facturas ya pagadas/canceladas. "
+                    "El recibo se publicará sin imputaciones como pago a cuenta del contacto."
                 )
             errors.append(partial_paid_msg)
             if log_item:
                 current = (log_item.message or "").strip()
                 log_item.write({'message': f"{current}\n{partial_paid_msg}".strip() if current else partial_paid_msg})
-            _logger.info(
-                "Payment group %s no publicado por facturas parcialmente pagas/ya canceladas.",
-                payment_group.id
-            )
+            if payment_group:
+                listed_numbers = ', '.join(str(n) for n in missing_invoice_numbers) if missing_invoice_numbers else _("sin número informado")
+                payment_group.sudo().message_post(
+                    body=_(
+                        "No se pudieron imputar todas las facturas informadas (%s). "
+                        "El recibo se publicó completamente como pago a cuenta del cliente."
+                    ) % listed_numbers,
+                    message_type='notification',
+                    subtype_xmlid='mail.mt_note',
+                )
+            try:
+                payment_group.post()
+                if log_item:
+                    log_item.readed = True
+                _logger.info(
+                    "Payment group %s publicado como pago a cuenta por faltante/no disponibilidad de facturas.",
+                    payment_group.id,
+                )
+            except Exception as e:
+                _logger.exception(
+                    "Error al postear payment group %s por faltante/no disponibilidad de facturas: %s",
+                    payment_group.id,
+                    e,
+                )
         
         _logger.info(f"=== FIN PROCESO TOLERANCIA - Payment Group {payment_group.id} ===")
         return log_item
@@ -1099,23 +1138,16 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         missing_found = False
         paid_invoice_found = False
         partial_invoice_found = False
+        missing_invoice_numbers = []
         for line in lines:
             norm_line_number = self._normalize_invoice_number(line.get('number'))
-            matches = None
-            for key, pending_match_lines in pending_by_number.items():
-                if norm_line_number and norm_line_number in key:
-                    matches = pending_match_lines
-                    break
+            matches = pending_by_number.get(norm_line_number) if norm_line_number else None
 
 
             if matches:
                 found_moves.append(matches[0].id)
             else:
-                paid_invoice = None
-                for key, invoice in invoices_by_number.items():
-                    if norm_line_number and norm_line_number in key:
-                        paid_invoice = invoice
-                        break
+                paid_invoice = invoices_by_number.get(norm_line_number) if norm_line_number else None
 
                 if paid_invoice:
                     paid_invoice_found = True
@@ -1141,21 +1173,26 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         _("No se encontró la factura %s para el partner %s - factura en formato odoo (%s)") %
                         (line.get('number'), payment_group.commercial_partner_id.name, norm_line_number)
                     )
+                missing_invoice_numbers.append(line.get('number') or _('(sin número)'))
                 missing_found = True
         if missing_found:
+            # Si falta al menos una factura, no se imputa ninguna para evitar
+            # conciliaciones parciales no deseadas.
             if len(found_moves) > 0:
                 errors.append(
-                    _("No se imputaron todas las facturas")
+                    _("No se identificaron todas las facturas; el recibo se dejó sin imputaciones para conciliación posterior.")
                 )
-                payment_group.to_pay_move_line_ids = [(6, 0, found_moves)]
-                payment_group.state = 'draft'
-            else:
-                # Si no se encontró ninguna factura, limpiar líneas automáticas del payment group
-                payment_group.to_pay_move_line_ids = [(6, 0, [])]
-                payment_group.state = 'draft'
+            payment_group.to_pay_move_line_ids = [(6, 0, [])]
+            payment_group.state = 'draft'
         else:
             payment_group.to_pay_move_line_ids = [(6, 0, found_moves)] if found_moves else [(6, 0, [])]
-        return missing_found, paid_invoice_found, partial_invoice_found
+        return (
+            missing_found,
+            paid_invoice_found,
+            partial_invoice_found,
+            len(found_moves),
+            missing_invoice_numbers,
+        )
             
             
     def _create_tolerance_line_before_post(self, payment, payment_group, tolerance_account, difference, payment_date):
