@@ -1,0 +1,104 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* sign_oca_custom
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-10 12:00+0000\n"
+"PO-Revision-Date: 2026-06-10 12:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: \n"
+"Language: es\n"
+
+#. module: sign_oca_custom
+#: model:mail.template,body_html:sign_oca_custom.mail_template_sign_request
+msgid ""
+"<div>\n"
+"                    <span>\n"
+"                        <t t-out=\"object.create_uid.name\"/>\n"
+"                        (<a t-att-href=\"'mailto:%s?subject=%s' % (object.create_uid.email, 'Re: %s' % ctx.get('sign_subject', ''))\" style=\"color:#428BCA; text-decoration:none;\" target=\"_blank\"><t t-out=\"object.create_uid.email\"/></a>)\n"
+"                        has requested your signature on a document.\n"
+"                    </span>\n"
+"                    <span t-if=\"ctx.get('sign_body')\">\n"
+"                        <div style=\"margin: 16px 0px 16px 0px; padding: 8px 16px 8px 16px; background-color: #F1F1F1;\">\n"
+"                            <span>\n"
+"                                <t t-out=\"ctx.get('sign_body')\"/>\n"
+"                            </span>\n"
+"                        </div>\n"
+"                    </span>\n"
+"                    <span>\n"
+"                        <div style=\"margin:16px auto; text-align:center;\">\n"
+"                            <a t-att-href=\"ctx.get('sign_link')\" style=\"padding: 8px 16px 8px 16px; border-radius: 3px; background-color:#875A7B; text-align:center; text-decoration:none; color: #FFFFFF;\">\n"
+"                                Sign document\n"
+"                            </a>\n"
+"                        </div>\n"
+"                    </span>\n"
+"                    <span>\n"
+"                        <div style=\"opacity: 0.7;\">\n"
+"                            <strong>Warning</strong> do not forward this email to other people!<br/>\n"
+"                            They will be able to access this document and sign it as yourself.<br/>\n"
+"                        </div>\n"
+"                    </span>\n"
+"                </div>\n"
+"            "
+msgstr ""
+"<div>\n"
+"                    <span>\n"
+"                        <t t-out=\"object.create_uid.name\"/>\n"
+"                        (<a t-att-href=\"'mailto:%s?subject=%s' % (object.create_uid.email, 'Re: %s' % ctx.get('sign_subject', ''))\" style=\"color:#428BCA; text-decoration:none;\" target=\"_blank\"><t t-out=\"object.create_uid.email\"/></a>)\n"
+"                        ha solicitado su firma en un documento.\n"
+"                    </span>\n"
+"                    <span t-if=\"ctx.get('sign_body')\">\n"
+"                        <div style=\"margin: 16px 0px 16px 0px; padding: 8px 16px 8px 16px; background-color: #F1F1F1;\">\n"
+"                            <span>\n"
+"                                <t t-out=\"ctx.get('sign_body')\"/>\n"
+"                            </span>\n"
+"                        </div>\n"
+"                    </span>\n"
+"                    <span>\n"
+"                        <div style=\"margin:16px auto; text-align:center;\">\n"
+"                            <a t-att-href=\"ctx.get('sign_link')\" style=\"padding: 8px 16px 8px 16px; border-radius: 3px; background-color:#875A7B; text-align:center; text-decoration:none; color: #FFFFFF;\">\n"
+"                                Firmar documento\n"
+"                            </a>\n"
+"                        </div>\n"
+"                    </span>\n"
+"                    <span>\n"
+"                        <div style=\"opacity: 0.7;\">\n"
+"                            <strong>Atención,</strong> no reenvíe este email a otras personas.<br/>\n"
+"                            Podrían acceder a este documento y firmarlo por usted.<br/>\n"
+"                        </div>\n"
+"                    </span>\n"
+"                </div>\n"
+"            "
+
+#. module: sign_oca_custom
+#: model:mail.template,name:sign_oca_custom.mail_template_sign_request
+msgid "Sign OCA: solicitud de firma"
+msgstr "Sign OCA: solicitud de firma"
+
+#. module: sign_oca_custom
+#: model:mail.template,subject:sign_oca_custom.mail_template_sign_request
+msgid "New document to sign"
+msgstr "Nuevo documento para firmar"
+
+#. module: sign_oca_custom
+#: model:ir.model.fields,field_description:sign_oca_custom.field_sign_oca_template__send_notification
+msgid "Notificar al firmante por correo"
+msgstr "Notificar al firmante por correo"
+
+#. module: sign_oca_custom
+#: model:ir.model.fields,help:sign_oca_custom.field_sign_oca_template__send_notification
+msgid "Si está desactivado, no se envía correo al crear la solicitud."
+msgstr "Si está desactivado, no se envía correo al crear la solicitud."
+
+#. module: sign_oca_custom
+#: code:addons/sign_oca_custom/models/sign_oca_request.py:0
+#, python-format
+msgid "New document to sign"
+msgstr "Nuevo documento para firmar"
