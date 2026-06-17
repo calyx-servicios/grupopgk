@@ -10,6 +10,22 @@ class AccountAnalyticLine(models.Model):
     is_sector_group = fields.Boolean(string="Is Sector Group", related='account_id.is_sector_group')
     consolidation_line = fields.Boolean(string='Consolidation line', default=False)
     source_analytic_line_id = fields.Many2one('account.analytic.line', string="Línea Analítica Origen")
+    consolidation_data_line_ids = fields.One2many(
+        'account.consolidation.data',
+        'source_analytic_line_id',
+        string='Líneas de consolidación',
+        help='Filas del informe de consolidación que provienen de esta línea analítica.',
+    )
+    has_consolidation_data_lines = fields.Boolean(
+        string='Tiene líneas en informe',
+        compute='_compute_has_consolidation_data_lines',
+        store=False,
+    )
+
+    @api.depends('consolidation_data_line_ids')
+    def _compute_has_consolidation_data_lines(self):
+        for line in self:
+            line.has_consolidation_data_lines = bool(line.consolidation_data_line_ids)
 
     @api.depends('account_id')
     def _compute_managment_account_id(self):
