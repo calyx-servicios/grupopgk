@@ -112,7 +112,13 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             errors.append(f"No se encontró compañía '{company_name}', se detiene el proceso.")
         return company, errors
 
-    def _get_partner(self, cuit, name, errors, journal_id=None):
+    def _get_partner(self, cuit, name, errors, journal_id=None, client_id=None):
+        if client_id:
+            partner = self.env["res.partner"].browse(client_id)
+            if partner.exists():
+                return partner, errors
+            else:
+                errors.append(f"No se encontró cliente con ID {client_id}. Se intentará buscar por CUIT o nombre.")
         partner, errors = cuit_alias.find_record_by_cuit_or_name(
             self.env, 'res.partner', cuit=cuit, name=name, journal_id=journal_id, errors=errors
         )
@@ -459,7 +465,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             if journal_id_preliminar and not isinstance(journal_id_preliminar, list):
                 journal_id_preliminar = journal_id_preliminar if hasattr(journal_id_preliminar, 'id') else None
         
-        partner_id, errors = self._get_partner(partner_cuit, partner_name, errors, journal_id=journal_id_preliminar)
+        partner_id, errors = self._get_partner(partner_cuit, partner_name, errors, journal_id=journal_id_preliminar, client_id=data.get("client_id"))
         if not partner_id:
             log_item.write({'message': "\n".join(errors)})
             return log_item
@@ -671,6 +677,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             ret_account_payment_obj = self.env['account.payment'].sudo()
             ret_amount = float(withholding.get('amount') or 0.0)
             ret_number = withholding.get('number') or False
+            ret_id = withholding.get('odoo_id', "na") or "na"
             ret_name = withholding.get('name') or False
             if not ret_number or str(ret_number).lower() == 'na':
                 ret_number = 'N/A'
@@ -679,12 +686,15 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 continue
 
             # Impuesto de retención
-            withholding_tax = self.env['account.tax'].sudo().search([
-                ('type_tax_use', 'ilike', 'customer'),
-                ('datareader_custom_identifier', '=', ret_name),
-                ('company_id', '=', company_id.id),
-                ('active', '=', True)
-            ], limit=1)
+            withholding_tax = (
+                (self.env["account.tax"].browse(ret_id) if ret_id != "na" else False)
+                or self.env['account.tax'].sudo().search([
+                    ('type_tax_use', 'ilike', 'customer'),
+                    ('datareader_custom_identifier', '=', ret_name),
+                    ('company_id', '=', company_id.id),
+                    ('active', '=', True)
+                ], limit=1)
+            )
 
             # Si no existe impuesto, registra error y corta el proceso ya que es requerido
             if not withholding_tax:
@@ -940,8 +950,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                             ) % (amount_from_json, residual_amount, payment_difference)
                         elif has_withholdings:
                             diff_msg = _(
-                                "El recibo quedó en borrador porque los montos de pago y retenciones no coinciden con la deuda residual "
-                                "informada en la OP. Monto pago: %s | Residual deuda: %s | Diferencia: %s | Tolerancia: %s."
+                                "Los montos de pago y retenciones no coinciden con la deuda residual informada en la OP. "
+                                "Si corresponde publicación por faltante de facturas, el recibo se publicará como pago a cuenta. "
+                                "Monto pago: %s | Residual deuda: %s | Diferencia: %s | Tolerancia: %s."
                             ) % (amount_from_json, residual_amount, payment_difference, tolerance_amount)
                         else:
                             diff_msg = _(
