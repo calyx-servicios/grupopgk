@@ -655,10 +655,23 @@ class AccountConsolidationReport(models.Model):
         sector_cache = {}
         sector_updates = {}
         consolidation_data_vals = []
-        
+        multiple_projects_msgs = []
+
+        _accounts = analytic_lines.account_id
+        _debit_by_account = {a.id: a.debit for a in _accounts}
+        _credit_by_account = {a.id: a.credit for a in _accounts}
+        _logger.warning(f"[TIMING] precompute debit/credit ({len(_accounts)} cuentas): {_time.time()-_t:.2f}s"); _t = _time.time()
+
+        for _f in ('parent_prin_group_id', 'bussines_group_id', 'sector_account_id', 'managment_account_id'):
+            _t2 = _time.time()
+            analytic_lines.mapped(_f)
+            _logger.warning(f"[TIMING] recompute {_f}: {_time.time()-_t2:.2f}s")
+        _t = _time.time()
+
         for analytic_line in analytic_lines:
-            if analytic_line.debit == 0 and analytic_line.credit == 0:
-                _logger.info(f"Línea descartada, ID {analytic_line.id}") 
+            _acc = analytic_line.account_id.id
+            if _debit_by_account.get(_acc, 0) == 0 and _credit_by_account.get(_acc, 0) == 0:
+                _logger.info(f"Línea descartada, ID {analytic_line.id}")
                 continue
             elif analytic_line.general_account_id and analytic_line.general_account_id.code.startswith("4.2") and analytic_line.move_id:
                 if analytic_line.move_id.debit == 0 and  analytic_line.move_id.credit == 0:
@@ -714,7 +727,7 @@ class AccountConsolidationReport(models.Model):
                     project_names = ", ".join([f"{p.name} (ID: {p.id})" for p in project_ids])
                     line_description = analytic_line.name or f"Línea analítica ID: {analytic_line.id}"
                     message = f"⚠️ Múltiples proyectos encontrados para la cuenta analítica '{analytic_line.account_id.name}' (ID: {analytic_line.account_id.id}). Línea analítica: {line_description} (ID: {analytic_line.id}). Se seleccionó el primero: {project_ids[0].name} (ID: {project_ids[0].id}). Proyectos encontrados: {project_names}"
-                    self.message_post(body=message, subject="Múltiples proyectos para cuenta analítica")
+                    multiple_projects_msgs.append(message)
             
             project_id = False if not project_ids else project_ids[0].id
 
@@ -752,6 +765,13 @@ class AccountConsolidationReport(models.Model):
                 (_sector_id, _line_ids)
             )
         _logger.warning(f"[TIMING] loop principal + sector_updates ({len(consolidation_data_vals)} vals): {_time.time()-_t:.2f}s"); _t = _time.time()
+
+        if multiple_projects_msgs:
+            self.message_post(
+                body="<br/>".join(multiple_projects_msgs),
+                subject="Múltiples proyectos para cuenta analítica",
+            )
+        _logger.warning(f"[TIMING] message_post múltiples proyectos ({len(multiple_projects_msgs)} avisos): {_time.time()-_t:.2f}s"); _t = _time.time()
 
         # Aplico el porcentaje de la facturacion a los gastos indirectos y creo las lineas
         consolidation_data_vals_cost = self.cost_to_project(
@@ -1157,6 +1177,7 @@ class AccountConsolidationReport(models.Model):
                 vals_to_create.append({
                     "name": f"Costo laboral - {analytic_line.name} - Línea consolidación",
                     "account_id": account_id,
+                    # "account_id": analytic_line.account_id.id,
                     "managment_account_id": account_id,
                     "amount": -1 * analytic_line.amount,
                     "unit_amount": analytic_line.unit_amount,
