@@ -114,7 +114,13 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
     def _get_partner(self, cuit, name, errors, journal_id=None, client_id=None):
         if client_id:
-            partner = self.env["res.partner"].browse(client_id)
+            normalized_client_id = client_id
+            try:
+                normalized_client_id = int(str(client_id).strip())
+            except (TypeError, ValueError):
+                normalized_client_id = client_id
+
+            partner = self.env["res.partner"].with_context(active_test=False).sudo().browse(normalized_client_id)
             if partner.exists():
                 return partner, errors
             else:
@@ -590,6 +596,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         paid_invoice_found = False
         partial_invoice_found = False
         missing_invoice_numbers = []
+        missing_invoice_ids = []
         
         if not json_lines:
             errors.append("No se encontraron líneas en el JSON.")
@@ -601,6 +608,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 partial_invoice_found,
                 matched_invoice_count,
                 missing_invoice_numbers,
+                missing_invoice_ids,
             ) = self._find_and_attach_invoices(
                 payment_group, json_lines, errors=errors
             )
@@ -975,12 +983,13 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         ):
             if payment_group:
                 listed_numbers = ', '.join(str(n) for n in missing_invoice_numbers) if missing_invoice_numbers else _("sin número informado")
+                listed_ids = ', '.join(str(i) for i in missing_invoice_ids) if missing_invoice_ids else _("sin odoo_id informado")
                 payment_group.sudo().message_post(
                     body=_(
                         "No se identificaron todas las facturas con coincidencia exacta (100%%) para esta orden. "
                         "El recibo se publicó completamente como pago a cuenta del cliente para conciliación posterior. "
-                        "Comprobantes informados: %s"
-                    ) % listed_numbers,
+                        "Comprobantes informados: %s | IDs Odoo sin coincidencia: %s"
+                    ) % (listed_numbers, listed_ids),
                     message_type='notification',
                     subtype_xmlid='mail.mt_note',
                 )
@@ -1019,11 +1028,13 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 log_item.write({'message': f"{current}\n{partial_paid_msg}".strip() if current else partial_paid_msg})
             if payment_group:
                 listed_numbers = ', '.join(str(n) for n in missing_invoice_numbers) if missing_invoice_numbers else _("sin número informado")
+                listed_ids = ', '.join(str(i) for i in missing_invoice_ids) if missing_invoice_ids else _("sin odoo_id informado")
                 payment_group.sudo().message_post(
                     body=_(
                         "No se pudieron imputar todas las facturas informadas (%s). "
+                        "IDs Odoo sin coincidencia: %s. "
                         "El recibo se publicó completamente como pago a cuenta del cliente."
-                    ) % listed_numbers,
+                    ) % (listed_numbers, listed_ids),
                     message_type='notification',
                     subtype_xmlid='mail.mt_note',
                 )
@@ -1108,6 +1119,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
     def _find_and_attach_invoices(self, payment_group, lines, errors):
         """
         Busca y vincula las facturas correspondientes a las líneas de pago.
+        - Prioriza búsqueda por odoo_id si viene en la línea JSON
+        - Si no se encuentra por odoo_id, usa fallback por número normalizado
         - Normaliza los números de factura usando _normalize_invoice_number
         - Coincide exactamente si viene punto de venta, puede ser 1-12345678 ó 00001-12345678
         - Si solo trae el número (8 dígitos), hace comparación con los últimos 8 dígitos de las facturas del cliente a pagar
@@ -1123,8 +1136,15 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         ]
         pending_lines = self.env['account.move.line'].sudo().search(domain)
         
+        pending_by_id = {}
         pending_by_number = {}
         for l in pending_lines:
+            move_id = l.move_id.id
+            if move_id:
+                if move_id not in pending_by_id:
+                    pending_by_id[move_id] = []
+                pending_by_id[move_id].append(l)
+
             norm_number = self._normalize_invoice_number(l.move_id.name)
             if norm_number:
                 if norm_number not in pending_by_number:
@@ -1139,6 +1159,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             else ('move_type', 'in', ('in_invoice', 'in_refund')),
         ]
         customer_invoices = self.env['account.move'].sudo().search(customer_invoices_domain)
+        invoices_by_id = {invoice.id: invoice for invoice in customer_invoices}
         invoices_by_number = {}
         for invoice in customer_invoices:
             norm_number = self._normalize_invoice_number(invoice.name) or self._normalize_invoice_number(invoice.ref)
@@ -1150,15 +1171,28 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         paid_invoice_found = False
         partial_invoice_found = False
         missing_invoice_numbers = []
+        missing_invoice_ids = []
         for line in lines:
+            raw_odoo_id = line.get('odoo_id')
+            odoo_id = None
+            if raw_odoo_id not in (None, False, '', 'na', 'NA', 'null', 'None'):
+                try:
+                    odoo_id = int(float(str(raw_odoo_id).strip()))
+                except (TypeError, ValueError):
+                    odoo_id = None
+
             norm_line_number = self._normalize_invoice_number(line.get('number'))
-            matches = pending_by_number.get(norm_line_number) if norm_line_number else None
+            matches = pending_by_id.get(odoo_id) if odoo_id else None
+            if not matches:
+                matches = pending_by_number.get(norm_line_number) if norm_line_number else None
 
 
             if matches:
                 found_moves.append(matches[0].id)
             else:
-                paid_invoice = invoices_by_number.get(norm_line_number) if norm_line_number else None
+                paid_invoice = invoices_by_id.get(odoo_id) if odoo_id else None
+                if not paid_invoice:
+                    paid_invoice = invoices_by_number.get(norm_line_number) if norm_line_number else None
 
                 if paid_invoice:
                     paid_invoice_found = True
@@ -1168,23 +1202,25 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         partial_invoice_found = True
                         errors.append(
                             _(
-                                "La factura %s del partner %s tiene pago parcial y no está disponible para imputar en deudas del recibo. "
+                                "La factura %s (ID Odoo: %s) del partner %s tiene pago parcial y no está disponible para imputar en deudas del recibo. "
                                 "Total: %s | Residual: %s."
-                            ) % (line.get('number'), payment_group.commercial_partner_id.name, invoice_total, invoice_residual)
+                            ) % (line.get('number'), paid_invoice.id, payment_group.commercial_partner_id.name, invoice_total, invoice_residual)
                         )
                     else:
                         errors.append(
                             _(
-                                "Se encontró la factura %s para el partner %s, pero no está disponible para imputar en deudas del recibo "
+                                "Se encontró la factura %s (ID Odoo: %s) para el partner %s, pero no está disponible para imputar en deudas del recibo "
                                 "(ya pagada/cancelada). Total: %s | Residual: %s."
-                            ) % (line.get('number'), payment_group.commercial_partner_id.name, invoice_total, invoice_residual)
+                            ) % (line.get('number'), paid_invoice.id, payment_group.commercial_partner_id.name, invoice_total, invoice_residual)
                         )
                 else:
                     errors.append(
-                        _("No se encontró la factura %s para el partner %s - factura en formato odoo (%s)") %
-                        (line.get('number'), payment_group.commercial_partner_id.name, norm_line_number)
+                        _("No se encontró la factura %s (ID Odoo: %s) para el partner %s - factura en formato odoo (%s)") %
+                        (line.get('number'), raw_odoo_id or 'N/A', payment_group.commercial_partner_id.name, norm_line_number)
                     )
                 missing_invoice_numbers.append(line.get('number') or _('(sin número)'))
+                if raw_odoo_id not in (None, False, '', 'na', 'NA', 'null', 'None'):
+                    missing_invoice_ids.append(str(raw_odoo_id))
                 missing_found = True
         if missing_found:
             # Si falta al menos una factura, no se imputa ninguna para evitar
@@ -1203,6 +1239,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             partial_invoice_found,
             len(found_moves),
             missing_invoice_numbers,
+            missing_invoice_ids,
         )
             
             
