@@ -43,7 +43,7 @@ class SubscriptionPackage(models.Model):
 
         fpos = self.sale_order.fiscal_position_id or partner.property_account_position_id
         if fpos and taxes:
-            taxes = fpos.map_tax(taxes, line.product_id, partner)
+            taxes = fpos.map_tax(taxes)
         return taxes
 
     def create_invoice_forced(self):
