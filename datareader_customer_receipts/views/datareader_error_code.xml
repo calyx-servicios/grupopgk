@@ -4,7 +4,7 @@
         <field name="name">datareader.error.code.tree</field>
         <field name="model">datareader.error.code</field>
         <field name="arch" type="xml">
-            <tree string="DataReader Error Codes" default_order="code asc">
+            <tree string="Códigos de error de DataReader" default_order="code asc">
                 <field name="code"/>
                 <field name="description"/>
                 <field name="requires_review"/>
@@ -17,7 +17,7 @@
         <field name="name">datareader.error.code.form</field>
         <field name="model">datareader.error.code</field>
         <field name="arch" type="xml">
-            <form string="DataReader Error Code">
+            <form string="Códigos de error de DataReader">
                 <sheet>
                     <group>
                         <field name="code"/>
@@ -31,7 +31,7 @@
     </record>
 
     <record id="action_datareader_error_code" model="ir.actions.act_window">
-        <field name="name">DataReader Error Codes</field>
+        <field name="name">Códigos de error de DataReader</field>
         <field name="res_model">datareader.error.code</field>
         <field name="view_mode">tree,form</field>
         <field name="target">current</field>
@@ -40,7 +40,7 @@
 
     <menuitem
         id="menu_datareader_error_code"
-        name="Códigos de Error Datareader"
+        name="Códigos de error de DataReader"
         parent="account.menu_finance_configuration"
         action="action_datareader_error_code"
         sequence="110"

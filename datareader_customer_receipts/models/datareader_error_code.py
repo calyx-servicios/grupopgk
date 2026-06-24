@@ -3,7 +3,7 @@ from odoo import fields, models
 
 class DatareaderErrorCode(models.Model):
     _name = 'datareader.error.code'
-    _description = 'DataReader Error Code'
+    _description = 'Códigos de error de DataReader'
     _rec_name = 'code'
 
     code = fields.Char(string='Codigo de Error', required=True, index=True)
