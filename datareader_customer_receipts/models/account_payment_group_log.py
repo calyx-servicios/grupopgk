@@ -95,13 +95,25 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 missing.append(field)
         return missing
 
-    def _create_log_item(self, file_name, order_id=None):
+    def _get_datareader_error_policy(self, error_code):
+        """Devuelve la política de revisión para el código de error recibido."""
+        if error_code in (None, False, ''):
+            return self.env['datareader.error.code']
+
+        code = str(error_code).strip()
+        return self.env['datareader.error.code'].sudo().search([
+            ('code', '=', code)
+        ], limit=1)
+
+    def _create_log_item(self, file_name, order_id=None, error_code=None):
         vals = {
             'log_id': self.id,
             'file_name': file_name or 'No hay archivo relacionado'
         }
         if order_id:
             vals['order_id'] = str(order_id)
+        if error_code not in (None, False, ''):
+            vals['error_code'] = str(error_code).strip()
         return self.env['datareader.account.payment.group.log.item'].create(vals)
 
     def _get_company(self, company_name, errors):
@@ -441,9 +453,25 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         
         file_name = data.get("file_name")
         order_id = data.get("id")
+        raw_error_code = data.get('error_code')
+        error_code = str(raw_error_code).strip() if raw_error_code not in (None, False, '') else False
         if not log_item:
-            log_item = self._create_log_item(file_name, order_id)
+            log_item = self._create_log_item(file_name, order_id, error_code=error_code)
+        else:
+            log_item.write({'error_code': error_code or False})
         errors = []
+
+        error_policy = self._get_datareader_error_policy(error_code)
+        requires_review = bool(error_policy and error_policy.requires_review)
+        review_reason = False
+        if requires_review:
+            review_reason = _(
+                "Recibo en borrador por revisión obligatoria de IA. "
+                "Código %s: %s"
+            ) % (
+                str(error_code).strip(),
+                error_policy.description or _('Sin descripción del código.'),
+            )
 
         op_number, errors = self._validate_op_number(data, errors, log_item)
         if not op_number:
@@ -590,6 +618,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         self.env.cr.flush()
         log_item.payment_group_id = payment_group
+
+        if review_reason:
+            errors.append(review_reason)
         
         json_lines = data.get('lines', [])
         missing_found = False
@@ -646,7 +677,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         # Verificar si hay tolerancia aplicable antes de postear
         # Si hay tolerancia y publicación automática, no postear el pago individual
         # porque se publicará el payment_group completo después de aplicar tolerancia
-        should_post_individual_payment = ap_post
+        should_post_individual_payment = ap_post and not requires_review
         if partner_id.datareader_auto_payment_post and pay_method != 'cheque':
             tolerance_enabled = company_id.datareader_tolerance_enabled
             if tolerance_enabled:
@@ -817,10 +848,18 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                                     )
                                     break
                     try:
-                        payment_group.post()
+                        if not requires_review:
+                            payment_group.post()
+                        else:
+                            _logger.info(
+                                "Payment group %s no se publica por revisión obligatoria (error_code=%s).",
+                                payment_group.id,
+                                error_code,
+                            )
                         if log_item:
-                            log_item.readed = True
-                            _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+                            if not requires_review:
+                                log_item.readed = True
+                                _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
                     except Exception as e:
                         _logger.exception(f"Error al postear payment group {payment_group.id} tras conciliación: {e}")
                 else:
@@ -850,11 +889,19 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 if abs(payment_difference) == 0.0:
                     _logger.info(f"Sin diferencia - publicando normalmente")
                     if self._should_post_payment_group(log_item):
-                        payment_group.post()
+                        if not requires_review:
+                            payment_group.post()
+                        else:
+                            _logger.info(
+                                "Payment group %s no se publica por revisión obligatoria (error_code=%s).",
+                                payment_group.id,
+                                error_code,
+                            )
                         # Marcar como leído cuando el recibo se haya publicado exitosamente
                         if log_item:
-                            log_item.readed = True
-                            _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+                            if not requires_review:
+                                log_item.readed = True
+                                _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
                     else:
                         _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
                 # Si hay diferencia dentro del margen de tolerancia
@@ -925,7 +972,14 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         _logger.info(
                             f"{note_label}. Posteando payment group {payment_group.id} automáticamente..."
                         )
-                        payment_group.post()
+                        if not requires_review:
+                            payment_group.post()
+                        else:
+                            _logger.info(
+                                "Payment group %s no se publica por revisión obligatoria (error_code=%s).",
+                                payment_group.id,
+                                error_code,
+                            )
                     else:
                         _logger.info(
                             f"Payment group {payment_group.id} no publicado: "
@@ -935,8 +989,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     
                     # Marcar como leído cuando el recibo se haya publicado exitosamente
                     if log_item:
-                        log_item.readed = True
-                        _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+                        if not requires_review:
+                            log_item.readed = True
+                            _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
                 # Si hay diferencia fuera de tolerancia, no publicar (dejar en draft)
                 else:
                     if payment_difference != 0.0:
@@ -984,24 +1039,44 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             if payment_group:
                 listed_numbers = ', '.join(str(n) for n in missing_invoice_numbers) if missing_invoice_numbers else _("sin número informado")
                 listed_ids = ', '.join(str(i) for i in missing_invoice_ids) if missing_invoice_ids else _("sin odoo_id informado")
-                payment_group.sudo().message_post(
-                    body=_(
+                body_msg = _(
+                    "No se identificaron todas las facturas con coincidencia exacta (100%%) para esta orden. "
+                    "El recibo se publicó completamente como pago a cuenta del cliente para conciliación posterior. "
+                    "Comprobantes informados: %s | IDs Odoo sin coincidencia: %s"
+                ) % (listed_numbers, listed_ids)
+                if requires_review:
+                    body_msg = _(
                         "No se identificaron todas las facturas con coincidencia exacta (100%%) para esta orden. "
-                        "El recibo se publicó completamente como pago a cuenta del cliente para conciliación posterior. "
+                        "El recibo quedó en borrador por revisión obligatoria de IA. "
                         "Comprobantes informados: %s | IDs Odoo sin coincidencia: %s"
-                    ) % (listed_numbers, listed_ids),
+                    ) % (listed_numbers, listed_ids)
+                payment_group.sudo().message_post(
+                    body=body_msg,
                     message_type='notification',
                     subtype_xmlid='mail.mt_note',
                 )
 
             try:
-                payment_group.post()
-                if log_item:
-                    log_item.readed = True
+                if not requires_review:
+                    payment_group.post()
+                else:
                     _logger.info(
-                        "Payment group %s publicado como pago a cuenta por faltante de facturas.",
+                        "Payment group %s no se publica por revisión obligatoria (error_code=%s).",
                         payment_group.id,
+                        error_code,
                     )
+                if log_item:
+                    if not requires_review:
+                        log_item.readed = True
+                        _logger.info(
+                            "Payment group %s publicado como pago a cuenta por faltante de facturas.",
+                            payment_group.id,
+                        )
+                    else:
+                        _logger.info(
+                            "Payment group %s quedó en borrador por revisión obligatoria.",
+                            payment_group.id,
+                        )
             except Exception as e:
                 _logger.exception(
                     "Error al postear payment group %s por faltante de facturas: %s",
@@ -1029,23 +1104,43 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             if payment_group:
                 listed_numbers = ', '.join(str(n) for n in missing_invoice_numbers) if missing_invoice_numbers else _("sin número informado")
                 listed_ids = ', '.join(str(i) for i in missing_invoice_ids) if missing_invoice_ids else _("sin odoo_id informado")
-                payment_group.sudo().message_post(
-                    body=_(
+                body_msg = _(
+                    "No se pudieron imputar todas las facturas informadas (%s). "
+                    "IDs Odoo sin coincidencia: %s. "
+                    "El recibo se publicó completamente como pago a cuenta del cliente."
+                ) % (listed_numbers, listed_ids)
+                if requires_review:
+                    body_msg = _(
                         "No se pudieron imputar todas las facturas informadas (%s). "
                         "IDs Odoo sin coincidencia: %s. "
-                        "El recibo se publicó completamente como pago a cuenta del cliente."
-                    ) % (listed_numbers, listed_ids),
+                        "El recibo quedó en borrador por revisión obligatoria de IA."
+                    ) % (listed_numbers, listed_ids)
+                payment_group.sudo().message_post(
+                    body=body_msg,
                     message_type='notification',
                     subtype_xmlid='mail.mt_note',
                 )
             try:
-                payment_group.post()
+                if not requires_review:
+                    payment_group.post()
+                else:
+                    _logger.info(
+                        "Payment group %s no se publica por revisión obligatoria (error_code=%s).",
+                        payment_group.id,
+                        error_code,
+                    )
                 if log_item:
-                    log_item.readed = True
-                _logger.info(
-                    "Payment group %s publicado como pago a cuenta por faltante/no disponibilidad de facturas.",
-                    payment_group.id,
-                )
+                    if not requires_review:
+                        log_item.readed = True
+                        _logger.info(
+                            "Payment group %s publicado como pago a cuenta por faltante/no disponibilidad de facturas.",
+                            payment_group.id,
+                        )
+                    else:
+                        _logger.info(
+                            "Payment group %s quedó en borrador por revisión obligatoria.",
+                            payment_group.id,
+                        )
             except Exception as e:
                 _logger.exception(
                     "Error al postear payment group %s por faltante/no disponibilidad de facturas: %s",
@@ -2116,7 +2211,11 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     
                     # Crear log_item primero para poder descargar archivos antes del procesamiento
                     import json
-                    log_item = self._create_log_item(file_name, order_id)
+                    log_item = self._create_log_item(
+                        file_name,
+                        order_id,
+                        error_code=order.get('error_code'),
+                    )
                     log_item.json_data = json.dumps(order, ensure_ascii=False)
                     
                     # Descargar archivos ANTES del procesamiento
@@ -2329,6 +2428,7 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
     op_exists = fields.Boolean(string="OP Existe", default=False, help="Indica si ya existe un payment_group con el mismo op_number")
     reprocessed = fields.Boolean(string="Reprocesada", default=False, help="Indica si la orden de pago fue reprocesada mediante el botón de reprocesamiento")
     order_id = fields.Char(string="ID Orden", help="ID de la orden de pago en el conector DataReader")
+    error_code = fields.Char(string="Código de Error", readonly=True)
 
     def _get_order_by_id_from_connector(self, order_id):
         """
