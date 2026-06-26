@@ -7,6 +7,7 @@ import re
 from odoo.exceptions import UserError
 import os
 import json
+import traceback
 from datetime import datetime, timedelta
 from pprint import pprint
     
@@ -108,12 +109,11 @@ class DataReaderAccountPaymentGroupLog(models.Model):
     def _create_log_item(self, file_name, order_id=None, error_code=None):
         vals = {
             'log_id': self.id,
-            'file_name': file_name or 'No hay archivo relacionado'
+            'file_name': file_name or 'No hay archivo relacionado',
+            'error_code': str(error_code).strip() or "0",
         }
         if order_id:
             vals['order_id'] = str(order_id)
-        if error_code not in (None, False, ''):
-            vals['error_code'] = str(error_code).strip()
         return self.env['datareader.account.payment.group.log.item'].create(vals)
 
     def _get_company(self, company_name, errors):
@@ -454,7 +454,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         file_name = data.get("file_name")
         order_id = data.get("id")
         raw_error_code = data.get('error_code')
-        error_code = str(raw_error_code).strip() if raw_error_code not in (None, False, '') else False
+        error_code = str(raw_error_code).strip() or "0"
         if not log_item:
             log_item = self._create_log_item(file_name, order_id, error_code=error_code)
         else:
@@ -2279,7 +2279,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     log_item[0].readed = False
 
         except Exception as e:
-            message = f"Error al conectar u obtener órdenes: {str(e)}"
+            tb = traceback.format_exc()
+            message = f"Error al conectar u obtener órdenes: {str(e)}\nTraceback:\n{tb}"
             _logger.error(message)
             raise UserError(f"Error al conectar u obtener órdenes: {str(e)}")
 
