@@ -1,0 +1,15 @@
+{
+    "name": "Account Withholding Liquidity Fix",
+    "summary": "Hardening for liquidity account recordset union in withholdings",
+    "author": "Calyx Servicios S.A.",
+    "website": "https://odoo.calyx-cloud.com.ar/",
+    "license": "LGPL-3",
+    "category": "Accounting",
+    "version": "15.0.1.0.0",
+    "application": False,
+    "auto_install": False,
+    "installable": True,
+    "depends": ["account_withholding"],
+    "data": [],
+    "demo": [],
+}
