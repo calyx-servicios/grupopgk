@@ -1,6 +1,7 @@
 from odoo import api, models
 from odoo.exceptions import ValidationError
 
+
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
 
@@ -12,7 +13,8 @@ class HrEmployee(models.Model):
             value = rec.identification_id.strip()
             if not value.isdigit() or len(value) != 11:
                 raise ValidationError(
-                    "El número de identificación debe ser numérico, sin guiones y tener exactamente 11 dígitos (CUIT)."
+                    "El número de identificación debe ser numérico, "
+                    "sin guiones y tener exactamente 11 dígitos (CUIT)."
                 )
             duplicate = self.search([
                 ('id', '!=', rec.id),
