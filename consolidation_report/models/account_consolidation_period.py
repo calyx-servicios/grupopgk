@@ -2,17 +2,44 @@ from odoo import api, fields, models, _
 from datetime import date, timedelta, datetime
 import calendar
 
+
 class AccountConsolidationPeriod(models.Model):
     _name = 'account.consolidation.period'
     _description = 'Account consolidation period'
 
-    year = fields.Integer(default=lambda self: self._default_year(), help='Year of the period', string='Year')
-    month = fields.Integer(default=lambda self: self._default_month(), help='Month of the period', string='Month')
-    period = fields.Char(compute="_compute_period", string='Period')
-    date_from = fields.Date('From', readonly=True, compute="_compute_dates")
-    date_to = fields.Date('To', readonly=True, compute="_compute_dates")
-    consolidation_companies = fields.One2many('account.consolidation.company', 'account_consolidation_report_id', string='Configurations Consolidations')
-    name = fields.Char(compute='_compute_name', store=True)
+    year = fields.Integer(
+        default=lambda self: self._default_year(),
+        help='Year of the period',
+        string='Year'
+    )
+    month = fields.Integer(
+        default=lambda self: self._default_month(),
+        help='Month of the period',
+        string='Month'
+    )
+    period = fields.Char(
+        compute="_compute_period",
+        string='Period'
+    )
+    date_from = fields.Date(
+        string='From',
+        readonly=True,
+        compute="_compute_dates"
+    )
+    date_to = fields.Date(
+        string='To',
+        readonly=True,
+        compute="_compute_dates"
+    )
+    consolidation_companies = fields.One2many(
+        'account.consolidation.company',
+        'account_consolidation_report_id',
+        string='Configurations Consolidations'
+    )
+    name = fields.Char(
+        compute='_compute_name',
+        store=True
+    )
 
     @api.model
     def default_get(self, fields):
@@ -67,6 +94,8 @@ class AccountConsolidationPeriod(models.Model):
             month = rec.month
             year = int(rec.year)
             first_day = datetime(year=year, month=month, day=1).date()
-            last_day = datetime(year=year, month=month, day=calendar.monthrange(year, month)[1]).date()
+            last_day = datetime(
+                year, month, calendar.monthrange(year, month)[1]
+            ).date()
             rec.date_from = first_day
             rec.date_to = last_day
