@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Accounting",
-    "version": "15.0.1.6.12",
+    "version": "15.0.1.6.13",
     "application": False,
     "installable": True,
     "development_status": "Production/Stable",
@@ -37,5 +37,6 @@
         "views/account_payment_receiptbook.xml",
         "views/account_tax.xml",
         "views/res_partner.xml",
+        "views/account_payment_group_view.xml",
     ],
 }
