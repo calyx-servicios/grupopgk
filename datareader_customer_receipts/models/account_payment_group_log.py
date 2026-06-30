@@ -209,6 +209,49 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     return None, errors
 
         return journal, errors
+
+    def _get_withholding_tax(self, search_domain, company, errors, tax_id=None):
+        """
+        Obtiene un impuesto de retención válido para la compañía indicada.
+
+        Prioriza el `tax_id` (si viene) y valida que pertenezca a la misma
+        compañía. Si no es válido, intenta resolver por dominio de búsqueda
+        sumando filtros de compañía y activo.
+
+        :param search_domain: dominio base para buscar impuesto
+        :param company: res.company destino
+        :param errors: lista mutable de errores
+        :param tax_id: ID opcional del impuesto proveniente de DataReader
+        :return: account.tax (0..1 registro)
+        """
+        withholding_tax = False
+        normalized_tax_id = False
+
+        if tax_id not in ("na", "NA", None, False, "", "null", "None"):
+            try:
+                normalized_tax_id = int(float(str(tax_id).strip()))
+            except (TypeError, ValueError):
+                normalized_tax_id = False
+
+        if normalized_tax_id:
+            tax_candidate = self.env['account.tax'].sudo().browse(normalized_tax_id).exists()
+            if tax_candidate:
+                if tax_candidate.company_id.id == company.id:
+                    return tax_candidate
+                errors.append(
+                    _(
+                        "El impuesto de retención con ID %s pertenece a la compañía '%s' "
+                        "y no a '%s'."
+                    )
+                    % (normalized_tax_id, tax_candidate.company_id.name, company.name)
+                )
+
+        final_domain = list(search_domain or []) + [
+            ('company_id', '=', company.id),
+            ('active', '=', True),
+        ]
+        withholding_tax = self.env['account.tax'].sudo().search(final_domain, limit=1)
+        return withholding_tax
                 
     def _get_default_journal(self, data, partner, company, journal_name, errors, log_item=None):
         """
@@ -724,19 +767,19 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             if not ret_amount:
                 continue
 
-            # Impuesto de retención
-            withholding_tax = (
-                (self.env["account.tax"].browse(ret_id) if ret_id != "na" else False)
-                or self.env['account.tax'].sudo().search([
+            # Impuesto de retención con validación de compañía.
+            withholding_tax = self._get_withholding_tax(
+                [
                     ('type_tax_use', 'ilike', 'customer'),
                     ('datareader_custom_identifier', '=', ret_name),
-                    ('company_id', '=', company_id.id),
-                    ('active', '=', True)
-                ], limit=1)
+                ],
+                company_id,
+                errors,
+                tax_id=ret_id,
             )
 
             # Si no existe impuesto, registra error y corta el proceso ya que es requerido
-            if not withholding_tax:
+            if not withholding_tax.exists():
                 errors.append(f"No se encontró el impuesto de Retención para {ret_name}, puede que se deba configurar el campo datareader_custom_identifier")
                 log_item.write({'message': "\n".join(errors)})
                 return log_item
@@ -1754,6 +1797,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 return None
             
             # Obtener la cuenta de ingresos del producto
+            product = product.with_company(company)
             income_account = product.property_account_income_id
             if not income_account:
                 income_account = product.categ_id.property_account_income_categ_id
