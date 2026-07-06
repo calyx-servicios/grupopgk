@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
-from datetime import datetime
 
 
 class ProjectProject(models.Model):
@@ -194,14 +193,22 @@ class ProjectProject(models.Model):
 
             rec.cost = total_cost
 
-    @api.depends('contrated_hours')
+    @api.depends('contrated_hours', 'create_date')
     def _compute_advance_billing(self):
         for rec in self:
-            # Horas por avance - PGK = (horas contratadas / 12) * mes actual
             rec.advance_billing = False
-            if rec.contrated_hours:
-                current_month = datetime.today().month
-                rec.advance_billing = (rec.contrated_hours / 12) * current_month
+            if rec.contrated_hours and rec.create_date:
+                create_date = fields.Datetime.to_datetime(rec.create_date)
+                today = fields.Date.context_today(rec)
+                months_elapsed = (
+                    (today.year - create_date.year) * 12
+                    + (today.month - create_date.month)
+                )
+                if today.day < create_date.day:
+                    months_elapsed -= 1
+
+                months_elapsed = max(months_elapsed - 1, 0)
+                rec.advance_billing = (rec.contrated_hours / 12) * months_elapsed
 
     def _compute_remaining_hours(self):
         """ Enzo: I made a variable abbreviation to avoid very long lines """
