@@ -8,6 +8,11 @@ class AccountConsolidationData(models.Model):
     name = fields.Char(
         string='Name'
     )
+    consolidation_period_id = fields.Many2one(
+        'account.consolidation.period',
+        string='Período',
+        index=True,
+    )
     main_group = fields.Many2one(
         'account.analytic.group',
         string='Main Group'
