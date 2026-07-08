@@ -39,13 +39,13 @@
                         string="Enviar a aprobación"
                         type="object"
                         class="btn-primary"
-                        groups="quoter.group_quoter_cotizador,quoter.group_quoter_manager,quoter.group_quoter_director,quoter.group_quoter_partner"
+                        groups="quoter.group_quoter_cotizador"
                         attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_workflow_state', '!=', 'en_preparacion')]}"/>
                 <button name="action_quoter_internal_approve"
                         string="Aprobar internamente"
                         type="object"
                         class="btn-primary"
-                        groups="quoter.group_quoter_aprobador,quoter.group_quoter_partner"
+                        groups="quoter.group_quoter_aprobador"
                         attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_workflow_state', '!=', 'en_aprobacion')]}"/>
                 <button name="action_quoter_send_to_client"
                         string="Enviar al cliente"
@@ -63,13 +63,13 @@
                         string="Rechazar"
                         type="object"
                         class="btn-secondary"
-                        groups="quoter.group_quoter_aprobador,quoter.group_quoter_partner,quoter.group_quoter_contratos"
+                        groups="quoter.group_quoter_aprobador,quoter.group_quoter_contratos"
                         attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_workflow_state', 'not in', ('en_aprobacion', 'aprobado_interno', 'enviado_cliente'))]}"/>
                 <button name="action_quoter_resume_preparation"
                         string="Retomar preparación"
                         type="object"
                         class="btn-primary"
-                        groups="quoter.group_quoter_cotizador,quoter.group_quoter_manager,quoter.group_quoter_director,quoter.group_quoter_partner"
+                        groups="quoter.group_quoter_cotizador"
                         attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_workflow_state', '!=', 'rechazado_cliente')]}"/>
                 <button name="%(quoter.action_report_quoter_quotation)d"
                         string="Imprimir cotización interna"

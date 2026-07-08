@@ -147,6 +147,7 @@
                            context="{'default_order_id': active_id}">
                         <tree string="Bloques" create="0" delete="0" class="o_quoter_area_o2m_tree_hidden">
                             <field name="sequence" invisible="1"/>
+                            <field name="user_can_view_block" invisible="1"/>
                             <field name="area_id" readonly="1" options="{'no_open': True}"/>
                         </tree>
                         <form string="Bloque de cotización por área">
@@ -326,6 +327,11 @@
                                      attrs="{'invisible': [('complexity_level_id', '=', False)]}">
                                     <div class="o_quoter_resumen_rango_title">Resumen por rango</div>
                                     <field name="area_summary_html" nolabel="1" readonly="1"/>
+                                </div>
+                                <div class="o_quoter_bpa_desglose"
+                                     attrs="{'invisible': [('area_is_payroll', '=', False)]}">
+                                    <field name="area_is_payroll" invisible="1"/>
+                                    <field name="bpa_summary_html" nolabel="1" readonly="1"/>
                                 </div>
                                 <group class="oe_subtotal_footer oe_right o_quoter_area_footer_totals" colspan="2"
                                        attrs="{'invisible': [('complexity_level_id', '=', False)]}">

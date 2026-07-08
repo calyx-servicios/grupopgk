@@ -100,6 +100,13 @@ class QuoterServiceLine(models.Model):
         help="Marca este producto como opción predeterminada para usar en ventas.",
     )
 
+    subtract_in_bpa = fields.Boolean(
+        string="Restar en APB",
+        default=False,
+        help="Si está marcado, las horas de esta línea se restan en el cálculo de BPA "
+        "(abono base por empleado).",
+    )
+
     manual_load = fields.Boolean(
         string="Carga manual",
         default=False,

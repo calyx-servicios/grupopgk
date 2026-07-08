@@ -334,9 +334,15 @@ class QuoterProfessionalArea(models.Model):
 
     @api.model
     def name_search(self, name="", args=None, operator="ilike", limit=100):
-        """Permite a usuarios con listas de precios elegir áreas aunque group_id restrinja."""
-        args = args or []
-        if self.env.user.has_group("product.group_sale_pricelist"):
+        """Filtra áreas según el grupo de seguridad del usuario actual."""
+        args = list(args or [])
+        user = self.env.user
+        # Solo mostrar áreas sin grupo o donde el usuario pertenece al grupo.
+        visible_ids = self.sudo().search([]).filtered(
+            lambda a: not a.group_id or a.group_id in user.groups_id
+        ).ids
+        args += [("id", "in", visible_ids)]
+        if user.has_group("product.group_sale_pricelist"):
             return super(QuoterProfessionalArea, self.sudo()).name_search(
                 name=name, args=args, operator=operator, limit=limit
             )
