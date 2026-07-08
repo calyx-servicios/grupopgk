@@ -43,8 +43,8 @@ class AccountConsolidationReport(models.Model):
         compute="_compute_files",
         readonly=True
     )
-    is_last_report = fields.Boolean(
-        default=False
+    has_period_data = fields.Boolean(
+        compute="_compute_has_period_data",
     )
     list_errors = fields.One2many(
         comodel_name='consolidation.analytic.line.error',
@@ -62,6 +62,16 @@ class AccountConsolidationReport(models.Model):
                 record.period = record.consolidation_period.period
             else:
                 record.period = "/"
+
+    @api.depends("consolidation_period")
+    def _compute_has_period_data(self):
+        data_obj = self.env["account.consolidation.data"]
+        for record in self:
+            record.has_period_data = bool(record.consolidation_period) and bool(
+                data_obj.search_count([
+                    ("consolidation_period_id", "=", record.consolidation_period.id),
+                ])
+            )
 
     @api.onchange("consolidation_period")
     def _onchange_consolidation_period(self):
@@ -659,6 +669,15 @@ class AccountConsolidationReport(models.Model):
         )
         _t = _time.time()
 
+        # Crear lineas analiticas a partir del parte de horas excluyendo las no facturables que
+        # luego se redistribuiran a los proyectos a partir de su porcentaje en el metodo anterior
+        self.create_analytic_lines_from_timesheets()
+        _logger.warning(
+            "[TIMING] create_analytic_lines_from_timesheets: %.2fs",
+            _time.time() - _t,
+        )
+        _t = _time.time()
+
         # Calculo el monto total de las lineas de 'Gastos Indirectos'
         total_amount_cost = self.calculate_total_amount_cost()
         _logger.warning(
@@ -676,15 +695,6 @@ class AccountConsolidationReport(models.Model):
         percentage_for_project = self.calculate_percentage(total_sales_for_project)
         _logger.warning(
             "[TIMING] calculate_percentage: %.2fs", _time.time() - _t,
-        )
-        _t = _time.time()
-
-        # Crear lineas analiticas a partir del parte de horas excluyendo las no facturables que
-        # luego se redistribuiran a los proyectos a partir de su porcentaje en el metodo anterior
-        self.create_analytic_lines_from_timesheets()
-        _logger.warning(
-            "[TIMING] create_analytic_lines_from_timesheets: %.2fs",
-            _time.time() - _t,
         )
         _t = _time.time()
 
@@ -850,6 +860,7 @@ class AccountConsolidationReport(models.Model):
             consolidation_data_vals.append(
                 {
                     "name": self.name,
+                    "consolidation_period_id": self.consolidation_period.id,
                     "main_group": analytic_line.parent_prin_group_id.id,
                     "project_id": project_id,
                     "business_group": analytic_line.bussines_group_id.id,
@@ -929,10 +940,10 @@ class AccountConsolidationReport(models.Model):
         )
         _t = _time.time()
 
-        unlink_last_report = self.search([('is_last_report', '=', True)], limit=1)
-        unlink_last_report.is_last_report = False
-        self.is_last_report = True
+        return self._get_consolidation_data_action()
 
+    def _get_consolidation_data_action(self):
+        self.ensure_one()
         view_id_tree = self.env.ref("consolidation_report.view_consolidation_data_tree")
         return {
             "name": "Consolidation Report",
@@ -941,25 +952,32 @@ class AccountConsolidationReport(models.Model):
             "view_mode": "tree,form",
             "res_model": "account.consolidation.data",
             "views": [(view_id_tree.id, "tree")],
+            "domain": [("consolidation_period_id", "=", self.consolidation_period.id)],
             "context": {
                 "tree_view_ref": "view_consolidation_data_tree",
                 "group_by_no_leaf": 1,
-                # 'group_by': ['main_group', 'business_group',
-                #            'sector_account_group',
-                #            'managment_account_group','company',
-                #            'currency', 'daughter_account']
             },
             "target": "current",
         }
 
     def delete_entries(self):
+        self.ensure_one()
         self.env.cr.execute("""
-            CREATE INDEX IF NOT EXISTS account_analytic_line_consolidation_idx
-            ON account_analytic_line (id) WHERE consolidation_line = TRUE
+            DROP INDEX IF EXISTS account_analytic_line_consolidation_idx;
+            CREATE INDEX IF NOT EXISTS account_analytic_line_consolidation_period_idx
+            ON account_analytic_line (consolidation_line, date) WHERE consolidation_line = TRUE
         """)
-        self.env.cr.execute("DELETE FROM consolidation_analytic_line_error")
-        self.env.cr.execute("DELETE FROM account_consolidation_data")
-        self.env.cr.execute("DELETE FROM account_analytic_line WHERE consolidation_line = TRUE")
+        self.env.cr.execute(
+            "DELETE FROM account_consolidation_data WHERE consolidation_period_id = %s",
+            (self.consolidation_period.id,)
+        )
+        self.env.cr.execute(
+            """
+            DELETE FROM account_analytic_line
+            WHERE consolidation_line = TRUE AND date >= %s AND date <= %s
+            """,
+            (self.consolidation_period.date_from, self.consolidation_period.date_to)
+        )
 
     def sales_by_project(self):
         move_data, comp_to_period = self._build_convert_amount_cache()
@@ -1430,6 +1448,7 @@ class AccountConsolidationReport(models.Model):
                 consolidation_data_vals_cost.append(
                     {
                         "name": self.name,
+                        "consolidation_period_id": self.consolidation_period.id,
                         "main_group": (
                             project.analytic_account_id.group_id.parent_prin_group.id
                             or ""
@@ -1473,6 +1492,7 @@ class AccountConsolidationReport(models.Model):
                 consolidation_data_vals_cost.append(
                     {
                         "name": self.name,
+                        "consolidation_period_id": self.consolidation_period.id,
                         "main_group": (
                             project.analytic_account_id.group_id.parent_prin_group.id
                             or ""
@@ -1676,20 +1696,7 @@ class AccountConsolidationReport(models.Model):
         self.env["account.analytic.line"].create(vals_list_calyx)
 
     def last_consolidation_report_view(self):
-        view_id_tree = self.env.ref("consolidation_report.view_consolidation_data_tree")
-        return {
-            "name": "Consolidation Report",
-            "type": "ir.actions.act_window",
-            "view_type": "form",
-            "view_mode": "tree,form",
-            "res_model": "account.consolidation.data",
-            "views": [(view_id_tree.id, "tree")],
-            "context": {
-                "tree_view_ref": "view_consolidation_data_tree",
-                "group_by_no_leaf": 1,
-            },
-            "target": "current",
-        }
+        return self._get_consolidation_data_action()
 
     # def clear_timesheet_sige_gastos_analytic_lines(self):
     #     tm_sige_obj = self.env["timesheet.sige"]
