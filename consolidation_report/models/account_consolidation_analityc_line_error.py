@@ -1,5 +1,6 @@
 from odoo import fields, models, _
 
+
 class ConsolidationAnalyticLineError(models.Model):
     _name = 'consolidation.analytic.line.error'
     _description = 'Errores en Líneas Analíticas en el Informe de Consolidación'
@@ -16,11 +17,15 @@ class ConsolidationAnalyticLineError(models.Model):
         ('no_project', 'No hay proyecto'),
         ('other', 'Otro'),
     ], string='Tipo de Error', required=True)
-
-    amount_origin = fields.Float('Monto Original')
-    amount_consolidated = fields.Float('Monto Consolidado')
-    description = fields.Char('Detalle del Error')
-
+    amount_origin = fields.Float(
+        'Monto Original'
+    )
+    amount_consolidated = fields.Float(
+        'Monto Consolidado'
+    )
+    description = fields.Char(
+        'Detalle del Error'
+    )
     line_id = fields.Many2one(
         'account.analytic.line',
         string='Línea Analítica Original',

@@ -262,8 +262,8 @@ msgstr "Eliminar Líneas de Consolidación"
 
 #. module: consolidation_report
 #: model_terms:ir.ui.view,arch_db:consolidation_report.view_account_consolidation_report_form
-msgid "Load Last Report View"
-msgstr "Cargar Último Reporte"
+msgid "View Period Lines"
+msgstr "Ver Líneas del Período"
 
 #. module: consolidation_report
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__id
