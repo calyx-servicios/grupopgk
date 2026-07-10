@@ -7,6 +7,7 @@ import re
 from odoo.exceptions import UserError
 import os
 import json
+import traceback
 from datetime import datetime, timedelta
 from pprint import pprint
     
@@ -95,10 +96,21 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 missing.append(field)
         return missing
 
-    def _create_log_item(self, file_name, order_id=None):
+    def _get_datareader_error_policy(self, error_code):
+        """Devuelve la política de revisión para el código de error recibido."""
+        if error_code in (None, False, ''):
+            return self.env['datareader.error.code']
+
+        code = str(error_code).strip()
+        return self.env['datareader.error.code'].sudo().search([
+            ('code', '=', code)
+        ], limit=1)
+
+    def _create_log_item(self, file_name, order_id=None, error_code=None):
         vals = {
             'log_id': self.id,
-            'file_name': file_name or 'No hay archivo relacionado'
+            'file_name': file_name or 'No hay archivo relacionado',
+            'error_code': str(error_code).strip() or "0",
         }
         if order_id:
             vals['order_id'] = str(order_id)
@@ -112,7 +124,19 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             errors.append(f"No se encontró compañía '{company_name}', se detiene el proceso.")
         return company, errors
 
-    def _get_partner(self, cuit, name, errors, journal_id=None):
+    def _get_partner(self, cuit, name, errors, journal_id=None, client_id=None):
+        if client_id:
+            normalized_client_id = client_id
+            try:
+                normalized_client_id = int(str(client_id).strip())
+            except (TypeError, ValueError):
+                normalized_client_id = client_id
+
+            partner = self.env["res.partner"].with_context(active_test=False).sudo().browse(normalized_client_id)
+            if partner.exists():
+                return partner, errors
+            else:
+                errors.append(f"No se encontró cliente con ID {client_id}. Se intentará buscar por CUIT o nombre.")
         partner, errors = cuit_alias.find_record_by_cuit_or_name(
             self.env, 'res.partner', cuit=cuit, name=name, journal_id=journal_id, errors=errors
         )
@@ -185,6 +209,49 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     return None, errors
 
         return journal, errors
+
+    def _get_withholding_tax(self, search_domain, company, errors, tax_id=None):
+        """
+        Obtiene un impuesto de retención válido para la compañía indicada.
+
+        Prioriza el `tax_id` (si viene) y valida que pertenezca a la misma
+        compañía. Si no es válido, intenta resolver por dominio de búsqueda
+        sumando filtros de compañía y activo.
+
+        :param search_domain: dominio base para buscar impuesto
+        :param company: res.company destino
+        :param errors: lista mutable de errores
+        :param tax_id: ID opcional del impuesto proveniente de DataReader
+        :return: account.tax (0..1 registro)
+        """
+        withholding_tax = False
+        normalized_tax_id = False
+
+        if tax_id not in ("na", "NA", None, False, "", "null", "None"):
+            try:
+                normalized_tax_id = int(float(str(tax_id).strip()))
+            except (TypeError, ValueError):
+                normalized_tax_id = False
+
+        if normalized_tax_id:
+            tax_candidate = self.env['account.tax'].sudo().browse(normalized_tax_id).exists()
+            if tax_candidate:
+                if tax_candidate.company_id.id == company.id:
+                    return tax_candidate
+                errors.append(
+                    _(
+                        "El impuesto de retención con ID %s pertenece a la compañía '%s' "
+                        "y no a '%s'."
+                    )
+                    % (normalized_tax_id, tax_candidate.company_id.name, company.name)
+                )
+
+        final_domain = list(search_domain or []) + [
+            ('company_id', '=', company.id),
+            ('active', '=', True),
+        ]
+        withholding_tax = self.env['account.tax'].sudo().search(final_domain, limit=1)
+        return withholding_tax
                 
     def _get_default_journal(self, data, partner, company, journal_name, errors, log_item=None):
         """
@@ -429,9 +496,25 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         
         file_name = data.get("file_name")
         order_id = data.get("id")
+        raw_error_code = data.get('error_code')
+        error_code = str(raw_error_code).strip() or "0"
         if not log_item:
-            log_item = self._create_log_item(file_name, order_id)
+            log_item = self._create_log_item(file_name, order_id, error_code=error_code)
+        else:
+            log_item.write({'error_code': error_code or False})
         errors = []
+
+        error_policy = self._get_datareader_error_policy(error_code)
+        requires_review = bool(error_policy and error_policy.requires_review)
+        review_reason = False
+        if requires_review:
+            review_reason = _(
+                "Recibo en borrador por revisión obligatoria de IA. "
+                "Código %s: %s"
+            ) % (
+                str(error_code).strip(),
+                error_policy.description or _('Sin descripción del código.'),
+            )
 
         op_number, errors = self._validate_op_number(data, errors, log_item)
         if not op_number:
@@ -459,7 +542,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             if journal_id_preliminar and not isinstance(journal_id_preliminar, list):
                 journal_id_preliminar = journal_id_preliminar if hasattr(journal_id_preliminar, 'id') else None
         
-        partner_id, errors = self._get_partner(partner_cuit, partner_name, errors, journal_id=journal_id_preliminar)
+        partner_id, errors = self._get_partner(partner_cuit, partner_name, errors, journal_id=journal_id_preliminar, client_id=data.get("client_id"))
         if not partner_id:
             log_item.write({'message': "\n".join(errors)})
             return log_item
@@ -578,17 +661,29 @@ class DataReaderAccountPaymentGroupLog(models.Model):
 
         self.env.cr.flush()
         log_item.payment_group_id = payment_group
+
+        if review_reason:
+            errors.append(review_reason)
         
         json_lines = data.get('lines', [])
         missing_found = False
         paid_invoice_found = False
         partial_invoice_found = False
+        missing_invoice_numbers = []
+        missing_invoice_ids = []
         
         if not json_lines:
             errors.append("No se encontraron líneas en el JSON.")
             log_item.write({'message': "\n".join(errors)})
         else:
-            missing_found, paid_invoice_found, partial_invoice_found = self._find_and_attach_invoices(
+            (
+                missing_found,
+                paid_invoice_found,
+                partial_invoice_found,
+                matched_invoice_count,
+                missing_invoice_numbers,
+                missing_invoice_ids,
+            ) = self._find_and_attach_invoices(
                 payment_group, json_lines, errors=errors
             )
         
@@ -625,7 +720,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         # Verificar si hay tolerancia aplicable antes de postear
         # Si hay tolerancia y publicación automática, no postear el pago individual
         # porque se publicará el payment_group completo después de aplicar tolerancia
-        should_post_individual_payment = ap_post
+        should_post_individual_payment = ap_post and not requires_review
         if partner_id.datareader_auto_payment_post and pay_method != 'cheque':
             tolerance_enabled = company_id.datareader_tolerance_enabled
             if tolerance_enabled:
@@ -664,6 +759,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             ret_account_payment_obj = self.env['account.payment'].sudo()
             ret_amount = float(withholding.get('amount') or 0.0)
             ret_number = withholding.get('number') or False
+            ret_id = withholding.get('odoo_id', "na") or "na"
             ret_name = withholding.get('name') or False
             if not ret_number or str(ret_number).lower() == 'na':
                 ret_number = 'N/A'
@@ -671,16 +767,19 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             if not ret_amount:
                 continue
 
-            # Impuesto de retención
-            withholding_tax = self.env['account.tax'].sudo().search([
-                ('type_tax_use', 'ilike', 'customer'),
-                ('datareader_custom_identifier', '=', ret_name),
-                ('company_id', '=', company_id.id),
-                ('active', '=', True)
-            ], limit=1)
+            # Impuesto de retención con validación de compañía.
+            withholding_tax = self._get_withholding_tax(
+                [
+                    ('type_tax_use', 'ilike', 'customer'),
+                    ('datareader_custom_identifier', '=', ret_name),
+                ],
+                company_id,
+                errors,
+                tax_id=ret_id,
+            )
 
             # Si no existe impuesto, registra error y corta el proceso ya que es requerido
-            if not withholding_tax:
+            if not withholding_tax.exists():
                 errors.append(f"No se encontró el impuesto de Retención para {ret_name}, puede que se deba configurar el campo datareader_custom_identifier")
                 log_item.write({'message': "\n".join(errors)})
                 return log_item
@@ -792,10 +891,18 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                                     )
                                     break
                     try:
-                        payment_group.post()
+                        if not requires_review:
+                            payment_group.post()
+                        else:
+                            _logger.info(
+                                "Payment group %s no se publica por revisión obligatoria (error_code=%s).",
+                                payment_group.id,
+                                error_code,
+                            )
                         if log_item:
-                            log_item.readed = True
-                            _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+                            if not requires_review:
+                                log_item.readed = True
+                                _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
                     except Exception as e:
                         _logger.exception(f"Error al postear payment group {payment_group.id} tras conciliación: {e}")
                 else:
@@ -825,11 +932,19 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 if abs(payment_difference) == 0.0:
                     _logger.info(f"Sin diferencia - publicando normalmente")
                     if self._should_post_payment_group(log_item):
-                        payment_group.post()
+                        if not requires_review:
+                            payment_group.post()
+                        else:
+                            _logger.info(
+                                "Payment group %s no se publica por revisión obligatoria (error_code=%s).",
+                                payment_group.id,
+                                error_code,
+                            )
                         # Marcar como leído cuando el recibo se haya publicado exitosamente
                         if log_item:
-                            log_item.readed = True
-                            _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+                            if not requires_review:
+                                log_item.readed = True
+                                _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
                     else:
                         _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
                 # Si hay diferencia dentro del margen de tolerancia
@@ -851,9 +966,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         _logger.error(f"No se encontró pago en el payment_group {payment_group.id}")
                         return log_item
                     
-                    # Si la diferencia es negativa (pago menor), crear nota de crédito
+                    # Si la diferencia es positiva (pago menor), crear nota de crédito
                     credit_note_created = False
-                    if payment_difference < 0:
+                    if payment_difference > 0:
                         _logger.info(f"Pago menor detectado. Diferencia: {payment_difference}. Creando nota de crédito...")
                         # Crear nota de crédito para reducir la deuda por la diferencia
                         credit_note = self._create_credit_note_for_tolerance(
@@ -872,8 +987,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                             _logger.warning(f"No se pudo crear la nota de crédito para tolerancia")
                             return log_item
                     
-                    # Si la diferencia es positiva (pago mayor), crear nota de débito por la diferencia
-                    elif payment_difference > 0:
+                    # Si la diferencia es negativa (pago mayor), crear nota de débito por la diferencia
+                    elif payment_difference < 0:
                         # Crear nota de débito por la diferencia y agregarla a la deuda
                         debit_note = self._create_invoice_for_tolerance(
                             payment_group,
@@ -890,21 +1005,36 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                             _logger.warning(f"No se pudo crear la nota de débito para tolerancia")
                             return log_item
                     
-                    # Si se creó una nota de crédito, postear el pago automáticamente
-                    if credit_note_created:
-                        _logger.info(f"Nota de crédito creada. Posteando payment group {payment_group.id} automáticamente...")
-                        payment_group.post()
-                    # Si no se creó nota de crédito, postear solo si cumple condiciones de retenciones
-                    elif self._should_post_payment_group(log_item):
-                        payment_group.post()
+                    # Misma regla para NC y ND: solo postear si _should_post_payment_group lo permite
+                    if self._should_post_payment_group(log_item):
+                        note_label = (
+                            "Nota de crédito creada"
+                            if credit_note_created
+                            else "Nota de débito creada"
+                        )
+                        _logger.info(
+                            f"{note_label}. Posteando payment group {payment_group.id} automáticamente..."
+                        )
+                        if not requires_review:
+                            payment_group.post()
+                        else:
+                            _logger.info(
+                                "Payment group %s no se publica por revisión obligatoria (error_code=%s).",
+                                payment_group.id,
+                                error_code,
+                            )
                     else:
-                        _logger.info(f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas")
+                        _logger.info(
+                            f"Payment group {payment_group.id} no publicado: "
+                            f"condiciones de retenciones no cumplidas"
+                        )
                         return log_item
                     
                     # Marcar como leído cuando el recibo se haya publicado exitosamente
                     if log_item:
-                        log_item.readed = True
-                        _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
+                        if not requires_review:
+                            log_item.readed = True
+                            _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
                 # Si hay diferencia fuera de tolerancia, no publicar (dejar en draft)
                 else:
                     if payment_difference != 0.0:
@@ -926,8 +1056,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                             ) % (amount_from_json, residual_amount, payment_difference)
                         elif has_withholdings:
                             diff_msg = _(
-                                "El recibo quedó en borrador porque los montos de pago y retenciones no coinciden con la deuda residual "
-                                "informada en la OP. Monto pago: %s | Residual deuda: %s | Diferencia: %s | Tolerancia: %s."
+                                "Los montos de pago y retenciones no coinciden con la deuda residual informada en la OP. "
+                                "Si corresponde publicación por faltante de facturas, el recibo se publicará como pago a cuenta. "
+                                "Monto pago: %s | Residual deuda: %s | Diferencia: %s | Tolerancia: %s."
                             ) % (amount_from_json, residual_amount, payment_difference, tolerance_amount)
                         else:
                             diff_msg = _(
@@ -941,21 +1072,54 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         else:
             _logger.info(f"No se procesa tolerancia: datareader_auto_payment_post={partner_id.datareader_auto_payment_post}, pay_method={pay_method}")
 
-        # Publicar al final por faltante de facturas solo si no hubo facturas ya pagas.
+        # Publicar al final por faltante de facturas.
+        # Si falta una o más facturas, el recibo se publica como pago a cuenta.
         if (
             missing_found
             and not paid_invoice_found
-            and post_when_missing_invoice == 'yes'
             and payment_group.state == 'draft'
         ):
+            if payment_group:
+                listed_numbers = ', '.join(str(n) for n in missing_invoice_numbers) if missing_invoice_numbers else _("sin número informado")
+                listed_ids = ', '.join(str(i) for i in missing_invoice_ids) if missing_invoice_ids else _("sin odoo_id informado")
+                body_msg = _(
+                    "No se identificaron todas las facturas con coincidencia exacta (100%%) para esta orden. "
+                    "El recibo se publicó completamente como pago a cuenta del cliente para conciliación posterior. "
+                    "Comprobantes informados: %s | IDs Odoo sin coincidencia: %s"
+                ) % (listed_numbers, listed_ids)
+                if requires_review:
+                    body_msg = _(
+                        "No se identificaron todas las facturas con coincidencia exacta (100%%) para esta orden. "
+                        "El recibo quedó en borrador por revisión obligatoria de IA. "
+                        "Comprobantes informados: %s | IDs Odoo sin coincidencia: %s"
+                    ) % (listed_numbers, listed_ids)
+                payment_group.sudo().message_post(
+                    body=body_msg,
+                    message_type='notification',
+                    subtype_xmlid='mail.mt_note',
+                )
+
             try:
-                payment_group.post()
-                if log_item:
-                    log_item.readed = True
+                if not requires_review:
+                    payment_group.post()
+                else:
                     _logger.info(
-                        "Payment group %s publicado por configuración de faltante de facturas.",
-                        payment_group.id
+                        "Payment group %s no se publica por revisión obligatoria (error_code=%s).",
+                        payment_group.id,
+                        error_code,
                     )
+                if log_item:
+                    if not requires_review:
+                        log_item.readed = True
+                        _logger.info(
+                            "Payment group %s publicado como pago a cuenta por faltante de facturas.",
+                            payment_group.id,
+                        )
+                    else:
+                        _logger.info(
+                            "Payment group %s quedó en borrador por revisión obligatoria.",
+                            payment_group.id,
+                        )
             except Exception as e:
                 _logger.exception(
                     "Error al postear payment group %s por faltante de facturas: %s",
@@ -968,22 +1132,64 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         ):
             if partial_invoice_found:
                 partial_paid_msg = _(
-                    "El recibo quedó en borrador porque se detectaron facturas con pago parcial, "
-                    "por lo que no se publicará automáticamente."
+                    "Se detectaron facturas con pago parcial/no disponibles para imputar. "
+                    "El recibo se publicará sin imputaciones como pago a cuenta del contacto."
                 )
             else:
                 partial_paid_msg = _(
-                    "El recibo quedó en borrador porque se detectaron facturas ya pagadas/canceladas, "
-                    "por lo que no se publicará automáticamente."
+                    "Se detectaron facturas ya pagadas/canceladas. "
+                    "El recibo se publicará sin imputaciones como pago a cuenta del contacto."
                 )
             errors.append(partial_paid_msg)
             if log_item:
                 current = (log_item.message or "").strip()
                 log_item.write({'message': f"{current}\n{partial_paid_msg}".strip() if current else partial_paid_msg})
-            _logger.info(
-                "Payment group %s no publicado por facturas parcialmente pagas/ya canceladas.",
-                payment_group.id
-            )
+            if payment_group:
+                listed_numbers = ', '.join(str(n) for n in missing_invoice_numbers) if missing_invoice_numbers else _("sin número informado")
+                listed_ids = ', '.join(str(i) for i in missing_invoice_ids) if missing_invoice_ids else _("sin odoo_id informado")
+                body_msg = _(
+                    "No se pudieron imputar todas las facturas informadas (%s). "
+                    "IDs Odoo sin coincidencia: %s. "
+                    "El recibo se publicó completamente como pago a cuenta del cliente."
+                ) % (listed_numbers, listed_ids)
+                if requires_review:
+                    body_msg = _(
+                        "No se pudieron imputar todas las facturas informadas (%s). "
+                        "IDs Odoo sin coincidencia: %s. "
+                        "El recibo quedó en borrador por revisión obligatoria de IA."
+                    ) % (listed_numbers, listed_ids)
+                payment_group.sudo().message_post(
+                    body=body_msg,
+                    message_type='notification',
+                    subtype_xmlid='mail.mt_note',
+                )
+            try:
+                if not requires_review:
+                    payment_group.post()
+                else:
+                    _logger.info(
+                        "Payment group %s no se publica por revisión obligatoria (error_code=%s).",
+                        payment_group.id,
+                        error_code,
+                    )
+                if log_item:
+                    if not requires_review:
+                        log_item.readed = True
+                        _logger.info(
+                            "Payment group %s publicado como pago a cuenta por faltante/no disponibilidad de facturas.",
+                            payment_group.id,
+                        )
+                    else:
+                        _logger.info(
+                            "Payment group %s quedó en borrador por revisión obligatoria.",
+                            payment_group.id,
+                        )
+            except Exception as e:
+                _logger.exception(
+                    "Error al postear payment group %s por faltante/no disponibilidad de facturas: %s",
+                    payment_group.id,
+                    e,
+                )
         
         _logger.info(f"=== FIN PROCESO TOLERANCIA - Payment Group {payment_group.id} ===")
         return log_item
@@ -1020,9 +1226,6 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         
         # Si hay retenciones, verificar que también haya archivos de retención
         if has_withholding:
-            if not has_files:
-                _logger.info(f"Payment group no se postea: hay retenciones pero no hay archivos de retención descargados")
-                return False
             return True
         
         # Si no hay retenciones ni archivos, se postea normalmente
@@ -1054,6 +1257,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
     def _find_and_attach_invoices(self, payment_group, lines, errors):
         """
         Busca y vincula las facturas correspondientes a las líneas de pago.
+        - Prioriza búsqueda por odoo_id si viene en la línea JSON
+        - Si no se encuentra por odoo_id, usa fallback por número normalizado
         - Normaliza los números de factura usando _normalize_invoice_number
         - Coincide exactamente si viene punto de venta, puede ser 1-12345678 ó 00001-12345678
         - Si solo trae el número (8 dígitos), hace comparación con los últimos 8 dígitos de las facturas del cliente a pagar
@@ -1069,8 +1274,15 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         ]
         pending_lines = self.env['account.move.line'].sudo().search(domain)
         
+        pending_by_id = {}
         pending_by_number = {}
         for l in pending_lines:
+            move_id = l.move_id.id
+            if move_id:
+                if move_id not in pending_by_id:
+                    pending_by_id[move_id] = []
+                pending_by_id[move_id].append(l)
+
             norm_number = self._normalize_invoice_number(l.move_id.name)
             if norm_number:
                 if norm_number not in pending_by_number:
@@ -1085,6 +1297,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             else ('move_type', 'in', ('in_invoice', 'in_refund')),
         ]
         customer_invoices = self.env['account.move'].sudo().search(customer_invoices_domain)
+        invoices_by_id = {invoice.id: invoice for invoice in customer_invoices}
         invoices_by_number = {}
         for invoice in customer_invoices:
             norm_number = self._normalize_invoice_number(invoice.name) or self._normalize_invoice_number(invoice.ref)
@@ -1095,23 +1308,29 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         missing_found = False
         paid_invoice_found = False
         partial_invoice_found = False
+        missing_invoice_numbers = []
+        missing_invoice_ids = []
         for line in lines:
+            raw_odoo_id = line.get('odoo_id')
+            odoo_id = None
+            if raw_odoo_id not in (None, False, '', 'na', 'NA', 'null', 'None'):
+                try:
+                    odoo_id = int(float(str(raw_odoo_id).strip()))
+                except (TypeError, ValueError):
+                    odoo_id = None
+
             norm_line_number = self._normalize_invoice_number(line.get('number'))
-            matches = None
-            for key, pending_match_lines in pending_by_number.items():
-                if norm_line_number and norm_line_number in key:
-                    matches = pending_match_lines
-                    break
+            matches = pending_by_id.get(odoo_id) if odoo_id else None
+            if not matches:
+                matches = pending_by_number.get(norm_line_number) if norm_line_number else None
 
 
             if matches:
                 found_moves.append(matches[0].id)
             else:
-                paid_invoice = None
-                for key, invoice in invoices_by_number.items():
-                    if norm_line_number and norm_line_number in key:
-                        paid_invoice = invoice
-                        break
+                paid_invoice = invoices_by_id.get(odoo_id) if odoo_id else None
+                if not paid_invoice:
+                    paid_invoice = invoices_by_number.get(norm_line_number) if norm_line_number else None
 
                 if paid_invoice:
                     paid_invoice_found = True
@@ -1121,37 +1340,45 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         partial_invoice_found = True
                         errors.append(
                             _(
-                                "La factura %s del partner %s tiene pago parcial y no está disponible para imputar en deudas del recibo. "
+                                "La factura %s (ID Odoo: %s) del partner %s tiene pago parcial y no está disponible para imputar en deudas del recibo. "
                                 "Total: %s | Residual: %s."
-                            ) % (line.get('number'), payment_group.commercial_partner_id.name, invoice_total, invoice_residual)
+                            ) % (line.get('number'), paid_invoice.id, payment_group.commercial_partner_id.name, invoice_total, invoice_residual)
                         )
                     else:
                         errors.append(
                             _(
-                                "Se encontró la factura %s para el partner %s, pero no está disponible para imputar en deudas del recibo "
+                                "Se encontró la factura %s (ID Odoo: %s) para el partner %s, pero no está disponible para imputar en deudas del recibo "
                                 "(ya pagada/cancelada). Total: %s | Residual: %s."
-                            ) % (line.get('number'), payment_group.commercial_partner_id.name, invoice_total, invoice_residual)
+                            ) % (line.get('number'), paid_invoice.id, payment_group.commercial_partner_id.name, invoice_total, invoice_residual)
                         )
                 else:
                     errors.append(
-                        _("No se encontró la factura %s para el partner %s - factura en formato odoo (%s)") %
-                        (line.get('number'), payment_group.commercial_partner_id.name, norm_line_number)
+                        _("No se encontró la factura %s (ID Odoo: %s) para el partner %s - factura en formato odoo (%s)") %
+                        (line.get('number'), raw_odoo_id or 'N/A', payment_group.commercial_partner_id.name, norm_line_number)
                     )
+                missing_invoice_numbers.append(line.get('number') or _('(sin número)'))
+                if raw_odoo_id not in (None, False, '', 'na', 'NA', 'null', 'None'):
+                    missing_invoice_ids.append(str(raw_odoo_id))
                 missing_found = True
         if missing_found:
+            # Si falta al menos una factura, no se imputa ninguna para evitar
+            # conciliaciones parciales no deseadas.
             if len(found_moves) > 0:
                 errors.append(
-                    _("No se imputaron todas las facturas")
+                    _("No se identificaron todas las facturas; el recibo se dejó sin imputaciones para conciliación posterior.")
                 )
-                payment_group.to_pay_move_line_ids = [(6, 0, found_moves)]
-                payment_group.state = 'draft'
-            else:
-                # Si no se encontró ninguna factura, limpiar líneas automáticas del payment group
-                payment_group.to_pay_move_line_ids = [(6, 0, [])]
-                payment_group.state = 'draft'
+            payment_group.to_pay_move_line_ids = [(6, 0, [])]
+            payment_group.state = 'draft'
         else:
             payment_group.to_pay_move_line_ids = [(6, 0, found_moves)] if found_moves else [(6, 0, [])]
-        return missing_found, paid_invoice_found, partial_invoice_found
+        return (
+            missing_found,
+            paid_invoice_found,
+            partial_invoice_found,
+            len(found_moves),
+            missing_invoice_numbers,
+            missing_invoice_ids,
+        )
             
             
     def _create_tolerance_line_before_post(self, payment, payment_group, tolerance_account, difference, payment_date):
@@ -1519,14 +1746,14 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         La nota de crédito reduce la deuda del payment_group.
         
         :param payment_group: account.payment.group - El grupo de pago
-        :param difference: float - La diferencia (debe ser negativa, pago menor)
+        :param difference: float - La diferencia (debe ser positiva, pago menor)
         :param payment_date: str - La fecha del pago (no se usa, se usa fecha de hoy)
         :param company: res.company - La compañía
         :return: account.move - La nota de crédito creada o None
         """
         try:
-            if difference >= 0:
-                _logger.warning(f"No se crea nota de crédito porque la diferencia es positiva: {difference}")
+            if difference <= 0:
+                _logger.warning(f"No se crea nota de crédito porque la diferencia es negativa: {difference}")
                 return None
             
             abs_diff = abs(difference)
@@ -1570,6 +1797,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 return None
             
             # Obtener la cuenta de ingresos del producto
+            product = product.with_company(company)
             income_account = product.property_account_income_id
             if not income_account:
                 income_account = product.categ_id.property_account_income_categ_id
@@ -1726,14 +1954,14 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         La nota de débito se agrega a la deuda del payment_group.
         
         :param payment_group: account.payment.group - El grupo de pago
-        :param difference: float - La diferencia (debe ser positiva, pago mayor)
+        :param difference: float - La diferencia (debe ser negativa, pago mayor)
         :param payment_date: str - La fecha del pago (no se usa, se usa fecha de hoy)
         :param company: res.company - La compañía
         :return: account.move - La nota de débito creada o None
         """
         try:
-            if difference <= 0:
-                _logger.warning(f"No se crea nota de débito porque la diferencia es negativa: {difference}")
+            if difference >= 0:
+                _logger.warning(f"No se crea nota de débito porque la diferencia es positiva: {difference}")
                 return None
             
             abs_diff = abs(difference)
@@ -2027,7 +2255,11 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     
                     # Crear log_item primero para poder descargar archivos antes del procesamiento
                     import json
-                    log_item = self._create_log_item(file_name, order_id)
+                    log_item = self._create_log_item(
+                        file_name,
+                        order_id,
+                        error_code=order.get('error_code'),
+                    )
                     log_item.json_data = json.dumps(order, ensure_ascii=False)
                     
                     # Descargar archivos ANTES del procesamiento
@@ -2091,7 +2323,8 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     log_item[0].readed = False
 
         except Exception as e:
-            message = f"Error al conectar u obtener órdenes: {str(e)}"
+            tb = traceback.format_exc()
+            message = f"Error al conectar u obtener órdenes: {str(e)}\nTraceback:\n{tb}"
             _logger.error(message)
             raise UserError(f"Error al conectar u obtener órdenes: {str(e)}")
 
@@ -2240,6 +2473,7 @@ class DataReaderAccountPaymentGroupLogItem(models.Model):
     op_exists = fields.Boolean(string="OP Existe", default=False, help="Indica si ya existe un payment_group con el mismo op_number")
     reprocessed = fields.Boolean(string="Reprocesada", default=False, help="Indica si la orden de pago fue reprocesada mediante el botón de reprocesamiento")
     order_id = fields.Char(string="ID Orden", help="ID de la orden de pago en el conector DataReader")
+    error_code = fields.Char(string="Código de Error", readonly=True)
 
     def _get_order_by_id_from_connector(self, order_id):
         """

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="datareader_error_code_0" model="datareader.error.code">
+            <field name="code">0</field>
+            <field name="description">Sin error</field>
+            <field name="requires_review" eval="False"/>
+        </record>
+
+        <record id="datareader_error_code_1" model="datareader.error.code">
+            <field name="code">1</field>
+            <field name="description">Falta el Numero de OP</field>
+            <field name="requires_review" eval="False"/>
+        </record>
+
+        <record id="datareader_error_code_2" model="datareader.error.code">
+            <field name="code">2</field>
+            <field name="description">Un metodo de pago aun no soportado</field>
+            <field name="requires_review" eval="True"/>
+        </record>
+
+        <record id="datareader_error_code_3" model="datareader.error.code">
+            <field name="code">3</field>
+            <field name="description">Si el metodo de pago es Cheque pero falta el nro_cheque</field>
+            <field name="requires_review" eval="True"/>
+        </record>
+
+        <record id="datareader_error_code_4" model="datareader.error.code">
+            <field name="code">4</field>
+            <field name="description">Falta sociedad</field>
+            <field name="requires_review" eval="True"/>
+        </record>
+
+        <record id="datareader_error_code_5" model="datareader.error.code">
+            <field name="code">5</field>
+            <field name="description">Falta monto neto</field>
+            <field name="requires_review" eval="True"/>
+        </record>
+
+        <record id="datareader_error_code_6" model="datareader.error.code">
+            <field name="code">6</field>
+            <field name="description">Falta Fecha</field>
+            <field name="requires_review" eval="False"/>
+        </record>
+
+        <record id="datareader_error_code_7" model="datareader.error.code">
+            <field name="code">7</field>
+            <field name="description">CUIT, Nombre, ID del cliente vacios</field>
+            <field name="requires_review" eval="True"/>
+        </record>
+
+        <record id="datareader_error_code_8" model="datareader.error.code">
+            <field name="code">8</field>
+            <field name="description">Informacion incompleta en la identificacion de ID de RETENCIONES</field>
+            <field name="requires_review" eval="True"/>
+        </record>
+
+        <record id="datareader_error_code_9" model="datareader.error.code">
+            <field name="code">9</field>
+            <field name="description">Error de integridad: Suma de facturas - retenciones != total de la OP</field>
+            <field name="requires_review" eval="True"/>
+        </record>
+
+        <record id="datareader_error_code_10" model="datareader.error.code">
+            <field name="code">10</field>
+            <field name="description">Informacion incompleta en la identificacion de ID de facturas de ventas</field>
+            <field name="requires_review" eval="True"/>
+        </record>
+    </data>
+</odoo>
