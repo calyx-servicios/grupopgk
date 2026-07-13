@@ -94,14 +94,14 @@ class MergeProjectWizard(models.TransientModel):
         if not analytic_lines:
             return
 
-        analytic_lines.write({'account_id': new_project.analytic_account_id.id})
-
-        if 'project_id' in analytic_lines._fields:
-            project_lines = analytic_lines.filtered(
-                lambda line: line.project_id.id == old_project.id
-            )
-            if project_lines:
-                project_lines.write({'project_id': new_project.id})
+        for analytic_line in analytic_lines:
+            vals = {'account_id': new_project.analytic_account_id.id}
+            if (
+                'project_id' in analytic_line._fields
+                and analytic_line.project_id.id == old_project.id
+            ):
+                vals['project_id'] = new_project.id
+            analytic_line.write(vals)
 
     def _reassign_move_lines(self, old_project, new_project):
         """Move posted and draft invoice lines to keep billing KPIs consolidated."""
