@@ -49,6 +49,7 @@ class MergeProjectWizard(models.TransientModel):
 
     # Button Action Wizard
     def merge(self):
+        """Create the destination project and migrate historical records."""
         if not self.is_same_partner:
             raise UserError(_('You cannot merge projects for different clients or parent contacts'))
 
@@ -66,23 +67,53 @@ class MergeProjectWizard(models.TransientModel):
             raise UserError(_('Error: {}'.format(e)))
 
     def update_project_references(self, old_project, new_project):
-        # Change on SOL project related
-        for sale_line in old_project.sale_line_id:
-            sale_line.sudo().write({
+        """Move the historical records used by project KPIs to the new project."""
+        self._reassign_sale_lines(old_project, new_project)
+        self._reassign_tasks(old_project, new_project)
+        self._reassign_analytic_lines(old_project, new_project)
+        self._reassign_move_lines(old_project, new_project)
+
+    def _reassign_sale_lines(self, old_project, new_project):
+        """Move sale order lines that point to the source project."""
+        sale_lines = old_project.sale_line_id.sudo()
+        if sale_lines:
+            sale_lines.write({'project_id': new_project.id})
+
+    def _reassign_tasks(self, old_project, new_project):
+        """Move tasks and align them with the destination analytic account."""
+        tasks = old_project.task_ids.sudo()
+        if tasks:
+            tasks.write({
                 'project_id': new_project.id,
+                'analytic_account_id': new_project.analytic_account_id.id,
             })
 
-        # Change on task project info and acc
-        for task in old_project.task_ids:
-            task.sudo().write({
-                'project_id': new_project.id,
-                'analytic_account_id': self.analytic_account_id.id,
-            })
+    def _reassign_analytic_lines(self, old_project, new_project):
+        """Move analytic lines and their project link when the model supports it."""
+        analytic_lines = old_project.analytic_account_id.line_ids.sudo()
+        if not analytic_lines:
+            return
 
-        #  Change for lines
-        for analytic_lines in old_project.analytic_account_id.line_ids:
-            analytic_lines.sudo().write({
-                'account_id': new_project.analytic_account_id.id
+        analytic_lines.write({'account_id': new_project.analytic_account_id.id})
+
+        if 'project_id' in analytic_lines._fields:
+            project_lines = analytic_lines.filtered(
+                lambda line: line.project_id.id == old_project.id
+            )
+            if project_lines:
+                project_lines.write({'project_id': new_project.id})
+
+    def _reassign_move_lines(self, old_project, new_project):
+        """Move posted and draft invoice lines to keep billing KPIs consolidated."""
+        if not old_project.analytic_account_id:
+            return
+
+        move_lines = self.env['account.move.line'].sudo().search([
+            ('analytic_account_id', '=', old_project.analytic_account_id.id),
+        ])
+        if move_lines:
+            move_lines.with_context(check_move_validity=False).write({
+                'analytic_account_id': new_project.analytic_account_id.id,
             })
 
     # Wizard
@@ -126,6 +157,7 @@ class MergeProjectWizard(models.TransientModel):
         }
 
     def _project_values(self):
+        project_fields = self.env['project.project']._fields
 
         # Creation of Project with Values
         account = None
@@ -139,8 +171,9 @@ class MergeProjectWizard(models.TransientModel):
             'partner_id': self.partner_id.id,
             'active': True,
             'company_id': self.company_id.id,
-            'allow_billable': True
         }
+        if 'allow_billable' in project_fields:
+            vals['allow_billable'] = True
 
         # Sum all numeric fields (Float, Integer, Monetary) from merged projects
         numeric_fields = []
