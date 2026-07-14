@@ -20,6 +20,7 @@
                                 <tree>
                                     <field name="payment_group_id" widget="many2one" options="{'no_create': True}"/>
                                     <field name="order_id"/>
+                                    <field name="error_code"/>
                                     <field name="attachment_op_id" widget="many2one" options="{'no_create': True}"/>
                                     <field name="state" widget="badge"/>
                                     <field name="has_withholding" invisible="1"/>
