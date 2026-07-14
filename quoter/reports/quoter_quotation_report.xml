@@ -44,6 +44,7 @@
                 <t t-set="matrix" t-value="doc._quoter_report_matrix_rows()"/>
                 <t t-set="questions" t-value="doc._quoter_report_strategic_questions()"/>
                 <t t-set="budget_blocks" t-value="doc._quoter_report_budget_blocks()"/>
+                <t t-set="summary_totals" t-value="doc._quoter_report_summary_totals()"/>
                 <t t-set="company" t-value="doc._quoter_report_layout_company()"/>
                 <t t-call="quoter.quoter_internal_report_layout">
                     <style>
@@ -80,6 +81,9 @@
                         .o_quoter_budget .o_q_disc .o_q_pct_pos { color: #059669; text-align: right; }
                         .o_quoter_budget .o_q_final td { background: #1f3b4d; color: #fff; border-color: #1f3b4d; }
                         .o_quoter_matrix .o_q_empty { color: #9ca3af; }
+                        .o_quoter_summary_block { page-break-inside: avoid; }
+                        .o_quoter_summary_block table thead th:first-child,
+                        .o_quoter_summary_block table tbody td:first-child { text-align: left; }
                     </style>
                     <div class="page o_quoter_report">
                         <div class="o_quoter_meta">
@@ -216,6 +220,36 @@
                                 </tbody>
                             </table>
                         </t>
+
+                        <div class="o_quoter_summary_block">
+                            <h4>4. Resumen Anual/Mensual</h4>
+                            <table class="o_quoter_tbl o_quoter_budget">
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th class="text-end">Anual</th>
+                                        <th class="text-end">Mensual</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="o_q_line">
+                                        <td>Honorarios Cotizados</td>
+                                        <td class="text-end" t-esc="summary_totals['annual']"/>
+                                        <td class="text-end" t-esc="summary_totals['monthly']"/>
+                                    </tr>
+                                    <tr class="o_q_line">
+                                        <td>Proporci&#243;n Mensual</td>
+                                        <td class="text-end"></td>
+                                        <td class="text-end" t-esc="summary_totals['proportion']"/>
+                                    </tr>
+                                    <tr class="o_q_final">
+                                        <td>Total Cuota Mensual</td>
+                                        <td class="text-end"></td>
+                                        <td class="text-end" t-esc="summary_totals['total']"/>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </t>
             </t>

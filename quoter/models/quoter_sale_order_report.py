@@ -82,11 +82,10 @@ class SaleOrderQuoterReport(models.Model):
                 "label": _("Gerente a cargo"),
                 "cells": (
                     [
-                        self.quoter_manager_id.display_name
-                        if self.quoter_manager_id
-                        else QUOTER_REPORT_EMPTY
+                        self._quoter_report_block_for_area(area).manager_id.display_name
+                        or QUOTER_REPORT_EMPTY
+                        for area in areas
                     ]
-                    * len(areas)
                     if areas
                     else [QUOTER_REPORT_EMPTY]
                 ),
@@ -276,6 +275,19 @@ class SaleOrderQuoterReport(models.Model):
             amount or 0.0,
             currency_obj=self.currency_id,
         )
+
+    def _quoter_report_summary_totals(self):
+        """Recuadro final Anual/Mensual (mismos totales que la pestaña Resumen general)."""
+        self.ensure_one()
+        annual_amount, monthly_amount, monthly_proportion, total_monthly_quota = (
+            self._quoter_order_summary_amounts()
+        )
+        return {
+            "annual": self._quoter_report_format_money(annual_amount),
+            "monthly": self._quoter_report_format_money(monthly_amount),
+            "proportion": self._quoter_report_format_money(monthly_proportion),
+            "total": self._quoter_report_format_money(total_monthly_quota),
+        }
 
     def _quoter_report_format_number(self, value, decimals=2):
         return self._quoter_format_number_es(value, decimals=decimals)
