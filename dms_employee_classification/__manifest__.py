@@ -7,7 +7,7 @@
     "website": "https://www.grupopgk.com.ar/",
     "license": "AGPL-3",
     "category": "Document Management",
-    "version": "15.0.1.6.5",
+    "version": "15.0.1.6.6",
     "application": False,
     "installable": True,
     "auto_install": False,
@@ -24,6 +24,7 @@
     ],
     "data": [
         "security/ir.model.access.csv",
+        "security/hr_employee_security.xml",
         "views/hr_employee_document_views.xml",
         "views/dms_classification_template_views.xml",
         "wizards/wizard_dms_classification_views.xml",
