@@ -21,6 +21,18 @@ class QuoterLineSeparatorTag(models.Model):
         help="Índice de color para la vista (paleta estándar de Odoo).",
     )
 
+    is_employee_subscription = fields.Boolean(
+        string="Es abono por empleado",
+        default=False,
+        help="Marca esta sección para calcular el abono base por empleado en el desglose BPA.",
+    )
+
+    is_adp = fields.Boolean(
+        string="Es ADP",
+        default=False,
+        help="Marca esta sección para calcular el desglose ADP (honorarios / cantidad de empleados).",
+    )
+
     area_ids = fields.Many2many(
         comodel_name="quoter.professional.area",
         relation="quoter_professional_area_separator_tag_rel",

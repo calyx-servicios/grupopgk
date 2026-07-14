@@ -95,6 +95,12 @@ class SaleOrderLine(models.Model):
         store=True,
         readonly=True,
     )
+    quoter_subtract_in_bpa = fields.Boolean(
+        string="Restar en BPA",
+        related="product_id.product_tmpl_id.quoter_service_line_id.subtract_in_bpa",
+        store=True,
+        readonly=True,
+    )
     quoter_product_separator_tag_color = fields.Integer(
         string="Color sección (producto)",
         related="quoter_separator_tag_id.color",
@@ -299,6 +305,9 @@ class SaleOrderLine(models.Model):
                 line._quoter_sync_slots_to_hour_rows_from_columns()
         for line in quoter_lines:
             line.with_context(quoter_allow_zero_hours=line.quoter_is_adjustment_line)._quoter_prepare_hours_and_price()
+            if line._quoter_is_regular_manual_line():
+                # Finanzas: el precio unitario es manual; no pisar el valor recibido.
+                continue
             price, _warn = line._quoter_compute_unit_price_from_ranges()
             super(SaleOrderLine, line.with_context(post_ctx)).write({"price_unit": price})
         quoter_lines.filtered("quoter_is_adjustment_line")._quoter_validate_adjustment_hours_balance()
@@ -393,14 +402,43 @@ class SaleOrderLine(models.Model):
         if self.quoter_is_adjustment_line:
             return False
         order = self._quoter_effective_order()
-        return bool(
+        if not (
             order
             and order.is_quotation
             and self.product_id
             and getattr(self.product_id, "is_quoter_product", False)
-            and self.quoter_manual_load
-            and not self.quoter_manual_total_load
-        )
+        ):
+            return False
+        if self.quoter_manual_total_load:
+            return False
+        if self.quoter_manual_load:
+            return True
+        # Áreas regular_manual: horas siempre manuales (sin configuración por producto).
+        area = self._quoter_effective_tab_area()
+        if area and area.hour_matrix_mode == "regular_manual":
+            return True
+        return False
+
+    def _quoter_is_regular_manual_line(self):
+        """Línea de área Finanzas (regular_manual): horas y precio unitario 100% manuales.
+
+        En estas áreas el precio unitario lo escribe el usuario (el onchange lo
+        rellena desde la tarifa al cambiar horas, pero una edición manual debe
+        conservarse). Por eso el backend no debe recalcular ni pisar `price_unit`.
+        """
+        self.ensure_one()
+        if self.quoter_is_adjustment_line:
+            return False
+        order = self._quoter_effective_order()
+        if not (
+            order
+            and order.is_quotation
+            and self.product_id
+            and getattr(self.product_id, "is_quoter_product", False)
+        ):
+            return False
+        area = self._quoter_effective_tab_area()
+        return bool(area and area.hour_matrix_mode == "regular_manual")
 
     def _quoter_is_new_line_record(self):
         """Línea aún no persistida (NewId en x2many del bloque embebido)."""
@@ -1195,7 +1233,6 @@ class SaleOrderLine(models.Model):
                     order
                     and order.is_quotation
                     and isinstance(order.id, int)
-                    and not order._quoter_workflow_is_admin()
                     and not order._quoter_workflow_can_edit_content()
                 ):
                     raise AccessError(
@@ -1293,6 +1330,10 @@ class SaleOrderLine(models.Model):
                 and getattr(l.product_id, "is_quoter_product", False)
             ):
                 if not line._quoter_effective_order().is_quotation:
+                    continue
+                if line._quoter_is_regular_manual_line():
+                    # Finanzas: precio unitario manual; las horas ya se sincronizaron
+                    # arriba. No recalcular ni pisar el precio ingresado.
                     continue
                 if sync_range_cols and line in prepared_from_range_cols:
                     price, _warn = line._quoter_compute_unit_price_from_ranges()
@@ -1470,6 +1511,8 @@ class SaleOrderLine(models.Model):
         "quoter_range_4_hours",
         "quoter_is_adjustment_line",
         "quoter_manual_load",
+        "quoter_tab_area_id",
+        "quoter_tab_area_id.hour_matrix_mode",
     )
     def _compute_quoter_total_hours(self):
         for line in self:
@@ -1483,6 +1526,7 @@ class SaleOrderLine(models.Model):
 
     @api.depends(
         "quoter_tab_area_id",
+        "quoter_tab_area_id.hour_matrix_mode",
         "quoter_range_hour_ids",
         "quoter_range_hour_ids.hours",
         "quoter_range_hour_ids.area_range_id",
@@ -1638,6 +1682,8 @@ class SaleOrderLine(models.Model):
         "quoter_manual_total_load",
         "quoter_is_adjustment_line",
         "quoter_block_id",
+        "quoter_tab_area_id",
+        "quoter_tab_area_id.hour_matrix_mode",
     )
     def _compute_quoter_can_edit_range_hours(self):
         for line in self:
@@ -2080,6 +2126,51 @@ class SaleOrderLine(models.Model):
                 continue
             price, _warn = line._quoter_compute_unit_price_from_ranges()
             line.with_context(ctx).write({"price_unit": price})
+        return True
+
+    @api.model
+    def quoter_persist_regular_manual_line_edits_batch(self, payloads):
+        """Persiste horas por rango (y precio unitario en Finanzas) de líneas con carga
+        manual de horas desde el form embebido antes de guardar el bloque.
+
+        Aplica a líneas con `_quoter_manual_ranges_mode()`: área Finanzas (regular_manual)
+        o producto configurado en quoter.service.line con `manual_load = True` en cualquier
+        área. En Finanzas el precio unitario es manual y se respeta; en el resto el precio
+        se recalcula desde la tarifa según las horas (lo hace `write()`).
+        """
+        if not payloads:
+            return True
+        hour_fields = self._QUOTER_RANGE_HOUR_FIELD_NAMES
+        ctx = dict(
+            self.env.context,
+            quoter_skip_chatter_log=True,
+            quoter_skip_block_product_refresh=True,
+        )
+        Line = self.env["sale.order.line"].with_context(ctx)
+        for item in payloads:
+            if not isinstance(item, dict):
+                continue
+            line_id = item.get("id")
+            if not line_id:
+                continue
+            line = Line.browse(int(line_id)).exists()
+            if not line or not line._quoter_manual_ranges_mode():
+                continue
+            write_vals = {}
+            for key in hour_fields:
+                if key in item and item[key] is not None:
+                    write_vals[key] = float(item[key] or 0.0)
+            if (
+                "price_unit" in item
+                and item["price_unit"] is not None
+                and line._quoter_is_regular_manual_line()
+            ):
+                # El precio manual solo se respeta en Finanzas (regular_manual); en el
+                # resto lo recalcula write() desde la tarifa según las horas.
+                write_vals["price_unit"] = float(item["price_unit"] or 0.0)
+            if not write_vals:
+                continue
+            line.with_context(ctx).write(write_vals)
         return True
 
     def action_quoter_add_adjustment_line(self):

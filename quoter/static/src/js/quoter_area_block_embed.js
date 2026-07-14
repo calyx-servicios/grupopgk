@@ -7,6 +7,7 @@ odoo.define("quoter.area_block_embed", function (require) {
     const view_registry = require("web.view_registry");
     const core = require("web.core");
     const Dialog = require("web.Dialog");
+    const fieldUtils = require("web.field_utils");
     const quoterPreserveActive = require("quoter.preserve_active_record");
     const _t = core._t;
 
@@ -255,6 +256,10 @@ odoo.define("quoter.area_block_embed", function (require) {
         listDp.data.forEach(function (localId) {
             const row = ctrl.model.get(localId);
             if (!row || !row.data) {
+                return;
+            }
+            // Ocultar bloques de áreas cuyo grupo el usuario no tiene.
+            if ("user_can_view_block" in row.data && !row.data.user_can_view_block) {
                 return;
             }
             rows.push({
@@ -2416,6 +2421,226 @@ odoo.define("quoter.area_block_embed", function (require) {
         },
 
         /**
+         * Lee horas por rango (y precio unitario en Finanzas/regular_manual) desde el
+         * listado del bloque para las líneas con carga manual de horas: área regular_manual
+         * o producto con `manual_load = True` (campo `quoter_can_edit_range_hours`).
+         * El BasicModel del form embebido puede quedar con datapoints duplicados/obsoletos
+         * para la misma línea, por lo que se toma el valor visible del DOM.
+         */
+        _quoterHarvestRegularManualFromDom: function (lw, formView) {
+            const harvested = {};
+            if (!lw || !lw.$el || !formView || !formView.model) {
+                return harvested;
+            }
+            const model = formView.model;
+            const hourKeys = QUOTER_RANGE_HOUR_FIELD_NAMES;
+            const $tbody = lw.$el.find("table.o_list_table tbody").first();
+            const $rows = $tbody.length ? $tbody.find("tr") : lw.$el.find("tbody tr");
+            const readCellValue = function ($tr, name) {
+                let $input = $tr.find('td[name="' + name + '"] input');
+                if (!$input.length) {
+                    $input = $tr.find('[name="' + name + '"] input');
+                }
+                if ($input.length) {
+                    const raw = $input.val();
+                    return raw === undefined || raw === null ? "" : String(raw);
+                }
+                const $cell = $tr.find('td[name="' + name + '"]');
+                if ($cell.length) {
+                    return String($cell.text() || "");
+                }
+                return "";
+            };
+            const parseNum = function (raw) {
+                if (raw === undefined || raw === null) {
+                    return null;
+                }
+                const s = String(raw).trim();
+                if (s === "") {
+                    return null;
+                }
+                try {
+                    const v = fieldUtils.parse.float(s);
+                    if (typeof v === "number" && !isNaN(v)) {
+                        return v;
+                    }
+                } catch (e) {
+                    // fallback below
+                }
+                const n = parseFloat(
+                    s.replace(/[^0-9,.\-]/g, "").replace(/\./g, "").replace(",", ".")
+                );
+                return isNaN(n) ? null : n;
+            };
+            $rows.each(function () {
+                const $tr = $(this);
+                if (
+                    $tr.hasClass("o_group_header") ||
+                    $tr.hasClass("o_list_table_grouped") ||
+                    !$tr.is(":visible")
+                ) {
+                    return;
+                }
+                let localId = $tr.data("id");
+                if (!localId) {
+                    const $withId = $tr.find("[data-id]").first();
+                    if ($withId.length) {
+                        localId = $withId.data("id");
+                    }
+                }
+                const row = localId ? quoterGetRawDatapoint(model, localId) : null;
+                const data = row
+                    ? Object.assign({}, row.data || {}, row._changes || {})
+                    : {};
+                if (data.display_type || data.quoter_is_adjustment_line) {
+                    return;
+                }
+                // Solo líneas con horas manuales: Finanzas (regular_manual) o producto
+                // con manual_load = True. `quoter_can_edit_range_hours` cubre ambos casos.
+                if (!data.quoter_can_edit_range_hours) {
+                    return;
+                }
+                const resId = row && row.res_id;
+                if (typeof resId !== "number" || resId <= 0) {
+                    return;
+                }
+                const item = {id: resId};
+                let found = false;
+                const price = parseNum(readCellValue($tr, "price_unit"));
+                if (price !== null) {
+                    item.price_unit = price;
+                    found = true;
+                }
+                hourKeys.forEach(function (key) {
+                    const val = parseNum(readCellValue($tr, key));
+                    if (val !== null) {
+                        item[key] = val;
+                        found = true;
+                    }
+                });
+                if (found) {
+                    harvested[resId] = item;
+                }
+            });
+            return harvested;
+        },
+
+        _quoterCollectRegularManualLinePayloads: function (formView) {
+            const payloads = [];
+            if (!formView || !formView.model) {
+                return payloads;
+            }
+            const model = formView.model;
+            const block = quoterGetRawDatapoint(model, formView.handle);
+            if (!block || !block.data) {
+                return payloads;
+            }
+            // No se filtra por tipo de área: la cosecha por fila ya incluye solo líneas
+            // con horas manuales (regular_manual o producto manual_load = True).
+            const lw = this._quoterFindBlockOrderLineListWidget();
+            const domByResId = this._quoterHarvestRegularManualFromDom(lw, formView);
+            Object.keys(domByResId).forEach(function (resIdStr) {
+                const item = domByResId[resIdStr];
+                if (item && typeof item.id === "number" && item.id > 0) {
+                    payloads.push(item);
+                }
+            });
+            return payloads;
+        },
+
+        /**
+         * Actualiza data y limpia _changes de precio/horas en TODOS los datapoints de las
+         * líneas persistidas (evita que un datapoint obsoleto pise el valor al guardar).
+         */
+        _quoterApplyRegularManualReadToEmbed: function (formView, readRows) {
+            if (!formView || !formView.model || !readRows) {
+                return;
+            }
+            const model = formView.model;
+            const byId = {};
+            readRows.forEach(function (rec) {
+                if (rec && typeof rec.id === "number") {
+                    byId[rec.id] = rec;
+                }
+            });
+            const keys = QUOTER_RANGE_HOUR_FIELD_NAMES.concat([
+                "price_unit",
+                "price_subtotal",
+                "quoter_total_hours",
+            ]);
+            Object.keys(model.localData).forEach(function (k) {
+                const dp = model.localData[k];
+                if (
+                    !dp ||
+                    dp.model !== "sale.order.line" ||
+                    dp.type !== "record" ||
+                    !byId[dp.res_id]
+                ) {
+                    return;
+                }
+                const rec = byId[dp.res_id];
+                if (!dp.data) {
+                    dp.data = {};
+                }
+                keys.forEach(function (key) {
+                    if (rec[key] !== undefined) {
+                        dp.data[key] = rec[key];
+                        if (dp._changes && key in dp._changes) {
+                            delete dp._changes[key];
+                        }
+                    }
+                });
+                if (dp._changes && "quoter_range_hour_ids" in dp._changes) {
+                    delete dp._changes.quoter_range_hour_ids;
+                }
+                if (dp._changes && !Object.keys(dp._changes).length) {
+                    delete dp._changes;
+                }
+            });
+        },
+
+        _quoterPersistRegularManualLineEditsBeforeSave: function (formView) {
+            const self = this;
+            const payloads = self._quoterCollectRegularManualLinePayloads(formView);
+            if (!payloads.length) {
+                return Promise.resolve();
+            }
+            const lineIds = payloads.map(function (p) {
+                return p.id;
+            });
+            const readFields = QUOTER_RANGE_HOUR_FIELD_NAMES.concat([
+                "quoter_total_hours",
+                "price_unit",
+                "price_subtotal",
+            ]);
+            return self
+                ._rpc({
+                    model: "sale.order.line",
+                    method: "quoter_persist_regular_manual_line_edits_batch",
+                    args: [payloads],
+                })
+                .then(function () {
+                    return self._rpc({
+                        model: "sale.order.line",
+                        method: "read",
+                        args: [lineIds, readFields],
+                    });
+                })
+                .then(function (rows) {
+                    self._quoterApplyRegularManualReadToEmbed(formView, rows);
+                })
+                .catch(function (err) {
+                    if (window.console && console.warn) {
+                        console.warn(
+                            "[quoter] persist regular manual line edits failed:",
+                            err
+                        );
+                    }
+                    return Promise.resolve();
+                });
+        },
+
+        /**
          * Confirma la fila en edición del listado (horas, nota) antes de guardar o abrir wizard.
          */
         _quoterCommitEmbeddedOrderLineEdits: function () {
@@ -2460,6 +2685,7 @@ odoo.define("quoter.area_block_embed", function (require) {
                     return Promise.all([
                         self._quoterPersistAdjustmentLineHoursBeforeSave(formView),
                         self._quoterPersistFormulaVolumeBeforeSave(formView),
+                        self._quoterPersistRegularManualLineEditsBeforeSave(formView),
                     ]);
                 });
         },
