@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <!-- ── Tree view ──────────────────────────────────────────────────────── -->
+    <record id="view_api_key_tree" model="ir.ui.view">
+        <field name="name">api.key.tree</field>
+        <field name="model">api.key</field>
+        <field name="arch" type="xml">
+            <tree string="API Keys" decoration-muted="not is_active">
+                <field name="client_name"/>
+                <field name="is_active" string="Activa"/>
+                <field name="created_at" string="Creada el"/>
+                <field name="last_used_at" string="Último uso"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ── Form view ──────────────────────────────────────────────────────── -->
+    <record id="view_api_key_form" model="ir.ui.view">
+        <field name="name">api.key.form</field>
+        <field name="model">api.key</field>
+        <field name="arch" type="xml">
+            <form string="API Key">
+                <sheet>
+                    <group>
+                        <group string="Identificación">
+                            <field name="client_name"/>
+                            <field name="is_active"/>
+                        </group>
+                        <group string="Clave">
+                            <field
+                                name="key_plain"
+                                password="True"
+                                placeholder="Ingrese la clave y guarde…"
+                            />
+                            <field
+                                name="key_hash"
+                                string="Hash almacenado (SHA-256)"
+                            />
+                        </group>
+                    </group>
+                    <group string="Auditoría">
+                        <field name="created_at"/>
+                        <field name="last_used_at"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Action ─────────────────────────────────────────────────────────── -->
+    <record id="action_api_key" model="ir.actions.act_window">
+        <field name="name">API Keys</field>
+        <field name="res_model">api.key</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Cree su primera API Key
+            </p>
+            <p>
+                Ingrese un nombre de cliente, escriba la clave deseada en el
+                campo <strong>Clave API</strong> y guarde. El valor se
+                almacenará hasheado (SHA-256) y nunca se mostrará en claro.
+            </p>
+        </field>
+    </record>
+
+    <!-- ── Menu entry under Settings → Technical ──────────────────────────── -->
+    <menuitem
+        id="menu_api_key"
+        name="API Keys"
+        action="action_api_key"
+        parent="base.menu_administration"
+        groups="base.group_system"
+        sequence="100"
+    />
+
+</odoo>
