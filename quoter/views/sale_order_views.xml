@@ -240,6 +240,7 @@
                                 <field name="area_level_ids" invisible="1"/>
                                 <field name="area_chain_level_ids" invisible="1"/>
                                 <field name="selectable_product_ids" invisible="1"/>
+                                <field name="manager_selectable_user_ids" invisible="1"/>
                                 <field name="quoter_user_is_assigned_manager" invisible="1"/>
                                 <field name="quoter_user_is_assigned_partner" invisible="1"/>
                                 <group string="Cotización por área">
@@ -247,7 +248,7 @@
                                         <field name="area_id" readonly="1" options="{'no_open': True}"/>
                                         <field name="manager_id"
                                                string="Gerente Responsable"
-                                               domain="[('share', '=', False), ('active', '=', True)]"
+                                               domain="[('id', 'in', manager_selectable_user_ids), ('share', '=', False), ('active', '=', True)]"
                                                options="{'no_create': True, 'no_open': True}"
                                                attrs="{'readonly': [('block_editable', '=', False)]}"/>
                                         <field name="quoter_is_first_auditoria"

@@ -64,6 +64,12 @@ class QuoterSaleOrderArea(models.Model):
         copy=False,
         help="Gerente responsable de esta área en la cotización (independiente por área).",
     )
+    manager_selectable_user_ids = fields.Many2many(
+        comodel_name="res.users",
+        related="area_id.group_id.users",
+        string="Usuarios candidatos gerente de área",
+        help="Usuarios del grupo de seguridad del área; limita las opciones del Gerente Responsable.",
+    )
     area_branch_ids = fields.Many2many(
         comodel_name="quoter.area.branch",
         related="area_id.branch_ids",
