@@ -151,6 +151,30 @@ class SaleOrder(models.Model):
         compute="_compute_quoter_footer_area_discount_amount",
         help="Total de la línea de pedido que agrupa descuentos/recargos globales por área (sin impuestos).",
     )
+    quoter_summary_annual_amount = fields.Monetary(
+        string="Honorarios Cotizados (Anual)",
+        currency_field="currency_id",
+        compute="_compute_quoter_order_summary_amounts",
+        help="(A) Suma de Tax + Auditoría (0 si el pedido no tiene bloques de esas áreas).",
+    )
+    quoter_summary_monthly_amount = fields.Monetary(
+        string="Honorarios Cotizados (Mensual)",
+        currency_field="currency_id",
+        compute="_compute_quoter_order_summary_amounts",
+        help="(B) Suma de BPO + Payroll + Finanzas (0 si el pedido no tiene bloques de esas áreas).",
+    )
+    quoter_summary_monthly_proportion = fields.Monetary(
+        string="Proporción Mensual",
+        currency_field="currency_id",
+        compute="_compute_quoter_order_summary_amounts",
+        help="(C) = (A) / 12.",
+    )
+    quoter_summary_total_monthly_quota = fields.Monetary(
+        string="Total Cuota Mensual",
+        currency_field="currency_id",
+        compute="_compute_quoter_order_summary_amounts",
+        help="(B) + (C).",
+    )
 
     @api.depends("is_quotation")
     def _compute_quoter_user_can_edit_fields(self):
@@ -597,6 +621,54 @@ class SaleOrder(models.Model):
                 or 0.0
             )
         return rates, ranges
+
+    @api.depends(
+        "quoter_area_block_ids",
+        "quoter_area_block_ids.total_untaxed",
+        "quoter_area_block_ids.area_id",
+        "quoter_area_block_ids.area_id.is_tax_area",
+        "quoter_area_block_ids.area_id.is_auditoria_area",
+        "quoter_area_block_ids.area_id.is_formula_area",
+        "quoter_area_block_ids.area_id.is_payroll_area",
+        "quoter_area_block_ids.area_id.is_finanzas_area",
+    )
+    def _compute_quoter_order_summary_amounts(self):
+        for order in self:
+            (
+                order.quoter_summary_annual_amount,
+                order.quoter_summary_monthly_amount,
+                order.quoter_summary_monthly_proportion,
+                order.quoter_summary_total_monthly_quota,
+            ) = order._quoter_order_summary_amounts()
+
+    def _quoter_order_summary_amounts(self):
+        """(A) Anual = Tax + Auditoría; (B) Mensual = BPO + Payroll + Finanzas.
+
+        Si un área no existe en el pedido, su aporte es 0 (suma sobre bloques existentes).
+        """
+        self.ensure_one()
+        blocks = self.quoter_area_block_ids
+        annual_amount = sum(
+            blocks.filtered(
+                lambda b: b.area_id
+                and (b.area_id.is_tax_area or b.area_id.is_auditoria_area)
+            ).mapped("total_untaxed")
+        )
+        monthly_amount = sum(
+            blocks.filtered(
+                lambda b: b.area_id
+                and (
+                    b.area_id.is_formula_area
+                    or b.area_id.is_payroll_area
+                    or b.area_id.is_finanzas_area
+                )
+            ).mapped("total_untaxed")
+        )
+        annual_amount = float(annual_amount or 0.0)
+        monthly_amount = float(monthly_amount or 0.0)
+        monthly_proportion = annual_amount / 12.0
+        total_monthly_quota = monthly_amount + monthly_proportion
+        return annual_amount, monthly_amount, monthly_proportion, total_monthly_quota
 
     def _quoter_build_area_summary_html(self, area, block):
         """Resumen por rango (estilo filas/columnas tipo planilla, sin tabla HTML)."""

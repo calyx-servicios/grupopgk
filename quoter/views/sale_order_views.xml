@@ -111,6 +111,37 @@
             <xpath expr="//page[@name='order_lines']//group[@name='note_group']/group[1]" position="attributes">
                 <attribute name="attrs">{'invisible': [('is_quotation', '=', True)]}</attribute>
             </xpath>
+            <!-- Cotización: oculta el desglose de impuestos/total estándar de Odoo -->
+            <xpath expr="//page[@name='order_lines']//group[@name='sale_total']" position="attributes">
+                <attribute name="attrs">{'invisible': [('is_quotation', '=', True)]}</attribute>
+            </xpath>
+            <!-- Cotización: desglose propio Anual/Mensual (Tax+Auditoría / BPO+Payroll+Finanzas) -->
+            <xpath expr="//page[@name='order_lines']//group[@name='sale_total']" position="after">
+                <group class="oe_subtotal_footer oe_right o_quoter_order_summary_footer" colspan="2" col="5"
+                       name="quoter_order_summary_total"
+                       style="width:30rem;max-width:100%;"
+                       attrs="{'invisible': [('is_quotation', '=', False)]}">
+                    <div colspan="3"/>
+                    <div colspan="1" class="text-right font-weight-bold"
+                         style="white-space:nowrap;">Anual</div>
+                    <div colspan="1" class="text-right font-weight-bold"
+                         style="white-space:nowrap;">Mensual</div>
+                    <newline/>
+                    <div colspan="3" style="white-space:nowrap;padding-right:.5rem;">Honorarios Cotizados</div>
+                    <field name="quoter_summary_annual_amount" nolabel="1" widget="monetary" readonly="1"/>
+                    <field name="quoter_summary_monthly_amount" nolabel="1" widget="monetary" readonly="1"/>
+                    <newline/>
+                    <div colspan="3" style="white-space:nowrap;padding-right:.5rem;">Proporción Mensual</div>
+                    <div colspan="1"/>
+                    <field name="quoter_summary_monthly_proportion" nolabel="1" widget="monetary" readonly="1"/>
+                    <newline/>
+                    <div colspan="3" class="font-weight-bold"
+                         style="white-space:nowrap;padding-right:.5rem;">Total Cuota Mensual</div>
+                    <div colspan="1"/>
+                    <field name="quoter_summary_total_monthly_quota" nolabel="1" widget="monetary" readonly="1"
+                           class="oe_subtotal_footer_separator font-weight-bold"/>
+                </group>
+            </xpath>
             <xpath expr="//page[@name='optional_products']" position="attributes">
                 <attribute name="attrs">{'invisible': ['|', ('is_quotation', '=', True), ('state', 'not in', ['draft', 'sent'])]}</attribute>
             </xpath>
@@ -209,11 +240,17 @@
                                 <field name="area_level_ids" invisible="1"/>
                                 <field name="area_chain_level_ids" invisible="1"/>
                                 <field name="selectable_product_ids" invisible="1"/>
+                                <field name="manager_selectable_user_ids" invisible="1"/>
                                 <field name="quoter_user_is_assigned_manager" invisible="1"/>
                                 <field name="quoter_user_is_assigned_partner" invisible="1"/>
                                 <group string="Cotización por área">
                                     <group>
                                         <field name="area_id" readonly="1" options="{'no_open': True}"/>
+                                        <field name="manager_id"
+                                               string="Gerente Responsable"
+                                               domain="[('id', 'in', manager_selectable_user_ids), ('share', '=', False), ('active', '=', True)]"
+                                               options="{'no_create': True, 'no_open': True}"
+                                               attrs="{'readonly': [('block_editable', '=', False)]}"/>
                                         <field name="quoter_is_first_auditoria"
                                                attrs="{'invisible': [('area_is_auditoria', '=', False)]}"/>
                                         <field name="chain_employee_count"
