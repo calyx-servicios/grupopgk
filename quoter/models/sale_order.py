@@ -1,6 +1,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 import json
+from collections import defaultdict
 
 from odoo import _, api, fields, models
 from odoo.exceptions import MissingError, UserError, ValidationError
@@ -149,6 +150,30 @@ class SaleOrder(models.Model):
         currency_field="currency_id",
         compute="_compute_quoter_footer_area_discount_amount",
         help="Total de la línea de pedido que agrupa descuentos/recargos globales por área (sin impuestos).",
+    )
+    quoter_summary_annual_amount = fields.Monetary(
+        string="Honorarios Cotizados (Anual)",
+        currency_field="currency_id",
+        compute="_compute_quoter_order_summary_amounts",
+        help="(A) Suma de Tax + Auditoría (0 si el pedido no tiene bloques de esas áreas).",
+    )
+    quoter_summary_monthly_amount = fields.Monetary(
+        string="Honorarios Cotizados (Mensual)",
+        currency_field="currency_id",
+        compute="_compute_quoter_order_summary_amounts",
+        help="(B) Suma de BPO + Payroll + Finanzas (0 si el pedido no tiene bloques de esas áreas).",
+    )
+    quoter_summary_monthly_proportion = fields.Monetary(
+        string="Proporción Mensual",
+        currency_field="currency_id",
+        compute="_compute_quoter_order_summary_amounts",
+        help="(C) = (A) / 12.",
+    )
+    quoter_summary_total_monthly_quota = fields.Monetary(
+        string="Total Cuota Mensual",
+        currency_field="currency_id",
+        compute="_compute_quoter_order_summary_amounts",
+        help="(B) + (C).",
     )
 
     @api.depends("is_quotation")
@@ -597,6 +622,54 @@ class SaleOrder(models.Model):
             )
         return rates, ranges
 
+    @api.depends(
+        "quoter_area_block_ids",
+        "quoter_area_block_ids.total_untaxed",
+        "quoter_area_block_ids.area_id",
+        "quoter_area_block_ids.area_id.is_tax_area",
+        "quoter_area_block_ids.area_id.is_auditoria_area",
+        "quoter_area_block_ids.area_id.is_formula_area",
+        "quoter_area_block_ids.area_id.is_payroll_area",
+        "quoter_area_block_ids.area_id.is_finanzas_area",
+    )
+    def _compute_quoter_order_summary_amounts(self):
+        for order in self:
+            (
+                order.quoter_summary_annual_amount,
+                order.quoter_summary_monthly_amount,
+                order.quoter_summary_monthly_proportion,
+                order.quoter_summary_total_monthly_quota,
+            ) = order._quoter_order_summary_amounts()
+
+    def _quoter_order_summary_amounts(self):
+        """(A) Anual = Tax + Auditoría; (B) Mensual = BPO + Payroll + Finanzas.
+
+        Si un área no existe en el pedido, su aporte es 0 (suma sobre bloques existentes).
+        """
+        self.ensure_one()
+        blocks = self.quoter_area_block_ids
+        annual_amount = sum(
+            blocks.filtered(
+                lambda b: b.area_id
+                and (b.area_id.is_tax_area or b.area_id.is_auditoria_area)
+            ).mapped("total_untaxed")
+        )
+        monthly_amount = sum(
+            blocks.filtered(
+                lambda b: b.area_id
+                and (
+                    b.area_id.is_formula_area
+                    or b.area_id.is_payroll_area
+                    or b.area_id.is_finanzas_area
+                )
+            ).mapped("total_untaxed")
+        )
+        annual_amount = float(annual_amount or 0.0)
+        monthly_amount = float(monthly_amount or 0.0)
+        monthly_proportion = annual_amount / 12.0
+        total_monthly_quota = monthly_amount + monthly_proportion
+        return annual_amount, monthly_amount, monthly_proportion, total_monthly_quota
+
     def _quoter_build_area_summary_html(self, area, block):
         """Resumen por rango (estilo filas/columnas tipo planilla, sin tabla HTML)."""
         self.ensure_one()
@@ -705,6 +778,151 @@ class SaleOrder(models.Model):
         return (
             '<div class="o_quoter_area_summary" style="width:52rem;max-width:100%;margin-left:auto;margin-right:0;font-size:inherit;color:#1f2937;">'
             + "".join(rows_html)
+            + "</div>"
+        )
+
+    def _quoter_build_bpa_summary_html(self, area, block):
+        """Desglose BPA por sección: abono por empleado y ADP."""
+        self.ensure_one()
+        if not area or not block:
+            return False
+
+        employee_count = max(int(block.chain_employee_count or 0), 0)
+
+        # Get all non-section, non-discount lines for this area
+        olines = self.order_line.filtered(
+            lambda l, a=area: not l.display_type
+            and l.quoter_tab_area_id == a
+            and not l.quoter_is_area_discount_total_line
+            and not l.quoter_is_adjustment_line
+        )
+        if not olines:
+            return False
+
+        # Group lines by separator_tag
+        lines_by_tag = defaultdict(lambda: self.env["sale.order.line"])
+        for line in olines:
+            tag = line.quoter_separator_tag_id
+            if tag:
+                lines_by_tag[tag.id] |= line
+
+        # Identify relevant tags
+        SeparatorTag = self.env["quoter.line.separator.tag"]
+        all_tag_ids = list(lines_by_tag.keys())
+        if not all_tag_ids:
+            return False
+        tags = SeparatorTag.browse(all_tag_ids)
+        employee_sub_tags = tags.filtered("is_employee_subscription")
+        adp_tags = tags.filtered("is_adp")
+
+        if not employee_sub_tags and not adp_tags:
+            return False
+
+        # Get rates (reuse existing logic, dynamic ranges)
+        ranges = area.area_range_ids.sorted(key=lambda r: (r.sequence, r.id))
+        range_count = len(ranges)
+        rates, _ranges = self._quoter_slot_range_rates(area, limit=range_count)
+
+        rows = []  # list of (name, value)
+
+        # === Secciones "Es abono por empleado" ===
+        for tag in employee_sub_tags.sorted(key=lambda t: t.name or ""):
+            tag_lines = lines_by_tag.get(tag.id, self.env["sale.order.line"])
+            if not tag_lines:
+                continue
+            # Calculate total hours per range and subtract hours per range
+            total_per_range = [0.0] * range_count
+            subtract_per_range = [0.0] * range_count
+            range_ids = [r.id for r in ranges]
+            for line in tag_lines:
+                by_range = {
+                    h.area_range_id.id: float(h.hours or 0.0)
+                    for h in line.quoter_range_hour_ids
+                    if h.area_range_id
+                }
+                for idx, rid in enumerate(range_ids):
+                    h = by_range.get(rid, 0.0)
+                    total_per_range[idx] += h
+                    if line.quoter_subtract_in_bpa:
+                        subtract_per_range[idx] += h
+            # Formula: sum((total - subtract) * rate) / employee_count
+            resultado = sum(
+                (total_per_range[i] - subtract_per_range[i]) * rates[i]
+                for i in range(range_count)
+            )
+            if employee_count > 0:
+                abono_base = resultado / employee_count
+            else:
+                abono_base = 0.0
+            rows.append((tag.name or _("Sin nombre"), abono_base))
+
+        # === Secciones "Es ADP" ===
+        for tag in adp_tags.sorted(key=lambda t: t.name or ""):
+            tag_lines = lines_by_tag.get(tag.id, self.env["sale.order.line"])
+            if not tag_lines:
+                continue
+            total_honorarios = sum(tag_lines.mapped("price_subtotal"))
+            if employee_count > 0:
+                resultado_adp = total_honorarios / employee_count
+            else:
+                resultado_adp = 0.0
+            rows.append((tag.name or _("Sin nombre"), resultado_adp))
+
+        if not rows:
+            return False
+
+        # Build HTML
+        def esc(t):
+            return html_escape(t or "")
+
+        style_grid = (
+            "display:grid;"
+            "grid-template-columns:minmax(14rem,20rem) minmax(6rem,10rem);"
+            "column-gap:1rem;row-gap:.4rem;align-items:center;"
+            "font-size:inherit;line-height:1.45;"
+        )
+        style_hdr = "font-weight:600;font-size:inherit;color:#1f2937;"
+        style_lbl = "font-weight:400;font-size:inherit;"
+        style_cell = (
+            "text-align:right;font-variant-numeric:tabular-nums;"
+            "font-size:inherit;font-weight:600;"
+        )
+
+        parts = []
+        parts.append(
+            '<div class="mt-3 mb-1" '
+            'style="font-weight:700;font-size:inherit;line-height:1.45;color:#1f2937;">'
+            f'{esc(_("Desglose BPA por sección"))}</div>'
+        )
+        # Header
+        hdr = (
+            f'<div style="{style_grid}">'
+            f'<div style="{style_hdr}">{esc(_("Sección"))}</div>'
+            f'<div style="{style_hdr}{style_cell}">{esc(_("Valor"))}</div>'
+            f'</div>'
+        )
+        parts.append(hdr)
+        # Data rows
+        for name, value in rows:
+            formatted = "$" + self._quoter_format_number_es(value, decimals=2)
+            parts.append(
+                f'<div style="{style_grid}">'
+                f'<div style="{style_lbl}">{esc(name)}</div>'
+                f'<div style="{style_cell}">{esc(formatted)}</div>'
+                f'</div>'
+            )
+
+        if employee_count == 0:
+            parts.append(
+                '<div class="text-muted mt-1" style="font-size:inherit;">'
+                f'{esc(_("Cantidad de empleados = 0: los valores se muestran como $0,00."))}'
+                '</div>'
+            )
+
+        return (
+            '<div class="o_quoter_bpa_summary" style="width:52rem;max-width:100%;'
+            'margin-left:auto;margin-right:0;font-size:inherit;color:#1f2937;">'
+            + "".join(parts)
             + "</div>"
         )
 
@@ -1214,6 +1432,35 @@ class SaleOrder(models.Model):
     def read(self, fields=None, load="_classic_read"):
         """En cotizaciones el pedido no edita líneas de bloques (solo vía form embebido)."""
         result = super().read(fields=fields, load=load)
+        # --- Filtrar bloques y áreas según grupo de seguridad del área ---
+        user = self.env.user
+        user_groups = user.groups_id
+        if fields is None or "quoter_area_block_ids" in fields:
+            Block = self.env["quoter.sale.order.area"]
+            for values in result:
+                block_ids = values.get("quoter_area_block_ids")
+                if not block_ids:
+                    continue
+                visible_ids = []
+                for bid in block_ids:
+                    block = Block.browse(bid)
+                    group = block.area_id.group_id if block.area_id else False
+                    if not group or group in user_groups:
+                        visible_ids.append(bid)
+                values["quoter_area_block_ids"] = visible_ids
+        if fields is None or "quoter_area_ids" in fields:
+            Area = self.env["quoter.professional.area"]
+            for values in result:
+                area_ids = values.get("quoter_area_ids")
+                if not area_ids:
+                    continue
+                visible_area_ids = []
+                for aid in area_ids:
+                    area = Area.browse(aid)
+                    group = area.group_id
+                    if not group or group in user_groups:
+                        visible_area_ids.append(aid)
+                values["quoter_area_ids"] = visible_area_ids
         if fields is None or "order_line" in fields:
             Line = self.env["sale.order.line"]
             for values in result:

@@ -52,6 +52,7 @@
                             <field name="sequence"/>
                             <field name="group_id"/>
                             <field name="is_finanzas_area" invisible="1"/>
+                            <field name="is_payroll_area" invisible="1"/>
                             <field name="is_regular_manual_area" invisible="1"/>
                             <field name="hour_matrix_mode" invisible="1"/>
                             <field name="pricelist_id" options="{'no_create': True}"/>
@@ -125,6 +126,8 @@
                                     <field name="name"
                                            attrs="{'readonly': [('is_generic_link', '=', True)]}"/>
                                     <field name="is_default_product" optional="show"/>
+                                    <field name="subtract_in_bpa" optional="show"
+                                           attrs="{'column_invisible': [('parent.is_payroll_area', '=', False)]}"/>
                                     <field name="unify_value"
                                            attrs="{'column_invisible': [('parent.matrix_unify_branch_values', '=', False)], 'readonly': [('parent.quoter_config_edit_mode', '=', False)]}"/>
                                     <field name="shared_b_calc"
@@ -177,6 +180,8 @@
                                                    domain="[('id', 'in', parent.separator_tag_ids)]"
                                                    options="{'no_create': True}"/>
                                             <field name="is_default_product"/>
+                                            <field name="subtract_in_bpa"
+                                                   attrs="{'invisible': [('parent.is_payroll_area', '=', False)]}"/>
                                             <field name="unify_value"
                                                    attrs="{'invisible': [('parent.matrix_unify_branch_values', '=', False)], 'readonly': [('area_quoter_config_edit_mode', '=', False)]}"/>
                                             <field name="shared_b_calc"
@@ -245,7 +250,7 @@
                                 <field name="output_hours_minimum"
                                        attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
                                 <field name="allow_change_complexity_level"
-                                       attrs="{'invisible': [('hour_matrix_mode', '!=', 'combined')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                                       attrs="{'invisible': [('hour_matrix_mode', 'not in', ('combined', 'formula_chain'))], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
                                 <field name="formula_test_volume"
                                        attrs="{'invisible': [('hour_matrix_mode', '!=', 'formula')], 'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
                             </group>
@@ -408,6 +413,8 @@
             <tree string="Secciones de cotizador">
                 <field name="name"/>
                 <field name="color" widget="color_picker"/>
+                <field name="is_employee_subscription" optional="show"/>
+                <field name="is_adp" optional="show"/>
             </tree>
         </field>
     </record>
@@ -421,6 +428,10 @@
                     <group>
                         <field name="name"/>
                         <field name="color" widget="color_picker"/>
+                    </group>
+                    <group string="Configuración BPA">
+                        <field name="is_employee_subscription"/>
+                        <field name="is_adp"/>
                     </group>
                     <group string="Compartida en áreas">
                         <field name="area_ids" widget="many2many_tags" nolabel="1" colspan="2"/>
@@ -523,6 +534,7 @@
                        domain="[('id', 'in', area_separator_tag_ids)]"
                        options="{'no_create': True}"/>
                 <field name="is_default_product" optional="show"/>
+                <field name="subtract_in_bpa" optional="show"/>
                 <field name="manual_load" optional="show"/>
                 <field name="manual_total_load" invisible="1"/>
                 <field name="product_tmpl_id" optional="show"/>
@@ -568,6 +580,7 @@
                                domain="[('id', 'in', area_separator_tag_ids)]"
                                options="{'no_create': True}"/>
                 <field name="is_default_product"/>
+                <field name="subtract_in_bpa"/>
                 <field name="area_matrix_unify_branch_values" invisible="1"/>
                 <field name="unify_value"
                        attrs="{'invisible': [('area_matrix_unify_branch_values', '=', False)]}"/>

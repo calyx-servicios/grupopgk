@@ -58,6 +58,18 @@ class QuoterSaleOrderArea(models.Model):
         string="Rama",
         ondelete="set null",
     )
+    manager_id = fields.Many2one(
+        comodel_name="res.users",
+        string="Gerente Responsable",
+        copy=False,
+        help="Gerente responsable de esta área en la cotización (independiente por área).",
+    )
+    manager_selectable_user_ids = fields.Many2many(
+        comodel_name="res.users",
+        related="area_id.group_id.users",
+        string="Usuarios candidatos gerente de área",
+        help="Usuarios del grupo de seguridad del área; limita las opciones del Gerente Responsable.",
+    )
     area_branch_ids = fields.Many2many(
         comodel_name="quoter.area.branch",
         related="area_id.branch_ids",
@@ -84,6 +96,11 @@ class QuoterSaleOrderArea(models.Model):
         related="area_id.is_formula_area",
         readonly=True,
     )
+    area_is_payroll = fields.Boolean(
+        string="Área Payroll",
+        related="area_id.is_payroll_area",
+        readonly=True,
+    )
     area_hour_matrix_mode = fields.Selection(
         related="area_id.hour_matrix_mode",
         readonly=True,
@@ -100,6 +117,10 @@ class QuoterSaleOrderArea(models.Model):
         string="Mostrar columnas volumen fórmula",
         compute="_compute_area_show_formula_volume_fields",
     )
+    user_can_view_block = fields.Boolean(
+        string="Usuario puede ver bloque",
+        compute="_compute_user_can_view_block",
+    )
 
     @api.depends("area_hour_matrix_mode")
     def _compute_area_show_formula_volume_fields(self):
@@ -107,6 +128,16 @@ class QuoterSaleOrderArea(models.Model):
             rec.area_show_formula_volume_fields = (
                 rec.area_hour_matrix_mode == "formula"
             )
+
+    def _compute_user_can_view_block(self):
+        """El usuario ve el bloque si no hay grupo en el área o si pertenece al grupo."""
+        user = self.env.user
+        for rec in self:
+            group = rec.area_id.group_id if rec.area_id else False
+            if not group:
+                rec.user_can_view_block = True
+            else:
+                rec.user_can_view_block = group in user.groups_id
 
     area_is_finanzas = fields.Boolean(
         string="Área Finanzas",
@@ -296,6 +327,12 @@ class QuoterSaleOrderArea(models.Model):
     area_summary_html = fields.Html(
         string="Resumen horas/tarifas",
         compute="_compute_area_summary_html",
+        sanitize=False,
+    )
+
+    bpa_summary_html = fields.Html(
+        string="Desglose APB por sección",
+        compute="_compute_bpa_summary_html",
         sanitize=False,
     )
 
@@ -949,7 +986,6 @@ class QuoterSaleOrderArea(models.Model):
                 and order.is_quotation
                 and isinstance(order.id, int)
                 and not self.env.context.get("quoter_workflow_transition")
-                and not order._quoter_workflow_is_admin()
             ):
                 wf_vals = dict(vals)
                 wf_vals.pop("order_line_ids", None)
@@ -2048,3 +2084,29 @@ class QuoterSaleOrderArea(models.Model):
                 rec.area_summary_html = False
             else:
                 rec.area_summary_html = rec.order_id._quoter_build_area_summary_html(rec.area_id, rec)
+
+    @api.depends(
+        "order_id.order_line",
+        "order_id.order_line.price_subtotal",
+        "order_id.order_line.quoter_tab_area_id",
+        "order_id.order_line.quoter_separator_tag_id",
+        "order_id.order_line.quoter_subtract_in_bpa",
+        "order_id.order_line.quoter_range_hour_ids.hours",
+        "order_id.order_line.quoter_range_hour_ids.area_range_id",
+        "order_id.order_line.quoter_is_adjustment_line",
+        "area_id",
+        "area_id.area_range_ids",
+        "area_id.is_payroll_area",
+        "chain_employee_count",
+        "order_id.partner_id",
+        "order_id.pricelist_id",
+        "order_id.date_order",
+    )
+    def _compute_bpa_summary_html(self):
+        for rec in self:
+            if not rec.area_id or not rec.order_id or not rec.area_id.is_payroll_area:
+                rec.bpa_summary_html = False
+            else:
+                rec.bpa_summary_html = rec.order_id._quoter_build_bpa_summary_html(
+                    rec.area_id, rec
+                )

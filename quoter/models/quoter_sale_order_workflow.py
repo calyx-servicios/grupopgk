@@ -69,35 +69,20 @@ class SaleOrderQuoterWorkflow(models.Model):
     def _quoter_workflow_state_label(self, state):
         return dict(QUOTER_WORKFLOW_STATE_SELECTION).get(state, state or "")
 
-    def _quoter_workflow_is_admin(self):
-        return self.env.user.has_group("base.group_system")
-
     def _quoter_workflow_has_group(self, xml_id):
         return self.env.user.has_group(xml_id)
 
     def _quoter_user_is_cotizador_profile(self):
-        user = self.env.user
-        if user.has_group("base.group_system"):
-            return True
-        if user.has_group("quoter.group_quoter_cotizador"):
-            return True
-        return bool(
-            user.has_group("quoter.group_quoter_manager")
-            or user.has_group("quoter.group_quoter_director")
-            or user.has_group("quoter.group_quoter_partner")
-        )
+        """Perfil Cotizador: solo grupo cotizador."""
+        return self.env.user.has_group("quoter.group_quoter_cotizador")
 
     def _quoter_user_is_aprobador_profile(self):
-        user = self.env.user
-        if user.has_group("base.group_system"):
-            return True
-        return user.has_group("quoter.group_quoter_aprobador")
+        """Perfil Aprobador: grupo aprobador."""
+        return self.env.user.has_group("quoter.group_quoter_aprobador")
 
     def _quoter_user_is_contratos_profile(self):
-        user = self.env.user
-        if user.has_group("base.group_system"):
-            return True
-        return user.has_group("quoter.group_quoter_contratos")
+        """Perfil Contratos: grupo contratos."""
+        return self.env.user.has_group("quoter.group_quoter_contratos")
 
     @api.depends(
         "is_quotation",
@@ -170,19 +155,31 @@ class SaleOrderQuoterWorkflow(models.Model):
                 return False
         return True
 
+    # Estados terminales: no se permite modificar el registro (salvo transiciones de flujo).
+    QUOTER_TERMINAL_STATES = frozenset(
+        {"enviado_cliente", "rechazado_cliente", "aprobado_cliente"}
+    )
+
     def _quoter_validate_workflow_write_access(self, vals):
         self.ensure_one()
         if not self.is_quotation or not isinstance(self.id, int):
             return
-        if self._quoter_workflow_is_admin():
-            return
+        state = self.quoter_workflow_state or "en_preparacion"
         if self.env.context.get("quoter_workflow_transition"):
             if not self._quoter_workflow_only_transition_vals(vals):
                 raise AccessError(
                     _("Solo puede cambiar el estado de la cotización en esta acción.")
                 )
             return
-        state = self.quoter_workflow_state or "en_preparacion"
+        # Bloqueo explícito en estados terminales: ningún perfil puede editar campos.
+        if state in self.QUOTER_TERMINAL_STATES:
+            raise AccessError(
+                _(
+                    "No se puede modificar la cotización en el estado «%s». "
+                    "El registro está bloqueado."
+                )
+                % self._quoter_workflow_state_label(state)
+            )
         if self._quoter_user_is_contratos_profile() and not self._quoter_user_is_cotizador_profile() and not self._quoter_user_is_aprobador_profile():
             raise AccessError(
                 _("El perfil Contratos solo puede cambiar el estado de la cotización mediante los botones de acción.")
@@ -316,8 +313,6 @@ class SaleOrderQuoterWorkflow(models.Model):
     def _check_quoter_partner_adjustment_write_access(self):
         """Descuento/recargo % por área: perfil Aprobador en estados de aprobación."""
         self.ensure_one()
-        if self.env.user.has_group("base.group_system"):
-            return
         if self.quoter_workflow_state not in ("en_aprobacion", "aprobado_interno"):
             raise UserError(
                 _(
