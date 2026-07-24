@@ -199,6 +199,79 @@ class SaleOrderQuoterWorkflow(models.Model):
             % self._quoter_workflow_state_label(state)
         )
 
+    def _quoter_workflow_is_restricted_aprobador(self):
+        """True si en este registro el usuario solo puede tocar Descuento %/Recargo %.
+
+        Es el caso del Aprobador (socio asignado) en «En aprobación»/«Aprobado interno»:
+        no puede editar contenido, solo los porcentajes de ajuste del bloque.
+        """
+        self.ensure_one()
+        if not self.is_quotation or not isinstance(self.id, int):
+            return False
+        if self._quoter_workflow_can_edit_content():
+            return False
+        return bool(
+            self.quoter_workflow_state in ("en_aprobacion", "aprobado_interno")
+            and self._quoter_user_is_aprobador_profile()
+        )
+
+    @api.model
+    def _quoter_workflow_sanitize_block_commands_adjustments(self, commands):
+        """Deja solo comandos (1, id, {Descuento %/Recargo %}) sobre bloques existentes.
+
+        Descarta cualquier otro campo del bloque (p. ej. ecos de order_line_ids) y
+        cualquier comando de alta/baja/enlace de bloques.
+        """
+        if not commands:
+            return []
+        out = []
+        for cmd in commands:
+            if not isinstance(cmd, (list, tuple)) or len(cmd) < 1:
+                continue
+            if cmd[0] == 1 and len(cmd) > 2 and isinstance(cmd[2], dict):
+                kept = {
+                    k: cmd[2][k]
+                    for k in QUOTER_WORKFLOW_APROBADOR_BLOCK_FIELDS
+                    if k in cmd[2]
+                }
+                if kept:
+                    out.append((1, cmd[1], kept))
+            # op 0/2/3/4/5/6: descartados (el Aprobador no crea/borra/reordena bloques)
+        return out
+
+    def _quoter_workflow_sanitize_restricted_vals(self, vals):
+        """Reduce el vals del Aprobador restringido a lo único editable: los % del bloque.
+
+        El cliente web arrastra campos ocultos (note, internal_notes) y ecos de líneas
+        que harían fallar el guard; aquí se descartan silenciosamente porque ese perfil
+        no puede modificarlos de todos modos.
+        """
+        if not vals or self.env.context.get("quoter_workflow_transition"):
+            return vals
+        quotations = self.filtered(
+            lambda o: o.is_quotation and isinstance(o.id, int)
+        )
+        if not quotations:
+            return vals
+        restricted = quotations.filtered(
+            lambda o: o._quoter_workflow_is_restricted_aprobador()
+        )
+        # Solo saneamos si TODOS los registros-cotización del write están en el caso
+        # restringido; de lo contrario dejamos que el guard normal decida.
+        if not restricted or len(restricted) != len(quotations):
+            return vals
+        allowed_top = {"quoter_area_block_ids", "message_follower_ids", "access_token"}
+        clean = {k: v for k, v in vals.items() if k in allowed_top}
+        if "quoter_area_block_ids" in clean:
+            clean["quoter_area_block_ids"] = (
+                self._quoter_workflow_sanitize_block_commands_adjustments(
+                    clean["quoter_area_block_ids"]
+                )
+            )
+            if not clean["quoter_area_block_ids"]:
+                clean.pop("quoter_area_block_ids")
+        return clean
+
     def _quoter_workflow_can_edit_content(self):
         self.ensure_one()
         return self.quoter_workflow_can_edit_content

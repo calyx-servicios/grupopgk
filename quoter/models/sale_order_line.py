@@ -16,6 +16,16 @@ class SaleOrderLine(models.Model):
         }
     )
 
+    # Campos técnicos gestionados por el sistema (computados almacenados que se
+    # persisten solos al leerse, p. ej. `number` de sale_order_line_number). No son
+    # contenido editable por el usuario, así que su reescritura NO debe bloquearse por
+    # el guard de flujo aunque la cotización esté en un estado no editable.
+    _QUOTER_LINE_GUARD_TECHNICAL_FIELDS = frozenset(
+        {
+            "number",
+        }
+    )
+
     @api.model
     def _quoter_is_real_db_id(self, record_id):
         return isinstance(record_id, int) and record_id > 0
@@ -1226,8 +1236,19 @@ class SaleOrderLine(models.Model):
         if not recs:
             return True
         vals = dict(vals or {})
-        if vals and not self.env.context.get("quoter_workflow_transition"):
+        # Solo interesan las escrituras de CONTENIDO. Las que tocan únicamente campos
+        # técnicos del sistema (p. ej. `number`, un computado almacenado que se persiste
+        # solo al leerse) no son edición del usuario y no deben bloquearse.
+        content_keys = set(vals.keys()) - self._QUOTER_LINE_GUARD_TECHNICAL_FIELDS
+        if content_keys and not self.env.context.get("quoter_workflow_transition"):
             for line in recs:
+                # La línea-total de Descuento/Recargo por área la gestiona el sistema
+                # (_quoter_sync_area_discount_total_line) como efecto del socio/aprobador
+                # editando los % del bloque; nunca la edita el usuario directamente (está
+                # excluida del O2M del bloque). Su recálculo no debe bloquearse por el
+                # estado del flujo, o el Aprobador no podría guardar Descuento %/Recargo %.
+                if line.quoter_is_area_discount_total_line:
+                    continue
                 order = line.order_id
                 if (
                     order
