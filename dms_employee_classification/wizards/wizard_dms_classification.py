@@ -120,8 +120,14 @@ class WizardDmsClassification(models.TransientModel):
                 # Extract the first captured group (should be the legajo)
                 try:
                     legajo = int(match.group(1))
-                    # Search for employee with this legajo
-                    employee = self.env['hr.employee'].search([('legajo', '=', legajo)], limit=1)
+                    # Search for employee with this legajo, filtered by the
+                    # template's company to avoid ambiguity between companies
+                    domain = [('legajo', '=', legajo)]
+                    if self.template_id.company_id:
+                        domain.append(
+                            ('company_id', '=', self.template_id.company_id.id)
+                        )
+                    employee = self.env['hr.employee'].search(domain, limit=1)
 
                     if employee:
                         # Get file extension
