@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Semáforo SLA en la tarjeta Kanban del pipeline -->
+    <record id="crm_case_kanban_view_leads_sla" model="ir.ui.view">
+        <field name="name">crm.lead.kanban.sla</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_kanban_view_leads"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('oe_kanban_bottom_right')]/field[@name='user_id']"
+                   position="before">
+                <field name="sla_status" widget="label_selection"
+                       options="{'classes': {'on_time': 'success', 'warning': 'warning', 'overdue': 'danger'}}"
+                       attrs="{'invisible': [('sla_status', '=', False)]}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
