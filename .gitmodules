@@ -18,10 +18,6 @@
 	path = submodules/calyx-servicios/third-party-paid
 	url = https://github.com/calyx-servicios/third-party-paid.git
 	branch = 15.0
-[submodule "submodules/CybroOdoo/CybroAddons"]
-	path = submodules/CybroOdoo/CybroAddons
-	url = https://github.com/CybroOdoo/CybroAddons.git
-	branch = 15.0
 [submodule "submodules/OCA/partner-contact"]
 	path = submodules/OCA/partner-contact
 	url = https://github.com/OCA/partner-contact.git
@@ -149,4 +145,8 @@
 [submodule "submodules/OCA/crm"]
 	path = submodules/OCA/crm
 	url = git@github.com:OCA/crm.git
+	branch = 15.0
+[submodule "submodules/calyx-servicios/cybrosys-calyx"]
+	path = submodules/calyx-servicios/cybrosys-calyx
+	url = git@github.com:calyx-servicios/cybrosys-calyx.git
 	branch = 15.0
