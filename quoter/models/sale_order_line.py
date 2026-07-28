@@ -16,6 +16,16 @@ class SaleOrderLine(models.Model):
         }
     )
 
+    # Campos técnicos gestionados por el sistema (computados almacenados que se
+    # persisten solos al leerse, p. ej. `number` de sale_order_line_number). No son
+    # contenido editable por el usuario, así que su reescritura NO debe bloquearse por
+    # el guard de flujo aunque la cotización esté en un estado no editable.
+    _QUOTER_LINE_GUARD_TECHNICAL_FIELDS = frozenset(
+        {
+            "number",
+        }
+    )
+
     @api.model
     def _quoter_is_real_db_id(self, record_id):
         return isinstance(record_id, int) and record_id > 0
@@ -1226,8 +1236,19 @@ class SaleOrderLine(models.Model):
         if not recs:
             return True
         vals = dict(vals or {})
-        if vals and not self.env.context.get("quoter_workflow_transition"):
+        # Solo interesan las escrituras de CONTENIDO. Las que tocan únicamente campos
+        # técnicos del sistema (p. ej. `number`, un computado almacenado que se persiste
+        # solo al leerse) no son edición del usuario y no deben bloquearse.
+        content_keys = set(vals.keys()) - self._QUOTER_LINE_GUARD_TECHNICAL_FIELDS
+        if content_keys and not self.env.context.get("quoter_workflow_transition"):
             for line in recs:
+                # La línea-total de Descuento/Recargo por área la gestiona el sistema
+                # (_quoter_sync_area_discount_total_line) como efecto del socio/aprobador
+                # editando los % del bloque; nunca la edita el usuario directamente (está
+                # excluida del O2M del bloque). Su recálculo no debe bloquearse por el
+                # estado del flujo, o el Aprobador no podría guardar Descuento %/Recargo %.
+                if line.quoter_is_area_discount_total_line:
+                    continue
                 order = line.order_id
                 if (
                     order
@@ -2055,6 +2076,23 @@ class SaleOrderLine(models.Model):
         new_line._quoter_onchange_compute_price_from_ranges()
         return new_line.id
 
+    def _quoter_workflow_content_edit_blocked(self):
+        """True si esta línea pertenece a una cotización cuyo contenido el usuario no puede
+        editar (p. ej. Aprobador en «En aprobación»/«Aprobado interno»).
+
+        Los persist-batch que dispara el cliente (horas/volumen/precio) deben SALTAR estas
+        líneas en lugar de intentar escribir: ese perfil no puede editar ese contenido, y el
+        cliente los reenvía sin cambios al abrir el bloque para tocar solo Descuento %/Recargo %.
+        """
+        self.ensure_one()
+        order = self.order_id
+        return bool(
+            order
+            and order.is_quotation
+            and isinstance(order.id, int)
+            and not order._quoter_workflow_can_edit_content()
+        )
+
     @api.model
     def quoter_persist_adjustment_line_hours_batch(self, payloads):
         """Persiste horas de columnas en líneas de ajuste (form embebido antes de guardar)."""
@@ -2078,6 +2116,8 @@ class SaleOrderLine(models.Model):
                 continue
             line = Line.browse(int(line_id)).exists()
             if not line or not line.quoter_is_adjustment_line:
+                continue
+            if line._quoter_workflow_content_edit_blocked():
                 continue
             hour_vals = {
                 key: float(item[key] or 0.0)
@@ -2117,6 +2157,8 @@ class SaleOrderLine(models.Model):
             line = Line.browse(int(line_id)).exists()
             if not line or line.quoter_is_adjustment_line:
                 continue
+            if line._quoter_workflow_content_edit_blocked():
+                continue
             area = line._quoter_effective_tab_area()
             if not area or area.hour_matrix_mode != "formula":
                 continue
@@ -2155,6 +2197,8 @@ class SaleOrderLine(models.Model):
                 continue
             line = Line.browse(int(line_id)).exists()
             if not line or not line._quoter_manual_ranges_mode():
+                continue
+            if line._quoter_workflow_content_edit_blocked():
                 continue
             write_vals = {}
             for key in hour_fields:
