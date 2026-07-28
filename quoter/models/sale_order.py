@@ -194,9 +194,13 @@ class SaleOrder(models.Model):
             )
 
     def _check_quoter_partner_adjustment_write_access(self):
-        """Descuento/recargo % por área: solo socio asignado (grupo Socio) o administrador."""
+        """Descuento/recargo % por área: solo el socio asignado en la cotización.
+
+        Ni siquiera el administrador puede editarlos si no es el socio asignado; solo se
+        exceptúa el código en modo superusuario (env.su), no el admin humano.
+        """
         self.ensure_one()
-        if self.env.user.has_group("base.group_system"):
+        if self.env.su:
             return
         if not self.env.user.has_group("quoter.group_quoter_partner"):
             raise UserError(
@@ -1167,6 +1171,11 @@ class SaleOrder(models.Model):
 
     def write(self, vals):
         self._check_quoter_responsibles_write_access(vals)
+        if vals:
+            # El Aprobador (socio asignado) en estados de aprobación solo puede cambiar
+            # Descuento %/Recargo %: descartamos el ruido del cliente (note, internal_notes,
+            # ecos de order_line_ids) antes de validar, para no rechazar el guardado.
+            vals = self._quoter_workflow_sanitize_restricted_vals(vals)
         if vals:
             for order in self.filtered(
                 lambda o: o.is_quotation and isinstance(o.id, int)
