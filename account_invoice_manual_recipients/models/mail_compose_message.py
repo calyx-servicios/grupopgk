@@ -71,6 +71,63 @@ class MailComposeMessage(models.TransientModel):
                 _("Ingresa al menos una direccion de correo valida.")
             )
 
+    def _normalize_attachment_ids(self, attachment_ids) -> List[int]:
+        """Normalize m2m payload into a flat list of attachment IDs."""
+        self.ensure_one()
+        normalized_ids: List[int] = []
+
+        for value in attachment_ids or []:
+            if isinstance(value, int):
+                normalized_ids.append(value)
+                continue
+
+            if not isinstance(value, (list, tuple)) or not value:
+                continue
+
+            command = value[0]
+            # (4, id, 0): link existing attachment
+            if command == 4 and len(value) > 1 and isinstance(value[1], int):
+                normalized_ids.append(value[1])
+            # (6, 0, [ids]): replace by id set
+            elif command == 6 and len(value) > 2 and isinstance(value[2], list):
+                normalized_ids.extend([id_ for id_ in value[2] if isinstance(id_, int)])
+
+        return normalized_ids
+
+    def _deduplicate_attachment_ids(self, attachment_ids) -> List[int]:
+        """Return attachment IDs removing duplicates by content and name."""
+        self.ensure_one()
+        normalized_ids = self._normalize_attachment_ids(attachment_ids)
+        if not normalized_ids:
+            return []
+
+        attachments = self.env["ir.attachment"].browse(normalized_ids)
+        deduplicated_ids: List[int] = []
+        seen_checksums = set()
+        seen_names = set()
+
+        for attachment in attachments:
+            # Same PDF may come once as template attachment and once as generated
+            # report attachment with a different filename. Checksum avoids doubles.
+            checksum_key = attachment.checksum or False
+            name_key = (attachment.name or "").strip().lower()
+
+            if checksum_key and checksum_key in seen_checksums:
+                continue
+
+            # In invoice send, duplicated default PDF can have same filename but
+            # slightly different bytes depending on generation path.
+            if name_key and name_key in seen_names:
+                continue
+
+            if checksum_key:
+                seen_checksums.add(checksum_key)
+            if name_key:
+                seen_names.add(name_key)
+            deduplicated_ids.append(attachment.id)
+
+        return deduplicated_ids
+
     def get_mail_values(self, res_ids):
         """Inject manual recipients into outgoing invoice emails."""
         self.ensure_one()
@@ -89,6 +146,9 @@ class MailComposeMessage(models.TransientModel):
             # Ensure manual emails are used without partner recipient linkage.
             values["partner_ids"] = []
             values["recipient_ids"] = []
+            values["attachment_ids"] = self._deduplicate_attachment_ids(
+                values.get("attachment_ids", [])
+            )
             mail_values[res_id] = values
 
         return mail_values
