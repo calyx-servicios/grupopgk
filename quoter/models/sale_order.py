@@ -1211,6 +1211,20 @@ class SaleOrder(models.Model):
             for order in self:
                 if order.is_quotation or vals.get("is_quotation"):
                     area_change_snapshots.append((order, order.quoter_area_ids))
+        # Bloques ya existentes antes de este guardado: al agregar un área el bloque se crea
+        # sin gerente, así que la exigencia aplica desde el guardado siguiente (con el bloque
+        # ya visible en la pestaña «Cotización por área»).
+        pre_write_block_ids = set()
+        if (
+            vals
+            and ("quoter_area_ids" in vals or "quoter_area_block_ids" in vals)
+            and not self.env.context.get("quoter_skip_manager_required_check")
+        ):
+            pre_write_block_ids = set(
+                self.filtered(lambda o: o.is_quotation and isinstance(o.id, int))
+                .mapped("quoter_area_block_ids")
+                .ids
+            )
         try:
             res = super().write(vals)
         except MissingError:
@@ -1247,7 +1261,14 @@ class SaleOrder(models.Model):
             self.filtered("is_quotation")._quoter_compute_validity_date_from_payment_term()
         if "quoter_area_ids" in vals or "is_quotation" in vals:
             self._sync_quoter_area_blocks()
-        self.filtered("is_quotation")._quoter_reconcile_area_ids_from_blocks()
+        if pre_write_block_ids:
+            existing_blocks = self.mapped("quoter_area_block_ids").filtered(
+                lambda b: b.id in pre_write_block_ids
+            )
+            existing_blocks.exists()._quoter_check_manager_required()
+        self.filtered("is_quotation").with_context(
+            quoter_skip_manager_required_check=True
+        )._quoter_reconcile_area_ids_from_blocks()
         if vals:
             self._quoter_autoload_default_products_after_save(trigger_vals=vals)
         # Refuerzo: sincronizar siempre después de guardar para evitar que comandos

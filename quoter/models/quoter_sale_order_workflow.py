@@ -308,6 +308,7 @@ class SaleOrderQuoterWorkflow(models.Model):
                 raise UserError(_("Solo puede enviar a aprobación desde En preparación."))
             if not order._quoter_user_is_cotizador_profile():
                 raise AccessError(_("Solo el perfil Cotizador puede enviar a aprobación."))
+            order.quoter_area_block_ids._quoter_check_manager_required()
             order._quoter_workflow_transition("en_aprobacion")
         return True
 

@@ -64,6 +64,11 @@ class QuoterSaleOrderArea(models.Model):
         copy=False,
         help="Gerente responsable de esta área en la cotización (independiente por área).",
     )
+    manager_required = fields.Boolean(
+        string="Gerente obligatorio",
+        compute="_compute_manager_required",
+        help="El gerente responsable es obligatorio en los bloques de área editables de una cotización.",
+    )
     manager_selectable_user_ids = fields.Many2many(
         comodel_name="res.users",
         related="area_id.group_id.users",
@@ -138,6 +143,44 @@ class QuoterSaleOrderArea(models.Model):
                 rec.user_can_view_block = True
             else:
                 rec.user_can_view_block = group in user.groups_id
+
+    def _quoter_manager_is_mandatory(self):
+        """El gerente es obligatorio en bloques activos de una cotización ya guardada.
+
+        Al elegir un área en el pedido, el bloque se crea en servidor sin gerente; por eso
+        la exigencia no se aplica en la creación sino a partir de que el bloque existe y el
+        usuario ya puede completarlo en la pestaña «Cotización por área».
+        """
+        self.ensure_one()
+        order = self.order_id
+        return bool(
+            order
+            and order.is_quotation
+            and isinstance(order.id, int)
+            and self.state != "cancel"
+        )
+
+    @api.depends("order_id.is_quotation", "state", "block_editable")
+    def _compute_manager_required(self):
+        for rec in self:
+            rec.manager_required = bool(
+                rec._quoter_manager_is_mandatory() and rec.block_editable
+            )
+
+    def _quoter_check_manager_required(self):
+        """Valida que los bloques activos tengan Gerente Responsable."""
+        missing = self.filtered(
+            lambda b: not b.manager_id and b._quoter_manager_is_mandatory()
+        )
+        if not missing:
+            return
+        raise ValidationError(
+            _(
+                "Indique el Gerente Responsable en la cotización por área. "
+                "Áreas sin gerente: %s."
+            )
+            % ", ".join(sorted(missing.mapped("area_id.display_name")))
+        )
 
     area_is_finanzas = fields.Boolean(
         string="Área Finanzas",
@@ -853,6 +896,7 @@ class QuoterSaleOrderArea(models.Model):
     _QUOTER_CHATTER_FIELDS = {
         "complexity_level_id": None,  # etiqueta dinámica en _quoter_log_block_changes
         "branch_id": _("Rama"),
+        "manager_id": _("Gerente Responsable"),
         "global_discount_amount": _("Descuento %"),
         "global_surcharge_amount": _("Recargo %"),
         "state": _("Estado del bloque"),
@@ -1158,6 +1202,9 @@ class QuoterSaleOrderArea(models.Model):
             self.filtered("area_is_regular_manual")._quoter_apply_area_configured_complexity_level()
         if "chain_employee_count" in vals or "complexity_level_id" in vals:
             self.filtered("area_is_formula_chain")._quoter_apply_chain_hours_to_lines()
+        if "manager_id" in vals:
+            # No se puede dejar el bloque sin gerente una vez creado.
+            self._quoter_check_manager_required()
         return res
 
     @api.onchange("complexity_level_id")
@@ -1864,6 +1911,7 @@ class QuoterSaleOrderArea(models.Model):
 
     def action_quoter_publish(self):
         """Pasa el bloque a Cerrado (clave interna published)."""
+        self._quoter_check_manager_required()
         self.write({"state": "published"})
         return True
 
