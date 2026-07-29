@@ -12,3 +12,11 @@ class SubscriptionPackage(models.Model):
                 ('subscription_id', '=', rec.id)
             ])
             rec.invoice_count = invoice_count or 0
+
+    @api.depends('so_count')
+    def _compute_sale_count(self):
+        """ Calculate sale order count based on subscription package """
+        for rec in self:
+            rec.so_count = rec.env['sale.order'].search_count([
+                ('subscription_id', '=', rec.id)
+            ])
