@@ -46,10 +46,6 @@
 	path = submodules/ingadhoc/odoo-argentina-ce
 	url = https://github.com/ingadhoc/odoo-argentina-ce.git
 	branch = 15.0
-[submodule "submodules/ingadhoc/multi-company"]
-	path = submodules/ingadhoc/multi-company
-	url = https://github.com/ingadhoc/multi-company.git
-	branch = 15.0
 [submodule "submodules/aeroo/aeroo_reports"]
 	path = submodules/aeroo/aeroo_reports
 	url = https://github.com/aeroo/aeroo_reports.git
@@ -149,4 +145,8 @@
 [submodule "submodules/calyx-servicios/cybrosys-calyx"]
 	path = submodules/calyx-servicios/cybrosys-calyx
 	url = git@github.com:calyx-servicios/cybrosys-calyx.git
+	branch = 15.0
+[submodule "submodules/calyx-servicios/multi-company"]
+	path = submodules/calyx-servicios/multi-company
+	url = https://github.com/calyx-servicios/multi-company.git
 	branch = 15.0
