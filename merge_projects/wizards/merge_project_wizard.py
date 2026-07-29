@@ -50,6 +50,7 @@ class MergeProjectWizard(models.TransientModel):
     # Button Action Wizard
     def merge(self):
         """Create the destination project and migrate historical records."""
+        self.ensure_one()
         if not self.is_same_partner:
             raise UserError(_('You cannot merge projects for different clients or parent contacts'))
 
@@ -124,6 +125,7 @@ class MergeProjectWizard(models.TransientModel):
         return wiz.open_wizard(window_title)
 
     def open_wizard(self, title):
+        self.ensure_one()
         view = self.env.ref('merge_projects.merge_project_wizard_form')
         return {
             'type': 'ir.actions.act_window',
@@ -138,25 +140,25 @@ class MergeProjectWizard(models.TransientModel):
 
     # Create Project
     def create_project(self):
+        self.ensure_one()
         vals = self._project_values()
         project = self.env['project.project'].sudo().create(vals)
         return project
 
     # Prepare values for creation
     def analytic_values(self):
-        if len(self.analytic_account_id.company_id) > 1:
-            company_val = [(6, 0, self.analytic_account_id.company_id.ids)]
-        else:
-            company_val = self.analytic_account_id.company_id.id
+        self.ensure_one()
+        company = self.company_id or self.analytic_account_id.company_id
         return {
             'name': '{}'.format(self._get_sequence_name()),
-            'company_id': company_val,
+            'company_id': company.id,
             'partner_id': self.partner_id.id,
             'parent_id': self.analytic_account_id.id,
             'group_id': self.analytic_account_id.group_id.id,
         }
 
     def _project_values(self):
+        self.ensure_one()
         project_fields = self.env['project.project']._fields
 
         # Creation of Project with Values
