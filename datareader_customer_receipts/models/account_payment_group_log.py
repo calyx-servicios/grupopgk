@@ -35,15 +35,6 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         string="Detalles de Procesamiento"
     )
 
-    @staticmethod
-    def _normalize_op_number_prefix(value):
-        """
-        Quita caracteres no alfanuméricos pegados al INICIO del string
-        """
-        if not value:
-            return value
-        return re.sub(r'^[^A-Za-z0-9]+', '', str(value).strip())
-
     def _validate_op_number(self, data, errors, log_item=None):
         """
         Valida que venga número de operación y que no esté duplicado.
@@ -80,28 +71,11 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     log_item.write({'message': "\n".join(errors)})
                 return None, errors
 
-        # Validar duplicado en payment.group.
-        op_number_core = self._normalize_op_number_prefix(op_number)
-        duplicate_domain = [
-            ('state', '=', 'posted'),
-            ('communication', '!=', False),
-        ]
-        use_fuzzy_match = bool(op_number_core) and len(op_number_core) >= 4
-        if use_fuzzy_match:
-            duplicate_domain.append(('communication', 'ilike', op_number_core))
-        else:
-            duplicate_domain.append(('communication', '=', op_number))
-
-        candidates = self.env['account.payment.group'].sudo().search(duplicate_domain, limit=50)
-        existing_op = self.env['account.payment.group']
-        if use_fuzzy_match:
-            for candidate in candidates:
-                if self._normalize_op_number_prefix(candidate.communication) == op_number_core:
-                    existing_op = candidate
-                    break
-        else:
-            existing_op = candidates[:1]
-
+        # Validar duplicado en payment.group
+        existing_op = self.env['account.payment.group'].sudo().search(
+            [('communication', '=', op_number)],
+            limit=1
+        )
         if existing_op:
             errors.append(f"Ya existe un recibo de pago con el número {op_number} (ID {existing_op.id}) .")
             if log_item:
@@ -1061,47 +1035,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         if not requires_review:
                             log_item.readed = True
                             _logger.info(f"Payment group {payment_group.id} publicado exitosamente. Marcado como leído.")
-                # Si hay diferencia fuera de tolerancia:
-                # - payment_difference > 0 (pagó MENOS, pago parcial genuino): se
-                #   publica igual automáticamente, SIN crear nota de crédito.
-                # - payment_difference < 0 (pagó de MÁS): sin cambios, queda en draft.
+                # Si hay diferencia fuera de tolerancia, no publicar (dejar en draft)
                 else:
-                    if payment_difference > 0.0:
-                        _logger.info(
-                            f"Payment group {payment_group.id}: diferencia positiva ({payment_difference}) "
-                            f"fuera de tolerancia ({tolerance_amount}) - pago parcial genuino, se publica sin notas."
-                        )
-                        residual_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
-                        partial_msg = _(
-                            "El recibo se publicó como pago parcial (queda deuda pendiente) sin generar notas de "
-                            "crédito, ya que el monto pagado es menor a la deuda informada. "
-                            "Monto pago: %s | Residual deuda: %s | Diferencia: %s."
-                        ) % (amount_from_json, residual_amount, payment_difference)
-                        errors.append(partial_msg)
-                        if log_item:
-                            current = (log_item.message or "").strip()
-                            log_item.write({'message': f"{current}\n{partial_msg}".strip() if current else partial_msg})
-
-                        if self._should_post_payment_group(log_item):
-                            if not requires_review:
-                                payment_group.post()
-                            else:
-                                _logger.info(
-                                    "Payment group %s no se publica por revisión obligatoria (error_code=%s).",
-                                    payment_group.id,
-                                    error_code,
-                                )
-                            if log_item and not requires_review:
-                                log_item.readed = True
-                                _logger.info(
-                                    f"Payment group {payment_group.id} publicado exitosamente como pago parcial. Marcado como leído."
-                                )
-                        else:
-                            _logger.info(
-                                f"Payment group {payment_group.id} no publicado: condiciones de retenciones no cumplidas"
-                            )
-
-                    elif payment_difference != 0.0:
+                    if payment_difference != 0.0:
                         _logger.info(f"Payment group {payment_group.id} no publicado. Diferencia {payment_difference} fuera de tolerancia ({tolerance_amount})")
                         _logger.info(f"Condiciones: tolerance_enabled={tolerance_enabled}, tolerance_amount={tolerance_amount}, abs_diff={abs(payment_difference)}, tolerance_account={bool(tolerance_account)}")
                         residual_amount = sum(payment_group.to_pay_move_line_ids.mapped('amount_residual'))
