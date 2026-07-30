@@ -165,6 +165,14 @@ class SaleOrderQuoterWorkflow(models.Model):
         if not self.is_quotation or not isinstance(self.id, int):
             return
         state = self.quoter_workflow_state or "en_preparacion"
+        # El perfil Cotizador confirma el pedido en cualquier estado del flujo: la
+        # confirmación escribe state/date_order (y luego cuenta analítica, done, etc.),
+        # que el bloqueo de estados terminales rechazaría. El contexto lo pone
+        # ``sale.order.action_confirm``, así que la excepción vale solo en ese flujo.
+        if self.env.context.get(
+            "quoter_confirm_bypass_workflow_lock"
+        ) and self._quoter_user_is_cotizador_profile():
+            return
         if self.env.context.get("quoter_workflow_transition"):
             if not self._quoter_workflow_only_transition_vals(vals):
                 raise AccessError(

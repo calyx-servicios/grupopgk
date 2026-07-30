@@ -71,11 +71,16 @@
                         class="btn-primary"
                         groups="quoter.group_quoter_cotizador"
                         attrs="{'invisible': ['|', ('is_quotation', '=', False), ('quoter_workflow_state', '!=', 'rechazado_cliente')]}"/>
+                <!-- Grupo Director comentado (a pedido) en el atributo `groups` de este botón;
+                     al reactivarlo volver a agregar `,quoter.group_quoter_director` junto con
+                     su definición en security/quoter_groups.xml.
+                     groups="quoter.group_quoter_aprobador,quoter.group_quoter_partner,quoter.group_quoter_admin,quoter.group_quoter_manager,quoter.group_quoter_director"
+                -->
                 <button name="%(quoter.action_report_quoter_quotation)d"
                         string="Imprimir cotización interna"
                         type="action"
                         class="btn-secondary"
-                        groups="quoter.group_quoter_aprobador,quoter.group_quoter_partner,quoter.group_quoter_admin,quoter.group_quoter_manager,quoter.group_quoter_director"
+                        groups="quoter.group_quoter_aprobador,quoter.group_quoter_partner,quoter.group_quoter_admin,quoter.group_quoter_manager"
                         attrs="{'invisible': [('is_quotation', '=', False)]}"/>
             </xpath>
 
