@@ -1712,9 +1712,37 @@ class SaleOrder(models.Model):
             )
             line_model.create(vals)
 
+    def _quoter_close_area_blocks_on_confirm(self):
+        """Perfil Cotizador: al confirmar, cierra las áreas que quedaron abiertas.
+
+        Se usa el contexto de transición porque el cierre es parte de la confirmación y
+        la cotización puede ya no estar En preparación. Si algún bloque no tiene Gerente
+        Responsable, ``action_quoter_publish`` corta la confirmación con el error
+        correspondiente.
+        """
+        self.ensure_one()
+        if not self.is_quotation or not self._quoter_user_is_cotizador_profile():
+            return
+        open_blocks = self.quoter_area_block_ids.filtered(
+            lambda b: b.state in (False, "draft")
+        )
+        if not open_blocks:
+            return
+        open_blocks.with_context(
+            quoter_workflow_transition=True
+        ).action_quoter_publish()
+
     def action_confirm(self):
-        for order in self:
+        orders = self
+        if self._quoter_user_is_cotizador_profile():
+            # El perfil Cotizador puede confirmar en cualquier estado del flujo, incluidos
+            # los terminales («Enviado cliente», «Aprobado cliente», «Rechazado cliente»),
+            # donde el bloqueo de _quoter_validate_workflow_write_access rechazaría la
+            # escritura de state/date_order que hace la confirmación estándar.
+            orders = self.with_context(quoter_confirm_bypass_workflow_lock=True)
+        for order in orders:
             if order.is_quotation:
+                order._quoter_close_area_blocks_on_confirm()
                 draft_blocks = order.quoter_area_block_ids.filtered(
                     lambda b: b.state == "draft"
                 )
@@ -1726,7 +1754,7 @@ class SaleOrder(models.Model):
                         % ", ".join(draft_blocks.mapped("area_id.display_name"))
                     )
                 order._quoter_sync_area_discount_total_line()
-        return super().action_confirm()
+        return super(SaleOrder, orders).action_confirm()
 
     @api.onchange("is_quotation")
     def _onchange_is_quotation(self):
