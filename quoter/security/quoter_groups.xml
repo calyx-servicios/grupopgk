@@ -57,12 +57,17 @@
             <field name="comment">Grupo exclusivo para operar el área Finanzas (modo Regular manual).</field>
         </record>
 
+        <!-- Grupo Quoter - Director comentado (a pedido): se conserva la definición para
+             poder reactivarlo. Al reactivarlo hay que descomentar también sus referencias
+             en security/quoter_sale_order_access_rules.xml, views/quoter_menu.xml y
+             views/quoter_sale_order_workflow_views.xml.
         <record id="group_quoter_director" model="res.groups">
             <field name="name">Quoter - Director</field>
             <field name="category_id" ref="base.module_category_sales_management"/>
             <field name="implied_ids" eval="[(4, ref('group_quoter_access')), (4, ref('sales_team.group_sale_manager'))]"/>
             <field name="comment">Usuarios habilitados como Director en cotizaciones (perfil Cotizador).</field>
         </record>
+        -->
 
         <record id="group_quoter_cotizador" model="res.groups">
             <field name="name">Quoter - Cotizador</field>
