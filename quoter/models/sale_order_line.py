@@ -1240,7 +1240,14 @@ class SaleOrderLine(models.Model):
         # técnicos del sistema (p. ej. `number`, un computado almacenado que se persiste
         # solo al leerse) no son edición del usuario y no deben bloquearse.
         content_keys = set(vals.keys()) - self._QUOTER_LINE_GUARD_TECHNICAL_FIELDS
-        if content_keys and not self.env.context.get("quoter_workflow_transition"):
+        if (
+            content_keys
+            and not self.env.context.get("quoter_workflow_transition")
+            # Confirmación del perfil Cotizador (cualquier estado del flujo): los módulos
+            # que enganchan _action_confirm escriben en las líneas (proyecto, tarea, stock)
+            # y no deben quedar bloqueados por el estado de la cotización.
+            and not self.env.context.get("quoter_confirm_bypass_workflow_lock")
+        ):
             for line in recs:
                 # La línea-total de Descuento/Recargo por área la gestiona el sistema
                 # (_quoter_sync_area_discount_total_line) como efecto del socio/aprobador

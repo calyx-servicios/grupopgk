@@ -105,7 +105,12 @@
         <field name="name">Ajustes de grupos</field>
         <field name="res_model">res.groups</field>
         <field name="view_mode">tree,form</field>
-        <field name="domain" eval="[('id', 'in', [ref('quoter.group_quoter_admin'), ref('quoter.group_quoter_manager'), ref('quoter.group_quoter_director'), ref('quoter.group_quoter_partner'), ref('quoter.group_quoter_cotizador'), ref('quoter.group_quoter_aprobador'), ref('quoter.group_quoter_contratos'), ref('quoter.group_quoter_tax'), ref('quoter.group_quoter_auditoria'), ref('quoter.group_quoter_formula'), ref('quoter.group_quoter_payroll'), ref('quoter.group_quoter_finanzas')])]"/>
+        <!-- Grupo Director comentado (a pedido): se quitó `ref('quoter.group_quoter_director'),`
+             del dominio (iba después de group_quoter_manager). Para reactivarlo, volver a
+             agregarlo aquí y descomentar su definición en security/quoter_groups.xml.
+             No se puede comentar con `#` dentro del eval: XML normaliza los saltos de línea
+             del atributo a espacios y el comentario anularía el resto de la expresión. -->
+        <field name="domain" eval="[('id', 'in', [ref('quoter.group_quoter_admin'), ref('quoter.group_quoter_manager'), ref('quoter.group_quoter_partner'), ref('quoter.group_quoter_cotizador'), ref('quoter.group_quoter_aprobador'), ref('quoter.group_quoter_contratos'), ref('quoter.group_quoter_tax'), ref('quoter.group_quoter_auditoria'), ref('quoter.group_quoter_formula'), ref('quoter.group_quoter_payroll'), ref('quoter.group_quoter_finanzas')])]"/>
         <field name="context">{}</field>
     </record>
 

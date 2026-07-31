@@ -6,6 +6,11 @@
             <field name="name">Quoter: ver todas las cotizaciones profesionales</field>
             <field name="model_id" ref="sale.model_sale_order"/>
             <field name="domain_force">[('is_quotation', '=', True)]</field>
+            <!-- Grupo Director comentado (a pedido): se quitó `ref('quoter.group_quoter_director'),`
+                 de la lista de grupos (iba después de group_quoter_finanzas). Para reactivarlo,
+                 volver a agregarlo y descomentar su definición en security/quoter_groups.xml.
+                 No se comenta con `#` dentro del eval: XML normaliza los saltos de línea del
+                 atributo a espacios y el comentario anularía el resto de la expresión. -->
             <field name="groups" eval="[(6, 0, [
                 ref('quoter.group_quoter_access'),
                 ref('quoter.group_quoter_admin'),
@@ -16,7 +21,6 @@
                 ref('quoter.group_quoter_formula'),
                 ref('quoter.group_quoter_payroll'),
                 ref('quoter.group_quoter_finanzas'),
-                ref('quoter.group_quoter_director'),
                 ref('quoter.group_quoter_cotizador'),
                 ref('quoter.group_quoter_aprobador'),
                 ref('quoter.group_quoter_contratos'),
@@ -27,6 +31,8 @@
             <field name="name">Quoter: líneas de cotizaciones profesionales</field>
             <field name="model_id" ref="sale.model_sale_order_line"/>
             <field name="domain_force">[('order_id.is_quotation', '=', True)]</field>
+            <!-- Grupo Director comentado (a pedido): ídem regla anterior, se quitó
+                 `ref('quoter.group_quoter_director'),` de la lista de grupos. -->
             <field name="groups" eval="[(6, 0, [
                 ref('quoter.group_quoter_access'),
                 ref('quoter.group_quoter_admin'),
@@ -37,7 +43,6 @@
                 ref('quoter.group_quoter_formula'),
                 ref('quoter.group_quoter_payroll'),
                 ref('quoter.group_quoter_finanzas'),
-                ref('quoter.group_quoter_director'),
                 ref('quoter.group_quoter_cotizador'),
                 ref('quoter.group_quoter_aprobador'),
                 ref('quoter.group_quoter_contratos'),
