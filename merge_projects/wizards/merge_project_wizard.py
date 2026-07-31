@@ -69,10 +69,25 @@ class MergeProjectWizard(models.TransientModel):
 
     def update_project_references(self, old_project, new_project):
         """Move the historical records used by project KPIs to the new project."""
-        self._reassign_sale_lines(old_project, new_project)
-        self._reassign_tasks(old_project, new_project)
-        self._reassign_analytic_lines(old_project, new_project)
-        self._reassign_move_lines(old_project, new_project)
+        try:
+            self._reassign_sale_lines(old_project, new_project)
+        except Exception as e:
+            raise UserError(_('Error reassigning sale lines: {}'.format(e)))
+
+        try:
+            self._reassign_tasks(old_project, new_project)
+        except Exception as e:
+            raise UserError(_('Error reassigning tasks: {}'.format(e)))
+
+        try:
+            self._reassign_analytic_lines(old_project, new_project)
+        except Exception as e:
+            raise UserError(_('Error reassigning analytic lines: {}'.format(e)))
+
+        try:
+            self._reassign_move_lines(old_project, new_project)
+        except Exception as e:
+            raise UserError(_('Error reassigning move lines: {}'.format(e)))
 
     def _reassign_sale_lines(self, old_project, new_project):
         """Move sale order lines that point to the source project."""
@@ -90,32 +105,42 @@ class MergeProjectWizard(models.TransientModel):
             })
 
     def _reassign_analytic_lines(self, old_project, new_project):
-        """Move analytic lines and their project link when the model supports it."""
-        analytic_lines = old_project.analytic_account_id.line_ids.sudo()
-        if not analytic_lines:
+        """Move analytic lines using SQL to avoid side effects in custom write overrides."""
+        if not old_project.analytic_account_id or not new_project.analytic_account_id:
             return
 
-        for analytic_line in analytic_lines:
-            vals = {'account_id': new_project.analytic_account_id.id}
-            if (
-                'project_id' in analytic_line._fields
-                and analytic_line.project_id.id == old_project.id
-            ):
-                vals['project_id'] = new_project.id
-            analytic_line.write(vals)
+        self.env.cr.execute(
+            """
+            UPDATE account_analytic_line
+               SET account_id = %s
+             WHERE account_id = %s
+            """,
+            (new_project.analytic_account_id.id, old_project.analytic_account_id.id),
+        )
+
+        if 'project_id' in self.env['account.analytic.line']._fields:
+            self.env.cr.execute(
+                """
+                UPDATE account_analytic_line
+                   SET project_id = %s
+                 WHERE project_id = %s
+                """,
+                (new_project.id, old_project.id),
+            )
 
     def _reassign_move_lines(self, old_project, new_project):
-        """Move posted and draft invoice lines to keep billing KPIs consolidated."""
+        """Move invoice lines using SQL to avoid custom write side effects."""
         if not old_project.analytic_account_id:
             return
 
-        move_lines = self.env['account.move.line'].sudo().search([
-            ('analytic_account_id', '=', old_project.analytic_account_id.id),
-        ])
-        if move_lines:
-            move_lines.with_context(check_move_validity=False).write({
-                'analytic_account_id': new_project.analytic_account_id.id,
-            })
+        self.env.cr.execute(
+            """
+            UPDATE account_move_line
+               SET analytic_account_id = %s
+             WHERE analytic_account_id = %s
+            """,
+            (new_project.analytic_account_id.id, old_project.analytic_account_id.id),
+        )
 
     # Wizard
     def merge_projects(self, window_title, ids):
@@ -146,12 +171,33 @@ class MergeProjectWizard(models.TransientModel):
         return project
 
     # Prepare values for creation
+    def _get_target_company(self):
+        """Return a single company to use in merged records."""
+        self.ensure_one()
+        if self.company_id:
+            return self.company_id
+
+        project_companies = self.projects_ids.mapped('company_id')
+        if len(project_companies) == 1:
+            return project_companies
+
+        analytic_companies = self.analytic_account_id.company_id
+        if analytic_companies:
+            return analytic_companies[0]
+
+        return self.env.company
+
     def analytic_values(self):
         self.ensure_one()
-        company = self.company_id or self.analytic_account_id.company_id
+        company_field = self.env['account.analytic.account']._fields.get('company_id')
+        company = self._get_target_company()
+        if company_field and company_field.type == 'many2many':
+            company_value = [(6, 0, company.ids)]
+        else:
+            company_value = company.id
         return {
             'name': '{}'.format(self._get_sequence_name()),
-            'company_id': company.id,
+            'company_id': company_value,
             'partner_id': self.partner_id.id,
             'parent_id': self.analytic_account_id.id,
             'group_id': self.analytic_account_id.group_id.id,
@@ -160,6 +206,7 @@ class MergeProjectWizard(models.TransientModel):
     def _project_values(self):
         self.ensure_one()
         project_fields = self.env['project.project']._fields
+        target_company = self._get_target_company()
 
         # Creation of Project with Values
         account = None
@@ -172,7 +219,7 @@ class MergeProjectWizard(models.TransientModel):
             'analytic_account_id': account.id,
             'partner_id': self.partner_id.id,
             'active': True,
-            'company_id': self.company_id.id,
+            'company_id': target_company.id,
         }
         if 'allow_billable' in project_fields:
             vals['allow_billable'] = True
