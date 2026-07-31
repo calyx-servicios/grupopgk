@@ -162,3 +162,7 @@
 	path = submodules/calyx-servicios/cybrosys-calyx
 	url = git@github.com:calyx-servicios/cybrosys-calyx.git
 	branch = 15.0
+[submodule "automation"]
+	path = automation
+	url = git@github.com:OCA/automation.git
+	branch = 16.0
