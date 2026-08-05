@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vistas heredadas de la etapa BPO (nombres viejos en BD). -->
+    <delete model="ir.ui.view" search="[('model', '=', 'quoter.service.line'), ('name', 'ilike', '%bpo%')]"/>
+</odoo>

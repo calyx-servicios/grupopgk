@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quoter_product_level_range_tree" model="ir.ui.view">
+        <field name="name">quoter.product.level.range.tree</field>
+        <field name="model">quoter.product.level.range</field>
+        <field name="arch" type="xml">
+            <tree string="Horas por nivel" create="0" delete="0" editable="top">
+                <field name="area_hour_matrix_mode" optional="show" readonly="1"/>
+                <field name="area_quoter_config_edit_mode" invisible="1"/>
+                <field name="product_tmpl_id" readonly="1" optional="show"/>
+                <field name="canonical_product_id" readonly="1" optional="show"/>
+                <field name="area_id" readonly="1" optional="hide"/>
+                <field name="complexity_level_id" readonly="1"/>
+                <field name="branch_id" readonly="1" optional="show"/>
+                <field name="slot_1_hours" attrs="{'readonly': ['|', ('area_hour_matrix_mode', '=', 'combined'), ('area_quoter_config_edit_mode', '=', False)]}"/>
+                <field name="slot_2_hours" attrs="{'readonly': ['|', ('area_hour_matrix_mode', '=', 'combined'), ('area_quoter_config_edit_mode', '=', False)]}"/>
+                <field name="slot_3_hours" attrs="{'readonly': ['|', ('area_hour_matrix_mode', '=', 'combined'), ('area_quoter_config_edit_mode', '=', False)]}"/>
+                <field name="slot_4_hours" attrs="{'readonly': ['|', ('area_hour_matrix_mode', '=', 'combined'), ('area_quoter_config_edit_mode', '=', False)]}"/>
+                <field name="total_hours" readonly="1" sum="Total horas"/>
+                <button name="action_open_hour_matrices" type="object" string=" "
+                        icon="fa-table" title="Tablas A, B y resultado"
+                        attrs="{'invisible': [('area_hour_matrix_mode', '!=', 'combined')]}"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_quoter_product_level_range_form" model="ir.ui.view">
+        <field name="name">quoter.product.level.range.form</field>
+        <field name="model">quoter.product.level.range</field>
+        <field name="priority" eval="10"/>
+        <field name="arch" type="xml">
+            <form string="Horas por nivel y rol">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_hour_matrices" type="object"
+                                string="Tablas A, B y resultado"
+                                class="oe_highlight"
+                                icon="fa-table"
+                                attrs="{'invisible': [('area_hour_matrix_mode', '!=', 'combined')]}"/>
+                    </div>
+                    <group>
+                        <group string="Producto y nivel">
+                            <field name="product_tmpl_id" readonly="1"/>
+                            <field name="canonical_product_id" readonly="1"/>
+                            <field name="area_id" readonly="1"/>
+                            <field name="complexity_level_id" readonly="1"/>
+                            <field name="branch_id" readonly="1"/>
+                        </group>
+                        <group string="Resumen">
+                            <field name="total_hours" readonly="1"/>
+                            <field name="area_hour_matrix_mode" readonly="1"/>
+                            <field name="area_quoter_config_edit_mode" invisible="1"/>
+                            <field name="area_table_a_layout" readonly="1"
+                                   attrs="{'invisible': [('area_hour_matrix_mode', '!=', 'combined')]}"/>
+                            <field name="area_table_b_kind" readonly="1"
+                                   attrs="{'invisible': [('area_hour_matrix_mode', '!=', 'combined')]}"/>
+                        </group>
+                    </group>
+                    <group string="Tabla A unificada"
+                           attrs="{'invisible': ['|', ('area_hour_matrix_mode', '!=', 'combined'), ('area_table_a_layout', 'not in', ('compact', 'global'))]}">
+                        <field name="compact_hours_a"/>
+                    </group>
+                    <group>
+                        <p class="text-muted" colspan="2"
+                           attrs="{'invisible': [('area_hour_matrix_mode', '!=', 'regular')]}">
+                            Edite las horas finales por rol (modelo de salida). El modo combinado se define en el área.
+                        </p>
+                        <p class="text-muted" colspan="2"
+                           attrs="{'invisible': [('area_hour_matrix_mode', '!=', 'combined')]}">
+                            Resumen de horas finales; factores y horas base por rol están en el botón superior.
+                        </p>
+                        <field name="output_line_ids" nolabel="1" colspan="2"
+                               attrs="{'readonly': ['|', ('area_hour_matrix_mode', '=', 'combined'), ('area_quoter_config_edit_mode', '=', False)]}">
+                            <tree editable="bottom" create="0" delete="0">
+                                <field name="area_range_id" force_save="1" readonly="1" string="Rol"/>
+                                <field name="hours" string="Horas finales"
+                                       attrs="{'readonly': ['|', ('parent.area_hour_matrix_mode', '=', 'combined'), ('parent.area_quoter_config_edit_mode', '=', False)]}"/>
+                            </tree>
+                        </field>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_quoter_product_level_range_form_matrices" model="ir.ui.view">
+        <field name="name">quoter.product.level.range.form.matrices</field>
+        <field name="model">quoter.product.level.range</field>
+        <field name="priority" eval="32"/>
+        <field name="arch" type="xml">
+            <form string="Tablas B, A y salida de horas">
+                <sheet>
+                    <group>
+                        <group string="Producto y nivel">
+                            <field name="product_tmpl_id" readonly="1"/>
+                            <field name="complexity_level_id" readonly="1"/>
+                            <field name="branch_id" readonly="1"/>
+                            <field name="area_id" readonly="1"/>
+                        </group>
+                        <group string="Política del área (solo lectura)">
+                            <field name="area_hour_matrix_mode" readonly="1"/>
+                            <field name="area_table_a_layout" readonly="1"
+                                   attrs="{'invisible': [('area_hour_matrix_mode', '!=', 'combined')]}"/>
+                            <field name="area_table_b_kind" readonly="1"
+                                   attrs="{'invisible': [('area_hour_matrix_mode', '!=', 'combined')]}"/>
+                        </group>
+                    </group>
+                    <notebook attrs="{'invisible': [('area_hour_matrix_mode', '!=', 'combined')]}">
+                        <page string="Tabla B (factor)">
+                            <field name="area_hour_matrix_mode" invisible="1"/>
+                            <field name="area_table_b_kind" invisible="1"/>
+                            <field name="area_table_b_percent_mode" invisible="1"/>
+                            <field name="area_table_a_layout" invisible="1"/>
+                            <p class="text-muted">
+                                Factor por rol del área (misma fila que en tabla A por nombre de rol).
+                            </p>
+                            <p class="text-muted"
+                               attrs="{'invisible': ['|', '|', '|', ('area_hour_matrix_mode', '!=', 'combined'), ('area_table_b_kind', '!=', 'percent'), ('area_table_b_percent_mode', '!=', 'exact'), ('area_table_a_layout', 'not in', ('compact', 'global'))]}">
+                                Tabla A unificada y B en porcentaje: la suma no puede pasar de 100 mientras edita;
+                                al guardar debe ser exactamente 100.
+                            </p>
+                            <field name="matrix_b_ids" nolabel="1" colspan="2">
+                                <tree editable="bottom" create="0" delete="0">
+                                    <field name="area_range_id" force_save="1" readonly="1" string="Rol"/>
+                                    <field name="factor" string="% o multiplicador"
+                                           attrs="{'column_invisible': [('parent.area_table_b_kind', '=', 'formula')]}"/>
+                                </tree>
+                            </field>
+                            <group string="Total porcentajes"
+                                   attrs="{'invisible': ['|', '|', '|', ('area_hour_matrix_mode', '!=', 'combined'), ('area_table_b_kind', '!=', 'percent'), ('area_table_b_percent_mode', '!=', 'exact'), ('area_table_a_layout', 'not in', ('compact', 'global'))]}">
+                                <field name="matrix_b_factor_sum" readonly="1"/>
+                            </group>
+                        </page>
+                        <page string="Tabla A (horas base)">
+                            <field name="area_hour_matrix_mode" invisible="1"/>
+                            <field name="area_table_a_layout" invisible="1"/>
+                            <group string="Horas base (un solo valor para todos los roles)"
+                                   attrs="{'invisible': [('area_table_a_layout', 'not in', ('compact', 'global'))]}">
+                                <field name="compact_hours_a"/>
+                            </group>
+                            <p class="text-muted" attrs="{'invisible': [('area_table_a_layout', 'in', ('compact', 'global'))]}">
+                                Horas base por rol del área.
+                            </p>
+                            <field name="matrix_a_ids" nolabel="1" colspan="2">
+                                <tree editable="bottom" create="0" delete="0">
+                                    <field name="area_range_id" force_save="1" readonly="1" string="Rol"/>
+                                    <field name="hours" string="Horas A"
+                                           attrs="{'column_invisible': [('parent.area_table_a_layout', 'in', ('compact', 'global'))]}"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Salida (horas cotizador)">
+                            <p class="text-muted">
+                                Calculada desde A y B según el área; solo lectura en modo combinado.
+                            </p>
+                            <field name="output_line_ids" nolabel="1" colspan="2">
+                                <tree create="0" delete="0" editable="0">
+                                    <field name="area_range_id" force_save="1" readonly="1" string="Rol"/>
+                                    <field name="matrix_a_id" readonly="1" string="Desde tabla A" column_invisible="1"/>
+                                    <field name="hours" string="Horas finales" readonly="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

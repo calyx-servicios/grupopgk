@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        
+        <record id="product_category_quoter_discount_recargo" model="product.category">
+            <field name="name">Descuento/Recargo</field>
+        </record>
+
+        <!-- Producto técnico: una línea en sale.order que agrupa Descuento/Recargo por áreas -->
+        <record id="product_quoter_area_discount_sum" model="product.product">
+            <field name="name">Descuento/Recargo agrupado (cotizador)</field>
+            <field name="type">service</field>
+            <field name="categ_id" ref="quoter.product_category_quoter_discount_recargo"/>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="uom_po_id" ref="uom.product_uom_unit"/>
+            <field name="sale_ok" type="int">1</field>
+            <field name="purchase_ok" type="int">0</field>
+            <field name="list_price" type="float">0.0</field>
+            <field name="standard_price" type="float">0.0</field>
+            <field name="default_code">QUOTER_AREA_DISC_SUM</field>
+            <field name="description_sale">Línea automática de totalizador por áreas (uso interno del cotizador).</field>
+        </record>
+
+    </data>
+</odoo>

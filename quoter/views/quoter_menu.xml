@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_quoter_res_config_settings" model="ir.actions.act_window">
+        <field name="name">Ajustes Cotizador</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'quoter'}</field>
+    </record>
+
+    <!-- Action for Quotations (Cliente > Cotizador) -->
+    <record id="action_quotations_quoter" model="ir.actions.act_window">
+        <field name="name">Cotizaciones</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_quotation_tree_quoter')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_order_form_quoter_inherit')}),
+        ]"/>
+        <field name="search_view_id" ref="view_sales_order_filter_quoter"/>
+        <field name="context">{
+            'default_is_quotation': True,
+            'quoter_use_cot_sequence': True,
+            'quoter_menu_context': True,
+        }</field>
+        <field name="domain">[('is_quotation', '=', True)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Crear una nueva cotización profesional
+            </p>
+            <p>
+                Las cotizaciones profesionales permiten configurar servicios por área,
+                categoría de producto y nivel en cada bloque del cotizador.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_quoter_pricelists" model="ir.actions.act_window">
+        <field name="name">Tarifas</field>
+        <field name="res_model">product.pricelist</field>
+        <field name="view_mode">tree,form</field>
+        <!-- Sobreescribe dominios viejos en BD que usaban is_quoter_pricelist (campo eliminado). -->
+        <field name="domain">[]</field>
+    </record>
+
+    <!-- Odoo 15: icono en Home Menu solo si este menú raíz tiene action (no en un hijo). -->
+    <record id="menu_quoter_root" model="ir.ui.menu">
+        <field name="name">Cotizador</field>
+        <field name="sequence">15</field>
+        <field name="action" ref="action_quotations_quoter"/>
+        <field name="web_icon">quoter,static/description/icon1.png</field>
+        <field name="groups_id" eval="[(5, 0, 0)]"/>
+    </record>
+
+    <!-- Ítem explícito en barra (misma acción que el icono de la app). -->
+    <menuitem id="menu_quoter_cotizador"
+              name="Cotizador"
+              parent="menu_quoter_root"
+              action="action_quotations_quoter"
+              sequence="1"/>
+
+    <menuitem id="menu_quoter_products_root"
+              name="Productos"
+              parent="menu_quoter_root"
+              sequence="20"
+              groups="quoter.group_quoter_access,stock.group_stock_user"/>
+
+    <menuitem id="menu_quoter_products_templates"
+              name="Productos"
+              parent="menu_quoter_products_root"
+              action="action_quoter_products_templates"
+              sequence="1"
+              groups="quoter.group_quoter_access,stock.group_stock_user"/>
+
+    <menuitem id="menu_quoter_products_variants"
+              name="Variantes"
+              parent="menu_quoter_products_root"
+              action="action_quoter_products_variants"
+              sequence="2"
+              groups="quoter.group_quoter_access,stock.group_stock_user"/>
+
+    <menuitem id="menu_quoter_products_pricing"
+              name="Tarifa"
+              parent="menu_quoter_products_root"
+              action="action_quoter_pricelists"
+              sequence="5"
+              groups="quoter.group_quoter_admin"/>
+
+    <!-- Submenús de producto genérico retirados del menú Productos (creación en wizard del área). -->
+    <delete model="ir.ui.menu" id="menu_quoter_generic_products"/>
+    <delete model="ir.ui.menu" id="menu_quoter_create_generic_product"/>
+
+    <!-- Configuración maestra: solo administrador del cotizador (no gerente ni grupos por área). -->
+    <menuitem id="menu_quoter_configuration"
+              name="Configuración"
+              parent="menu_quoter_root"
+              sequence="100"/>
+    <!-- Reemplaza grupos en BD (evita que queden manager/system de instalaciones anteriores). -->
+    <record id="menu_quoter_configuration" model="ir.ui.menu">
+        <field name="groups_id" eval="[(6, 0, [ref('quoter.group_quoter_admin')])]"/>
+    </record>
+
+    <record id="action_quoter_security_groups" model="ir.actions.act_window">
+        <field name="name">Ajustes de grupos</field>
+        <field name="res_model">res.groups</field>
+        <field name="view_mode">tree,form</field>
+        <!-- Grupo Director comentado (a pedido): se quitó `ref('quoter.group_quoter_director'),`
+             del dominio (iba después de group_quoter_manager). Para reactivarlo, volver a
+             agregarlo aquí y descomentar su definición en security/quoter_groups.xml.
+             No se puede comentar con `#` dentro del eval: XML normaliza los saltos de línea
+             del atributo a espacios y el comentario anularía el resto de la expresión. -->
+        <field name="domain" eval="[('id', 'in', [ref('quoter.group_quoter_admin'), ref('quoter.group_quoter_manager'), ref('quoter.group_quoter_partner'), ref('quoter.group_quoter_cotizador'), ref('quoter.group_quoter_aprobador'), ref('quoter.group_quoter_contratos'), ref('quoter.group_quoter_tax'), ref('quoter.group_quoter_auditoria'), ref('quoter.group_quoter_formula'), ref('quoter.group_quoter_payroll'), ref('quoter.group_quoter_finanzas')])]"/>
+        <field name="context">{}</field>
+    </record>
+
+    <menuitem id="menu_quoter_settings"
+              name="Ajustes"
+              parent="menu_quoter_configuration"
+              action="action_quoter_res_config_settings"
+              sequence="1"
+              groups="quoter.group_quoter_admin"/>
+
+    <menuitem id="menu_quoter_professional_area"
+              name="Áreas profesionales"
+              parent="menu_quoter_configuration"
+              action="action_quoter_professional_area"
+              sequence="5"
+              groups="quoter.group_quoter_admin"/>
+
+    <menuitem id="menu_quoter_area_complexity_range"
+              name="Categorías de recursos"
+              parent="menu_quoter_configuration"
+              action="action_quoter_area_complexity_range"
+              sequence="6"
+              groups="quoter.group_quoter_admin"/>
+
+    <menuitem id="menu_quoter_line_separator_tag"
+              name="Secciones de cotizador"
+              parent="menu_quoter_configuration"
+              action="action_quoter_line_separator_tag"
+              sequence="8"
+              groups="quoter.group_quoter_admin"/>
+
+    <menuitem id="menu_quoter_complexity_level"
+              name="Niveles de complejidad"
+              parent="menu_quoter_configuration"
+              action="action_quoter_complexity_level"
+              sequence="9"
+              groups="quoter.group_quoter_admin"/>
+
+    <!-- Acceso explícito a ramas (tree/form) -->
+    <record id="action_quoter_area_branch_menu" model="ir.actions.act_window">
+        <field name="name">Ramas</field>
+        <field name="res_model">quoter.area.branch</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_quoter_area_branch_tree"/>
+    </record>
+
+    <menuitem id="menu_quoter_area_branch"
+              name="Ramas"
+              parent="menu_quoter_configuration"
+              action="action_quoter_area_branch_menu"
+              sequence="10"
+              groups="quoter.group_quoter_admin"/>
+
+    <menuitem id="menu_quoter_service_line"
+              name="Líneas de servicio"
+              parent="menu_quoter_configuration"
+              action="action_quoter_service_line"
+              sequence="25"
+              groups="quoter.group_quoter_admin"/>
+
+    <!-- Forzar solo Quoter - Administrador (quitar Settings/gerente heredados en BD). -->
+    <record id="menu_quoter_settings" model="ir.ui.menu">
+        <field name="groups_id" eval="[(6, 0, [ref('quoter.group_quoter_admin')])]"/>
+    </record>
+    <record id="menu_quoter_area_complexity_range" model="ir.ui.menu">
+        <field name="groups_id" eval="[(6, 0, [ref('quoter.group_quoter_admin')])]"/>
+    </record>
+
+</odoo>

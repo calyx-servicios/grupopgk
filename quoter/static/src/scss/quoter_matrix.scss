@@ -1,0 +1,714 @@
+// Matriz de horas: lista Odoo — verticales solo en thead; cuerpo sin separadores verticales
+$o-quoter-matrix-celeste: #e8f0fe;
+$o-quoter-matrix-row-edit: #f5f5f5;
+// Cabecera tipo lista Odoo (no el blanco que fuerza web_enterprise en .o_list_table thead)
+$o-quoter-matrix-thead-bg: #efefef;
+// ~50 % más claro que #c8c8c8 (menos contraste agresivo)
+$o-quoter-matrix-thead-top: #e3e3e3;
+$o-quoter-matrix-thead-rule: #e3e3e3;
+$o-quoter-matrix-sep: #dee2e6;
+$o-quoter-matrix-bottom-bar: #e9ecef;
+
+.o_quoter_matrix_table_responsive {
+    border: none;
+    border-radius: 0;
+}
+
+// Altura alineada con lista Odoo (~10px en captura de referencia vs. barra más delgada anterior)
+.o_quoter_matrix_table_bottom_bar {
+    display: block;
+    height: 10px;
+    background-color: $o-quoter-matrix-bottom-bar;
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+.o_quoter_matrix_list.o_list_view {
+    height: auto;
+    min-height: 0;
+    margin-bottom: 0;
+
+    // Por encima de .o_list_view .o_list_table > thead { background: white } (web_enterprise)
+    table.o_list_table.o_quoter_area_hours_matrix > thead,
+    table.o_list_table.o_quoter_area_hours_matrix thead > tr > th {
+        background-color: $o-quoter-matrix-thead-bg !important;
+    }
+
+    table.o_list_table.o_quoter_area_hours_matrix.table {
+        cursor: default;
+        margin-bottom: 0;
+        border: none;
+        border-collapse: collapse;
+        border-spacing: 0;
+        border-top: 1px solid $o-quoter-matrix-thead-top;
+
+        thead {
+            color: inherit;
+            background-color: $o-quoter-matrix-thead-bg !important;
+            --q-matrix-thead-py: 0.375rem;
+            border-bottom: 1px solid $o-quoter-matrix-sep;
+
+            > tr > th {
+                border-top: none;
+                border-left: none;
+                border-right: none;
+                border-bottom: 1px solid $o-quoter-matrix-thead-rule !important;
+                background-color: $o-quoter-matrix-thead-bg !important;
+                background-image: none !important;
+                font-weight: bold;
+                font-size: inherit;
+                line-height: inherit;
+                padding-top: var(--q-matrix-thead-py) !important;
+                padding-bottom: var(--q-matrix-thead-py) !important;
+            }
+
+            > tr:last-child > th {
+                border-bottom: none;
+            }
+        }
+
+        tbody > tr > td {
+            border-left: none !important;
+            border-right: none !important;
+            border-top: none;
+            border-bottom: none;
+        }
+
+        // Separador horizontal en todo el ancho desde la 3ª fila (sin línea entre 1ª y 2ª).
+        tbody > tr:nth-child(n + 3) > td {
+            border-top: 1px solid #eaeaea;
+        }
+    }
+
+    // Primera columna (handle): sin línea vertical a la derecha
+    thead .o_quoter_matrix_handle_cell {
+        border-right: none !important;
+    }
+
+    thead .o_quoter_matrix_th_line {
+        border-right: 1px solid $o-quoter-matrix-thead-rule !important;
+    }
+
+    thead .o_quoter_matrix_th_range {
+        background-color: $o-quoter-matrix-thead-bg !important;
+        color: inherit;
+        font-size: 0.975rem;
+        line-height: 1.25;
+        vertical-align: middle;
+    }
+
+    thead .o_quoter_matrix_th_range_sep_after {
+        border-right: 1px solid $o-quoter-matrix-thead-rule !important;
+    }
+
+    thead .o_quoter_matrix_th_range_level_start {
+        border-left: 1px solid $o-quoter-matrix-thead-rule !important;
+    }
+
+    // Cuerpo: sin líneas verticales (ni handle ni nombre de producto)
+    tbody .o_quoter_matrix_handle_cell,
+    tbody .o_quoter_matrix_line_cell {
+        border-right: none !important;
+    }
+
+    .o_quoter_matrix_th_group {
+        vertical-align: middle;
+    }
+
+    // Celda neutra (altura como lista Odoo: sin padding extra en el th)
+    .o_quoter_matrix_level_head {
+        background-color: $o-quoter-matrix-thead-bg !important;
+        border-left: 1px solid $o-quoter-matrix-thead-rule !important;
+        vertical-align: middle !important;
+
+        &:first-of-type {
+            border-left: none !important;
+        }
+    }
+
+    // Misma lógica que Odoo 15 many2many tags:
+    // - addons/web/.../fields.scss → .o_field_many2manytags .badge { font-size: 12px }
+    // - .o_badge_text → line-height: 1.1
+    // - Bootstrap 4 _badge.scss → padding-y/x .25em .4em; .badge-pill → .6em horizontal
+    // - webclient.scss → .badge { margin: 1px 2px 1px 0 }
+    .o_quoter_matrix_level_pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: max-content;
+        max-width: 100%;
+        margin: 1px 2px 1px 0;
+        padding: 0.25em 0.6em;
+        border: 0;
+        border-radius: 10rem;
+        box-sizing: border-box;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.1;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .o_quoter_matrix_handle_cell {
+        width: 32px;
+        min-width: 32px;
+        max-width: 32px;
+        padding-left: 4px;
+        padding-right: 4px;
+        vertical-align: middle;
+
+        .o_row_handle {
+            font-size: 12px;
+            opacity: 0.55;
+            cursor: grab;
+        }
+    }
+
+    .o_quoter_matrix_cell {
+        vertical-align: middle;
+        font-size: inherit;
+    }
+
+    tbody tr.o_quoter_matrix_row_editing > td {
+        background-color: $o-quoter-matrix-row-edit !important;
+    }
+
+    tbody tr.o_quoter_matrix_row_editing > td.o_quoter_matrix_line_cell {
+        background-color: $o-quoter-matrix-celeste !important;
+        border-radius: 4px;
+    }
+
+    tbody tr.o_quoter_matrix_row_editing > td.o_quoter_matrix_cell_focus {
+        background-color: $o-quoter-matrix-celeste !important;
+        border-radius: 4px;
+    }
+
+    .o_quoter_matrix_num_input {
+        appearance: textfield;
+        -moz-appearance: textfield;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        background: transparent !important;
+        font-size: inherit;
+        line-height: inherit;
+        color: inherit;
+
+        &:focus {
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+            background: transparent !important;
+        }
+    }
+
+    .o_quoter_matrix_num_input::-webkit-outer-spin-button,
+    .o_quoter_matrix_num_input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+}
+
+// Resumen por rango (HTML): misma escala que el resto del formulario / pie de subtotales del área
+.o_quoter_resumen_rango {
+    width: 100%;
+    font-size: inherit;
+    line-height: 1.45;
+
+    // Misma caja que sale_order._quoter_build_area_summary_html (52rem, pegada a la derecha)
+    .o_quoter_resumen_rango_title {
+        width: 52rem;
+        max-width: 100%;
+        margin-left: auto;
+        margin-right: 0;
+        margin-bottom: 0.25rem;
+        text-align: right;
+        font-weight: 600;
+        color: #1f2937;
+    }
+
+    .o_field_widget.o_field_html {
+        font-size: inherit;
+        line-height: inherit;
+    }
+}
+
+// Pestaña TAX (área cuyo nombre contiene "tax"): título del resumen y bloque alineados a la derecha.
+.o_quoter_slot_tax .o_quoter_tax_resumen_align {
+    margin-left: auto;
+    text-align: right;
+
+    .o_horizontal_separator {
+        text-align: right;
+    }
+
+    .o_field_widget.o_field_html {
+        margin-left: auto;
+    }
+}
+
+// Separadores por etiqueta en líneas de cotización (sale.order).
+.o_list_view .o_data_row.o_quoter_separator_section {
+    td {
+        font-weight: 600;
+    }
+}
+
+.o_list_view .o_data_row.o_quoter_separator_mode_full td {
+    background-color: var(--quoter-separator-color-rgba) !important;
+    color: #1f2937;
+}
+
+// Primera línea de producto de cada etiqueta de sección (form embebido sin filas line_section).
+.o_list_view .o_data_row.o_quoter_separator_group_start td {
+    border-top: 3px solid var(--quoter-separator-color, #6c757d);
+}
+
+.o_list_view .o_data_row.o_quoter_separator_group_start.o_quoter_separator_mode_full td {
+    background-color: var(--quoter-separator-color-rgba) !important;
+}
+
+.o_quoter_formula_test_row_fixed td.o_quoter_matrix_cell {
+    background-color: #f8f9fa;
+}
+
+.o_quoter_formula_area_matrix {
+    table-layout: fixed;
+    width: 100%;
+
+    thead > tr > th:nth-child(1),
+    tbody > tr > td:nth-child(1) {
+        width: 12%;
+    }
+
+    thead > tr > th:nth-child(2),
+    tbody > tr > td:nth-child(2) {
+        width: 14%;
+    }
+
+    thead > tr > th:nth-child(3),
+    tbody > tr > td:nth-child(3) {
+        width: 11%;
+    }
+
+    thead > tr > th.o_quoter_formula_th_kind,
+    tbody > tr > td.o_quoter_formula_kind_col {
+        width: 22%;
+        min-width: 11rem;
+    }
+
+    thead > tr > th.o_quoter_formula_th_volume,
+    tbody > tr > td.o_quoter_formula_volume_col {
+        width: 7%;
+        min-width: 4.5rem;
+    }
+
+    thead > tr > th.o_quoter_matrix_th_range:not(.o_quoter_formula_th_volume),
+    tbody > tr > td.o_quoter_formula_role_cell {
+        width: auto;
+        min-width: 5.5rem;
+    }
+}
+
+.o_quoter_formula_area_matrix tr.o_quoter_formula_below_vol_min td {
+    background-color: #fff8e6;
+}
+
+.o_quoter_formula_kind_col select {
+    font-size: 0.72rem;
+    line-height: 1.2;
+    padding: 2px 4px;
+    max-width: 100%;
+    white-space: normal;
+    height: auto;
+    min-height: 1.85rem;
+}
+
+.o_quoter_formula_role_hours_cell {
+    padding: 2px 4px;
+    cursor: default;
+
+    .o_quoter_formula_role_result_wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: nowrap;
+        min-height: 1.75rem;
+    }
+
+    .o_quoter_formula_hours_val,
+    .o_quoter_formula_fixed_hours_val {
+        line-height: 1.2;
+    }
+
+    .o_quoter_formula_edit_btn {
+        color: #495057 !important;
+        flex-shrink: 0;
+        border-color: #adb5bd !important;
+        min-width: 1.65rem;
+        min-height: 1.65rem;
+        padding: 0 !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+
+        .o_quoter_formula_edit_plus {
+            font-size: 1.1rem;
+            font-weight: 700;
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        &:hover,
+        &:focus {
+            color: #212529 !important;
+            background-color: #f8f9fa !important;
+        }
+    }
+}
+
+.o_quoter_formula_area_matrix,
+.modal {
+    input.o_quoter_formula_param_input,
+    input.o_quoter_matrix_num_input {
+        -moz-appearance: textfield;
+
+        &::-webkit-outer-spin-button,
+        &::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    }
+
+    input.o_quoter_formula_param_input.is-invalid {
+        border-color: #dc3545;
+    }
+}
+
+.o_quoter_formula_role_cell.o_quoter_formula_role_cell--editable {
+    cursor: pointer;
+}
+
+.o_quoter_formula_role_cell {
+    .o_quoter_formula_horas_input {
+        max-width: 5rem;
+        margin: 0 auto;
+    }
+}
+
+.o_quoter_formula_role_cell.o_quoter_formula_role_below_min {
+    background-color: #fff8e6;
+}
+
+.o_quoter_num_no_spin {
+    -moz-appearance: textfield;
+
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+}
+
+.o_quoter_chain_matrix_wrap {
+    .o_quoter_chain_tabs .nav-link {
+        cursor: pointer;
+    }
+
+    .o_quoter_chain_bounds_col .o_quoter_chain_range_hint {
+        font-weight: 500;
+    }
+}
+
+.o_quoter_chain_product_matrix {
+    // Todas las filas de producto llevan separador (incl. entre 1ª y 2ª).
+    tbody > tr:nth-child(n + 2) > td {
+        border-top: 1px solid #eaeaea !important;
+    }
+
+    th,
+    td {
+        vertical-align: middle;
+    }
+
+    td.o_quoter_chain_role_col {
+        position: relative;
+        padding: 0.35rem 1.75rem 0.35rem 0.35rem !important;
+        text-align: center;
+    }
+
+    .o_quoter_chain_role_cell {
+        position: relative;
+        width: 100%;
+        min-height: 1.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .o_quoter_chain_hours_val {
+        line-height: 1.2;
+    }
+
+    .o_quoter_chain_edit_btn {
+        position: absolute;
+        right: 2px;
+        top: 50%;
+        transform: translateY(-50%);
+        flex-shrink: 0;
+        min-width: 1.35rem;
+        min-height: 1.35rem;
+        width: 1.35rem;
+        height: 1.35rem;
+        padding: 0 !important;
+        margin: 0;
+        border-radius: 2px;
+        border-width: 1px;
+        border-style: solid;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        cursor: pointer;
+        box-shadow: none;
+
+        .o_quoter_chain_edit_plus {
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        &.o_quoter_chain_edit_btn--fixed {
+            background-color: #fff !important;
+            border-color: #ced4da !important;
+
+            .o_quoter_chain_edit_plus {
+                color: #fff !important;
+                -webkit-text-stroke: 0.55px #6c757d;
+            }
+
+            &:hover,
+            &:focus {
+                background-color: #f8f9fa !important;
+                border-color: #adb5bd !important;
+            }
+        }
+
+        &.o_quoter_chain_edit_btn--formula {
+            background-color: #fff !important;
+            border-color: #ffc107 !important;
+
+            .o_quoter_chain_edit_plus {
+                color: #ffc107 !important;
+                -webkit-text-stroke: 0;
+            }
+
+            &:hover,
+            &:focus {
+                background-color: #fffbf0 !important;
+                border-color: #e0a800 !important;
+            }
+        }
+    }
+}
+
+.modal .o_quoter_formula_popup_line {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 1.05rem;
+    line-height: 2;
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    white-space: normal;
+    word-break: break-word;
+
+    .o_quoter_formula_expr_txt {
+        margin: 0 1px;
+    }
+
+    .o_quoter_formula_param_input {
+        display: inline-block;
+        width: 3.5rem;
+        margin: 0 3px;
+        padding: 2px 6px;
+        text-align: center;
+        vertical-align: middle;
+    }
+}
+
+.o_form_view .o_quoter_area_footer_totals {
+    color: #1f2937 !important;
+
+    .o_field_widget[name*="_caption_"] {
+        display: inline-block;
+        width: 12rem;
+        min-width: 12rem;
+        text-align: right;
+        font-weight: 700;
+        color: #1f2937 !important;
+    }
+
+    .o_form_label {
+        text-align: right !important;
+        justify-content: flex-end;
+        width: 12rem !important;
+        min-width: 12rem;
+        padding-right: 0.25rem;
+        color: #1f2937 !important;
+    }
+
+    .o_field_widget[name*="_product_untaxed"],
+    .o_field_widget[name*="_adjustment_untaxed"],
+    .o_field_widget[name*="_discount_line"],
+    .o_field_widget[name*="_surcharge_line"],
+    .o_field_widget[name*="_total_untaxed"] {
+        display: inline-block;
+        width: 11rem;
+        min-width: 11rem;
+        text-align: right;
+        color: #1f2937 !important;
+    }
+
+    .o_field_monetary {
+        justify-content: flex-end;
+        color: #1f2937 !important;
+    }
+}
+
+// Cotización por área: lista oculta; formulario embebido en el slot (quoter_area_block_embed.js).
+.o_form_view .o_quoter_area_blocks_embed {
+    display: flex;
+    flex-direction: column;
+    min-height: 40vh;
+}
+
+.o_form_view .o_quoter_area_blocks_embed .o_field_one2many[name="quoter_area_block_ids"] .o_x2m_control_panel,
+.o_form_view .o_quoter_area_blocks_embed .o_field_one2many[name="quoter_area_block_ids"] .o_list_view {
+    display: none !important;
+}
+
+.o_form_view .o_quoter_area_blocks_embed .o_field_one2many[name="quoter_area_block_ids"] {
+    min-height: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.o_form_view .o_quoter_area_blocks_embed .o_quoter_area_block_form_slot {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 50vh;
+}
+
+.o_form_view .o_quoter_area_blocks_embed .o_quoter_area_block_form_body {
+    flex: 1 1 auto;
+    min-height: 0;
+
+    // Guardar/Descartar del embed: activos en JS, ocultos (el pedido usa su barra superior).
+    > .o_form_buttons_view,
+    > .o_form_buttons_edit {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        margin: -1px !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+
+    .o_form_button_create {
+        display: none !important;
+    }
+
+    // Header del bloque: acciones a la izquierda, barra de estado a la derecha.
+    .o_form_statusbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 0.5rem;
+        padding-left: 0;
+        padding-right: 0;
+
+        .o_statusbar_buttons {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.25rem;
+            margin-right: auto;
+            order: 1;
+        }
+
+        .o_field_widget[name="state"],
+        .o_statusbar_status {
+            margin-left: auto;
+            order: 2;
+        }
+    }
+}
+
+.o_form_view .tab-pane.o_quoter_area_tab_pane .o_field_one2many[name="quoter_area_block_ids"] .o_x2m_control_panel,
+.o_form_view .tab-pane.o_quoter_area_tab_pane .o_field_one2many[name="quoter_area_block_ids"] .o_list_view {
+    display: none !important;
+}
+
+/* Misma fila que «Agregar línea» (Odoo 15: td.o_field_x2many_list_row_add). */
+td.o_field_x2many_list_row_add.o_quoter_bulk_add_line_cell,
+td.o_group_field_row_add.o_quoter_bulk_add_line_cell {
+    a.o_quoter_bulk_add_lines_trigger {
+        white-space: nowrap;
+    }
+}
+
+.modal-dialog.o_quoter_bulk_add_modal_dialog {
+    max-width: 820px;
+    width: 92vw;
+    margin: 1.75rem auto;
+
+    .modal-body {
+        padding: 1rem 1.25rem 0.75rem;
+    }
+}
+
+.o_quoter_bulk_add_lines_dialog {
+    .o_quoter_bulk_add_lines_list {
+        background: #fff;
+        max-height: 55vh;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: 0.5rem 0.75rem 0.75rem;
+    }
+
+    .o_quoter_bulk_add_section {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
+
+    .o_quoter_bulk_add_section_title {
+        font-size: 13px;
+        line-height: 1.25;
+    }
+
+    .o_quoter_bulk_add_product_row {
+        margin: 0;
+        padding: 0.15rem 0 0.15rem 1.75rem;
+        min-height: 0;
+
+        .form-check-input {
+            margin-top: 0.2rem;
+            margin-left: -1.75rem;
+        }
+
+        .form-check-label {
+            line-height: 1.35;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+    }
+}
+
