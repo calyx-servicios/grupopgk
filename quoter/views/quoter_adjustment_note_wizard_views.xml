@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_quoter_adjustment_note_wizard_form" model="ir.ui.view">
+        <field name="name">quoter.adjustment.note.wizard.form</field>
+        <field name="model">quoter.adjustment.note.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Crear línea de ajuste">
+                <group>
+                    <field name="sale_line_id" invisible="1"/>
+                    <field name="note" placeholder="Completar justificación del ajuste..."/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Crear ajuste" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
