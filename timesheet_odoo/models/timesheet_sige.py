@@ -60,36 +60,41 @@ class TimesheetSige(models.Model):
 
     @api.depends("days_to_register", "working_day")
     def _compute_required_hours(self):
-        self.required_hours = self.days_to_register * self.working_day
+        for rec in self:
+            rec.required_hours = rec.days_to_register * rec.working_day
 
     @api.depends("start_of_period", "end_of_period")
     def _compute_days_to_register(self):
-        self.days_to_register = self._get_total_days(True)
+        for rec in self:
+            rec.days_to_register = rec._get_total_days(True)
 
     @api.depends("timesheet_ids", "required_hours")
     def _compute_pending_hours(self):
-        total_required = self.required_hours
-        for odt in self.timesheet_ids:
-            total_required -= odt.unit_amount
-        self.pending_hours = total_required
+        for rec in self:
+            total_required = rec.required_hours
+            for odt in rec.timesheet_ids:
+                total_required -= odt.unit_amount
+            rec.pending_hours = total_required
 
     @api.depends("timesheet_ids", "pending_hours")
     def _compute_register_hour(self):
-        total = 0
-        for line in self.timesheet_ids:
-            total += line.unit_amount
-        self.register_hours = total
+        for rec in self:
+            total = 0
+            for line in rec.timesheet_ids:
+                total += line.unit_amount
+            rec.register_hours = total
 
     @api.depends("timesheet_ids")
     def _compute_chargeability(self):
-        factured = 0
-        for odt in self.timesheet_ids:
-            if odt.project_id.allow_billable:
-                factured += odt.unit_amount
-        if factured == 0:
-            self.chargeability = 0
-        else:
-            self.chargeability = (factured / self.required_hours) * 100
+        for rec in self:
+            factured = 0
+            for odt in rec.timesheet_ids:
+                if odt.project_id.allow_billable:
+                    factured += odt.unit_amount
+            if factured == 0:
+                rec.chargeability = 0
+            else:
+                rec.chargeability = (factured / rec.required_hours) * 100
 
     def _get_total_days(self, holidays):
         total_days = 0
@@ -105,22 +110,23 @@ class TimesheetSige(models.Model):
 
     @api.depends("days_to_register")
     def _compute_holidays(self):
-        holidays = self.env['calendar.holidays.timesheets'].search([
-            "&", ('start_date', '<=', self.end_of_period),('start_date','>=', self.start_of_period)
-        ])
-        total_holidays = 0
-        holiday = holidays.filtered(lambda h: h.type == 'holiday')
-        if holiday:
-            total_holidays = len(holiday)
-        non_working_day = holidays.filtered(lambda h: h.type == 'non_work_day' and h.is_holiday == True)
-        if non_working_day:
-            total_holidays = total_holidays + len(non_working_day)
-        special_holidays = holidays.filtered(lambda h: h.type == 'special_holiday')
+        for rec in self:
+            holidays = self.env['calendar.holidays.timesheets'].search([
+                "&", ('start_date', '<=', rec.end_of_period),('start_date','>=', rec.start_of_period)
+            ])
+            total_holidays = 0
+            holiday = holidays.filtered(lambda h: h.type == 'holiday')
+            if holiday:
+                total_holidays = len(holiday)
+            non_working_day = holidays.filtered(lambda h: h.type == 'non_work_day' and h.is_holiday == True)
+            if non_working_day:
+                total_holidays = total_holidays + len(non_working_day)
+            special_holidays = holidays.filtered(lambda h: h.type == 'special_holiday')
 
-        for special_holiday in special_holidays:
-            if self.employee_id.job_id in special_holiday.jobs_ids:
-                total_holidays += 1
-        self.holidays = total_holidays
+            for special_holiday in special_holidays:
+                if rec.employee_id.job_id in special_holiday.jobs_ids:
+                    total_holidays += 1
+            rec.holidays = total_holidays
 
     def send_period(self):
         self.write({

@@ -51,22 +51,24 @@ class PeriodSige(models.Model):
 
     @api.depends("start_of_period")
     def _compute_last_day(self):
-        this_date = self.start_of_period.replace(day=6)
-        if this_date.weekday() == 6:
-            this_date = self.start_of_period.replace(day=8)
-        elif this_date.weekday() == 7:
-            this_date = self.start_of_period.replace(day=7)
-        self.end_of_period = this_date
+        for rec in self:
+            this_date = rec.start_of_period.replace(day=6)
+            if this_date.weekday() == 6:
+                this_date = rec.start_of_period.replace(day=8)
+            elif this_date.weekday() == 7:
+                this_date = rec.start_of_period.replace(day=7)
+            rec.end_of_period = this_date
 
     @api.depends("start_of_period")
     def _compute_employee_ids(self):
-        timesheet_sige = self.env['timesheet.sige'].search([('period_id','=',self.id),('state','=','open')])
-        employees = []
-        if not timesheet_sige:
-            employees = self.env['hr.employee'].search([('active', '=', True),('is_active', '=', True)])
-        else:
-            employees = timesheet_sige.mapped("employee_id")
-        self.employee_ids = [(6, 0, employees.ids)]
+        for rec in self:
+            timesheet_sige = self.env['timesheet.sige'].search([('period_id','=',rec.id),('state','=','open')])
+            employees = []
+            if not timesheet_sige:
+                employees = self.env['hr.employee'].search([('active', '=', True),('is_active', '=', True)])
+            else:
+                employees = timesheet_sige.mapped("employee_id")
+            rec.employee_ids = [(6, 0, employees.ids)]
 
     @api.depends("start_of_period")
     def _compute_count_employees(self):
@@ -74,19 +76,22 @@ class PeriodSige(models.Model):
             ('active', '=', True),
             ('is_active', '=', True)
         ])
-        self.count_employees = len(employees)
+        for rec in self:
+            rec.count_employees = len(employees)
 
     @api.depends("start_of_period")
     def _compute_sent_periods(self):
-        timesheet_sige = self.env['timesheet.sige'].search([
-            ('period_id','=',self.id),('state','=','sent')
-        ])
-        self.sent_periods = len(timesheet_sige)
+        for rec in self:
+            timesheet_sige = self.env['timesheet.sige'].search([
+                ('period_id','=',rec.id),('state','=','sent')
+            ])
+            rec.sent_periods = len(timesheet_sige)
 
     @api.depends("start_of_period")
     def _compute_pending_periods(self):
-        timesheet_sige = self.env['timesheet.sige'].search([('period_id','=',self.id),('state','=','open')])
-        self.pending_periods = len(timesheet_sige)
+        for rec in self:
+            timesheet_sige = self.env['timesheet.sige'].search([('period_id','=',rec.id),('state','=','open')])
+            rec.pending_periods = len(timesheet_sige)
 
     @api.model
     def create(self, vals):
