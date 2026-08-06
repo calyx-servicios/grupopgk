@@ -207,7 +207,7 @@ class ProjectProject(models.Model):
                 if today.day < create_date.day:
                     months_elapsed -= 1
 
-                months_elapsed = max(months_elapsed - 1, 0)
+                months_elapsed = max(months_elapsed, 0)
                 rec.advance_billing = (rec.contrated_hours / 12) * months_elapsed
 
     def _compute_remaining_hours(self):
