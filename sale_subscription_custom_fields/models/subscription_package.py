@@ -30,6 +30,22 @@ class SubscriptionPackage(models.Model):
 
     payment_term_id = fields.Many2one('account.payment.term', string='Payment Term')
 
+    def _get_company_safe_taxes(self, line):
+        self.ensure_one()
+        company = self.company_id
+        partner = self.partner_invoice_id or self.partner_id
+
+        taxes = line.tax_id.filtered(lambda t: not t.company_id or t.company_id == company)
+        if not taxes and line.product_id:
+            taxes = line.product_id.taxes_id.filtered(
+                lambda t: not t.company_id or t.company_id == company
+            )
+
+        fpos = self.sale_order.fiscal_position_id or partner.property_account_position_id
+        if fpos and taxes:
+            taxes = fpos.map_tax(taxes)
+        return taxes
+
     def create_invoice_forced(self):
         this_products_line = []
         for rec in self.product_line_ids:
@@ -40,13 +56,14 @@ class SubscriptionPackage(models.Model):
                     'sequence': rec.sequence,
                 }]
             else:
+                company_taxes = self._get_company_safe_taxes(rec)
                 rec_list = [0, 0, {
                     'product_id': rec.product_id.id,
                     'name': rec.name_product,
                     'quantity': rec.product_qty,
                     'price_unit': rec.unit_price,
                     'analytic_account_id': rec.analytic_account_id.id,
-                    'tax_ids': [(6, 0, rec.tax_id.ids)],
+                    'tax_ids': [(6, 0, company_taxes.ids)],
                     'sequence': rec.sequence,
                 }]
             this_products_line.append(rec_list)
@@ -58,7 +75,7 @@ class SubscriptionPackage(models.Model):
                 'state': 'draft',
                 'sale_type_id': self.sale_order.type_id.id,
                 'partner_id': self.partner_invoice_id.id,
-                'invoice_payment_term_id': self.payment_term_id,
+                'invoice_payment_term_id': self.payment_term_id.id,
                 'currency_id': self.partner_invoice_id.currency_id.id,
                 'invoice_line_ids': this_products_line,
                 'subscription_id': self.id,
