@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.1.3.2",
+    "version": "15.0.1.4.0",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
@@ -20,6 +20,7 @@
         "data/decimal_precision_data.xml",
         "security/permissions.xml",
         "views/subscription_ipc_monthly_views.xml",
+        "views/subscription_package_views.xml",
         "views/action_menu.xml",
         "wizards/subscription_massive_update.xml",
     ]
