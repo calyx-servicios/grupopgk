@@ -1,5 +1,6 @@
 from odoo import models, fields, _
 from odoo.exceptions import UserError
+from uuid import uuid4
 
 
 class SubscriptionMassiveUpdate(models.TransientModel):
@@ -23,13 +24,20 @@ class SubscriptionMassiveUpdate(models.TransientModel):
             if self.fields_to_update == 'price':
                 original_price = subscription.total_recurring_price
                 percentage = (self.percentage / 100) + 1
+                event_id = str(uuid4())
+                update_datetime = fields.Datetime.now()
                 if subscription.product_line_ids:
                     changes = _('<table><thead><tr><th>Product</th><th>Original Price</th><th>Current Price</th></tr></thead><tbody>')
                     try:
                         for line in subscription.product_line_ids:
                             current_price = line.unit_price
                             new_price = current_price * percentage
-                            line.unit_price = new_price
+                            line.with_context(
+                                tariff_update_event_id=event_id,
+                                tariff_update_datetime=update_datetime,
+                                tariff_update_type='manual_percentage',
+                                tariff_applied_percentage=self.percentage,
+                            ).write({'unit_price': new_price})
                             changes += _('<tr><td>{}</td><td>{}</td><td>{}</td></tr>').format(line.product_id.display_name, current_price, new_price)
                     except Exception as e:
                         raise UserError(_('Error ({}) when trying to update product line in subscription with ID({})').format(e, subscription.id)) 
