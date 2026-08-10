@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Timesheet",
-    "version": "15.0.21.0.1",
+    "version": "15.0.21.0.2",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
