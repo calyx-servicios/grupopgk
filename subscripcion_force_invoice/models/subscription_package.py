@@ -1,11 +1,29 @@
-from odoo import _, models, fields
+from odoo import _, api, models, fields
 from odoo.exceptions import UserError
 from dateutil.relativedelta import relativedelta
 
 
 class SubscriptionPackage(models.Model):
     _inherit = 'subscription.package'
-    
+
+    # En el modulo base el campo es compute(store=False) y sin inverse, por eso
+    # la fecha que asigna create_invoice_forced solo vivia en cache y se perdia.
+    # Como computado almacenado y editable el valor asignado se persiste hasta
+    # que cambie alguna dependencia.
+    next_invoice_date = fields.Date(store=True, readonly=False,
+                                    compute='_compute_next_invoice_date')
+
+    @api.depends('start_date', 'plan_id.renewal_time')
+    def _compute_next_invoice_date(self):
+        # El compute del modulo base recorre un search en vez de self, dejando
+        # sin asignar los registros fuera de la etapa 'progress'.
+        for sub in self:
+            if sub.start_date:
+                sub.next_invoice_date = sub.start_date + relativedelta(
+                    days=sub.plan_id.renewal_time)
+            else:
+                sub.next_invoice_date = False
+
     def force_invoice(self):
         invoice_count = self.env['account.move'].search_count([('subscription_id', '=', self.id)])        
         if self.plan_id.limit_choice == 'custom' and invoice_count >= self.plan_id.limit_count:
