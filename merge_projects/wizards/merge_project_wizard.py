@@ -49,6 +49,8 @@ class MergeProjectWizard(models.TransientModel):
 
     # Button Action Wizard
     def merge(self):
+        """Create the destination project and migrate historical records."""
+        self.ensure_one()
         if not self.is_same_partner:
             raise UserError(_('You cannot merge projects for different clients or parent contacts'))
 
@@ -66,24 +68,79 @@ class MergeProjectWizard(models.TransientModel):
             raise UserError(_('Error: {}'.format(e)))
 
     def update_project_references(self, old_project, new_project):
-        # Change on SOL project related
-        for sale_line in old_project.sale_line_id:
-            sale_line.sudo().write({
+        """Move the historical records used by project KPIs to the new project."""
+        try:
+            self._reassign_sale_lines(old_project, new_project)
+        except Exception as e:
+            raise UserError(_('Error reassigning sale lines: {}'.format(e)))
+
+        try:
+            self._reassign_tasks(old_project, new_project)
+        except Exception as e:
+            raise UserError(_('Error reassigning tasks: {}'.format(e)))
+
+        try:
+            self._reassign_analytic_lines(old_project, new_project)
+        except Exception as e:
+            raise UserError(_('Error reassigning analytic lines: {}'.format(e)))
+
+        try:
+            self._reassign_move_lines(old_project, new_project)
+        except Exception as e:
+            raise UserError(_('Error reassigning move lines: {}'.format(e)))
+
+    def _reassign_sale_lines(self, old_project, new_project):
+        """Move sale order lines that point to the source project."""
+        sale_lines = old_project.sale_line_id.sudo()
+        if sale_lines:
+            sale_lines.write({'project_id': new_project.id})
+
+    def _reassign_tasks(self, old_project, new_project):
+        """Move tasks and align them with the destination analytic account."""
+        tasks = old_project.task_ids.sudo()
+        if tasks:
+            tasks.write({
                 'project_id': new_project.id,
+                'analytic_account_id': new_project.analytic_account_id.id,
             })
 
-        # Change on task project info and acc
-        for task in old_project.task_ids:
-            task.sudo().write({
-                'project_id': new_project.id,
-                'analytic_account_id': self.analytic_account_id.id,
-            })
+    def _reassign_analytic_lines(self, old_project, new_project):
+        """Move analytic lines using SQL to avoid side effects in custom write overrides."""
+        if not old_project.analytic_account_id or not new_project.analytic_account_id:
+            return
 
-        #  Change for lines
-        for analytic_lines in old_project.analytic_account_id.line_ids:
-            analytic_lines.sudo().write({
-                'account_id': new_project.analytic_account_id.id
-            })
+        self.env.cr.execute(
+            """
+            UPDATE account_analytic_line
+               SET account_id = %s
+             WHERE account_id = %s
+            """,
+            (new_project.analytic_account_id.id, old_project.analytic_account_id.id),
+        )
+
+        if 'project_id' in self.env['account.analytic.line']._fields:
+            self.env.cr.execute(
+                """
+                UPDATE account_analytic_line
+                   SET project_id = %s
+                 WHERE project_id = %s
+                """,
+                (new_project.id, old_project.id),
+            )
+
+    def _reassign_move_lines(self, old_project, new_project):
+        """Move invoice lines using SQL to avoid custom write side effects."""
+        if not old_project.analytic_account_id:
+            return
+
+        self.env.cr.execute(
+            """
+            UPDATE account_move_line
+               SET analytic_account_id = %s
+             WHERE analytic_account_id = %s
+            """,
+            (new_project.analytic_account_id.id, old_project.analytic_account_id.id),
+        )
 
     # Wizard
     def merge_projects(self, window_title, ids):
@@ -93,6 +150,7 @@ class MergeProjectWizard(models.TransientModel):
         return wiz.open_wizard(window_title)
 
     def open_wizard(self, title):
+        self.ensure_one()
         view = self.env.ref('merge_projects.merge_project_wizard_form')
         return {
             'type': 'ir.actions.act_window',
@@ -107,40 +165,87 @@ class MergeProjectWizard(models.TransientModel):
 
     # Create Project
     def create_project(self):
+        self.ensure_one()
         vals = self._project_values()
         project = self.env['project.project'].sudo().create(vals)
         return project
 
     # Prepare values for creation
+    def _get_target_company(self):
+        """Return a single company to use in merged records."""
+        self.ensure_one()
+        if self.company_id:
+            return self.company_id
+
+        project_companies = self.projects_ids.mapped('company_id')
+        if len(project_companies) == 1:
+            return project_companies
+
+        analytic_companies = self.analytic_account_id.company_id
+        if analytic_companies:
+            return analytic_companies[0]
+
+        return self.env.company
+
     def analytic_values(self):
-        if len(self.analytic_account_id.company_id) > 1:
-            company_val = [(6, 0, self.analytic_account_id.company_id.ids)]
+        self.ensure_one()
+        company_field = self.env['account.analytic.account']._fields.get('company_id')
+        company = self._get_target_company()
+        if company_field and company_field.type == 'many2many':
+            company_value = [(6, 0, company.ids)]
         else:
-            company_val = self.analytic_account_id.company_id.id
+            company_value = company.id
         return {
             'name': '{}'.format(self._get_sequence_name()),
-            'company_id': company_val,
+            'company_id': company_value,
             'partner_id': self.partner_id.id,
             'parent_id': self.analytic_account_id.id,
             'group_id': self.analytic_account_id.group_id.id,
         }
 
     def _project_values(self):
+        self.ensure_one()
+        project_fields = self.env['project.project']._fields
+        target_company = self._get_target_company()
 
         # Creation of Project with Values
         account = None
         if not account:
             acc_vals = self.analytic_values()
             account = self.env['account.analytic.account'].create(acc_vals)
-        return {
+        vals = {
             'name': self.new_project_name,
             'partner': self.partner.id,
             'analytic_account_id': account.id,
             'partner_id': self.partner_id.id,
             'active': True,
-            'company_id': self.company_id.id,
-            'allow_billable': True
+            'company_id': target_company.id,
         }
+        if 'allow_billable' in project_fields:
+            vals['allow_billable'] = True
+
+        # Sum all numeric fields (Float, Integer, Monetary) from merged projects
+        numeric_fields = []
+        if self.projects_ids:
+            project_fields = self.projects_ids[0]._fields
+            for field_name, field in project_fields.items():
+                # Get Float, Integer, and Monetary fields that are not computed
+                if field.type in ('integer', 'float', 'monetary') and not field.compute:
+                    numeric_fields.append(field_name)
+
+        # Sum numeric fields from all projects
+        for project in self.projects_ids:
+            for field_name in numeric_fields:
+                if hasattr(project, field_name):
+                    value = project[field_name]
+                    # Only sum if value is truthy (not 0, False, or None)
+                    if value:
+                        if field_name in vals:
+                            vals[field_name] += value
+                        else:
+                            vals[field_name] = value
+
+        return vals
 
     # Sequence
     def _prepare_sequence_name(self, obj):
