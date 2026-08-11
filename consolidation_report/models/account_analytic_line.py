@@ -19,8 +19,9 @@ class AccountAnalyticLine(models.Model):
     sector_account_id = fields.Many2one(
         'account.analytic.account',
         string='Sector ID',
-        compute='_compute_sector_account_id',
-        store=True
+        related='account_id.sector_account_id',
+        store=True,
+        readonly=True
     )
     managment_account_id = fields.Many2one(
         'account.analytic.account',
@@ -35,6 +36,11 @@ class AccountAnalyticLine(models.Model):
     consolidation_line = fields.Boolean(
         string='Consolidation line',
         default=False
+    )
+    is_indirect_expense = fields.Boolean(
+        string='Indirect Expense',
+        default=False,
+        store=True,
     )
     source_analytic_line_id = fields.Many2one(
         'account.analytic.line',
@@ -58,7 +64,7 @@ class AccountAnalyticLine(models.Model):
         for line in self:
             line.has_consolidation_data_lines = bool(line.consolidation_data_line_ids)
 
-    @api.depends('account_id')
+    @api.depends('account_id', 'account_id.is_management_group', 'account_id.parent_id')
     def _compute_managment_account_id(self):
         account_analytic_obj = self.env['account.analytic.account']
         managment_account_ids = account_analytic_obj.search([
@@ -75,12 +81,17 @@ class AccountAnalyticLine(models.Model):
             if account.id in managment_ids_set:
                 line.managment_account_id = account.id
                 continue
-            if managment_account_ids:
-                line.managment_account_id = (
-                    account.id if self.source_analytic_line_id else account.parent_id.id
-                )
+            # si la cuenta no es una gerencia, la gerencia es su padre: vale
+            # tanto para la linea original como para su contrapartida
+            line.managment_account_id = account.parent_id.id
 
-    @api.depends('account_id')
+    @api.depends(
+        'account_id',
+        'account_id.group_id',
+        'account_id.group_id.parent_id',
+        'account_id.group_id.is_business_group',
+        'account_id.group_id.parent_id.is_business_group',
+    )
     def _compute_bussines_group_id(self):
         account_analytic_group_obj = self.env['account.analytic.group']
         groups_ids = account_analytic_group_obj.search([('is_business_group', '=', True)])
@@ -94,30 +105,3 @@ class AccountAnalyticLine(models.Model):
                 continue
             child = groups_ids.children_ids.filtered(lambda g: g.id == group.id)
             line.bussines_group_id = child.parent_id.id if child else False
-
-    @api.depends('account_id')
-    def _compute_sector_account_id(self):
-        account_analytic_obj = self.env['account.analytic.account']
-        sector_account_ids = account_analytic_obj.search([
-            ('is_sector_group', '=', True),
-            ('parent_id', '=', False),
-            ('group_id', '!=', False)
-        ])
-        sector_root_ids = set(sector_account_ids.ids)
-        for line in self:
-            account = line.account_id
-            if not account:
-                line.sector_account_id = False
-                continue
-            if account.id in sector_root_ids:
-                line.sector_account_id = account.id
-                continue
-            if account.is_management_group:
-                line.sector_account_id = account.parent_id.id
-                continue
-            sector = next(
-                (root for root in sector_account_ids
-                 if account.parent_id.id in root.child_ids.ids),
-                False,
-            )
-            line.sector_account_id = sector.id if sector else False
