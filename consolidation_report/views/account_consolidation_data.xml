@@ -10,7 +10,8 @@
                     <field name="sector_account_group"/>
                     <field name="managment_account_group"/>
                     <field name="company"/>
-                    <field name="daughter_account"/>
+                    <field name="analytic_account_id"/>
+                    <field name="daughter_account" optional="hide"/>
                     <field name="daughter_account_id" optional="hide"/>
                     <field name="source_analytic_line_id" optional="hide"/>
                     <field name="origin_line_id" optional="hide"/>
@@ -45,6 +46,7 @@
                         <filter string="ID Gerencia" name="group_by_managment_account_group" domain="[]" context="{'group_by': 'managment_account_group'}"/>
                         <filter string="Compañía" name="group_by_company" domain="[]" context="{'group_by': 'company'}"/>
                         <filter string="Moneda" name="group_by_currency" domain="[]" context="{'group_by': 'currency'}"/>
+                        <filter string="Cuenta analítica" name="group_by_analytic_account_id" domain="[]" context="{'group_by': 'analytic_account_id'}"/>
                         <filter string="Línea de cuenta analítica" name="group_by_daughter_account" domain="[]" context="{'group_by': 'daughter_account'}"/>
                         <filter string="Línea analítica origen" name="group_by_source_analytic_line_id" domain="[]" context="{'group_by': 'source_analytic_line_id'}"/>
                         <filter string="Proyecto" name="group_by_project_id" domain="[]" context="{'group_by': 'project_id'}"/>

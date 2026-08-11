@@ -26,22 +26,6 @@
 						<field name="export_consolidation_filename" invisible="1"/>
 						<field name="export_consolidation_file" readonly="1" filename="export_consolidation_filename"/>
 					</group>
-					<!-- <notebook>
-						<page string="Errores">
-							<field name="counter" string="Líneas consolidadas"/>
-							<field name="list_errors" create="1" edit="1">
-								<tree>
-									<field name="line_id" widget="many2one" options="{'no_create': True}"/>
-									<field name="consolidation_id" invisible="1"/>
-									<field name="error_type" invisible="1"/>
-									<field name="amount_origin"/>
-									<field name="amount_consolidated"/>
-									<field name="description"/>
-									<button name="open_line_analytic_form" string="Open New Analytic Line" type="object"/>
-								</tree>
-							</field>
-						</page>
-					</notebook> -->
 				</sheet>
 				<div class="oe_chatter">
 					<field name="message_follower_ids" widget="mail_followers" groups="base.group_user"/>

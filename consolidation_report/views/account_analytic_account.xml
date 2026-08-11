@@ -9,7 +9,7 @@
                 <field name="is_sector_group" readonly="0"/>
             </xpath>
             <xpath expr="//field[@name='group_id']" position="after">
-                <field name="is_management_group" invisible="1"/>
+                <field name="is_management_group"/>
             </xpath>
         </field>
     </record>

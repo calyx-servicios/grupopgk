@@ -44,6 +44,16 @@ class AccountConsolidationData(models.Model):
         readonly=True,
         help='ID de la línea analítica mostrada (para pruebas).',
     )
+    analytic_account_id = fields.Many2one(
+        'account.analytic.account',
+        related='daughter_account.account_id',
+        string='Analytic Account',
+        store=True,
+        readonly=True,
+        help='Cuenta analítica de la línea mostrada. La contrapartida que anula '
+             'un movimiento en el lugar comparte cuenta con el original, de modo '
+             'que al agrupar por esta columna ambas quedan en una sola fila.',
+    )
     source_analytic_line_id = fields.Many2one(
         'account.analytic.line',
         string='Línea analítica origen',
