@@ -124,7 +124,7 @@ class SubscriptionMassiveUpdate(models.TransientModel):
         self.ensure_one()
         for subscription in self.subscriptions_ids:
             if self.fields_to_update == 'price':
-                update_type = 'manual_percentage'
+                update_type = 'manual'
                 if self.ipc_period_from or self.ipc_period_to:
                     self._validate_ipc_period_range()
                     update_type = 'ipc'
