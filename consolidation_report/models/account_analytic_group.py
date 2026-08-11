@@ -10,7 +10,7 @@ class AccountAnalyticGroup(models.Model):
         store=True
     )
 
-    @api.depends('parent_prin_group')
+    @api.depends('parent_id', 'parent_prin_group')
     def _compute_is_business_group(self):
         for group in self:
             group.is_business_group = bool(

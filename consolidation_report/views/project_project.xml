@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="inherit_project_project_non_billable" model="ir.ui.view">
+        <field name="name">project.project.form.non.billable.inherit</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="sale_timesheet.project_project_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@id='allow_billable_container']" position="after">
+                <div class="col-lg-6 o_setting_box" id="is_non_billable_container">
+                    <div class="o_setting_left_pane">
+                        <field name="is_non_billable"/>
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <label for="is_non_billable"/>
+                        <div class="text-muted" id="is_non_billable_setting">
+                            Consider the hours of this project as non-billable in the consolidation report
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
