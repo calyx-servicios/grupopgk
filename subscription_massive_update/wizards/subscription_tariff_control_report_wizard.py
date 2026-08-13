@@ -111,19 +111,9 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
         rows = []
         for history in histories:
             subscription = history.subscription_id
-            line = history.subscription_line_id
-            qty = history.quantity
-            if qty is False and line:
-                qty = line.product_qty
-            qty = qty or 0.0
-
+            qty = history.quantity or 0.0
             analytic = history.analytic_account_id
-            if not analytic and line:
-                analytic = line.analytic_account_id
-
             product = history.product_id
-            if not product and line:
-                product = line.product_id
 
             row = {
                 "subscription_id": subscription.id,
@@ -145,7 +135,7 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
                 "currency": subscription.currency_id.name or "",
                 "commercial": subscription.user_id.display_name or "",
                 "event_id": history.event_id,
-                "line_key": line.id if line else f"history-{history.id}",
+                "line_key": product.id if product else f"history-{history.id}",
             }
             rows.append(row)
         return rows

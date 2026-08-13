@@ -17,7 +17,6 @@
                             <field name="update_datetime"/>
                             <field name="update_type"/>
                             <field name="applied_percentage"/>
-                            <field name="subscription_line_id"/>
                             <field name="product_id"/>
                             <field name="old_price"/>
                             <field name="new_price"/>

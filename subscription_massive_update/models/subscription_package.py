@@ -98,7 +98,6 @@ class SubscriptionPackageProductLine(models.Model):
             history_vals.append(
                 {
                     "subscription_id": line.subscription_id.id,
-                    "subscription_line_id": line.id,
                     "product_id": line.product_id.id,
                     "quantity": line.product_qty,
                     "analytic_account_id": line.analytic_account_id.id,

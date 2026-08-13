@@ -15,12 +15,6 @@ class SubscriptionTariffUpdateHistory(models.Model):
         ondelete="cascade",
         index=True,
     )
-    subscription_line_id = fields.Many2one(
-        "subscription.package.product.line",
-        string="Línea de suscripción",
-        ondelete="set null",
-        index=True,
-    )
     product_id = fields.Many2one(
         "product.product",
         string="Producto",
