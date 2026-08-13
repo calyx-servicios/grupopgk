@@ -193,21 +193,22 @@ class ProjectProject(models.Model):
 
             rec.cost = total_cost
 
-    @api.depends('contrated_hours', 'create_date')
+    @api.depends('contrated_hours', 'date_start', 'create_date')
     def _compute_advance_billing(self):
         for rec in self:
             rec.advance_billing = False
-            if rec.contrated_hours and rec.create_date:
-                create_date = fields.Datetime.to_datetime(rec.create_date)
+            if rec.contrated_hours and (rec.date_start or rec.create_date):
+                start_date = rec.date_start
+                if not start_date:
+                    # Fallback to create_date only when project start date is not defined.
+                    start_date = fields.Datetime.to_datetime(rec.create_date).date()
+
                 today = fields.Date.context_today(rec)
                 months_elapsed = (
-                    (today.year - create_date.year) * 12
-                    + (today.month - create_date.month)
+                    (today.year - start_date.year) * 12
+                    + (today.month - start_date.month)
                 )
-                if today.day < create_date.day:
-                    months_elapsed -= 1
-
-                months_elapsed = max(months_elapsed - 1, 0)
+                months_elapsed = max(months_elapsed, 0)
                 rec.advance_billing = (rec.contrated_hours / 12) * months_elapsed
 
     def _compute_remaining_hours(self):
