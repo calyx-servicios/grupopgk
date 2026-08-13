@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="tariff_ctrl_pdf">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <t t-set="payload" t-value="report_data"/>
+                <div class="page">
+                        <h2>Control de Actualizaciones de Tarifa</h2>
+                        <table class="table table-sm table-bordered" style="width: 100%; margin-bottom: 16px;">
+                            <tbody>
+                                <tr>
+                                    <td><strong>Compañías</strong></td>
+                                    <td><span t-esc="payload.get('filters', {}).get('companies', '')"/></td>
+                                    <td><strong>Estado</strong></td>
+                                    <td><span t-esc="payload.get('filters', {}).get('state', '')"/></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Desde</strong></td>
+                                    <td><span t-esc="payload.get('filters', {}).get('date_from', '')"/></td>
+                                    <td><strong>Hasta</strong></td>
+                                    <td><span t-esc="payload.get('filters', {}).get('date_to', '')"/></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Tipo actualización</strong></td>
+                                    <td><span t-esc="payload.get('filters', {}).get('update_frequency', '')"/></td>
+                                    <td><strong>Moneda</strong></td>
+                                    <td><span t-esc="payload.get('filters', {}).get('currency_filter', '')"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h3>Sección 1 - Suscripciones actualizadas en el período</h3>
+                        <table class="table table-sm table-bordered" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Compañía</th>
+                                    <th>SO</th>
+                                    <th>SUS</th>
+                                    <th>Tipo actualización</th>
+                                    <th>Fecha cambio</th>
+                                    <th>Usuario</th>
+                                    <th>Producto</th>
+                                    <th>Cuenta analítica</th>
+                                    <th>Qty</th>
+                                    <th>P.U. anterior</th>
+                                    <th>P.U. nuevo</th>
+                                    <th>Subtotal neto</th>
+                                    <th>% aplicado</th>
+                                    <th>Moneda</th>
+                                    <th>Comercial</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="payload.get('section_one_rows', [])" t-as="row">
+                                    <tr>
+                                        <td><span t-esc="row.get('company', '')"/></td>
+                                        <td><span t-esc="row.get('so', '')"/></td>
+                                        <td><span t-esc="row.get('sus', '')"/></td>
+                                        <td><span t-esc="row.get('update_frequency', '')"/></td>
+                                        <td><span t-esc="row.get('change_date', '')"/></td>
+                                        <td><span t-esc="row.get('user', '')"/></td>
+                                        <td><span t-esc="row.get('product', '')"/></td>
+                                        <td><span t-esc="row.get('analytic_account', '')"/></td>
+                                        <td class="text-right"><span t-esc="row.get('qty', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % row.get('old_price', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % row.get('new_price', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % row.get('subtotal_net', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % row.get('applied_percentage', 0.0)"/></td>
+                                        <td><span t-esc="row.get('currency', '')"/></td>
+                                        <td><span t-esc="row.get('commercial', '')"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <h4>Subtotal por cliente</h4>
+                        <table class="table table-sm table-bordered" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Total original neto</th>
+                                    <th>Total actual neto</th>
+                                    <th>Variación acumulada %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="payload.get('partner_subtotals', [])" t-as="subtotal">
+                                    <tr>
+                                        <td><span t-esc="subtotal.get('partner_name', '')"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % subtotal.get('total_original', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % subtotal.get('total_current', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % subtotal.get('variation', 0.0)"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+
+                        <h3>Sección 2 - Suscripciones sin actualización en el período</h3>
+                        <table class="table table-sm table-bordered" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Compañía</th>
+                                    <th>SO</th>
+                                    <th>SUS</th>
+                                    <th>Tipo actualización</th>
+                                    <th>Última actualización</th>
+                                    <th>Producto</th>
+                                    <th>Cuenta analítica</th>
+                                    <th>Qty</th>
+                                    <th>P.U. actual</th>
+                                    <th>Subtotal neto</th>
+                                    <th>Moneda</th>
+                                    <th>Comercial</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="payload.get('section_two_rows', [])" t-as="row">
+                                    <tr>
+                                        <td><span t-esc="row.get('company', '')"/></td>
+                                        <td><span t-esc="row.get('so', '')"/></td>
+                                        <td><span t-esc="row.get('sus', '')"/></td>
+                                        <td><span t-esc="row.get('update_frequency', '')"/></td>
+                                        <td><span t-esc="row.get('last_update', '')"/></td>
+                                        <td><span t-esc="row.get('product', '')"/></td>
+                                        <td><span t-esc="row.get('analytic_account', '')"/></td>
+                                        <td class="text-right"><span t-esc="row.get('qty', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % row.get('current_price', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % row.get('subtotal_net', 0.0)"/></td>
+                                        <td><span t-esc="row.get('currency', '')"/></td>
+                                        <td><span t-esc="row.get('commercial', '')"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_subscription_tariff_control_pdf" model="ir.actions.report">
+        <field name="name">Control de Actualizaciones de Tarifa (PDF)</field>
+        <field name="model">subscription.tariff.update.control.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">subscription_massive_update.tariff_ctrl_pdf</field>
+        <field name="report_file">subscription_massive_update.tariff_ctrl_pdf</field>
+        <field name="print_report_name">'Control_Actualizaciones_Tarifa_%s' % (object.date_to or '')</field>
+    </record>
+
+    <record id="action_report_subscription_tariff_control_xlsx" model="ir.actions.report">
+        <field name="name">Control de Actualizaciones de Tarifa (XLSX)</field>
+        <field name="model">subscription.tariff.update.control.wizard</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">subscription_massive_update.tariff_ctrl_xlsx</field>
+        <field name="report_file">subscription_massive_update.tariff_ctrl_xlsx</field>
+    </record>
+</odoo>

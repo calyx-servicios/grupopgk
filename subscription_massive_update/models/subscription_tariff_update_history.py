@@ -26,6 +26,14 @@ class SubscriptionTariffUpdateHistory(models.Model):
         string="Producto",
         ondelete="restrict",
     )
+    quantity = fields.Float(
+        string="Cantidad",
+    )
+    analytic_account_id = fields.Many2one(
+        "account.analytic.account",
+        string="Cuenta analítica",
+        ondelete="set null",
+    )
     update_datetime = fields.Datetime(
         string="Fecha de actualización",
         required=True,

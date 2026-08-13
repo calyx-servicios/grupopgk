@@ -100,6 +100,8 @@ class SubscriptionPackageProductLine(models.Model):
                     "subscription_id": line.subscription_id.id,
                     "subscription_line_id": line.id,
                     "product_id": line.product_id.id,
+                    "quantity": line.product_qty,
+                    "analytic_account_id": line.analytic_account_id.id,
                     "update_datetime": update_datetime or fields.Datetime.now(),
                     "update_type": update_type,
                     "applied_percentage": applied_percentage,
