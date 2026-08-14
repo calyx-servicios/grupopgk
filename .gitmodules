@@ -166,7 +166,3 @@
 	path = submodules/OCA/automation
 	url = git@github.com:OCA/automation.git
 	branch = 16.0
-[submodule "submodules/OCA/spreadsheet"]
-	path = submodules/OCA/spreadsheet
-	url = git@github.com:OCA/spreadsheet.git
-	branch = 16.0
