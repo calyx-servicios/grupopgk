@@ -4,9 +4,52 @@
         <t t-call="web.html_container">
             <t t-call="web.external_layout">
                 <t t-set="payload" t-value="report_data"/>
-                <div class="page">
+                <div class="page tariff-control-page">
+                    <style>
+                        .tariff-control-page {
+                            padding-top: 0;
+                        }
+                        .tariff-control-content {
+                            margin-top: 28mm;
+                        }
+                        .tariff-control-content h2 {
+                            font-size: 20px;
+                            margin-top: 0;
+                            margin-bottom: 12px;
+                        }
+                        .tariff-control-table {
+                            width: 100%;
+                            table-layout: fixed;
+                            font-size: 13px;
+                            border-collapse: collapse;
+                        }
+                        .tariff-control-table th,
+                        .tariff-control-table td {
+                            padding: 4px 3px;
+                            vertical-align: top;
+                            overflow-wrap: anywhere;
+                            word-wrap: break-word;
+                            white-space: normal;
+                        }
+                        .tariff-control-table th {
+                            font-size: 12px;
+                            line-height: 1.2;
+                        }
+                        .tariff-control-filter {
+                            width: 100%;
+                            table-layout: fixed;
+                            font-size: 13px;
+                        }
+                        .tariff-control-filter td {
+                            padding: 4px;
+                            overflow-wrap: anywhere;
+                            word-wrap: break-word;
+                            white-space: normal;
+                        }
+                    </style>
+                    <div class="tariff-control-content">
                         <h2>Control de Actualizaciones de Tarifa</h2>
-                        <table class="table table-sm table-bordered" style="width: 100%; margin-bottom: 16px;">
+                        <table class="table table-sm table-bordered tariff-control-filter" style="margin-bottom: 12px;">
                             <tbody>
                                 <tr>
                                     <td><strong>Compañías</strong></td>
@@ -30,7 +73,24 @@
                         </table>
 
                         <h3>Sección 1 - Suscripciones actualizadas en el período</h3>
-                        <table class="table table-sm table-bordered" style="width: 100%;">
+                        <table class="table table-sm table-bordered tariff-control-table">
+                            <colgroup>
+                                <col style="width: 8%;"/>
+                                <col style="width: 5%;"/>
+                                <col style="width: 10%;"/>
+                                <col style="width: 6%;"/>
+                                <col style="width: 8%;"/>
+                                <col style="width: 7%;"/>
+                                <col style="width: 9%;"/>
+                                <col style="width: 14%;"/>
+                                <col style="width: 5%;"/>
+                                <col style="width: 7%;"/>
+                                <col style="width: 7%;"/>
+                                <col style="width: 7%;"/>
+                                <col style="width: 5%;"/>
+                                <col style="width: 4%;"/>
+                                <col style="width: 8%;"/>
+                            </colgroup>
                             <thead>
                                 <tr>
                                     <th>Compañía</th>
@@ -41,7 +101,7 @@
                                     <th>Usuario</th>
                                     <th>Producto</th>
                                     <th>Cuenta analítica</th>
-                                    <th>Qty</th>
+                                    <th>Cant.</th>
                                     <th>P.U. anterior</th>
                                     <th>P.U. nuevo</th>
                                     <th>Subtotal neto</th>
@@ -61,7 +121,7 @@
                                         <td><span t-esc="row.get('user', '')"/></td>
                                         <td><span t-esc="row.get('product', '')"/></td>
                                         <td><span t-esc="row.get('analytic_account', '')"/></td>
-                                        <td class="text-right"><span t-esc="row.get('qty', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % row.get('qty', 0.0)"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % row.get('old_price', 0.0)"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % row.get('new_price', 0.0)"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % row.get('subtotal_net', 0.0)"/></td>
@@ -74,9 +134,17 @@
                         </table>
 
                         <h4>Subtotal por cliente</h4>
-                        <table class="table table-sm table-bordered" style="width: 100%;">
+                        <table class="table table-sm table-bordered tariff-control-table">
+                            <colgroup>
+                                <col style="width: 10%;"/>
+                                <col style="width: 28%;"/>
+                                <col style="width: 20%;"/>
+                                <col style="width: 20%;"/>
+                                <col style="width: 22%;"/>
+                            </colgroup>
                             <thead>
                                 <tr>
+                                    <th>SO</th>
                                     <th>Cliente</th>
                                     <th>Total original neto</th>
                                     <th>Total actual neto</th>
@@ -86,6 +154,7 @@
                             <tbody>
                                 <t t-foreach="payload.get('partner_subtotals', [])" t-as="subtotal">
                                     <tr>
+                                        <td><span t-esc="subtotal.get('so', '')"/></td>
                                         <td><span t-esc="subtotal.get('partner_name', '')"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % subtotal.get('total_original', 0.0)"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % subtotal.get('total_current', 0.0)"/></td>
@@ -96,7 +165,21 @@
                         </table>
 
                         <h3>Sección 2 - Suscripciones sin actualización en el período</h3>
-                        <table class="table table-sm table-bordered" style="width: 100%;">
+                        <table class="table table-sm table-bordered tariff-control-table">
+                            <colgroup>
+                                <col style="width: 9%;"/>
+                                <col style="width: 5%;"/>
+                                <col style="width: 11%;"/>
+                                <col style="width: 7%;"/>
+                                <col style="width: 9%;"/>
+                                <col style="width: 11%;"/>
+                                <col style="width: 15%;"/>
+                                <col style="width: 5%;"/>
+                                <col style="width: 8%;"/>
+                                <col style="width: 9%;"/>
+                                <col style="width: 4%;"/>
+                                <col style="width: 7%;"/>
+                            </colgroup>
                             <thead>
                                 <tr>
                                     <th>Compañía</th>
@@ -106,7 +189,7 @@
                                     <th>Última actualización</th>
                                     <th>Producto</th>
                                     <th>Cuenta analítica</th>
-                                    <th>Qty</th>
+                                    <th>Cant.</th>
                                     <th>P.U. actual</th>
                                     <th>Subtotal neto</th>
                                     <th>Moneda</th>
@@ -123,7 +206,7 @@
                                         <td><span t-esc="row.get('last_update', '')"/></td>
                                         <td><span t-esc="row.get('product', '')"/></td>
                                         <td><span t-esc="row.get('analytic_account', '')"/></td>
-                                        <td class="text-right"><span t-esc="row.get('qty', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="'%.2f' % row.get('qty', 0.0)"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % row.get('current_price', 0.0)"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % row.get('subtotal_net', 0.0)"/></td>
                                         <td><span t-esc="row.get('currency', '')"/></td>
@@ -132,10 +215,25 @@
                                 </t>
                             </tbody>
                         </table>
+                    </div>
                 </div>
             </t>
         </t>
     </template>
+
+    <record id="paperformat_subscription_tariff_control_landscape" model="report.paperformat">
+        <field name="name">Subscription Tariff Control A4 Landscape</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">12</field>
+        <field name="margin_bottom">18</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">5</field>
+        <field name="dpi">90</field>
+    </record>
 
     <record id="action_report_subscription_tariff_control_pdf" model="ir.actions.report">
         <field name="name">Control de Actualizaciones de Tarifa (PDF)</field>
@@ -143,6 +241,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">subscription_massive_update.tariff_ctrl_pdf</field>
         <field name="report_file">subscription_massive_update.tariff_ctrl_pdf</field>
+        <field name="paperformat_id" ref="paperformat_subscription_tariff_control_landscape"/>
         <field name="print_report_name">'Control_Actualizaciones_Tarifa_%s' % (object.date_to or '')</field>
     </record>
 
