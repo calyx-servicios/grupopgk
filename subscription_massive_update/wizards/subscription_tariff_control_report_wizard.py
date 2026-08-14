@@ -35,6 +35,7 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
             ("monthly", "Mensual"),
             ("bimonthly", "Bimestral"),
             ("quarterly", "Trimestral"),
+            ("four_monthly", "Cuatrimestral"),
             ("semiannual", "Semestral"),
             ("annual", "Anual"),
         ],
