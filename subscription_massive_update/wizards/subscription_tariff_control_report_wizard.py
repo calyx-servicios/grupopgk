@@ -14,10 +14,11 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
         default=lambda self: self._default_company_ids(),
         required=True,
     )
-    subscription_state = fields.Char(
+    subscription_state = fields.Selection(
+        selection="_selection_subscription_states",
         string="Estado de suscripción",
-        default="In Progress",
-        readonly=True,
+        default=lambda self: self._default_subscription_state(),
+        required=True,
     )
     date_from = fields.Date(
         string="Desde",
@@ -63,6 +64,22 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
         today = fields.Date.context_today(self)
         return date(today.year, 1, 1)
 
+    @api.model
+    def _selection_subscription_states(self):
+        stages = self.env["subscription.package.stage"].search(
+            [], order="sequence, id"
+        )
+        return [("all", "Todas")] + [
+            (str(stage.id), stage.name) for stage in stages
+        ]
+
+    @api.model
+    def _default_subscription_state(self):
+        stage = self.env["subscription.package.stage"].search(
+            [("category", "=", "progress")], order="sequence, id", limit=1
+        )
+        return str(stage.id) if stage else "all"
+
     @api.constrains("date_from", "date_to")
     def _check_date_range(self):
         for wizard in self:
@@ -72,11 +89,10 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
     def _get_subscription_domain(self):
         self.ensure_one()
         domain = [
-            ("stage_category", "=", "progress"),
             ("company_id", "in", self.company_ids.ids),
         ]
-        if self.update_frequency != "all":
-            domain.append(("tariff_update_frequency", "=", self.update_frequency))
+        if self.subscription_state != "all":
+            domain.append(("stage_id", "=", int(self.subscription_state)))
         if self.currency_filter == "ars":
             domain.append(("currency_id.name", "=", "ARS"))
         elif self.currency_filter == "usd":
@@ -90,8 +106,11 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
         return date_from_dt, date_to_dt
 
     def _selection_label(self, field_name, value):
-        field = self._fields[field_name]
-        return dict(field.selection).get(value, value or "")
+        if field_name == "subscription_state":
+            values = self._selection_subscription_states()
+        else:
+            values = self._fields[field_name].selection
+        return dict(values).get(value, value or "")
 
     def _subscription_frequency_label(self, subscription):
         selection = dict(subscription._fields["tariff_update_frequency"].selection)
@@ -108,13 +127,18 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
         )
         return dict(self.env.cr.fetchall())
 
-    def _prepare_section_one(self, histories, analytic_names):
+    def _prepare_section_one(self, histories, analytic_names, line_snapshots):
         rows = []
         for history in histories:
             subscription = history.subscription_id
-            qty = history.quantity or 0.0
-            analytic = history.analytic_account_id
             product = history.product_id
+            snapshot = line_snapshots.get((subscription.id, product.id))
+            qty = history.quantity or (
+                snapshot.product_qty if snapshot else 0.0
+            )
+            analytic_id = history.analytic_account_id.id or (
+                snapshot.analytic_account_id.id if snapshot else False
+            )
 
             row = {
                 "subscription_id": subscription.id,
@@ -127,7 +151,7 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
                 "change_date": history.update_datetime,
                 "user": history.user_id.display_name or "",
                 "product": product.display_name if product else "",
-                "analytic_account": analytic_names.get(analytic.id, "") if analytic else "",
+                "analytic_account": analytic_names.get(analytic_id, ""),
                 "qty": qty,
                 "old_price": history.old_price,
                 "new_price": history.new_price,
@@ -151,6 +175,7 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
                 line_totals[key] = {
                     "partner_id": row["partner_id"],
                     "partner_name": row["partner_name"],
+                    "so": row["so"],
                     "original": old_subtotal,
                     "current": new_subtotal,
                 }
@@ -159,15 +184,16 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
 
         partner_accum = {}
         for totals in line_totals.values():
-            partner_id = totals["partner_id"]
-            if partner_id not in partner_accum:
-                partner_accum[partner_id] = {
+            partner_key = (totals["partner_id"], totals["so"])
+            if partner_key not in partner_accum:
+                partner_accum[partner_key] = {
                     "partner_name": totals["partner_name"],
+                    "so": totals["so"],
                     "total_original": 0.0,
                     "total_current": 0.0,
                 }
-            partner_accum[partner_id]["total_original"] += totals["original"]
-            partner_accum[partner_id]["total_current"] += totals["current"]
+            partner_accum[partner_key]["total_original"] += totals["original"]
+            partner_accum[partner_key]["total_current"] += totals["current"]
 
         subtotals = []
         for partner_data in sorted(
@@ -181,6 +207,7 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
                 variation = 0.0
             subtotals.append(
                 {
+                    "so": partner_data["so"],
                     "partner_name": partner_data["partner_name"],
                     "total_original": total_original,
                     "total_current": total_current,
@@ -253,6 +280,20 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
             ],
             order="update_datetime asc, id asc",
         )
+        if self.update_frequency != "all":
+            histories = histories.filtered(
+                lambda history: history.subscription_id.tariff_update_frequency
+                == self.update_frequency
+            )
+
+        line_snapshots = {}
+        for subscription in subscriptions:
+            for line in subscription.product_line_ids.filtered(
+                lambda item: item.display_type not in ("line_section", "line_note")
+            ):
+                line_snapshots.setdefault(
+                    (subscription.id, line.product_id.id), line
+                )
 
         analytic_ids = histories.mapped("analytic_account_id").ids
         analytic_ids += subscriptions.mapped(
@@ -260,7 +301,9 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
         ).ids
         analytic_names = self._get_analytic_names(analytic_ids)
 
-        section_one_rows = self._prepare_section_one(histories, analytic_names)
+        section_one_rows = self._prepare_section_one(
+            histories, analytic_names, line_snapshots
+        )
         partner_subtotals = self._prepare_partner_subtotals(section_one_rows)
 
         subscriptions_with_updates = set(histories.mapped("subscription_id").ids)
@@ -275,7 +318,9 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
             "generated_at": fields.Datetime.now(),
             "filters": {
                 "companies": ", ".join(self.company_ids.mapped("display_name")),
-                "state": self.subscription_state,
+                "state": self._selection_label(
+                    "subscription_state", self.subscription_state
+                ),
                 "date_from": self.date_from,
                 "date_to": self.date_to,
                 "update_frequency": self._selection_label(

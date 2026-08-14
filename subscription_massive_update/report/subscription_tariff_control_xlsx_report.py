@@ -50,9 +50,20 @@ class SubscriptionTariffControlXlsxReport(models.AbstractModel):
             "header": workbook.add_format({"bold": True, "bg_color": "#BDD7EE", "border": 1}),
             "label": workbook.add_format({"bold": True}),
             "text": workbook.add_format({}),
+            "quantity": workbook.add_format({"num_format": "#,##0.00"}),
             "money": workbook.add_format({"num_format": "#,##0.00"}),
             "percent": workbook.add_format({"num_format": "0.00"}),
-            "subtotal": workbook.add_format({"bold": True, "bg_color": "#E2F0D9", "border": 1}),
+            "subtotal_money": workbook.add_format({
+                "bold": True, "bg_color": "#E2F0D9", "border": 1,
+                "num_format": "#,##0.00",
+            }),
+            "subtotal_percent": workbook.add_format({
+                "bold": True, "bg_color": "#E2F0D9", "border": 1,
+                "num_format": "0.00",
+            }),
+            "subtotal_text": workbook.add_format({
+                "bold": True, "bg_color": "#E2F0D9", "border": 1,
+            }),
         }
 
         self._write_filters(sheet, payload, styles)
@@ -79,7 +90,7 @@ class SubscriptionTariffControlXlsxReport(models.AbstractModel):
             sheet.write(row, 5, report_row.get("user", ""))
             sheet.write(row, 6, report_row.get("product", ""))
             sheet.write(row, 7, report_row.get("analytic_account", ""))
-            sheet.write_number(row, 8, report_row.get("qty", 0.0))
+            sheet.write_number(row, 8, report_row.get("qty", 0.0), styles["quantity"])
             sheet.write_number(row, 9, report_row.get("old_price", 0.0), styles["money"])
             sheet.write_number(row, 10, report_row.get("new_price", 0.0), styles["money"])
             sheet.write_number(row, 11, report_row.get("subtotal_net", 0.0), styles["money"])
@@ -92,17 +103,19 @@ class SubscriptionTariffControlXlsxReport(models.AbstractModel):
         sheet.write(row, 0, _("Subtotal por cliente"), styles["section"])
         row += 1
         subtotal_headers = [
-            _("Cliente"), _("Total original neto"), _("Total actual neto"), _("Variación acumulada %")
+            _("SO"), _("Cliente"), _("Total original neto"), _("Total actual neto"),
+            _("Variación acumulada %")
         ]
         for col, label in enumerate(subtotal_headers):
             sheet.write(row, col, label, styles["header"])
         row += 1
 
         for subtotal in payload.get("partner_subtotals", []):
-            sheet.write(row, 0, subtotal.get("partner_name", ""), styles["subtotal"])
-            sheet.write_number(row, 1, subtotal.get("total_original", 0.0), styles["subtotal"])
-            sheet.write_number(row, 2, subtotal.get("total_current", 0.0), styles["subtotal"])
-            sheet.write_number(row, 3, subtotal.get("variation", 0.0), styles["subtotal"])
+            sheet.write(row, 0, subtotal.get("so", ""), styles["subtotal_text"])
+            sheet.write(row, 1, subtotal.get("partner_name", ""), styles["subtotal_text"])
+            sheet.write_number(row, 2, subtotal.get("total_original", 0.0), styles["subtotal_money"])
+            sheet.write_number(row, 3, subtotal.get("total_current", 0.0), styles["subtotal_money"])
+            sheet.write_number(row, 4, subtotal.get("variation", 0.0), styles["subtotal_percent"])
             row += 1
 
         row += 2
@@ -125,7 +138,7 @@ class SubscriptionTariffControlXlsxReport(models.AbstractModel):
             sheet.write(row, 4, str(report_row.get("last_update") or ""))
             sheet.write(row, 5, report_row.get("product", ""))
             sheet.write(row, 6, report_row.get("analytic_account", ""))
-            sheet.write_number(row, 7, report_row.get("qty", 0.0))
+            sheet.write_number(row, 7, report_row.get("qty", 0.0), styles["quantity"])
             sheet.write_number(row, 8, report_row.get("current_price", 0.0), styles["money"])
             sheet.write_number(row, 9, report_row.get("subtotal_net", 0.0), styles["money"])
             sheet.write(row, 10, report_row.get("currency", ""))
