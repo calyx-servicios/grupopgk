@@ -9,7 +9,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.9.1.2",
+    "version": "15.0.9.3.0",
     "application": False,
     "installable": True,
     "depends": [
@@ -18,6 +18,8 @@
         "analytic",
         "hr_timesheet_multi_company",
         "associated_partner_employee",
+        "timesheet_odoo",
+        "sale_timesheet",
         "mail",
     ],
     "data": [
@@ -29,7 +31,7 @@
         "views/account_analytic_group.xml",
         "views/account_analytic_account.xml",
         "views/account_analytic_line.xml",
+        "views/project_project.xml",
         "views/hr_employee.xml",
-        "views/ir_action_data.xml",
     ],
 }
