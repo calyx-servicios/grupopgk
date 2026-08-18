@@ -10,7 +10,7 @@
                             padding-top: 0;
                         }
                         .tariff-control-content {
-                            margin-top: 28mm;
+                            margin-top: 0;
                         }
                         .tariff-control-content h2 {
                             font-size: 20px;
@@ -226,12 +226,12 @@
         <field name="default" eval="False"/>
         <field name="format">A4</field>
         <field name="orientation">Landscape</field>
-        <field name="margin_top">12</field>
+        <field name="margin_top">50</field>
         <field name="margin_bottom">18</field>
         <field name="margin_left">8</field>
         <field name="margin_right">8</field>
         <field name="header_line" eval="False"/>
-        <field name="header_spacing">5</field>
+        <field name="header_spacing">35</field>
         <field name="dpi">90</field>
     </record>
 
