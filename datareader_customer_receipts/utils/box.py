@@ -3,10 +3,30 @@ from boxsdk import Client, OAuth2
 import os
 from pprint import pprint
 import logging
+import re
 import base64
 from io import BytesIO
 
 _logger = logging.getLogger(__name__)
+
+# Detecta un email completo, incluso si el dominio tiene guiones (ej. empresa-sa.com.ar)
+_EMAIL_RE = re.compile(r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+')
+
+
+def _get_op_prefix(op_filename):
+    """
+    Calcula el prefijo 'identificador-email' usado para asociar los archivos de
+    retenciones con el archivo de la OP. Antes se tomaban los primeros 2 tramos
+    separados por '-', pero eso corta el email cuando el dominio contiene
+    guiones, haciendo que no se encuentren las retenciones. Se busca el email
+    completo con regex y, si no se encuentra, se usa el comportamiento anterior.
+    """
+    op_filename = op_filename.strip()
+    email_match = _EMAIL_RE.search(op_filename)
+    if email_match:
+        return op_filename[:email_match.end()]
+    parts = op_filename.split("-")
+    return "-".join(parts[:2]) if len(parts) >= 2 else op_filename
 
 def _get_box_config(env):
     """Obtiene los parámetros de Box desde Odoo."""
@@ -109,8 +129,7 @@ def download_and_attach_retentions(self, op_filename, folder_field='box_folder_i
     if not folder_id:
         raise ValueError(f"No está configurado {folder_field} en Configuración.")
 
-    parts = op_filename.strip().split("-")
-    prefix = "-".join(parts[:2]) if len(parts) >= 2 else op_filename.strip()
+    prefix = _get_op_prefix(op_filename)
     items = client.folder(folder_id=folder_id).get_items()
     os.makedirs(download_path, exist_ok=True)
 
@@ -121,25 +140,31 @@ def download_and_attach_retentions(self, op_filename, folder_field='box_folder_i
             continue
         if not item_name.startswith(prefix):
             continue
-        file_stream = BytesIO()
-        client.file(file_id=item.id).download_to(file_stream)
-        file_content = file_stream.getvalue()
 
-        attachment = self.env['ir.attachment'].create({
-            'name': item_name,
-            'type': 'binary',
-            'datas': base64.b64encode(file_content),
-            'res_model': self._name,
-            'res_id': self.id,
-            'mimetype': 'application/pdf',
-        })
+        # Se descarga y adjunta cada archivo individualmente: si uno falla, no se
+        # pierden los que ya se descargaron correctamente en esta misma corrida.
+        try:
+            file_stream = BytesIO()
+            client.file(file_id=item.id).download_to(file_stream)
+            file_content = file_stream.getvalue()
+
+            attachment = self.env['ir.attachment'].create({
+                'name': item_name,
+                'type': 'binary',
+                'datas': base64.b64encode(file_content),
+                'res_model': self._name,
+                'res_id': self.id,
+                'mimetype': 'application/pdf',
+            })
+        except Exception as e:
+            _logger.error(f"Error descargando retención '{item_name}' para la OP {op_filename}: {e}")
+            continue
+
         ret_attachments.append(attachment)
+        setattr(self, f"attachment_ret{len(ret_attachments)}_id", attachment)
 
         if len(ret_attachments) >= 4:
             break
-
-    for i, attach in enumerate(ret_attachments, start=1):
-        setattr(self, f"attachment_ret{i}_id", attach)
 
     if not ret_attachments:
         _logger.info(f"No se encontraron retenciones para la OP {op_filename}")
