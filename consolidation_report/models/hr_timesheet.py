@@ -9,7 +9,11 @@ class AccountAnalyticLine(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         default_user_id = self._default_user()
-        user_ids = list(map(lambda x: x.get('user_id', default_user_id), filter(lambda x: not x.get('employee_id') and x.get('project_id'), vals_list)))
+        user_ids = [
+            vals.get('user_id', default_user_id)
+            for vals in vals_list
+            if not vals.get('employee_id') and vals.get('project_id')
+        ]
 
         for vals in vals_list:
             if vals.get('project_id') and not vals.get('name'):
@@ -28,10 +32,17 @@ class AccountAnalyticLine(models.Model):
         employee_ids = set()
         for vals in vals_list:
             if not vals.get('employee_id') and vals.get('project_id'):
-                employee_for_company = employee_for_user_company.get(vals.get('user_id', default_user_id), False)
+                employee_for_company = employee_for_user_company.get(
+                    vals.get('user_id', default_user_id),
+                    False,
+                )
                 if not employee_for_company:
                     continue
-                company_id = list(employee_for_company)[0] if len(employee_for_company) == 1 else self.env.company.id
+                company_id = (
+                    list(employee_for_company)[0]
+                    if len(employee_for_company) == 1
+                    else self.env.company.id
+                )
                 vals['employee_id'] = employee_for_company.get(company_id, False)
             elif vals.get('employee_id'):
                 employee_ids.add(vals['employee_id'])
