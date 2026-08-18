@@ -47,12 +47,38 @@ class AccountDraftInvoiceReportWizard(models.TransientModel):
         for wizard in self:
             if not wizard.all_companies and not wizard.company_ids:
                 raise ValidationError(_("Debe seleccionar al menos una compañía."))
+            if wizard.company_ids - self.env.user.company_ids:
+                raise ValidationError(
+                    _("No puede seleccionar compañías fuera de su contexto permitido.")
+                )
 
     def _get_company_ids(self):
         self.ensure_one()
         return self.company_ids if not self.all_companies else self.env.user.company_ids
 
+    def _get_move_domain(self):
+        self.ensure_one()
+        return [
+            ("move_type", "in", ("out_invoice", "out_refund")),
+            ("state", "=", "draft"),
+            ("company_id", "in", self._get_company_ids().ids),
+            ("invoice_date", ">=", self.date_from),
+            ("invoice_date", "<=", self.date_to),
+        ]
+
     def action_generate_report(self):
         self.ensure_one()
-        # Placeholder: la generación del reporte se implementa en una tarjeta posterior.
-        return True
+        self._check_date_range()
+        self._check_company_ids()
+        company_ids = self._get_company_ids().ids
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Facturación Pendiente (Borradores)"),
+            "res_model": "account.move",
+            "view_mode": "tree,form",
+            "domain": self._get_move_domain(),
+            "context": {
+                "allowed_company_ids": company_ids,
+                "default_move_type": "out_invoice",
+            },
+        }
