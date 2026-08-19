@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_subscription_package_form_tariff_update" model="ir.ui.view">
+        <field name="name">subscription.package.form.tariff.update</field>
+        <field name="model">subscription.package</field>
+        <field name="inherit_id" ref="subscription_package.subscription_package_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='next_invoice_date']" position="after">
+                <field name="tariff_update_frequency"/>
+                <field name="last_tariff_update_at"/>
+            </xpath>
+
+            <xpath expr="//notebook/page[@name='other_info']" position="before">
+                <page string="Historial de actualizaciones" name="tariff_update_history">
+                    <field name="tariff_update_history_ids" readonly="1">
+                        <tree string="Historial de actualizaciones" create="0" edit="0" delete="0">
+                            <field name="update_datetime"/>
+                            <field name="update_type"/>
+                            <field name="applied_percentage"/>
+                            <field name="product_id"/>
+                            <field name="old_price"/>
+                            <field name="new_price"/>
+                            <field name="user_id"/>
+                            <field name="event_id" optional="hide"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

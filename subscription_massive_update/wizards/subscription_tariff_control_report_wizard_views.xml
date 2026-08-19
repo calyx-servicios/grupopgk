@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_subscription_tariff_update_control_wizard" model="ir.ui.view">
+        <field name="name">subscription.tariff.update.control.wizard.form</field>
+        <field name="model">subscription.tariff.update.control.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Control de Actualizaciones de Tarifa">
+                <group>
+                    <group>
+                        <field name="company_ids" widget="many2many_tags"/>
+                        <field name="subscription_state"/>
+                    </group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="update_frequency"/>
+                        <field name="currency_filter"/>
+                    </group>
+                </group>
+                <footer>
+                    <button string="Cerrar" class="btn btn-secondary" special="cancel"/>
+                    <button name="action_print_pdf" string="Exportar PDF" type="object" class="btn-primary"/>
+                    <button name="action_export_xlsx" string="Exportar Excel" type="object" class="btn-primary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_subscription_tariff_update_control_wizard" model="ir.actions.act_window">
+        <field name="name">Control de Actualizaciones de Tarifa</field>
+        <field name="res_model">subscription.tariff.update.control.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_subscription_tariff_update_control_wizard"/>
+        <field name="groups_id" eval="[(4, ref('subscription_massive_update.group_subscription_contracts')), (4, ref('subscription_massive_update.group_subscription_admin')), (4, ref('subscription_massive_update.group_subscription_partners'))]"/>
+    </record>
+
+    <record id="subscription_package.subscription_menu_report" model="ir.ui.menu">
+        <field name="name">Reportes</field>
+    </record>
+
+    <menuitem
+        id="menu_subscription_tariff_update_control_report"
+        name="Control de Actualizaciones de Tarifa"
+        parent="subscription_package.subscription_menu_report"
+        action="action_subscription_tariff_update_control_wizard"
+        sequence="20"
+        groups="subscription_massive_update.group_subscription_contracts,subscription_massive_update.group_subscription_admin,subscription_massive_update.group_subscription_partners"
+    />
+</odoo>
