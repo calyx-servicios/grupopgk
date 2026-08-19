@@ -4,7 +4,97 @@
         <record model="ir.model.access" id="ir_model_access_subscription_massive_update">
             <field name="name">Update Massive Subscription Access Rights</field>
             <field name="model_id" ref="subscription_massive_update.model_subscription_massive_update" />
-            <field name="group_id" ref="base.group_user" />
+            <field name="group_id" ref="subscription_massive_update.group_subscription_contracts" />
+            <field name="perm_read" eval="True" />
+            <field name="perm_create" eval="True" />
+            <field name="perm_write" eval="True" />
+            <field name="perm_unlink" eval="True" />
+        </record>
+
+        <record model="ir.model.access" id="ir_model_access_subscription_massive_update_partners">
+            <field name="name">Update Massive Subscription Socios Access Rights</field>
+            <field name="model_id" ref="subscription_massive_update.model_subscription_massive_update" />
+            <field name="group_id" ref="subscription_massive_update.group_subscription_partners" />
+            <field name="perm_read" eval="True" />
+            <field name="perm_create" eval="True" />
+            <field name="perm_write" eval="True" />
+            <field name="perm_unlink" eval="True" />
+        </record>
+
+        <record model="ir.model.access" id="ir_model_access_subscription_ipc_monthly_user_read">
+            <field name="name">Subscription IPC Monthly Read Access Rights</field>
+            <field name="model_id" ref="subscription_massive_update.model_subscription_ipc_monthly" />
+            <field name="group_id" ref="subscription_massive_update.group_subscription_contracts" />
+            <field name="perm_read" eval="True" />
+            <field name="perm_create" eval="False" />
+            <field name="perm_write" eval="False" />
+            <field name="perm_unlink" eval="False" />
+        </record>
+
+        <record model="ir.model.access" id="ir_model_access_subscription_ipc_monthly_manager_all">
+            <field name="name">Subscription IPC Monthly Manager Access Rights</field>
+            <field name="model_id" ref="subscription_massive_update.model_subscription_ipc_monthly" />
+            <field name="group_id" ref="subscription_massive_update.group_subscription_admin" />
+            <field name="perm_read" eval="True" />
+            <field name="perm_create" eval="True" />
+            <field name="perm_write" eval="True" />
+            <field name="perm_unlink" eval="True" />
+        </record>
+
+        <record model="ir.model.access" id="ir_model_access_subscription_tariff_update_history_user">
+            <field name="name">Subscription Tariff Update History User Access</field>
+            <field name="model_id" ref="subscription_massive_update.model_subscription_tariff_update_history" />
+            <field name="group_id" ref="subscription_massive_update.group_subscription_contracts" />
+            <field name="perm_read" eval="True" />
+            <field name="perm_create" eval="True" />
+            <field name="perm_write" eval="False" />
+            <field name="perm_unlink" eval="False" />
+        </record>
+
+        <record model="ir.model.access" id="ir_model_access_subscription_tariff_update_history_manager">
+            <field name="name">Subscription Tariff Update History Manager Access</field>
+            <field name="model_id" ref="subscription_massive_update.model_subscription_tariff_update_history" />
+            <field name="group_id" ref="subscription_massive_update.group_subscription_admin" />
+            <field name="perm_read" eval="True" />
+            <field name="perm_create" eval="True" />
+            <field name="perm_write" eval="True" />
+            <field name="perm_unlink" eval="True" />
+        </record>
+
+        <record model="ir.model.access" id="ir_model_access_subscription_tariff_update_control_wizard">
+            <field name="name">Subscription Tariff Update Control Wizard Access</field>
+            <field name="model_id" ref="subscription_massive_update.model_subscription_tariff_update_control_wizard" />
+            <field name="group_id" ref="subscription_massive_update.group_subscription_contracts" />
+            <field name="perm_read" eval="True" />
+            <field name="perm_create" eval="True" />
+            <field name="perm_write" eval="True" />
+            <field name="perm_unlink" eval="True" />
+        </record>
+
+        <record model="ir.model.access" id="ir_model_access_subscription_ipc_monthly_partners_read">
+            <field name="name">Subscription IPC Monthly Socios Read Access</field>
+            <field name="model_id" ref="subscription_massive_update.model_subscription_ipc_monthly" />
+            <field name="group_id" ref="subscription_massive_update.group_subscription_partners" />
+            <field name="perm_read" eval="True" />
+            <field name="perm_create" eval="False" />
+            <field name="perm_write" eval="False" />
+            <field name="perm_unlink" eval="False" />
+        </record>
+
+        <record model="ir.model.access" id="ir_model_access_subscription_tariff_history_partners_read">
+            <field name="name">Subscription Tariff History Socios Read Access</field>
+            <field name="model_id" ref="subscription_massive_update.model_subscription_tariff_update_history" />
+            <field name="group_id" ref="subscription_massive_update.group_subscription_partners" />
+            <field name="perm_read" eval="True" />
+            <field name="perm_create" eval="True" />
+            <field name="perm_write" eval="False" />
+            <field name="perm_unlink" eval="False" />
+        </record>
+
+        <record model="ir.model.access" id="ir_model_access_subscription_tariff_control_wizard_partners">
+            <field name="name">Subscription Tariff Control Wizard Socios Access</field>
+            <field name="model_id" ref="subscription_massive_update.model_subscription_tariff_update_control_wizard" />
+            <field name="group_id" ref="subscription_massive_update.group_subscription_partners" />
             <field name="perm_read" eval="True" />
             <field name="perm_create" eval="True" />
             <field name="perm_write" eval="True" />

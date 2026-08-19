@@ -12,6 +12,8 @@
                     <group>
                         <field name="subscriptions_ids" widget="many2many_tags" readonly="1" />
                         <field name="subscriptions_plan_id" attrs="{'invisible': [('fields_to_update', 'not in', ['plan','plan_and_date'])]}"/>
+                        <field name="ipc_period_from" attrs="{'invisible': [('fields_to_update', '!=', 'price')]}"/>
+                        <field name="ipc_period_to" attrs="{'invisible': [('fields_to_update', '!=', 'price')]}"/>
                         <field name="percentage" attrs="{'invisible': [('fields_to_update', '!=', 'price')]}"/>
                         <field name="date" attrs="{'invisible': [('fields_to_update', 'not in', ['date','plan_and_date'])]}" />
                         <br/>
