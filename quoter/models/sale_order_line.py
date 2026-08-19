@@ -1,7 +1,9 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0.html)
 
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tools.float_utils import float_compare
+from odoo.tools.misc import formatLang
 
 
 class SaleOrderLine(models.Model):
@@ -449,6 +451,80 @@ class SaleOrderLine(models.Model):
             return False
         area = self._quoter_effective_tab_area()
         return bool(area and area.hour_matrix_mode == "regular_manual")
+
+    def _quoter_regular_manual_default_price(self):
+        """Precio unitario por defecto (tarifa/h × horas) de una línea de Finanzas.
+
+        Devuelve None cuando la línea no es de un área regular_manual o cuando no
+        hay tarifa aplicable (sin lista de precios o sin rangos configurados): en
+        esos casos no hay piso contra el que comparar el precio manual.
+        """
+        self.ensure_one()
+        if not self._quoter_is_regular_manual_line():
+            return None
+        order = self._quoter_effective_order()
+        area = self._quoter_effective_tab_area()
+        if not area or not (area.pricelist_id or (order and order.pricelist_id)):
+            return None
+        price, warn = self._quoter_compute_unit_price_from_ranges()
+        if warn:
+            return None
+        return float(price or 0.0)
+
+    def _quoter_price_floor_rounding(self):
+        self.ensure_one()
+        currency = self.currency_id or self._quoter_effective_order().currency_id
+        return (currency.rounding if currency else 0.0) or 0.01
+
+    def _quoter_format_price_floor_amount(self, amount):
+        self.ensure_one()
+        currency = self.currency_id or self._quoter_effective_order().currency_id
+        return formatLang(self.env, float(amount or 0.0), currency_obj=currency or None)
+
+    def _quoter_check_regular_manual_price_floor(self):
+        """Finanzas: el precio unitario manual no puede bajar del tarifado.
+
+        El precio por defecto es el que calcula la tarifa del área según las horas
+        cargadas en la línea. Escribir un importe menor es un error de usuario.
+        """
+        if self.env.context.get("quoter_skip_price_floor_check"):
+            return True
+        for line in self:
+            if line.display_type or line.quoter_is_adjustment_line:
+                continue
+            default_price = line._quoter_regular_manual_default_price()
+            if default_price is None or default_price <= 0.0:
+                continue
+            rounding = line._quoter_price_floor_rounding()
+            if (
+                float_compare(
+                    float(line.price_unit or 0.0),
+                    default_price,
+                    precision_rounding=rounding,
+                )
+                >= 0
+            ):
+                continue
+            raise UserError(
+                _(
+                    "El precio unitario de \"%(product)s\" no puede ser inferior al "
+                    "precio por defecto de la tarifa.\n\n"
+                    "Precio ingresado: %(entered)s\n"
+                    "Precio por defecto (mínimo): %(minimum)s"
+                )
+                % {
+                    "product": line.product_id.display_name or line.name or "",
+                    "entered": line._quoter_format_price_floor_amount(line.price_unit),
+                    "minimum": line._quoter_format_price_floor_amount(default_price),
+                }
+            )
+        return True
+
+    @api.onchange("price_unit")
+    def _onchange_quoter_regular_manual_price_unit(self):
+        """Finanzas: bloquea en el formulario un precio unitario bajo el tarifado."""
+        for line in self.with_context(quoter_allow_zero_hours=True):
+            line._quoter_check_regular_manual_price_floor()
 
     def _quoter_is_new_line_record(self):
         """Línea aún no persistida (NewId en x2many del bloque embebido)."""
@@ -1313,6 +1389,10 @@ class SaleOrderLine(models.Model):
                     )._quoter_sync_slots_to_hour_rows_from_columns()
                 elif line._quoter_manual_ranges_mode():
                     line._quoter_sync_slots_to_hour_rows_from_columns()
+        if "price_unit" in (vals or {}):
+            # Finanzas: el precio manual ya se guardó junto con las horas; validar
+            # ahora (horas sincronizadas) que no quede por debajo de la tarifa.
+            recs._quoter_check_regular_manual_price_floor()
         quoter_reprice = recs.filtered(
             lambda l: l._quoter_effective_order().is_quotation
             and l.product_id
