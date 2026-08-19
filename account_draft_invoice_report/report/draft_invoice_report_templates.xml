@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_draft_invoice_report_landscape" model="report.paperformat">
+        <field name="name">Facturación Pendiente (Borradores) - Horizontal</field>
+        <field name="default" eval="False"/>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">40</field>
+        <field name="margin_bottom">25</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">35</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_draft_invoice_report" model="ir.actions.report">
+        <field name="name">Facturación Pendiente (Borradores)</field>
+        <field name="model">account.draft.invoice.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">account_draft_invoice_report.draft_invoice_report</field>
+        <field name="report_file">account_draft_invoice_report.draft_invoice_report</field>
+        <field name="paperformat_id" ref="paperformat_draft_invoice_report_landscape"/>
+        <field name="binding_model_id" eval="False"/>
+        <field name="print_report_name">'Facturacion_Pendiente_Borradores'</field>
+    </record>
+
+    <template id="draft_invoice_report">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="company" t-value="res_company"/>
+                <t t-call="web.external_layout_standard">
+                <t t-set="payload" t-value="report_data"/>
+                <div class="page">
+                    <link href="/account_financial_report/static/src/css/report.css" rel="stylesheet"/>
+                    <style>
+                        .draft-report { font-size: 11px; }
+                        .draft-report .data_table,
+                        .draft-report .list_table,
+                        .draft-report .act_as_cell {
+                            font-size: 11px !important;
+                        }
+                        .draft-report .account_title {
+                            font-size: 12px !important;
+                        }
+                        .draft-report .act_as_cell { overflow-wrap: break-word; }
+                        .draft-report .report_filter { margin-bottom: 10px; }
+                        .draft-report .group_title { margin-top: 10px; }
+                        .draft-report .amount { text-align: right; }
+                        .draft-report .subtotal { font-weight: bold; }
+                    </style>
+                    <div class="draft-report">
+                        <div class="row">
+                            <h4 class="mt0" style="text-align: center;">Facturación Pendiente (Borradores)</h4>
+                        </div>
+                        <div class="act_as_table data_table report_filter" style="width: 100%;">
+                            <div class="act_as_row labels">
+                                <div class="act_as_cell" style="width: 20%;">Fecha Desde</div>
+                                <div class="act_as_cell" style="width: 20%;">Fecha Hasta</div>
+                                <div class="act_as_cell" style="width: 60%;">Compañías</div>
+                            </div>
+                            <div class="act_as_row">
+                                <div class="act_as_cell"><span t-esc="payload['date_from'].strftime('%d/%m/%Y')"/></div>
+                                <div class="act_as_cell"><span t-esc="payload['date_to'].strftime('%d/%m/%Y')"/></div>
+                                <div class="act_as_cell"><span t-esc="payload['companies_label']"/></div>
+                            </div>
+                        </div>
+                        <t t-foreach="payload['companies']" t-as="company_data">
+                            <div class="act_as_table list_table group_title" style="width: 100%;"/>
+                            <div class="act_as_caption account_title" style="width: 100%;">
+                                Compañía: <span t-esc="company_data['name']"/>
+                            </div>
+                            <t t-foreach="company_data['clients']" t-as="client">
+                                <div class="act_as_caption account_title" style="width: 100%;">
+                                    Cliente: <span t-esc="client['name']"/>
+                                </div>
+                                <div class="act_as_table data_table" style="width: 100%;">
+                                    <div class="act_as_thead">
+                                        <div class="act_as_row labels">
+                                            <div class="act_as_cell" style="width: 6%;">Número</div>
+                                            <div class="act_as_cell" style="width: 13%;">Cliente</div>
+                                            <div class="act_as_cell" style="width: 7%;">Fecha factura</div>
+                                            <div class="act_as_cell" style="width: 8%;">Empresa</div>
+                                            <div class="act_as_cell" style="width: 9%;">Sale Order</div>
+                                            <div class="act_as_cell" style="width: 7%;">Suscripción</div>
+                                            <div class="act_as_cell" style="width: 6%;">Tipo</div>
+                                            <div class="act_as_cell amount" style="width: 9%;">Impuestos no incluidos</div>
+                                            <div class="act_as_cell amount" style="width: 8%;">Total</div>
+                                            <div class="act_as_cell amount" style="width: 8%;">Total en divisa</div>
+                                            <div class="act_as_cell" style="width: 19%;">Observaciones</div>
+                                        </div>
+                                    </div>
+                                        <t t-foreach="client['documents']" t-as="document">
+                                            <div class="act_as_row lines">
+                                                <div class="act_as_cell left" style="width: 6%;"><span t-esc="document['number']"/></div>
+                                                <div class="act_as_cell left" style="width: 13%;"><span t-esc="document['client']"/></div>
+                                                <div class="act_as_cell left" style="width: 7%;"><span t-esc="document['invoice_date'] and document['invoice_date'].strftime('%d/%m/%Y') or ''"/></div>
+                                                <div class="act_as_cell left" style="width: 8%;"><span t-esc="document['company']"/></div>
+                                                <div class="act_as_cell left" style="width: 9%;"><span t-esc="document['sale_order']"/></div>
+                                                <div class="act_as_cell left" style="width: 7%;"><span t-esc="document['subscription']"/></div>
+                                                <div class="act_as_cell left" style="width: 6%;"><span t-esc="document['document_type']"/></div>
+                                                <div class="act_as_cell amount" style="width: 9%;"><span t-esc="'%.2f %s' % (document['amount_untaxed'], document['currency'].name)"/></div>
+                                                <div class="act_as_cell amount" style="width: 8%;"><span t-esc="'%.2f %s' % (document['amount_total'], document['currency'].name)"/></div>
+                                                <div class="act_as_cell amount" style="width: 8%;"><span t-esc="document['foreign_total'] and ('%.2f %s' % (document['foreign_total'], document['currency'].name)) or ''"/></div>
+                                                <div class="act_as_cell left" style="width: 19%;"><span t-esc="document['observations']"/></div>
+                                            </div>
+                                        </t>
+                                </div>
+                                <t t-foreach="client['totals'].values()" t-as="total">
+                                    <div class="act_as_table list_table" style="width: 100%;">
+                                        <div class="act_as_row labels subtotal">
+                                            <div class="act_as_cell" style="width: 64%;">Total cliente</div>
+                                            <div class="act_as_cell amount" style="width: 9%;"><span t-esc="'%.2f %s' % (total['untaxed'], total['currency'].name)"/></div>
+                                            <div class="act_as_cell amount" style="width: 8%;"><span t-esc="'%.2f %s' % (total['total'], total['currency'].name)"/></div>
+                                            <div class="act_as_cell" style="width: 19%;"/>
+                                        </div>
+                                    </div>
+                                </t>
+                            </t>
+                            <t t-foreach="company_data['totals'].values()" t-as="total">
+                                <div class="act_as_table list_table" style="width: 100%;">
+                                    <div class="act_as_row labels subtotal">
+                                        <div class="act_as_cell" style="width: 80%;">Total compañía</div>
+                                        <div class="act_as_cell amount" style="width: 20%;"><span t-esc="'%.2f %s' % (total['total'], total['currency'].name)"/></div>
+                                    </div>
+                                </div>
+                            </t>
+                        </t>
+                        <div class="act_as_table list_table group_title" style="width: 100%;">
+                            <div class="act_as_row labels subtotal">
+                                <div class="act_as_cell" style="width: 80%;">TOTAL GENERAL</div>
+                                <div class="act_as_cell amount" style="width: 20%;"/>
+                            </div>
+                        </div>
+                        <t t-foreach="payload['totals']" t-as="total">
+                            <div class="act_as_table list_table" style="width: 100%;">
+                                <div class="act_as_row labels subtotal">
+                                    <div class="act_as_cell" style="width: 80%;"><span t-esc="total['currency'].name"/></div>
+                                    <div class="act_as_cell amount" style="width: 20%;"><span t-esc="'%.2f' % total['total']"/></div>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
