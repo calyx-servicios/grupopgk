@@ -22,7 +22,19 @@
         <field name="report_file">account_draft_invoice_report.draft_invoice_report</field>
         <field name="paperformat_id" ref="paperformat_draft_invoice_report_landscape"/>
         <field name="binding_model_id" eval="False"/>
+        <field name="groups_id" eval="[(4, ref('account_draft_invoice_report.group_account_draft_invoice_report'))]"/>
         <field name="print_report_name">'Facturacion_Pendiente_Borradores'</field>
+    </record>
+
+    <record id="action_draft_invoice_report_xlsx" model="ir.actions.report">
+        <field name="name">Facturación Pendiente (Borradores) XLSX</field>
+        <field name="model">account.draft.invoice.report.wizard</field>
+        <field name="type">ir.actions.report</field>
+        <field name="report_name">account_draft_invoice_report.draft_invoice_report_xlsx</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_file">facturacion_pendiente_borradores</field>
+        <field name="binding_model_id" eval="False"/>
+        <field name="groups_id" eval="[(4, ref('account_draft_invoice_report.group_account_draft_invoice_report'))]"/>
     </record>
 
     <template id="draft_invoice_report">
@@ -109,9 +121,10 @@
                                 <t t-foreach="client['totals'].values()" t-as="total">
                                     <div class="act_as_table list_table" style="width: 100%;">
                                         <div class="act_as_row labels subtotal">
-                                            <div class="act_as_cell" style="width: 64%;">Total cliente</div>
+                                            <div class="act_as_cell" style="width: 56%;">Total cliente</div>
                                             <div class="act_as_cell amount" style="width: 9%;"><span t-esc="'%.2f %s' % (total['untaxed'], total['currency'].name)"/></div>
                                             <div class="act_as_cell amount" style="width: 8%;"><span t-esc="'%.2f %s' % (total['total'], total['currency'].name)"/></div>
+                                            <div class="act_as_cell amount" style="width: 8%;"/>
                                             <div class="act_as_cell" style="width: 19%;"/>
                                         </div>
                                     </div>
@@ -120,23 +133,23 @@
                             <t t-foreach="company_data['totals'].values()" t-as="total">
                                 <div class="act_as_table list_table" style="width: 100%;">
                                     <div class="act_as_row labels subtotal">
-                                        <div class="act_as_cell" style="width: 80%;">Total compañía</div>
-                                        <div class="act_as_cell amount" style="width: 20%;"><span t-esc="'%.2f %s' % (total['total'], total['currency'].name)"/></div>
+                                        <div class="act_as_cell" style="width: 56%;">Total compañía</div>
+                                        <div class="act_as_cell amount" style="width: 9%;"><span t-esc="'%.2f %s' % (total['untaxed'], total['currency'].name)"/></div>
+                                        <div class="act_as_cell amount" style="width: 8%;"><span t-esc="'%.2f %s' % (total['total'], total['currency'].name)"/></div>
+                                        <div class="act_as_cell amount" style="width: 8%;"/>
+                                        <div class="act_as_cell" style="width: 19%;"/>
                                     </div>
                                 </div>
                             </t>
                         </t>
-                        <div class="act_as_table list_table group_title" style="width: 100%;">
-                            <div class="act_as_row labels subtotal">
-                                <div class="act_as_cell" style="width: 80%;">TOTAL GENERAL</div>
-                                <div class="act_as_cell amount" style="width: 20%;"/>
-                            </div>
-                        </div>
                         <t t-foreach="payload['totals']" t-as="total">
-                            <div class="act_as_table list_table" style="width: 100%;">
+                            <div class="act_as_table list_table group_title" style="width: 100%;">
                                 <div class="act_as_row labels subtotal">
-                                    <div class="act_as_cell" style="width: 80%;"><span t-esc="total['currency'].name"/></div>
-                                    <div class="act_as_cell amount" style="width: 20%;"><span t-esc="'%.2f' % total['total']"/></div>
+                                    <div class="act_as_cell" style="width: 56%;">TOTAL GENERAL <span t-esc="total['currency'].name"/></div>
+                                    <div class="act_as_cell amount" style="width: 9%;"><span t-esc="'%.2f %s' % (total['untaxed'], total['currency'].name)"/></div>
+                                    <div class="act_as_cell amount" style="width: 8%;"><span t-esc="'%.2f %s' % (total['total'], total['currency'].name)"/></div>
+                                    <div class="act_as_cell amount" style="width: 8%;"/>
+                                    <div class="act_as_cell" style="width: 19%;"/>
                                 </div>
                             </div>
                         </t>

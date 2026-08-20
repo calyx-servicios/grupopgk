@@ -16,7 +16,9 @@
                 </group>
                 <footer>
                     <button string="Cerrar" class="btn btn-secondary" special="cancel"/>
-                    <button name="action_generate_report" string="Ver Reporte" type="object" class="btn-primary"/>
+                    <button name="action_view_report" string="Vista" type="object" class="btn-primary"/>
+                    <button name="action_generate_report" string="Exportar PDF" type="object" class="btn-primary"/>
+                    <button name="action_export_xlsx" string="Exportar Excel" type="object" class="btn-primary"/>
                 </footer>
             </form>
         </field>
@@ -28,7 +30,7 @@
         <field name="view_mode">form</field>
         <field name="target">new</field>
         <field name="view_id" ref="view_account_draft_invoice_report_wizard"/>
-        <field name="groups_id" eval="[(4, ref('account.group_account_invoice'))]"/>
+        <field name="groups_id" eval="[(4, ref('account_draft_invoice_report.group_account_draft_invoice_report'))]"/>
     </record>
 
     <menuitem
@@ -37,6 +39,6 @@
         parent="account.menu_finance_reports"
         action="action_account_draft_invoice_report_wizard"
         sequence="100"
-        groups="account.group_account_invoice"
+        groups="account_draft_invoice_report.group_account_draft_invoice_report"
     />
 </odoo>
