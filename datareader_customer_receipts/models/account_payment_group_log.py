@@ -132,6 +132,31 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             ('code', '=', code)
         ], limit=1)
 
+    def _datareader_invoices_settled(self, lines):
+        """
+        Confirma contra Odoo que TODAS las facturas informadas en el JSON están
+        publicadas y sin saldo pendiente.
+        """
+        if not lines:
+            return False
+
+        for line in lines:
+            raw_odoo_id = line.get('odoo_id')
+            if raw_odoo_id in (None, False, '', 'na', 'NA', 'null', 'None'):
+                return False
+            try:
+                odoo_id = int(float(str(raw_odoo_id).strip()))
+            except (TypeError, ValueError):
+                return False
+
+            invoice = self.env['account.move'].sudo().browse(odoo_id).exists()
+            if not invoice or invoice.state != 'posted':
+                return False
+            if abs(invoice.amount_residual or 0.0) >= 0.01:
+                return False
+
+        return True
+
     def _create_log_item(self, file_name, order_id=None, error_code=None):
         vals = {
             'log_id': self.id,
@@ -542,6 +567,36 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 error_policy.description or _('Sin descripción del código.'),
             )
 
+        # Códigos que no deben generar recibo (ej. facturas ya pagadas sin deuda).
+        # Se corta antes de crear el grupo de pagos, pero solo si Odoo confirma la
+        # condición: si alguna factura todavía tiene deuda, sigue el flujo normal.
+        if error_policy and error_policy.skip_receipt:
+            if self._datareader_invoices_settled(data.get('lines') or []):
+                skip_reason = _(
+                    "No se genera recibo por código %s: %s"
+                ) % (
+                    str(error_code).strip(),
+                    error_policy.description or _('Sin descripción del código.'),
+                )
+                errors.append(skip_reason)
+                log_item.write({'message': "\n".join(errors), 'readed': True})
+                connector.set_payment_order_readed(data.get("id"), True)
+                _logger.info(
+                    "Orden %s sin recibo por código de error %s (skip_receipt).",
+                    order_id, error_code,
+                )
+                return log_item
+
+            not_settled_msg = _(
+                "El código %s indica facturas ya pagadas, pero en Odoo no todas están "
+                "sin deuda. El recibo se procesa normalmente."
+            ) % str(error_code).strip()
+            errors.append(not_settled_msg)
+            _logger.info(
+                "Orden %s con código %s pero con facturas pendientes en Odoo - se procesa normalmente.",
+                order_id, error_code,
+            )
+
         op_number, errors = self._validate_op_number(data, errors, log_item)
         if not op_number:
             connector.set_payment_order_readed(data.get("id"), True)
@@ -876,6 +931,19 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 if main_payment.amount == 0:
                     main_payment.unlink()
                 had_reconciliation_match = True
+                # Buscar la línea del apunte con débito = monto del match y poner account_id de la conf
+                reconciliation_account = company_id.datareader_bank_reconciliation_account_id
+                if reconciliation_payment_created and reconciliation_matched_amount and reconciliation_account:
+                    move = reconciliation_payment_created.move_id
+                    if move and move.line_ids:
+                        for line in move.line_ids:
+                            if line.debit and abs((line.debit or 0) - reconciliation_matched_amount) < 0.01:
+                                line.sudo().write({'account_id': reconciliation_account.id})
+                                _logger.info(
+                                    "Conciliación: línea con débito %.2f actualizada a cuenta %s.",
+                                    reconciliation_matched_amount, reconciliation_account.code
+                                )
+                                break
                 if log_item:
                     msg = _("Se concilió un pago anterior al cierre de mes por %s.") % matched_amount
                     current = (log_item.message or "").strip()
@@ -895,27 +963,29 @@ class DataReaderAccountPaymentGroupLog(models.Model):
             payment_difference = payment_group.payment_difference
             company = company_id
             
+            tolerance_enabled = company.datareader_tolerance_enabled
+            tolerance_amount = company.datareader_tolerance_amount or 0.0
+            tolerance_account = company.datareader_tolerance_account_id
+            # Diferencia distinta de cero pero cubierta por la tolerancia: corresponde nota de
+            # crédito/débito, haya habido conciliación bancaria o no.
+            needs_note = bool(
+                abs(payment_difference) != 0.0
+                and tolerance_enabled
+                and tolerance_amount > 0.0
+                and abs(payment_difference) <= tolerance_amount
+                and tolerance_account
+            )
+
             _logger.info(f"amount_from_json (del JSON): {amount_from_json}")
             _logger.info(f"total_debt (deuda original): {total_debt}")
             _logger.info(f"payment_difference: {payment_difference}")
-            
-            # Si hubo match de conciliación: no aplicar lógica de tolerancia; solo postear si diferencia = 0
-            if had_reconciliation_match:
+            _logger.info(f"needs_note: {needs_note}")
+
+            # Si hubo match de conciliación y la tolerancia no cubre la diferencia:
+            # no aplicar lógica de tolerancia; solo postear si diferencia = 0
+            if had_reconciliation_match and not needs_note:
                 if abs(payment_difference) == 0.0:
                     _logger.info(f"Hubo conciliación bancaria y diferencia = 0 - publicando.")
-                    # Antes de postear: buscar la línea del apunte con débito = monto del match y poner account_id de la conf
-                    reconciliation_account = company_id.datareader_bank_reconciliation_account_id
-                    if reconciliation_payment_created and reconciliation_matched_amount and reconciliation_account:
-                        move = reconciliation_payment_created.move_id
-                        if move and move.line_ids:
-                            for line in move.line_ids:
-                                if line.debit and abs((line.debit or 0) - reconciliation_matched_amount) < 0.01:
-                                    line.sudo().write({'account_id': reconciliation_account.id})
-                                    _logger.info(
-                                        "Conciliación: línea con débito %.2f actualizada a cuenta %s.",
-                                        reconciliation_matched_amount, reconciliation_account.code
-                                    )
-                                    break
                     try:
                         if not requires_review:
                             payment_group.post()
@@ -943,11 +1013,7 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                         current = (log_item.message or "").strip()
                         log_item.write({'message': f"{current}\n{diff_msg}".strip() if current else diff_msg})
             else:
-                # Sin conciliación: lógica normal de tolerancia
-                tolerance_enabled = company.datareader_tolerance_enabled
-                tolerance_amount = company.datareader_tolerance_amount or 0.0
-                tolerance_account = company.datareader_tolerance_account_id
-                
+                # Lógica normal de tolerancia
                 _logger.info(f"tolerance_enabled: {tolerance_enabled}")
                 _logger.info(f"tolerance_amount: {tolerance_amount}")
                 _logger.info(f"tolerance_account: {tolerance_account.name if tolerance_account else 'None'}")
@@ -1801,7 +1867,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
         :return: product.product - El producto de tolerancia o None si no está configurado
         """
         if company.datareader_tolerance_product_id:
-            return company.datareader_tolerance_product_id
+            # with_company para que las cuentas contables del producto (company-dependent)
+            # se resuelvan en la compañía del recibo y no en la del entorno.
+            return company.datareader_tolerance_product_id.with_company(company)
         return None
 
     def _create_credit_note_for_tolerance(self, payment_group, difference, payment_date, company):
@@ -2347,7 +2415,9 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                     log_item = self.create_from_datareader_json(order, connector, log_item=log_item)
                     
                     connector.set_payment_order_readed(order.get("id"), True)
-                    if not log_item.payment_group_id and not 'Ya existe un recibo de pago' in log_item.message:
+                    if (not log_item.payment_group_id
+                            and not log_item.readed
+                            and 'Ya existe un recibo de pago' not in log_item.message):
                         failed_orders.append(order.get("id"))
                     
                     # Adjuntar archivos al payment_group (recibo) si existe
