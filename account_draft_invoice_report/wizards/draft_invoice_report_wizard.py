@@ -112,6 +112,9 @@ class AccountDraftInvoiceReportWizard(models.TransientModel):
         )
         return (first_date, client["name"])
 
+    def _get_total_sign(self, move):
+        return -1 if move.move_type == "out_refund" else 1
+
     def _prepare_report_data(self):
         self.ensure_one()
         moves = self.env["account.move"].search(
@@ -138,6 +141,9 @@ class AccountDraftInvoiceReportWizard(models.TransientModel):
             )
             currency = move.currency_id
             amount_total = move.amount_total
+            total_sign = self._get_total_sign(move)
+            signed_amount_untaxed = total_sign * move.amount_untaxed
+            signed_amount_total = total_sign * amount_total
             client_data["documents"].append(
                 {
                     "move": move,
@@ -165,8 +171,8 @@ class AccountDraftInvoiceReportWizard(models.TransientModel):
             )
             for totals in (client_data["totals"], company_data["totals"]):
                 currency_totals = totals.setdefault(currency.id, {"currency": currency, "untaxed": 0.0, "total": 0.0})
-                currency_totals["untaxed"] += move.amount_untaxed
-                currency_totals["total"] += amount_total
+                currency_totals["untaxed"] += signed_amount_untaxed
+                currency_totals["total"] += signed_amount_total
 
         general_totals = {}
         for company in companies.values():
@@ -208,3 +214,29 @@ class AccountDraftInvoiceReportWizard(models.TransientModel):
         return self.env.ref(
             "account_draft_invoice_report.action_draft_invoice_report"
         ).report_action(self)
+
+    def action_export_xlsx(self):
+        self.ensure_one()
+        self._check_date_range()
+        self._check_company_ids()
+        return self.env.ref(
+            "account_draft_invoice_report.action_draft_invoice_report_xlsx"
+        ).report_action(self)
+
+    def action_view_report(self):
+        self.ensure_one()
+        self._check_date_range()
+        self._check_company_ids()
+        company_ids = self._get_company_ids().ids
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Facturación Pendiente (Borradores)"),
+            "res_model": "account.move",
+            "view_mode": "tree,form",
+            "search_view_id": self.env.ref("account.view_account_invoice_filter").id,
+            "domain": self._get_move_domain(),
+            "context": {
+                "allowed_company_ids": company_ids,
+                "group_by": ["company_id", "partner_id"],
+            },
+        }
