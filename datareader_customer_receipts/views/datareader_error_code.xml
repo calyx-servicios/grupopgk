@@ -8,6 +8,7 @@
                 <field name="code"/>
                 <field name="description"/>
                 <field name="requires_review"/>
+                <field name="skip_receipt"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -23,6 +24,7 @@
                         <field name="code"/>
                         <field name="description"/>
                         <field name="requires_review"/>
+                        <field name="skip_receipt"/>
                         <field name="active"/>
                     </group>
                 </sheet>
