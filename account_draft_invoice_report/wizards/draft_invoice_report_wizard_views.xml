@@ -30,7 +30,7 @@
         <field name="view_mode">form</field>
         <field name="target">new</field>
         <field name="view_id" ref="view_account_draft_invoice_report_wizard"/>
-        <field name="groups_id" eval="[(4, ref('account_draft_invoice_report.group_account_draft_invoice_report'))]"/>
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_administrator'))]"/>
     </record>
 
     <menuitem
@@ -39,6 +39,6 @@
         parent="account.menu_finance_reports"
         action="action_account_draft_invoice_report_wizard"
         sequence="100"
-        groups="account_draft_invoice_report.group_account_draft_invoice_report"
+        groups="custom_access_permissions.group_profile_administrator"
     />
 </odoo>

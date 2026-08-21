@@ -22,7 +22,7 @@
         <field name="report_file">account_draft_invoice_report.draft_invoice_report</field>
         <field name="paperformat_id" ref="paperformat_draft_invoice_report_landscape"/>
         <field name="binding_model_id" eval="False"/>
-        <field name="groups_id" eval="[(4, ref('account_draft_invoice_report.group_account_draft_invoice_report'))]"/>
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_administrator'))]"/>
         <field name="print_report_name">'Facturacion_Pendiente_Borradores'</field>
     </record>
 
@@ -34,7 +34,7 @@
         <field name="report_type">xlsx</field>
         <field name="report_file">facturacion_pendiente_borradores</field>
         <field name="binding_model_id" eval="False"/>
-        <field name="groups_id" eval="[(4, ref('account_draft_invoice_report.group_account_draft_invoice_report'))]"/>
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_administrator'))]"/>
     </record>
 
     <template id="draft_invoice_report">
