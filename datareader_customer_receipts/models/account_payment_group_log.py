@@ -1928,13 +1928,13 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 _logger.error(f"No se encontró diario para crear la nota de crédito en la compañía {company.name}")
                 return None
             
-            # Obtener la cuenta de ingresos del producto
+            # Orden de prioridad: Configuracion - Producto - Categoria
             product = product.with_company(company)
-            income_account = product.property_account_income_id
+            income_account = company.datareader_tolerance_account_id
+            if not income_account:
+                income_account = product.property_account_income_id
             if not income_account:
                 income_account = product.categ_id.property_account_income_categ_id
-            if not income_account:
-                income_account = company.datareader_tolerance_account_id
             
             if not income_account:
                 _logger.error(f"No se encontró cuenta de ingresos para el producto de tolerancia")
@@ -2136,12 +2136,12 @@ class DataReaderAccountPaymentGroupLog(models.Model):
                 _logger.error(f"No se encontró diario para crear la nota de débito en la compañía {company.name}")
                 return None
             
-            # Obtener la cuenta de ingresos del producto
-            income_account = product.property_account_income_id
+            # Orden de prioridad: Configuracion - Producto - Categoria
+            income_account = company.datareader_tolerance_account_id
+            if not income_account:
+                income_account = product.property_account_income_id
             if not income_account:
                 income_account = product.categ_id.property_account_income_categ_id
-            if not income_account:
-                income_account = company.datareader_tolerance_account_id
             
             if not income_account:
                 _logger.error(f"No se encontró cuenta de ingresos para el producto de tolerancia")
