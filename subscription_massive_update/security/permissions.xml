@@ -34,7 +34,8 @@
         <record model="ir.model.access" id="ir_model_access_subscription_ipc_monthly_manager_all">
             <field name="name">Subscription IPC Monthly Manager Access Rights</field>
             <field name="model_id" ref="subscription_massive_update.model_subscription_ipc_monthly" />
-            <field name="group_id" ref="subscription_massive_update.group_subscription_admin" />
+            <!-- Ligado a quien accede al menú de Configuración, no al grupo custom -->
+            <field name="group_id" ref="account.group_account_manager" />
             <field name="perm_read" eval="True" />
             <field name="perm_create" eval="True" />
             <field name="perm_write" eval="True" />
