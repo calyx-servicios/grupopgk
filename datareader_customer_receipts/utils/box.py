@@ -69,27 +69,33 @@ def download_and_attach_file(self, file_name, folder_field='box_folder_id_op', d
     if not folder_id:
         raise ValueError(f"No está configurado {folder_field} en Configuración.")
 
-    items = client.folder(folder_id=folder_id).get_items()
     os.makedirs(download_path, exist_ok=True)
 
-    for item in items:
-        if item.type != 'file' or item.name.lower() != file_name.lower():
-            continue
+    pending_folders = [folder_id]
+    while pending_folders:
+        current_folder_id = pending_folders.pop(0)
+        for item in client.folder(folder_id=current_folder_id).get_items():
+            if item.type == 'folder':
+                pending_folders.append(item.id)
+                continue
 
-        file_stream = BytesIO()
-        client.file(file_id=item.id).download_to(file_stream)
-        file_content = file_stream.getvalue()
+            if item.type != 'file' or item.name.lower() != file_name.lower():
+                continue
 
-        attachment = self.env['ir.attachment'].create({
-            'name': item.name,
-            'type': 'binary',
-            'datas': base64.b64encode(file_content),
-            'res_model': self._name,
-            'res_id': self.id,
-            'mimetype': 'application/pdf',
-        })
-        self.attachment_op_id = attachment
-        return attachment
+            file_stream = BytesIO()
+            client.file(file_id=item.id).download_to(file_stream)
+            file_content = file_stream.getvalue()
+
+            attachment = self.env['ir.attachment'].create({
+                'name': item.name,
+                'type': 'binary',
+                'datas': base64.b64encode(file_content),
+                'res_model': self._name,
+                'res_id': self.id,
+                'mimetype': 'application/pdf',
+            })
+            self.attachment_op_id = attachment
+            return attachment
 
     _logger.warning(f"No se encontró el archivo {file_name} en Box.")
     return None
@@ -111,35 +117,44 @@ def download_and_attach_retentions(self, op_filename, folder_field='box_folder_i
 
     parts = op_filename.strip().split("-")
     prefix = "-".join(parts[:2]) if len(parts) >= 2 else op_filename.strip()
-    items = client.folder(folder_id=folder_id).get_items()
     os.makedirs(download_path, exist_ok=True)
 
+    # Recorre subcarpetas (ej. organización por año_mes) además del nivel raíz.
     ret_attachments = []
-    for item in items:
-        item_name = item.name.strip()
-        if item.type != 'file':
-            continue
-        if not item_name.startswith(prefix):
-            continue
-        file_stream = BytesIO()
-        client.file(file_id=item.id).download_to(file_stream)
-        file_content = file_stream.getvalue()
+    pending_folders = [folder_id]
+    while pending_folders and len(ret_attachments) < 4:
+        current_folder_id = pending_folders.pop(0)
+        for item in client.folder(folder_id=current_folder_id).get_items():
+            if len(ret_attachments) >= 4:
+                break
 
-        attachment = self.env['ir.attachment'].create({
-            'name': item_name,
-            'type': 'binary',
-            'datas': base64.b64encode(file_content),
-            'res_model': self._name,
-            'res_id': self.id,
-            'mimetype': 'application/pdf',
-        })
-        ret_attachments.append(attachment)
+            if item.type == 'folder':
+                pending_folders.append(item.id)
+                continue
 
-        if len(ret_attachments) >= 4:
-            break
+            item_name = item.name.strip()
+            if item.type != 'file' or not item_name.startswith(prefix):
+                continue
 
-    for i, attach in enumerate(ret_attachments, start=1):
-        setattr(self, f"attachment_ret{i}_id", attach)
+            try:
+                file_stream = BytesIO()
+                client.file(file_id=item.id).download_to(file_stream)
+                file_content = file_stream.getvalue()
+
+                attachment = self.env['ir.attachment'].create({
+                    'name': item_name,
+                    'type': 'binary',
+                    'datas': base64.b64encode(file_content),
+                    'res_model': self._name,
+                    'res_id': self.id,
+                    'mimetype': 'application/pdf',
+                })
+            except Exception as e:
+                _logger.error(f"Error descargando retención '{item_name}' para la OP {op_filename}: {e}")
+                continue
+
+            ret_attachments.append(attachment)
+            setattr(self, f"attachment_ret{len(ret_attachments)}_id", attachment)
 
     if not ret_attachments:
         _logger.info(f"No se encontraron retenciones para la OP {op_filename}")

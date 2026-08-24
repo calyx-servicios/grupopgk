@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_crm_opportunity_type_salesman,crm.opportunity.type salesman,model_crm_opportunity_type,sales_team.group_sale_salesman,1,0,0,0
+access_crm_opportunity_type_manager,crm.opportunity.type manager,model_crm_opportunity_type,sales_team.group_sale_manager,1,1,1,1
+access_crm_classification_salesman,crm.classification salesman,model_crm_classification,sales_team.group_sale_salesman,1,0,0,0
+access_crm_classification_manager,crm.classification manager,model_crm_classification,sales_team.group_sale_manager,1,1,1,1
+access_crm_request_origin_salesman,crm.request.origin salesman,model_crm_request_origin,sales_team.group_sale_salesman,1,0,0,0
+access_crm_request_origin_manager,crm.request.origin manager,model_crm_request_origin,sales_team.group_sale_manager,1,1,1,1
