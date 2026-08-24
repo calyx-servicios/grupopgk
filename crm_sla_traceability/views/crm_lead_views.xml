@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="crm_lead_view_form_sla" model="ir.ui.view">
+        <field name="name">crm.lead.form.sla</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='stage_id']" position="before">
+                <button name="action_approve_presales" type="object"
+                        string="Approve DC Presales" class="oe_highlight"
+                        attrs="{'invisible': ['|', '|', '|',
+                                ('user_is_partner', '=', False),
+                                ('stage_is_approval', '=', True),
+                                ('presales_effort_hours', '&lt;=', 0),
+                                ('presales_approval_date', '!=', False)]}"/>
+                <button name="action_approve_dc" type="object"
+                        string="Approve DC" class="oe_highlight"
+                        attrs="{'invisible': ['|',
+                                ('stage_is_approval', '=', False),
+                                ('dc_approval_date', '!=', False)]}"/>
+            </xpath>
+            <notebook position="inside">
+                <page string="Traceability and SLA" name="sla_traceability">
+                    <field name="user_is_partner" invisible="1"/>
+                    <field name="stage_is_estimation" invisible="1"/>
+                    <field name="stage_is_approval" invisible="1"/>
+                    <group>
+                        <group string="Classification">
+                            <field name="opportunity_type_id"/>
+                            <field name="classification_id"/>
+                            <field name="request_origin_id"/>
+                        </group>
+                        <group string="SLA">
+                            <field name="sla_deadline"/>
+                            <field name="sla_status"/>
+                            <field name="waiting_customer"/>
+                            <field name="waiting_customer_date"
+                                   attrs="{'readonly': [('waiting_customer', '=', False)]}"/>
+                            <field name="committed_date"/>
+                            <field name="waiting_reminder_last_date"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="DC Presales">
+                            <field name="presales_effort_hours"/>
+                            <field name="presales_approval_date"/>
+                            <field name="presales_approval_user_id"/>
+                        </group>
+                        <group string="Estimation">
+                            <field name="estimated_hours_lt"
+                                   attrs="{'readonly': [('stage_is_estimation', '=', False)]}"/>
+                            <field name="estimation_validity_date"
+                                   attrs="{'readonly': [('stage_is_estimation', '=', False)]}"/>
+                        </group>
+                        <group string="DC Approval">
+                            <field name="dc_approval_date"/>
+                            <field name="dc_approval_user_id"/>
+                        </group>
+                    </group>
+                </page>
+            </notebook>
+        </field>
+    </record>
+
+</odoo>

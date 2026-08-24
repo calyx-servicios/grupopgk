@@ -9,6 +9,14 @@ class DatareaderErrorCode(models.Model):
     code = fields.Char(string='Codigo de Error', required=True, index=True)
     description = fields.Char(string='Descripcion', required=True)
     requires_review = fields.Boolean(string='Requiere revision?', default=False)
+    skip_receipt = fields.Boolean(
+        string='No generar recibo?',
+        default=False,
+        help=(
+            'Si esta marcado, la orden no genera recibo en el caso de que '
+            'todos los comprobantes esten pagados por completo.'
+        ),
+    )
     active = fields.Boolean(string='Activo', default=True)
 
     _sql_constraints = [

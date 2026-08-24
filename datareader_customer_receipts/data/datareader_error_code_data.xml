@@ -66,5 +66,12 @@
             <field name="description">Informacion incompleta en la identificacion de ID de facturas de ventas</field>
             <field name="requires_review" eval="True"/>
         </record>
+
+        <record id="datareader_error_code_11" model="datareader.error.code">
+            <field name="code">11</field>
+            <field name="description">Informacion de facturas de ventas ya pagadas sin deuda</field>
+            <field name="requires_review" eval="False"/>
+            <field name="skip_receipt" eval="True"/>
+        </record>
     </data>
 </odoo>
