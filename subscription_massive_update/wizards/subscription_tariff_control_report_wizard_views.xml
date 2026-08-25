@@ -32,19 +32,27 @@
         <field name="view_mode">form</field>
         <field name="target">new</field>
         <field name="view_id" ref="view_subscription_tariff_update_control_wizard"/>
-        <field name="groups_id" eval="[(4, ref('subscription_massive_update.group_subscription_contracts')), (4, ref('subscription_massive_update.group_subscription_admin')), (4, ref('subscription_massive_update.group_subscription_partners'))]"/>
+        <field name="groups_id" eval="[(4, ref('subscription_package.group_subscription_manager'))]"/>
     </record>
 
+    <menuitem
+        id="menu_subscription_reports"
+        name="Reportes"
+        parent="subscription_package.subscription_menu_root"
+        sequence="11"
+    />
+
     <record id="subscription_package.subscription_menu_report" model="ir.ui.menu">
-        <field name="name">Reportes</field>
+        <field name="name">Vista Pivot</field>
+        <field name="parent_id" ref="menu_subscription_reports"/>
     </record>
 
     <menuitem
         id="menu_subscription_tariff_update_control_report"
         name="Control de Actualizaciones de Tarifa"
-        parent="subscription_package.subscription_menu_report"
+        parent="menu_subscription_reports"
         action="action_subscription_tariff_update_control_wizard"
         sequence="20"
-        groups="subscription_massive_update.group_subscription_contracts,subscription_massive_update.group_subscription_admin,subscription_massive_update.group_subscription_partners"
+        groups="subscription_package.group_subscription_manager"
     />
 </odoo>
