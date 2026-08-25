@@ -7,6 +7,25 @@ class DraftInvoiceReportXlsx(models.AbstractModel):
     _inherit = "report.report_xlsx.abstract"
     _description = "Facturación Pendiente (Borradores) XLSX"
 
+    def _get_amount_format(self, workbook, cache, currency, bold=False):
+        key = (currency.id, bold)
+        if key not in cache:
+            symbol = (currency.symbol or currency.name).replace('"', "")
+            if currency.position == "after":
+                num_format = '#,##0.00"  %s"' % symbol
+            else:
+                num_format = '"%s "#,##0.00' % symbol
+            props = {
+                "border": 1,
+                "num_format": num_format,
+                "align": "right",
+                "valign": "top",
+            }
+            if bold:
+                props.update({"bold": True, "bg_color": "#F0F0F0"})
+            cache[key] = workbook.add_format(props)
+        return cache[key]
+
     def generate_xlsx_report(self, workbook, data, objects):
         wizard = objects[0]
         report_data = wizard._prepare_report_data()
@@ -52,20 +71,15 @@ class DraftInvoiceReportXlsx(models.AbstractModel):
                 "valign": "top",
             }
         )
-        amount_format = workbook.add_format(
-            {"border": 1, "num_format": "#,##0.00", "align": "right", "valign": "top"}
-        )
         total_label_format = workbook.add_format(
             {"bold": True, "bg_color": "#F0F0F0", "border": 1}
-        )
-        total_amount_format = workbook.add_format(
-            {"bold": True, "bg_color": "#F0F0F0", "border": 1, "num_format": "#,##0.00", "align": "right"}
         )
         blank_total_format = workbook.add_format(
             {"bold": True, "bg_color": "#F0F0F0", "border": 1}
         )
+        amount_format_cache = {}
 
-        widths = [14, 24, 14, 20, 18, 16, 14, 22, 16, 18, 45]
+        widths = [14, 24, 14, 20, 18, 16, 14, 22, 22, 18, 45]
         for column, width in enumerate(widths):
             sheet.set_column(column, column, width)
 
@@ -105,6 +119,9 @@ class DraftInvoiceReportXlsx(models.AbstractModel):
                 row += 1
                 for document in client["documents"]:
                     observations = html2plaintext(document["observations"] or "").strip()
+                    amount_format = self._get_amount_format(
+                        workbook, amount_format_cache, document["currency"]
+                    )
                     values = [
                         document["number"],
                         document["client"],
@@ -121,7 +138,7 @@ class DraftInvoiceReportXlsx(models.AbstractModel):
                     for column, value in enumerate(values):
                         if column == 2 and value:
                             cell_format = date_format
-                        elif column in (7, 8) and value != "":
+                        elif column in (7, 8, 9) and value != "":
                             cell_format = amount_format
                         else:
                             cell_format = text_format
@@ -129,6 +146,9 @@ class DraftInvoiceReportXlsx(models.AbstractModel):
                     sheet.set_row(row, 48)
                     row += 1
                 for total in client["totals"].values():
+                    total_amount_format = self._get_amount_format(
+                        workbook, amount_format_cache, total["currency"], bold=True
+                    )
                     sheet.merge_range(row, 0, row, 6, _("Total cliente"), total_label_format)
                     sheet.write(row, 7, total["untaxed"], total_amount_format)
                     sheet.write(row, 8, total["total"], total_amount_format)
@@ -136,6 +156,9 @@ class DraftInvoiceReportXlsx(models.AbstractModel):
                     sheet.write_blank(row, 10, None, blank_total_format)
                     row += 1
             for total in company["totals"].values():
+                total_amount_format = self._get_amount_format(
+                    workbook, amount_format_cache, total["currency"], bold=True
+                )
                 company_total_label = _("Total compañía %s") % total["currency"].name
                 sheet.merge_range(row, 0, row, 6, company_total_label, total_label_format)
                 sheet.write(row, 7, total["untaxed"], total_amount_format)
@@ -147,7 +170,11 @@ class DraftInvoiceReportXlsx(models.AbstractModel):
             row += 1
 
         for total in report_data["totals"]:
-            sheet.merge_range(row, 0, row, 6, _("TOTAL GENERAL %s") % total["currency"].name, total_label_format)
+            total_amount_format = self._get_amount_format(
+                workbook, amount_format_cache, total["currency"], bold=True
+            )
+            general_total_label = _("TOTAL GENERAL %s") % total["currency"].name
+            sheet.merge_range(row, 0, row, 6, general_total_label, total_label_format)
             sheet.write(row, 7, total["untaxed"], total_amount_format)
             sheet.write(row, 8, total["total"], total_amount_format)
             sheet.write_blank(row, 9, None, blank_total_format)

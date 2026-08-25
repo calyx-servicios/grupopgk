@@ -24,6 +24,21 @@
         </field>
     </record>
 
+    <record id="view_account_draft_invoice_report_move_tree" model="ir.ui.view">
+        <field name="name">account.move.tree.draft.invoice.report</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <field name="invoice_origin" position="after">
+                <field name="subscription_id" string="Suscripción" optional="show"/>
+            </field>
+            <field name="state" position="after">
+                <field name="narration" string="Observaciones" optional="show"/>
+            </field>
+        </field>
+    </record>
+
     <record id="action_account_draft_invoice_report_wizard" model="ir.actions.act_window">
         <field name="name">Facturación Pendiente (Borradores)</field>
         <field name="res_model">account.draft.invoice.report.wizard</field>

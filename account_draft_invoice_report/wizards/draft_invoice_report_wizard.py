@@ -2,6 +2,7 @@ from datetime import date as py_date
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools.misc import formatLang
 
 
 class AccountDraftInvoiceReportWizard(models.TransientModel):
@@ -70,8 +71,8 @@ class AccountDraftInvoiceReportWizard(models.TransientModel):
         if not subscription:
             return ""
         return (
-            getattr(subscription, "reference_code", False)
-            or getattr(subscription, "name", False)
+            getattr(subscription, "name", False)
+            or getattr(subscription, "reference_code", False)
             or ""
         )
 
@@ -114,6 +115,16 @@ class AccountDraftInvoiceReportWizard(models.TransientModel):
 
     def _get_total_sign(self, move):
         return -1 if move.move_type == "out_refund" else 1
+
+    def _format_amount(self, amount, currency):
+        if not currency:
+            return ""
+        return formatLang(self.env, amount, currency_obj=currency)
+
+    def _format_totals(self, totals_by_currency):
+        for totals in totals_by_currency.values():
+            totals["untaxed_fmt"] = self._format_amount(totals["untaxed"], totals["currency"])
+            totals["total_fmt"] = self._format_amount(totals["total"], totals["currency"])
 
     def _prepare_report_data(self):
         self.ensure_one()
@@ -158,9 +169,16 @@ class AccountDraftInvoiceReportWizard(models.TransientModel):
                     "sale_order": ", ".join(sale_orders.mapped("name")),
                     "subscription": self._get_subscription_name(move, sale_order),
                     "amount_untaxed": move.amount_untaxed,
+                    "amount_untaxed_fmt": self._format_amount(move.amount_untaxed, currency),
                     "amount_total": amount_total,
+                    "amount_total_fmt": self._format_amount(amount_total, currency),
                     "foreign_total": (
                         amount_total if currency != move.company_id.currency_id else False
+                    ),
+                    "foreign_total_fmt": (
+                        self._format_amount(amount_total, currency)
+                        if currency != move.company_id.currency_id
+                        else ""
                     ),
                     "currency": currency,
                     "document_type": (
@@ -170,7 +188,9 @@ class AccountDraftInvoiceReportWizard(models.TransientModel):
                 }
             )
             for totals in (client_data["totals"], company_data["totals"]):
-                currency_totals = totals.setdefault(currency.id, {"currency": currency, "untaxed": 0.0, "total": 0.0})
+                currency_totals = totals.setdefault(
+                    currency.id, {"currency": currency, "untaxed": 0.0, "total": 0.0}
+                )
                 currency_totals["untaxed"] += signed_amount_untaxed
                 currency_totals["total"] += signed_amount_total
 
@@ -185,6 +205,9 @@ class AccountDraftInvoiceReportWizard(models.TransientModel):
                 general["total"] += totals["total"]
             for client in company["clients"].values():
                 client["documents"].sort(key=self._get_document_sort_key)
+                self._format_totals(client["totals"])
+            self._format_totals(company["totals"])
+        self._format_totals(general_totals)
 
         return {
             "date_from": self.date_from,
@@ -228,11 +251,14 @@ class AccountDraftInvoiceReportWizard(models.TransientModel):
         self._check_date_range()
         self._check_company_ids()
         company_ids = self._get_company_ids().ids
+        tree_view = self.env.ref(
+            "account_draft_invoice_report.view_account_draft_invoice_report_move_tree"
+        )
         return {
             "type": "ir.actions.act_window",
             "name": _("Facturación Pendiente (Borradores)"),
             "res_model": "account.move",
-            "view_mode": "tree,form",
+            "views": [(tree_view.id, "tree"), (False, "form")],
             "search_view_id": self.env.ref("account.view_account_invoice_filter").id,
             "domain": self._get_move_domain(),
             "context": {

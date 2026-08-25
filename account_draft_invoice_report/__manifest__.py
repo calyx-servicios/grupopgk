@@ -9,7 +9,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Accounting/Reporting",
-    "version": "15.0.1.0.4",
+    "version": "15.0.1.0.5",
     "development_status": "Beta",
     "application": False,
     "installable": True,
@@ -19,6 +19,7 @@
         "custom_access_permissions",
         "report_xlsx",
         "sale",
+        "subscription_package",
     ],
     "data": [
         "security/ir.model.access.csv",

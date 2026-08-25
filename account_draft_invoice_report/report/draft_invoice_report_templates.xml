@@ -111,9 +111,9 @@
                                                 <div class="act_as_cell left" style="width: 9%;"><span t-esc="document['sale_order']"/></div>
                                                 <div class="act_as_cell left" style="width: 7%;"><span t-esc="document['subscription']"/></div>
                                                 <div class="act_as_cell left" style="width: 6%;"><span t-esc="document['document_type']"/></div>
-                                                <div class="act_as_cell amount" style="width: 9%;"><span t-esc="'%.2f %s' % (document['amount_untaxed'], document['currency'].name)"/></div>
-                                                <div class="act_as_cell amount" style="width: 8%;"><span t-esc="'%.2f %s' % (document['amount_total'], document['currency'].name)"/></div>
-                                                <div class="act_as_cell amount" style="width: 8%;"><span t-esc="document['foreign_total'] and ('%.2f %s' % (document['foreign_total'], document['currency'].name)) or ''"/></div>
+                                                <div class="act_as_cell amount" style="width: 9%;"><span t-esc="document['amount_untaxed_fmt']"/></div>
+                                                <div class="act_as_cell amount" style="width: 8%;"><span t-esc="document['amount_total_fmt']"/></div>
+                                                <div class="act_as_cell amount" style="width: 8%;"><span t-esc="document['foreign_total_fmt']"/></div>
                                                 <div class="act_as_cell left" style="width: 19%;"><span t-esc="document['observations']"/></div>
                                             </div>
                                         </t>
@@ -122,8 +122,8 @@
                                     <div class="act_as_table list_table" style="width: 100%;">
                                         <div class="act_as_row labels subtotal">
                                             <div class="act_as_cell" style="width: 56%;">Total cliente</div>
-                                            <div class="act_as_cell amount" style="width: 9%;"><span t-esc="'%.2f %s' % (total['untaxed'], total['currency'].name)"/></div>
-                                            <div class="act_as_cell amount" style="width: 8%;"><span t-esc="'%.2f %s' % (total['total'], total['currency'].name)"/></div>
+                                            <div class="act_as_cell amount" style="width: 9%;"><span t-esc="total['untaxed_fmt']"/></div>
+                                            <div class="act_as_cell amount" style="width: 8%;"><span t-esc="total['total_fmt']"/></div>
                                             <div class="act_as_cell amount" style="width: 8%;"/>
                                             <div class="act_as_cell" style="width: 19%;"/>
                                         </div>
@@ -134,8 +134,8 @@
                                 <div class="act_as_table list_table" style="width: 100%;">
                                     <div class="act_as_row labels subtotal">
                                         <div class="act_as_cell" style="width: 56%;">Total compañía</div>
-                                        <div class="act_as_cell amount" style="width: 9%;"><span t-esc="'%.2f %s' % (total['untaxed'], total['currency'].name)"/></div>
-                                        <div class="act_as_cell amount" style="width: 8%;"><span t-esc="'%.2f %s' % (total['total'], total['currency'].name)"/></div>
+                                        <div class="act_as_cell amount" style="width: 9%;"><span t-esc="total['untaxed_fmt']"/></div>
+                                        <div class="act_as_cell amount" style="width: 8%;"><span t-esc="total['total_fmt']"/></div>
                                         <div class="act_as_cell amount" style="width: 8%;"/>
                                         <div class="act_as_cell" style="width: 19%;"/>
                                     </div>
@@ -146,8 +146,8 @@
                             <div class="act_as_table list_table group_title" style="width: 100%;">
                                 <div class="act_as_row labels subtotal">
                                     <div class="act_as_cell" style="width: 56%;">TOTAL GENERAL <span t-esc="total['currency'].name"/></div>
-                                    <div class="act_as_cell amount" style="width: 9%;"><span t-esc="'%.2f %s' % (total['untaxed'], total['currency'].name)"/></div>
-                                    <div class="act_as_cell amount" style="width: 8%;"><span t-esc="'%.2f %s' % (total['total'], total['currency'].name)"/></div>
+                                    <div class="act_as_cell amount" style="width: 9%;"><span t-esc="total['untaxed_fmt']"/></div>
+                                    <div class="act_as_cell amount" style="width: 8%;"><span t-esc="total['total_fmt']"/></div>
                                     <div class="act_as_cell amount" style="width: 8%;"/>
                                     <div class="act_as_cell" style="width: 19%;"/>
                                 </div>
