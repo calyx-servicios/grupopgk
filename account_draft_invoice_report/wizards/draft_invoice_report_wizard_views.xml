@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_draft_invoice_report_wizard" model="ir.ui.view">
+        <field name="name">account.draft.invoice.report.wizard.form</field>
+        <field name="model">account.draft.invoice.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Facturación Pendiente (Borradores)">
+                <group>
+                    <group>
+                        <field name="company_ids" widget="many2many_tags"/>
+                    </group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                </group>
+                <footer>
+                    <button string="Cerrar" class="btn btn-secondary" special="cancel"/>
+                    <button name="action_view_report" string="Vista" type="object" class="btn-primary"/>
+                    <button name="action_generate_report" string="Exportar PDF" type="object" class="btn-primary"/>
+                    <button name="action_export_xlsx" string="Exportar Excel" type="object" class="btn-primary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_account_draft_invoice_report_move_tree" model="ir.ui.view">
+        <field name="name">account.move.tree.draft.invoice.report</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree"/>
+        <field name="mode">primary</field>
+        <field name="arch" type="xml">
+            <field name="invoice_origin" position="after">
+                <field name="subscription_id" string="Suscripción" optional="show"/>
+            </field>
+            <field name="state" position="after">
+                <field name="narration" string="Observaciones" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="action_account_draft_invoice_report_wizard" model="ir.actions.act_window">
+        <field name="name">Facturación Pendiente (Borradores)</field>
+        <field name="res_model">account.draft.invoice.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_account_draft_invoice_report_wizard"/>
+        <field name="groups_id" eval="[(4, ref('custom_access_permissions.group_profile_administrator'))]"/>
+    </record>
+
+    <menuitem
+        id="menu_account_draft_invoice_report"
+        name="Facturación Pendiente (Borradores)"
+        parent="account.menu_finance_reports"
+        action="action_account_draft_invoice_report_wizard"
+        sequence="100"
+        groups="custom_access_permissions.group_profile_administrator"
+    />
+</odoo>
