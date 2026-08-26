@@ -104,7 +104,9 @@ def download_and_attach_file(self, file_name, folder_field='box_folder_id_op', d
 def download_and_attach_retentions(self, op_filename, folder_field='box_folder_id_ret', download_path="/tmp/datareader_box"):
     """
     Descarga hasta 4 archivos de retenciones asociados a la OP.
-    El prefijo se obtiene del nombre del archivo de la OP (identificador + mail, hasta el segundo '-').
+    El matcheo se hace por el identificador de la OP (único, primer segmento
+    del nombre antes del primer '-'), ya que el resto del nombre (mail, etc.)
+    puede variar de formato entre el archivo de OP y los de retenciones.
     """
     client, _ = get_client(self.env)
     if not client:
@@ -115,8 +117,7 @@ def download_and_attach_retentions(self, op_filename, folder_field='box_folder_i
     if not folder_id:
         raise ValueError(f"No está configurado {folder_field} en Configuración.")
 
-    parts = op_filename.strip().split("-")
-    prefix = "-".join(parts[:2]) if len(parts) >= 2 else op_filename.strip()
+    op_id = op_filename.strip().split("-", 1)[0]
     os.makedirs(download_path, exist_ok=True)
 
     # Recorre subcarpetas (ej. organización por año_mes) además del nivel raíz.
@@ -133,7 +134,7 @@ def download_and_attach_retentions(self, op_filename, folder_field='box_folder_i
                 continue
 
             item_name = item.name.strip()
-            if item.type != 'file' or not item_name.startswith(prefix):
+            if item.type != 'file' or item_name.split("-", 1)[0] != op_id:
                 continue
 
             try:
