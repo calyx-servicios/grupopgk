@@ -87,28 +87,36 @@ class TimesheetReclassify(models.Model):
 
             rec.state = "done"
 
-    @api.constrains("state")
-    def _onchange_state(self):
+    def write(self, vals):
+        to_process = self.env["timesheet.reclassify"]
+        if vals.get("state") == "done":
+            to_process = self.filtered(lambda r: r.state != "done")
+        res = super().write(vals)
+        if to_process:
+            to_process._process_done()
+        return res
+
+    def _process_done(self):
         self = self.sudo()
         AAL = self.env["account.analytic.line"]
         for rec in self:
-            if rec.state == "done":
-                for line in rec.line_ids:
-                    if line.analytic_line:
-                        if line.unit_amount_reclassify:
-                            line.analytic_line.unit_amount = line.unit_amount_reclassify
-                        else:
-                            line.analytic_line.unlink()
+            for line in rec.line_ids:
+                if line.analytic_line:
+                    if line.unit_amount_reclassify:
+                        line.analytic_line.unit_amount = line.unit_amount_reclassify
                     else:
-                        if line.unit_amount_reclassify:
-                            AAL.create({
-                                "timesheet_id": rec.ticket_id.id,
-                                "project_id": line.project_id.id,
-                                "unit_amount": line.unit_amount_reclassify,
-                                "user_id": rec.user_id.id if rec.user_id else False,
-                                "employee_id": rec.user_id.employee_id.id if rec.user_id and rec.user_id.employee_id else False,
-                                "name": line.name,
-                            })
+                        line.analytic_line.unlink()
+                else:
+                    if line.unit_amount_reclassify:
+                        new_aal = AAL.create({
+                            "timesheet_id": rec.ticket_id.id,
+                            "project_id": line.project_id.id,
+                            "unit_amount": line.unit_amount_reclassify,
+                            "user_id": rec.user_id.id if rec.user_id else False,
+                            "employee_id": rec.user_id.employee_id.id if rec.user_id and rec.user_id.employee_id else False,
+                            "name": line.name,
+                        })
+                        line.analytic_line = new_aal.id
 
 
 class TimesheetReclassifyLine(models.Model):
@@ -176,15 +184,6 @@ class TimesheetReclassifyLine(models.Model):
         self = self.sudo()
         for rec in self:
             rec.approved = True
-        reclassify_ids = self.mapped("reclassify_id")
-        for reclassify in reclassify_ids:
-            approve_lines = reclassify.line_ids.filtered(lambda l: l.approver_id)
-            if approve_lines:
-                if set(approve_lines.mapped("approved")) == {True}:
-                    reclassify.state = "done"
-            else:
-                if reclassify.line_ids and set(reclassify.line_ids.mapped("approved")) == {True}:
-                    reclassify.state = "done"
 
     def write(self, vals):
         """
