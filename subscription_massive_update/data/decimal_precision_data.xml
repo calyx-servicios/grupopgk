@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="subscription_ipc_percentage_decimal_precision" model="decimal.precision">
+        <field name="name">Subscription IPC Percentage</field>
+        <field name="digits">2</field>
+    </record>
+</odoo>
