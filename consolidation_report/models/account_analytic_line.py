@@ -1,5 +1,7 @@
 from odoo import models, fields, api
 
+ADALY_COMPANY_ID = 2
+
 
 class AccountAnalyticLine(models.Model):
     _inherit = "account.analytic.line"
@@ -58,6 +60,39 @@ class AccountAnalyticLine(models.Model):
         compute='_compute_has_consolidation_data_lines',
         store=False,
     )
+    amount_ars_currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda ARS',
+        compute='_compute_amount_ars_currency_id',
+    )
+    amount_ars = fields.Monetary(
+        string='Importe (ARS)',
+        compute='_compute_amount_ars',
+        currency_field='amount_ars_currency_id',
+        help='Importe unificado en ARS para el Análisis de Margen Bruto. Para '
+             'líneas de Adaly S.A. (moneda funcional USD) queda en 0 hasta '
+             'que el informe de consolidación del período pesifique esa línea.',
+    )
+
+    def _compute_amount_ars_currency_id(self):
+        ars = self.env.ref('base.ARS')
+        for line in self:
+            line.amount_ars_currency_id = ars.id
+
+    @api.depends(
+        'amount', 'move_id.company_id', 'employee_id.company_id',
+        'consolidation_data_line_ids.amount',
+    )
+    def _compute_amount_ars(self):
+        for line in self:
+            is_adaly = (
+                line.move_id.company_id.id == ADALY_COMPANY_ID
+                or line.employee_id.company_id.id == ADALY_COMPANY_ID
+            )
+            if not is_adaly:
+                line.amount_ars = line.amount
+                continue
+            line.amount_ars = sum(line.consolidation_data_line_ids.mapped('amount'))
 
     @api.depends('consolidation_data_line_ids')
     def _compute_has_consolidation_data_lines(self):
