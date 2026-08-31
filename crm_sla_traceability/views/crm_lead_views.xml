@@ -9,19 +9,23 @@
             <xpath expr="//header/field[@name='stage_id']" position="before">
                 <button name="action_approve_presales" type="object"
                         string="Approve DC Presales" class="oe_highlight"
-                        attrs="{'invisible': ['|', '|', '|',
+                    attrs="{'invisible': ['|', '|', '|', '|',
+                        ('sla_traceability_enabled', '=', False),
                                 ('user_is_partner', '=', False),
                                 ('stage_is_approval', '=', True),
                                 ('presales_effort_hours', '&lt;=', 0),
                                 ('presales_approval_date', '!=', False)]}"/>
                 <button name="action_approve_dc" type="object"
                         string="Approve DC" class="oe_highlight"
-                        attrs="{'invisible': ['|',
+                    attrs="{'invisible': ['|', '|',
+                        ('sla_traceability_enabled', '=', False),
                                 ('stage_is_approval', '=', False),
                                 ('dc_approval_date', '!=', False)]}"/>
             </xpath>
-            <notebook position="inside">
-                <page string="Traceability and SLA" name="sla_traceability">
+            <xpath expr="//notebook/page[1]" position="before">
+                <page string="Traceability and SLA" name="sla_traceability"
+                      attrs="{'invisible': [('sla_traceability_enabled', '=', False)]}">
+                    <field name="sla_traceability_enabled" invisible="1"/>
                     <field name="user_is_partner" invisible="1"/>
                     <field name="stage_is_estimation" invisible="1"/>
                     <field name="stage_is_approval" invisible="1"/>
@@ -59,7 +63,7 @@
                         </group>
                     </group>
                 </page>
-            </notebook>
+            </xpath>
         </field>
     </record>
 

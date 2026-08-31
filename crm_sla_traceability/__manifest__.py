@@ -15,7 +15,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Sales/CRM",
-    "version": "15.0.1.0.0",
+    "version": "15.0.1.0.1",
     "application": False,
     "installable": True,
     "depends": [
@@ -29,6 +29,7 @@
         "views/crm_request_origin_views.xml",
         "views/crm_menus.xml",
         "views/crm_stage_views.xml",
+        "views/crm_team_views.xml",
         "views/crm_lead_views.xml",
         "views/crm_lead_kanban_views.xml",
         "data/catalogs_data.xml",

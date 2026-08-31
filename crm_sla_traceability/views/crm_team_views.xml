@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="crm_team_view_form_sla_traceability" model="ir.ui.view">
+        <field name="name">crm.team.form.sla.traceability</field>
+        <field name="model">crm.team</field>
+        <field name="inherit_id" ref="sales_team.crm_team_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='options_active']" position="inside">
+                <div class="o_row">
+                    <field name="sla_traceability_enabled"/>
+                    <label for="sla_traceability_enabled"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
