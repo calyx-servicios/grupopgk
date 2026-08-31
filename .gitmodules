@@ -166,3 +166,7 @@
 	path = submodules/OCA/automation
 	url = git@github.com:OCA/automation.git
 	branch = 16.0
+[submodule "submodules/calyx-servicios/odoo-utils"]
+	path = submodules/calyx-servicios/odoo-utils
+	url = git@github.com:calyx-servicios/odoo-utils.git
+	branch = 15.0

@@ -87,6 +87,42 @@ class TimesheetReclassify(models.Model):
 
             rec.state = "done"
 
+    def action_mass_cancel(self):
+        """Ajuste histórico puntual: pasa a `cancel` las reclasificaciones
+        seleccionadas que estén en `pending`.
+
+        A diferencia del botón `cancel`, ignora `can_cancel` (hay pendientes sin
+        aprobador asignado que de otro modo quedan trabadas) y no toca las
+        `account.analytic.line` relacionadas, por lo que las horas ya imputadas
+        quedan tal cual están.
+
+        Los registros en `done` o `cancel` se ignoran. Reservado a
+        `base.group_system`: es una regularización, no parte del flujo.
+        """
+        if not self.env.user.has_group("base.group_system"):
+            raise UserError(_("Solo el Administrador puede ejecutar esta acción."))
+
+        to_cancel = self.filtered(lambda r: r.state == "pending")
+        skipped = self - to_cancel
+        if to_cancel:
+            to_cancel.sudo().write({"state": "cancel"})
+
+        message = _("Reclasificaciones canceladas: %s.") % len(to_cancel)
+        if skipped:
+            message += _(" Sin modificar (ya en Done/Cancelled): %s.") % len(skipped)
+
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Cancelación masiva de reclasificaciones"),
+                "message": message,
+                "type": "success" if to_cancel else "warning",
+                "sticky": False,
+                "next": {"type": "ir.actions.act_window_close"},
+            },
+        }
+
     def write(self, vals):
         to_process = self.env["timesheet.reclassify"]
         if vals.get("state") == "done":
