@@ -7,10 +7,10 @@
         "facturas e impuestos."
     ),
     "author": "GrupoPGK",
-    "version": "15.0.1.0.1",
+    "version": "15.0.1.1.0",
     "category": "Technical",
     "license": "AGPL-3",
-    "depends": ["base", "account"],
+    "depends": ["base", "account", "datareader_customer_receipts"],
     "data": [
         "security/ir.model.access.csv",
         "views/api_key_views.xml",
