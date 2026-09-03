@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Timesheet",
-    "version": "15.0.0.0.6",
+    "version": "15.0.0.0.7",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
@@ -18,6 +18,7 @@
     "data": [
         "security/timesheet_reclassify_security.xml",
         "security/ir.model.access.csv",
+        "data/timesheet_reclassify_server_action.xml",
         "wizard/timesheet_reclassify_wizard_view.xml",
         "views/timesheet_sige_views.xml",
         "views/timesheet_reclassify_views.xml"
