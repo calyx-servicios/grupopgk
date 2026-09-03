@@ -13,7 +13,7 @@
         <field name="name">Empleado: ve su ficha y la de su equipo directo</field>
         <field name="model_id" ref="hr.model_hr_employee"/>
         <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
-        <field name="domain_force">['|', ('user_id', '=', user.id), ('parent_id.user_id', '=', user.id)]</field>
+        <field name="domain_force">['|', '|', ('user_id', '=', user.id), ('parent_id.user_id', '=', user.id), ('coach_id.user_id', '=', user.id)]</field>
     </record>
 
     <record id="hr_employee_manager_full_access_rule" model="ir.rule">
