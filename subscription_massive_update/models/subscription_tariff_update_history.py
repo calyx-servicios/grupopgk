@@ -8,6 +8,26 @@ class SubscriptionTariffUpdateHistory(models.Model):
     _description = "Subscription Tariff Update History"
     _order = "update_datetime desc, id desc"
 
+    def _register_hook(self):
+        """Remove access rules that block deletion of retired groups."""
+        self.env.cr.execute(
+            """
+            DELETE FROM ir_model_access
+            WHERE group_id IN (
+                SELECT res_id
+                FROM ir_model_data
+                WHERE module = 'subscription_massive_update'
+                  AND model = 'res.groups'
+                  AND name IN (
+                      'group_subscription_contracts',
+                      'group_subscription_partners',
+                      'group_subscription_admin'
+                  )
+            )
+            """
+        )
+        return super()._register_hook()
+
     subscription_id = fields.Many2one(
         "subscription.package",
         string="Suscripción",

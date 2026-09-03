@@ -122,9 +122,9 @@
                                         <td><span t-esc="row.get('product', '')"/></td>
                                         <td><span t-esc="row.get('analytic_account', '')"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % row.get('qty', 0.0)"/></td>
-                                        <td class="text-right"><span t-esc="'%.2f' % row.get('old_price', 0.0)"/></td>
-                                        <td class="text-right"><span t-esc="'%.2f' % row.get('new_price', 0.0)"/></td>
-                                        <td class="text-right"><span t-esc="'%.2f' % row.get('subtotal_net', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="row.get('old_price_display', '')"/></td>
+                                        <td class="text-right"><span t-esc="row.get('new_price_display', '')"/></td>
+                                        <td class="text-right"><span t-esc="row.get('subtotal_net_display', '')"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % row.get('applied_percentage', 0.0)"/></td>
                                         <td><span t-esc="row.get('currency', '')"/></td>
                                         <td><span t-esc="row.get('commercial', '')"/></td>
@@ -156,8 +156,8 @@
                                     <tr>
                                         <td><span t-esc="subtotal.get('so', '')"/></td>
                                         <td><span t-esc="subtotal.get('partner_name', '')"/></td>
-                                        <td class="text-right"><span t-esc="'%.2f' % subtotal.get('total_original', 0.0)"/></td>
-                                        <td class="text-right"><span t-esc="'%.2f' % subtotal.get('total_current', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="subtotal.get('total_original_display', '')"/></td>
+                                        <td class="text-right"><span t-esc="subtotal.get('total_current_display', '')"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % subtotal.get('variation', 0.0)"/></td>
                                     </tr>
                                 </t>
@@ -207,8 +207,8 @@
                                         <td><span t-esc="row.get('product', '')"/></td>
                                         <td><span t-esc="row.get('analytic_account', '')"/></td>
                                         <td class="text-right"><span t-esc="'%.2f' % row.get('qty', 0.0)"/></td>
-                                        <td class="text-right"><span t-esc="'%.2f' % row.get('current_price', 0.0)"/></td>
-                                        <td class="text-right"><span t-esc="'%.2f' % row.get('subtotal_net', 0.0)"/></td>
+                                        <td class="text-right"><span t-esc="row.get('current_price_display', '')"/></td>
+                                        <td class="text-right"><span t-esc="row.get('subtotal_net_display', '')"/></td>
                                         <td><span t-esc="row.get('currency', '')"/></td>
                                         <td><span t-esc="row.get('commercial', '')"/></td>
                                     </tr>

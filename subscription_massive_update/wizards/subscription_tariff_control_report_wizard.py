@@ -2,6 +2,7 @@ from datetime import date, datetime, time
 
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools.misc import formatLang
 
 
 class SubscriptionTariffUpdateControlWizard(models.TransientModel):
@@ -127,6 +128,10 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
         )
         return dict(self.env.cr.fetchall())
 
+    def _format_amount(self, amount):
+        """Format report amounts with the current user's locale settings."""
+        return formatLang(self.env, amount or 0.0, digits=2)
+
     def _prepare_section_one(self, histories, analytic_names, line_snapshots):
         rows = []
         for history in histories:
@@ -156,6 +161,11 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
                 "old_price": history.old_price,
                 "new_price": history.new_price,
                 "subtotal_net": qty * history.new_price,
+                "old_price_display": self._format_amount(history.old_price),
+                "new_price_display": self._format_amount(history.new_price),
+                "subtotal_net_display": self._format_amount(
+                    qty * history.new_price
+                ),
                 "applied_percentage": history.applied_percentage,
                 "currency": subscription.currency_id.name or "",
                 "commercial": subscription.user_id.display_name or "",
@@ -180,7 +190,7 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
                     "current": new_subtotal,
                 }
             else:
-                line_totals[key]["current"] = new_subtotal
+                line_totals[key]["current"] += new_subtotal
 
         partner_accum = {}
         for totals in line_totals.values():
@@ -211,6 +221,8 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
                     "partner_name": partner_data["partner_name"],
                     "total_original": total_original,
                     "total_current": total_current,
+                    "total_original_display": self._format_amount(total_original),
+                    "total_current_display": self._format_amount(total_current),
                     "variation": variation,
                 }
             )
@@ -235,6 +247,8 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
                         "qty": 0.0,
                         "current_price": 0.0,
                         "subtotal_net": 0.0,
+                        "current_price_display": self._format_amount(0.0),
+                        "subtotal_net_display": self._format_amount(0.0),
                         "currency": subscription.currency_id.name or "",
                         "commercial": subscription.user_id.display_name or "",
                     }
@@ -258,6 +272,10 @@ class SubscriptionTariffUpdateControlWizard(models.TransientModel):
                         "qty": qty,
                         "current_price": current_price,
                         "subtotal_net": qty * current_price,
+                        "current_price_display": self._format_amount(current_price),
+                        "subtotal_net_display": self._format_amount(
+                            qty * current_price
+                        ),
                         "currency": subscription.currency_id.name or "",
                         "commercial": subscription.user_id.display_name or "",
                     }
