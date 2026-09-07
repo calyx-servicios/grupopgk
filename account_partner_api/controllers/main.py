@@ -5,6 +5,7 @@ import json
 import logging
 
 from odoo import fields, http
+from odoo.addons.datareader_customer_receipts.utils.cuit_alias import normalize_text
 from odoo.http import Response, request
 
 _logger = logging.getLogger(__name__)
@@ -114,6 +115,12 @@ _OPENAPI_SPEC = {
                         "in": "query",
                         "schema": {"type": "string"},
                         "description": 'Dominio Odoo en JSON. Ej: [["active","=",true]]',
+                    },
+                    {
+                        "name": "alias",
+                        "in": "query",
+                        "schema": {"type": "string"},
+                        "description": "Solo res.partner. Nombre o alias registrado en normalized.text.",
                     },
                 ],
                 "responses": {
@@ -245,6 +252,98 @@ class OdooDataApiController(http.Controller):
         """
         return request.env[model_name].with_context(active_test=False).sudo()
 
+    def _get_partner_aliases_map(self, partner_ids: list) -> dict:
+        """
+        Build a mapping of ``res.partner`` id -> list of registered aliases.
+
+        Aliases come from ``normalized.text.items`` through ``normalized.text``.
+        Rows repeating both name and normalized name are collapsed.
+
+        Returns:
+            dict: ``{partner_id: [{"item_name": str, "normalized_name": str}, ...]}``
+        """
+        if not partner_ids:
+            return {}
+
+        normalized_texts = (
+            request.env["normalized.text"]
+            .sudo()
+            .search_read(
+                [("res_partner_id", "in", partner_ids)],
+                fields=["res_partner_id"],
+            )
+        )
+        if not normalized_texts:
+            return {}
+
+        partner_by_normalized_id = {
+            nt["id"]: nt["res_partner_id"][0] for nt in normalized_texts
+        }
+        items = (
+            request.env["normalized.text.items"]
+            .sudo()
+            .search_read(
+                [("normalized_id", "in", list(partner_by_normalized_id.keys()))],
+                fields=["name", "normalized_name", "normalized_id"],
+            )
+        )
+
+        aliases_map: dict = {}
+        seen = set()
+        for item in items:
+            partner_id = partner_by_normalized_id.get(item["normalized_id"][0])
+            if partner_id is None:
+                continue
+            key = (partner_id, item["name"], item["normalized_name"])
+            if key in seen:
+                continue
+            seen.add(key)
+            aliases_map.setdefault(partner_id, []).append(
+                {
+                    "item_name": item["name"],
+                    "normalized_name": item["normalized_name"],
+                }
+            )
+        return aliases_map
+
+    def _partner_ids_by_alias(self, alias: str) -> list:
+        """
+        Resolve a raw alias string to the ids of the linked ``res.partner``.
+
+        Matches ``normalized.text.items`` by ``name`` (the alias as it was
+        registered) or by ``normalized_name`` (normalized server-side), so the
+        caller may send the text in either form.
+        """
+        items = (
+            request.env["normalized.text.items"]
+            .sudo()
+            .search_read(
+                [
+                    "|",
+                    ("name", "=ilike", alias),
+                    ("normalized_name", "=", normalize_text(alias)),
+                    ("normalized_id.res_partner_id", "!=", False),
+                ],
+                fields=["normalized_id"],
+            )
+        )
+        if not items:
+            return []
+
+        normalized_texts = (
+            request.env["normalized.text"]
+            .sudo()
+            .search_read(
+                [("id", "in", [i["normalized_id"][0] for i in items])],
+                fields=["res_partner_id"],
+            )
+        )
+        return [
+            nt["res_partner_id"][0]
+            for nt in normalized_texts
+            if nt["res_partner_id"]
+        ]
+
     def _authenticate(self):
         """
         Validate the ``X-API-Key`` request header.
@@ -319,6 +418,9 @@ class OdooDataApiController(http.Controller):
                           Omit to return all fields.
             domain (str): JSON-encoded Odoo domain list. Default: ``[]``.
                           Example: ``[["active","=",true]]``
+            alias  (str): ``res.partner`` only. Registered name/alias from
+                          ``normalized.text``; normalized server-side and
+                          combined with ``domain``.
 
         Headers:
             X-API-Key: Valid API key registered in the api.key table.
@@ -326,6 +428,9 @@ class OdooDataApiController(http.Controller):
         Returns:
             200: ``{"total": int, "limit": int, "offset": int,
                      "records": [{"id": ..., ...}]}``
+                     For ``res.partner``, each record also includes a
+                     ``normalized_aliases`` list with the registered
+                     name/alias variants (``normalized.text.items``).
             400: Invalid query parameters.
             401: Missing or invalid API Key.
             403: Model not in the allowed whitelist.
@@ -415,7 +520,27 @@ class OdooDataApiController(http.Controller):
                 status=400,
             )
 
-        # ── 6. Query Odoo ─────────────────────────────────────────────────────
+        # ── 6. Parse alias param (res.partner only) ───────────────────────────
+        alias = (kwargs.get("alias") or "").strip()
+        order = None
+        if alias:
+            if model != "res.partner":
+                return _json_response(
+                    {
+                        "error": "Bad Request",
+                        "message": (
+                            "El parámetro 'alias' solo aplica al modelo "
+                            "'res.partner'."
+                        ),
+                    },
+                    status=400,
+                )
+            domain.append(("id", "in", self._partner_ids_by_alias(alias)))
+            # An alias may resolve to several partners; fix the order so the
+            # same request always yields the same record.
+            order = "active desc, id asc"
+
+        # ── 7. Query Odoo ─────────────────────────────────────────────────────
         try:
             env_model = self._get_api_model(model)
             total = env_model.search_count(domain)
@@ -424,7 +549,16 @@ class OdooDataApiController(http.Controller):
                 fields=field_list,
                 limit=limit,
                 offset=offset,
+                order=order,
             )
+            if model == "res.partner":
+                aliases_map = self._get_partner_aliases_map(
+                    [r["id"] for r in records]
+                )
+                for record in records:
+                    record["normalized_aliases"] = aliases_map.get(
+                        record["id"], []
+                    )
         except Exception:
             _logger.exception(
                 "Error al consultar el modelo '%s' con domain=%s.",
@@ -483,6 +617,9 @@ class OdooDataApiController(http.Controller):
 
         Returns:
             200: ``{"id": int, "model": str, "record": {...}}``
+                 For ``res.partner``, ``record`` also includes a
+                 ``normalized_aliases`` list with the registered
+                 name/alias variants (``normalized.text.items``).
             400: Invalid query parameters.
             401: Missing or invalid API Key.
             403: Model not in the allowed whitelist.
@@ -563,6 +700,10 @@ class OdooDataApiController(http.Controller):
                 },
                 status=404,
             )
+
+        if model == "res.partner":
+            aliases_map = self._get_partner_aliases_map([record_id])
+            records[0]["normalized_aliases"] = aliases_map.get(record_id, [])
 
         _logger.info(
             "API query by id: model=%s id=%d client=%s",
