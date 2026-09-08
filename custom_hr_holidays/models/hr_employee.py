@@ -11,6 +11,22 @@ class Employee(models.Model):
 
     legajo = fields.Integer(string="Legajo")
 
+    def _get_holidays_company_ids(self):
+        self.ensure_one()
+        if "company_ids" in self._fields and self.company_ids:
+            return self.company_ids
+        return self.company_id
+
+    def _get_holidays_reference_company(self):
+        self.ensure_one()
+        if self.company_id:
+            return self.company_id
+        return self._get_holidays_company_ids()[:1]
+
+    def _is_holidays_company_allowed(self, company):
+        self.ensure_one()
+        return bool(company and company in self._get_holidays_company_ids())
+
     @api.model
     def update_vacation_days(self):
         today = fields.Date.today()
@@ -40,6 +56,10 @@ class EmployeePublic(models.Model):
     _inherit = 'hr.employee.public'
 
     legajo = fields.Integer(string="Legajo")
+    partner = fields.Many2one('res.partner', string="Partner")
+    entry_date = fields.Date(string="Entry Date", required=True)
+    exit_date = fields.Date(string="Exit Date")
+    is_active = fields.Boolean('Active Employee?', compute='_compute_is_active', store=True, default=True)
     vacation_days = fields.Integer(
         string="Vacation Days",
         store=True

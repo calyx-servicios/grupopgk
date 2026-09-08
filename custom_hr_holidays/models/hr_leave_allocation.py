@@ -19,7 +19,22 @@ class HrLeaveAllocation(models.Model):
         string="Days by antiquity",
     )
 
-    days_remaining = fields.Float(related="holiday_status_id.virtual_remaining_leaves", string="Days Remaining")
+    days_remaining = fields.Float(
+        compute="_compute_days_remaining", string="Days Remaining"
+    )
+
+    @api.depends("holiday_status_id", "employee_id", "date_from")
+    def _compute_days_remaining(self):
+        for allocation in self:
+            if not allocation.holiday_status_id or not allocation.employee_id:
+                allocation.days_remaining = 0.0
+                continue
+
+            balance_date = allocation.date_from or fields.Date.context_today(allocation)
+            metrics = allocation.holiday_status_id._get_employee_balance_metrics(
+                allocation.employee_id.id, balance_date
+            )
+            allocation.days_remaining = metrics["virtual_remaining_leaves"]
 
     @api.depends("holiday_type", "days_by_antiquity")
     def _compute_from_holiday_type(self):
