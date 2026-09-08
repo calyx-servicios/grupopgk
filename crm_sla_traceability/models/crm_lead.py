@@ -48,6 +48,10 @@ class CrmLead(models.Model):
         string="Traceability Origin",
         tracking=True,
     )
+    sla_traceability_enabled = fields.Boolean(
+        related="team_id.sla_traceability_enabled",
+        string="Traceability and SLA Enabled",
+    )
 
     # ------------------------------------------------------------------
     # SLA
@@ -254,11 +258,13 @@ class CrmLead(models.Model):
     # ==================================================================
     @api.onchange("classification_id")
     def _onchange_classification_id(self):
-        if self.classification_id:
+        if self.sla_traceability_enabled and self.classification_id:
             self.sla_deadline = self._get_sla_deadline_value()
 
     @api.onchange("waiting_customer")
     def _onchange_waiting_customer(self):
+        if not self.sla_traceability_enabled:
+            return
         self.waiting_customer_date = (
             fields.Datetime.now() if self.waiting_customer else False
         )
@@ -266,7 +272,7 @@ class CrmLead(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         leads = super().create(vals_list)
-        for lead in leads:
+        for lead in leads.filtered("sla_traceability_enabled"):
             lead_vals = {}
             if lead.classification_id and not lead.sla_deadline:
                 lead_vals["sla_deadline"] = lead._get_sla_deadline_value()
@@ -278,7 +284,8 @@ class CrmLead(models.Model):
         return leads
 
     def write(self, vals):
-        if "waiting_customer" in vals:
+        enabled_leads = self.filtered("sla_traceability_enabled")
+        if "waiting_customer" in vals and enabled_leads:
             vals = dict(vals, waiting_reminder_last_date=False)
             vals.setdefault(
                 "waiting_customer_date",
@@ -289,12 +296,12 @@ class CrmLead(models.Model):
             return res
         # Solo se valida al entrar a la etapa, no en cada edición del esfuerzo.
         if "stage_id" in vals:
-            self._check_estimation_stage_approval()
+            enabled_leads._check_estimation_stage_approval()
         # La fecha límite se recalcula al cambiar la clasificación, salvo que
         # el mismo guardado ya traiga una fecha editada a mano.
         recompute_deadline = "classification_id" in vals and "sla_deadline" not in vals
         if recompute_deadline or "sla_deadline" in vals:
-            self._refresh_sla(recompute_deadline)
+            enabled_leads._refresh_sla(recompute_deadline)
         return res
 
     def _refresh_sla(self, recompute_deadline):
@@ -323,6 +330,8 @@ class CrmLead(models.Model):
 
     def action_approve_presales(self):
         self.ensure_one()
+        if not self.sla_traceability_enabled:
+            return False
         if not self.env.user.is_partner:
             raise UserError(_("Only a partner can approve the DC presales."))
         if float_compare(self.presales_effort_hours, 0, precision_digits=2) <= 0:
@@ -335,6 +344,8 @@ class CrmLead(models.Model):
 
     def action_approve_dc(self):
         self.ensure_one()
+        if not self.sla_traceability_enabled:
+            return False
         self._register_approval(
             "dc_approval_date",
             "dc_approval_user_id",
@@ -346,7 +357,7 @@ class CrmLead(models.Model):
     # ==================================================================
     def _check_estimation_stage_approval(self):
         """Impide entrar a Estimación con esfuerzo alto sin aprobación de preventa DC."""
-        for lead in self:
+        for lead in self.filtered("sla_traceability_enabled"):
             over_threshold = float_compare(
                 lead.presales_effort_hours, PRESALES_MAX_HOURS, precision_digits=2
             ) > 0
@@ -367,6 +378,7 @@ class CrmLead(models.Model):
     def _check_new_stage_required_fields(self):
         advanced = self.filtered(
             lambda lead: lead.type == "opportunity"
+            and lead.sla_traceability_enabled
             and lead.stage_id
             and not lead.stage_id.is_new_stage
         )
@@ -414,7 +426,10 @@ class CrmLead(models.Model):
         "presales_approval_date",
     )
     def _check_committed_date(self):
-        for lead in self.filtered(lambda rec: rec.type == "opportunity"):
+        for lead in self.filtered(
+            lambda rec: rec.type == "opportunity"
+            and rec.sla_traceability_enabled
+        ):
             if lead._committed_date_is_required() and not lead.committed_date:
                 raise ValidationError(
                     _(
@@ -445,7 +460,11 @@ class CrmLead(models.Model):
         now = fields.Datetime.now()
         leads = self.search(
             self._get_open_opportunity_domain()
-            + [("waiting_customer", "=", False), ("sla_deadline", "!=", False)]
+            + [
+                ("team_id.sla_traceability_enabled", "=", True),
+                ("waiting_customer", "=", False),
+                ("sla_deadline", "!=", False),
+            ]
         )
         ids_by_status = defaultdict(list)
         for lead in leads:
@@ -468,7 +487,11 @@ class CrmLead(models.Model):
         now = fields.Datetime.now()
         leads = self.search(
             self._get_open_opportunity_domain()
-            + [("waiting_customer", "=", True), ("user_id", "!=", False)]
+            + [
+                ("team_id.sla_traceability_enabled", "=", True),
+                ("waiting_customer", "=", True),
+                ("user_id", "!=", False),
+            ]
         )
         model_description = self.env["ir.model"]._get(self._name).display_name
         render_mixin = self.env["mail.render.mixin"]
