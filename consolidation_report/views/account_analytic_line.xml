@@ -33,6 +33,18 @@
         </field>
     </record>
 
+    <record id="view_account_analytic_line_tree_amount_ars" model="ir.ui.view">
+        <field name="name">account.analytic.line.tree.amount.ars</field>
+        <field name="model">account.analytic.line</field>
+        <field name="inherit_id" ref="analytic.view_account_analytic_line_tree"/>
+        <field name="arch" type="xml">
+            <field name="amount" position="after">
+                <field name="amount_ars_currency_id" invisible="1"/>
+                <field name="amount_ars" sum="Total ARS" optional="show"/>
+            </field>
+        </field>
+    </record>
+
     <record id="report_analytic_account.action_report_account_analytic_pgk" model="ir.actions.act_window">
         <field name="name">Analityc Report</field>
         <field name="res_model">account.analytic.line</field>

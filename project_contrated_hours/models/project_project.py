@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api, _
 
+ADALY_COMPANY_ID = 2
+
 
 class ProjectProject(models.Model):
     _inherit = 'project.project'
@@ -163,9 +165,15 @@ class ProjectProject(models.Model):
                 rec.achievement_rate = 0.55 / rec.overbilling_cost_rate
 
     def _compute_cost(self):
-        """ 
+        """
         Calcular el costo teniendo en cuenta solo las líneas de timesheet y las líneas
         de órdenes de compra asociadas a la cuenta analítica del proyecto.
+
+        Adaly S.A. no pesifica sus comprobantes al cargarlos (moneda funcional
+        USD): se excluye de estas dos búsquedas y, si ya se emitió el informe
+        de consolidación del período, se suma aparte el costo ya pesificado
+        desde `account.consolidation.data`. Sin informe, el costo de Adaly
+        queda afuera del total (no se estima).
         """
         for rec in self:
             total_cost = 0.0
@@ -173,7 +181,8 @@ class ProjectProject(models.Model):
                 # Costos desde partes de horas
                 timesheet_lines = self.env['account.analytic.line'].search([
                     ('account_id', '=', rec.analytic_account_id.id),
-                    ('timesheet_id', '!=', False)
+                    ('timesheet_id', '!=', False),
+                    ('employee_id.company_id', '!=', ADALY_COMPANY_ID),
                 ])
                 for line in timesheet_lines:
                     total_cost += abs(line.amount)
@@ -182,7 +191,8 @@ class ProjectProject(models.Model):
                 lines_from_purchase_orders = self.env['account.analytic.line'].search([
                     ('account_id', '=', rec.analytic_account_id.id),
                     ('amount', '<', 0),
-                    ('move_id', '!=', False)
+                    ('move_id', '!=', False),
+                    ('move_id.company_id', '!=', ADALY_COMPANY_ID),
                 ])
                 for line in lines_from_purchase_orders:
                     move = line.move_id.move_id  # Acceso a account.move
@@ -190,6 +200,16 @@ class ProjectProject(models.Model):
                         total_cost += abs(line.amount)
                     elif move.move_type == 'in_refund':
                         total_cost -= abs(line.amount)  # un reembolso resta al costo total
+
+                # Adaly: costo ya pesificado por el informe de consolidación (si existe)
+                consolidated_cost = self.env['account.consolidation.data'].search([
+                    ('analytic_account_id', '=', rec.analytic_account_id.id),
+                    ('daughter_account.general_account_id.internal_group', '!=', 'income'),
+                    '|',
+                    ('daughter_account.move_id.company_id', '=', ADALY_COMPANY_ID),
+                    ('daughter_account.employee_id.company_id', '=', ADALY_COMPANY_ID),
+                ])
+                total_cost += sum(abs(a) for a in consolidated_cost.mapped('amount'))
 
             rec.cost = total_cost
 
@@ -277,7 +297,15 @@ class ProjectProject(models.Model):
 
     @api.depends('analytic_account_id')
     def _compute_real_billing(self):
-        """Compute billing amount and billed hours from posted income lines."""
+        """Compute billing amount and billed hours from posted income lines.
+
+        Adaly S.A. no pesifica sus comprobantes al momento de cargarlos (su
+        moneda funcional es USD): se excluye de esta suma en ARS y, si ya se
+        emitio el informe de consolidacion del periodo, se suma aparte el
+        valor que ese informe dejo pesificado en `account.consolidation.data`.
+        Mientras no haya informe, el aporte de Adaly queda afuera del total
+        (no se estima), tal como pide el requerimiento.
+        """
         for rec in self:
             rec.real_billing = 0.0
             rec.billing_hours = 0
@@ -290,6 +318,7 @@ class ProjectProject(models.Model):
                 ('account_id.internal_group', '=', 'income'),
                 ('display_type', '=', False),
                 ('exclude_from_invoice_tab', '=', False),
+                ('company_id', '!=', ADALY_COMPANY_ID),
             ])
 
             for line in move_lines:
@@ -300,6 +329,15 @@ class ProjectProject(models.Model):
                     rec.billing_hours += line.quantity
                 elif line_amount < 0:
                     rec.billing_hours -= line.quantity
+
+            consolidated_billing = self.env['account.consolidation.data'].search([
+                ('analytic_account_id', '=', rec.analytic_account_id.id),
+                ('daughter_account.general_account_id.internal_group', '=', 'income'),
+                '|',
+                ('daughter_account.move_id.company_id', '=', ADALY_COMPANY_ID),
+                ('daughter_account.employee_id.company_id', '=', ADALY_COMPANY_ID),
+            ])
+            rec.real_billing += sum(consolidated_billing.mapped('amount'))
 
     @api.depends('expected_go_live_date', 'real_go_live_date')
     def _compute_delivery_time_deviation(self):
