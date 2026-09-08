@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="crm_stage_form_sla" model="ir.ui.view">
+        <field name="name">crm.stage.form.sla</field>
+        <field name="model">crm.stage</field>
+        <field name="inherit_id" ref="crm.crm_stage_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='is_won']/.." position="after">
+                <group string="Stage Roles">
+                    <field name="is_new_stage"
+                           attrs="{'readonly': ['|',
+                                   ('is_estimation_stage', '=', True),
+                                   ('is_approval_stage', '=', True)]}"/>
+                    <field name="is_estimation_stage"
+                           attrs="{'readonly': ['|',
+                                   ('is_new_stage', '=', True),
+                                   ('is_approval_stage', '=', True)]}"/>
+                    <field name="is_approval_stage"
+                           attrs="{'readonly': ['|',
+                                   ('is_new_stage', '=', True),
+                                   ('is_estimation_stage', '=', True)]}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
