@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="crm_classification_view_tree" model="ir.ui.view">
+        <field name="name">crm.classification.tree</field>
+        <field name="model">crm.classification</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="complexity"/>
+                <field name="sla_hours"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="crm_classification_view_form" model="ir.ui.view">
+        <field name="name">crm.classification.form</field>
+        <field name="model">crm.classification</field>
+        <field name="arch" type="xml">
+            <form string="Classification">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="sequence"/>
+                        <field name="complexity"/>
+                        <field name="sla_hours"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="crm_classification_view_search" model="ir.ui.view">
+        <field name="name">crm.classification.search</field>
+        <field name="model">crm.classification</field>
+        <field name="arch" type="xml">
+            <search string="Classifications">
+                <field name="name"/>
+                <field name="complexity"/>
+                <filter name="filter_inactive" string="Archived"
+                        domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="crm_classification_action" model="ir.actions.act_window">
+        <field name="name">Classifications</field>
+        <field name="res_model">crm.classification</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+</odoo>

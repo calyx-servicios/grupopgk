@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Lista de menus bajo CRM > Configuración -->
+    <menuitem
+        id="menu_crm_sla_traceability_root"
+        name="Traceability and SLA"
+        parent="crm.crm_menu_config"
+        sequence="90"
+        groups="sales_team.group_sale_salesman"/>
+
+    <menuitem
+        id="menu_crm_opportunity_type"
+        name="Opportunity Types"
+        parent="menu_crm_sla_traceability_root"
+        action="crm_opportunity_type_action"
+        sequence="10"/>
+
+    <menuitem
+        id="menu_crm_classification"
+        name="Classifications"
+        parent="menu_crm_sla_traceability_root"
+        action="crm_classification_action"
+        sequence="20"/>
+
+    <menuitem
+        id="menu_crm_request_origin"
+        name="Traceability Origins"
+        parent="menu_crm_sla_traceability_root"
+        action="crm_request_origin_action"
+        sequence="30"/>
+
+</odoo>

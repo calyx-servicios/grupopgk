@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- Recalcula el estado SLA de las oportunidades abiertas -->
+    <record id="ir_cron_update_sla_status" model="ir.cron">
+        <field name="name">CRM SLA: Update status</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_update_sla_status()</field>
+        <field name="interval_number">20</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Recordatorio al comercial cada 48h hábiles mientras está en espera de cliente -->
+    <record id="ir_cron_waiting_customer_reminder" model="ir.cron">
+        <field name="name">CRM SLA: Waiting for customer reminder</field>
+        <field name="model_id" ref="crm.model_crm_lead"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_waiting_customer_reminder()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+
+</odoo>

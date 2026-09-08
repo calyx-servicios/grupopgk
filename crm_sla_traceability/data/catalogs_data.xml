@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- Tipos de oportunidad -->
+    <record id="opp_type_nuevo_proyecto" model="crm.opportunity.type">
+        <field name="name">Nuevo proyecto</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="opp_type_nueva_funcionalidad" model="crm.opportunity.type">
+        <field name="name">Nueva funcionalidad</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="opp_type_desvio_horas" model="crm.opportunity.type">
+        <field name="name">Desvío de horas</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="opp_type_pack_horas" model="crm.opportunity.type">
+        <field name="name">Pack de horas</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="opp_type_renovacion" model="crm.opportunity.type">
+        <field name="name">Renovación</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="opp_type_soporte_adicional" model="crm.opportunity.type">
+        <field name="name">Soporte adicional</field>
+        <field name="sequence">60</field>
+    </record>
+
+    <!-- Clasificaciones -->
+    <record id="classification_simple_24" model="crm.classification">
+        <field name="name">Simple (24h)</field>
+        <field name="sequence">10</field>
+        <field name="complexity">simple</field>
+        <field name="sla_hours">24</field>
+    </record>
+    <record id="classification_compleja_72" model="crm.classification">
+        <field name="name">Compleja (72h)</field>
+        <field name="sequence">20</field>
+        <field name="complexity">compleja</field>
+        <field name="sla_hours">72</field>
+    </record>
+
+    <!-- Orígenes de trazabilidad -->
+    <record id="origin_cliente_directo" model="crm.request.origin">
+        <field name="name">Cliente directo</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="origin_ticket_mesa_ayuda" model="crm.request.origin">
+        <field name="name">Ticket Mesa de Ayuda</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="origin_proyecto" model="crm.request.origin">
+        <field name="name">Proyecto</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="origin_desarrollo" model="crm.request.origin">
+        <field name="name">Desarrollo</field>
+        <field name="sequence">40</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,519 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* crm_sla_traceability
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 15.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-24 19:00+0000\n"
+"PO-Revision-Date: 2026-07-24 19:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.message_waiting_customer_reminder
+msgid ""
+"<br/>\n"
+"            SLA Deadline:"
+msgstr ""
+"<br/>\n"
+"            Fecha límite SLA:"
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.message_waiting_customer_reminder
+msgid ""
+"<br/>\n"
+"            Waiting since:"
+msgstr ""
+"<br/>\n"
+"            En espera desde:"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification__active
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_opportunity_type__active
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_request_origin__active
+msgid "Active"
+msgstr "Activo"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__stage_is_approval
+msgid "Approval Stage"
+msgstr "Etapa de aprobación"
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_lead_view_form_sla
+msgid "Approve DC"
+msgstr "Aprobar DC"
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_lead_view_form_sla
+msgid "Approve DC Presales"
+msgstr "Aprobar preventa DC"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__presales_approval_user_id
+msgid "Approved by (DC presales)"
+msgstr "Aprobado por (preventa DC)"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__dc_approval_user_id
+msgid "Approved by (DC)"
+msgstr "Aprobado por (DC)"
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_classification_view_search
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_opportunity_type_view_search
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_request_origin_view_search
+msgid "Archived"
+msgstr "Archivados"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,help:crm_sla_traceability.field_crm_lead__sla_deadline
+msgid ""
+"Automatically computed when choosing the classification (business hours, "
+"Mon-Fri). It can be edited manually for commercial reasons."
+msgstr ""
+"Se calcula automáticamente al elegir la clasificación (horas hábiles, lun-"
+"vier). Puede editarse manualmente por razones comerciales."
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,help:crm_sla_traceability.field_crm_classification__sla_hours
+msgid "Business hours that define the SLA deadline (e.g. 24 or 72)."
+msgstr "Horas hábiles que definen la fecha límite SLA (ej. 24 o 72)."
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__classification_id
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_classification_view_form
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_lead_view_form_sla
+msgid "Classification"
+msgstr "Clasificación"
+
+#. module: crm_sla_traceability
+#: model:ir.actions.act_window,name:crm_sla_traceability.crm_classification_action
+#: model:ir.ui.menu,name:crm_sla_traceability.menu_crm_classification
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_classification_view_search
+msgid "Classifications"
+msgstr "Clasificaciones"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields.selection,name:crm_sla_traceability.selection__crm_classification__complexity__compleja
+msgid "Complex"
+msgstr "Compleja"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification__complexity
+msgid "Complexity Type"
+msgstr "Tipo de complejidad"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__user_is_partner
+msgid "Connected User is Partner"
+msgstr "Usuario conectado es socio"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification__create_uid
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_opportunity_type__create_uid
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_request_origin__create_uid
+msgid "Created by"
+msgstr "Creado por"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification__create_date
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_opportunity_type__create_date
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_request_origin__create_date
+msgid "Created on"
+msgstr "Creado el"
+
+#. module: crm_sla_traceability
+#: model:ir.actions.server,name:crm_sla_traceability.ir_cron_update_sla_status_ir_actions_server
+#: model:ir.cron,cron_name:crm_sla_traceability.ir_cron_update_sla_status
+#: model:ir.cron,name:crm_sla_traceability.ir_cron_update_sla_status
+msgid "CRM SLA: Update status"
+msgstr "CRM SLA: Actualizar estado"
+
+#. module: crm_sla_traceability
+#: model:ir.actions.server,name:crm_sla_traceability.ir_cron_waiting_customer_reminder_ir_actions_server
+#: model:ir.cron,cron_name:crm_sla_traceability.ir_cron_waiting_customer_reminder
+#: model:ir.cron,name:crm_sla_traceability.ir_cron_waiting_customer_reminder
+msgid "CRM SLA: Waiting for customer reminder"
+msgstr "CRM SLA: Recordatorio en espera de cliente"
+
+#. module: crm_sla_traceability
+#: model:ir.model,name:crm_sla_traceability.model_crm_stage
+msgid "CRM Stages"
+msgstr "Etapas del CRM"
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.message_waiting_customer_reminder
+msgid "Customer:"
+msgstr "Cliente:"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__committed_date
+msgid "Date Committed to Customer"
+msgstr "Fecha comprometida al cliente"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__dc_approval_date
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_lead_view_form_sla
+msgid "DC Approval"
+msgstr "Aprobación DC"
+
+#. module: crm_sla_traceability
+#: code:addons/crm_sla_traceability/models/crm_lead.py:0
+#, python-format
+msgid "DC approval performed by %s."
+msgstr "Aprobación DC realizada por %s."
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_lead_view_form_sla
+msgid "DC Presales"
+msgstr "Preventa DC"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__presales_approval_date
+msgid "DC Presales Approval"
+msgstr "Aprobación preventa DC"
+
+#. module: crm_sla_traceability
+#: code:addons/crm_sla_traceability/models/crm_lead.py:0
+#, python-format
+msgid "DC presales approved by %s."
+msgstr "Preventa DC aprobada por %s."
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__presales_effort_hours
+msgid "DC Presales Effort (h)"
+msgstr "Esfuerzo de preventa DC (h)"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification__display_name
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_opportunity_type__display_name
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_request_origin__display_name
+msgid "Display Name"
+msgstr "Nombre mostrado"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification__dms_directory_ids
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__dms_directory_ids
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_opportunity_type__dms_directory_ids
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_request_origin__dms_directory_ids
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_stage__dms_directory_ids
+msgid "DMS Directories"
+msgstr "Directorios DMS"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields.selection,name:crm_sla_traceability.selection__crm_lead__sla_status__warning
+msgid "Due Soon"
+msgstr "Por vencer"
+
+#. module: crm_sla_traceability
+#: code:addons/crm_sla_traceability/models/crm_lead.py:0
+#, python-format
+msgid "Enter the DC presales effort before approving it."
+msgstr "Cargá el esfuerzo de preventa DC antes de aprobarlo."
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__estimation_validity_date
+msgid "Estimate Validity"
+msgstr "Vigencia de la estimación"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__estimated_hours_lt
+msgid "Estimated Hours (LT)"
+msgstr "Horas estimadas (LT)"
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_lead_view_form_sla
+msgid "Estimation"
+msgstr "Estimación"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__stage_is_estimation
+msgid "Estimation Stage"
+msgstr "Etapa de estimación"
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.message_waiting_customer_reminder
+msgid "Hello"
+msgstr "Hola"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification__id
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_opportunity_type__id
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_request_origin__id
+msgid "ID"
+msgstr "ID"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,help:crm_sla_traceability.field_crm_lead__stage_is_approval
+#: model:ir.model.fields,help:crm_sla_traceability.field_crm_stage__is_approval_stage
+msgid "In this stage the DC Approval button is shown."
+msgstr "En esta etapa se muestra el botón de Aprobación DC."
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,help:crm_sla_traceability.field_crm_lead__stage_is_estimation
+#: model:ir.model.fields,help:crm_sla_traceability.field_crm_stage__is_estimation_stage
+msgid ""
+"In this stage the estimation fields are enabled (estimated hours and "
+"validity)"
+msgstr ""
+"En esta etapa se habilitan los campos de estimación (horas estimadas y "
+"vigencia)"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_stage__is_new_stage
+msgid "Is Initial Stage"
+msgstr "Es etapa Inicial"
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.message_waiting_customer_reminder
+msgid "is marked as <strong>\"Waiting for Customer\"</strong>."
+msgstr "esta marcada como <strong>\"En espera de cliente\"</strong>."
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_stage__is_approval_stage
+msgid "Is Quotation/Internal Resolution Stage"
+msgstr "Es etapa de Cotización/Resolución Interna"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_stage__is_estimation_stage
+msgid "Is Survey/Estimation Stage"
+msgstr "Es etapa de Relevamiento/Estimación"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification____last_update
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_opportunity_type____last_update
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_request_origin____last_update
+msgid "Last Modified on"
+msgstr "Última modificación el"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification__write_uid
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_opportunity_type__write_uid
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_request_origin__write_uid
+msgid "Last Updated by"
+msgstr "Última actualización por"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification__write_date
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_opportunity_type__write_date
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_request_origin__write_date
+msgid "Last Updated on"
+msgstr "Última actualización el"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__waiting_reminder_last_date
+msgid "Last Waiting Reminder"
+msgstr "Último recordatorio en espera"
+
+#. module: crm_sla_traceability
+#: model:ir.model,name:crm_sla_traceability.model_crm_lead
+msgid "Lead/Opportunity"
+msgstr "Lead/Oportunidad"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,help:crm_sla_traceability.field_crm_stage__is_new_stage
+msgid ""
+"Marks this stage as the initial one. It cannot be left without filling in "
+"Opportunity Type, Classification and Traceability Origin. Only one stage can"
+" be marked as initial."
+msgstr ""
+"Marca esta etapa como la etapa inicial. No se puede avanzar de ella sin "
+"completar Tipo de oportunidad, Clasificación y Origen de trazabilidad. Solo "
+"una etapa puede estar marcada como inicial."
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification__name
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_opportunity_type__name
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_request_origin__name
+msgid "Name"
+msgstr "Nombre"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields.selection,name:crm_sla_traceability.selection__crm_lead__sla_status__on_time
+msgid "On Time"
+msgstr "En plazo"
+
+#. module: crm_sla_traceability
+#: code:addons/crm_sla_traceability/models/crm_lead.py:0
+#, python-format
+msgid "Only a partner can approve the DC presales."
+msgstr "Solo un socio puede aprobar la preventa DC."
+
+#. module: crm_sla_traceability
+#: model:ir.model,name:crm_sla_traceability.model_crm_classification
+msgid "Opportunity Classification"
+msgstr "Clasificación de oportunidad"
+
+#. module: crm_sla_traceability
+#: model:ir.model,name:crm_sla_traceability.model_crm_opportunity_type
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__opportunity_type_id
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_opportunity_type_view_form
+msgid "Opportunity Type"
+msgstr "Tipo de oportunidad"
+
+#. module: crm_sla_traceability
+#: model:ir.actions.act_window,name:crm_sla_traceability.crm_opportunity_type_action
+#: model:ir.ui.menu,name:crm_sla_traceability.menu_crm_opportunity_type
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_opportunity_type_view_search
+msgid "Opportunity Types"
+msgstr "Tipos de oportunidad"
+
+#. module: crm_sla_traceability
+#: code:addons/crm_sla_traceability/models/crm_lead.py:0
+#, python-format
+msgid "Opportunity waiting for customer: %s"
+msgstr "Oportunidad en espera de cliente: %s"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields.selection,name:crm_sla_traceability.selection__crm_lead__sla_status__overdue
+msgid "Overdue"
+msgstr "Vencido"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,help:crm_sla_traceability.field_crm_lead__sla_status
+msgid ""
+"Periodically recalculated based on the % of progress between the creation "
+"date and the SLA deadline."
+msgstr ""
+"Se recalcula periódicamente según el % de avance entre la fecha de creación "
+"y la fecha límite SLA."
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.message_waiting_customer_reminder
+msgid "Please follow up to continue when appropriate."
+msgstr "Por favor, dá seguimiento para continuar cuando corresponda."
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification__sequence
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_opportunity_type__sequence
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_request_origin__sequence
+msgid "Sequence"
+msgstr "Secuencia"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields.selection,name:crm_sla_traceability.selection__crm_classification__complexity__simple
+msgid "Simple"
+msgstr "Simple"
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_lead_view_form_sla
+msgid "SLA"
+msgstr "SLA"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__sla_deadline
+msgid "SLA Deadline"
+msgstr "Fecha límite SLA"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__sla_status
+msgid "SLA Status"
+msgstr "Estado SLA"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_classification__sla_hours
+msgid "SLA Time (hours)"
+msgstr "Tiempo SLA (horas)"
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_stage_form_sla
+msgid "Stage Roles"
+msgstr "Roles de la etapa"
+
+#. module: crm_sla_traceability
+#: code:addons/crm_sla_traceability/models/crm_lead.py:0
+#, python-format
+msgid ""
+"The committed date cannot exceed %s business days from creation (maximum "
+"%s)."
+msgstr ""
+"La fecha comprometida no puede superar los %s días hábiles desde la creación"
+" (máximo %s)."
+
+#. module: crm_sla_traceability
+#: code:addons/crm_sla_traceability/models/crm_lead.py:0
+#, python-format
+msgid ""
+"The date committed to the customer is mandatory for this Classification/DC "
+"presales effort."
+msgstr ""
+"La fecha comprometida al cliente es obligatoria para esta "
+"Clasificación/Esfuerzo de preventa DC."
+
+#. module: crm_sla_traceability
+#: code:addons/crm_sla_traceability/models/crm_lead.py:0
+#, python-format
+msgid ""
+"The DC presales effort exceeds %sh: DC presales approval is required to move"
+" to the Estimation stage."
+msgstr ""
+"El esfuerzo de preventa DC supera las %sh: requiere aprobación de preventa "
+"DC para pasar a la etapa de Estimación."
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.message_waiting_customer_reminder
+msgid "The opportunity"
+msgstr "La oportunidad"
+
+#. module: crm_sla_traceability
+#: code:addons/crm_sla_traceability/models/crm_lead.py:0
+#, python-format
+msgid "The stage cannot be advanced without completing: %s."
+msgstr "No se puede avanzar de etapa sin completar: %s."
+
+#. module: crm_sla_traceability
+#: code:addons/crm_sla_traceability/models/crm_stage.py:0
+#, python-format
+msgid ""
+"There is already a stage marked as 'Is Initial Stage': %s. Only one is "
+"allowed."
+msgstr ""
+"Ya existe una etapa marcada como 'Es etapa Inicial': %s. Solo puede haber "
+"una."
+
+#. module: crm_sla_traceability
+#: model:ir.ui.menu,name:crm_sla_traceability.menu_crm_sla_traceability_root
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_lead_view_form_sla
+msgid "Traceability and SLA"
+msgstr "Trazabilidad y SLA"
+
+#. module: crm_sla_traceability
+#: model:ir.model,name:crm_sla_traceability.model_crm_request_origin
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__request_origin_id
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_request_origin_view_form
+msgid "Traceability Origin"
+msgstr "Origen de trazabilidad"
+
+#. module: crm_sla_traceability
+#: model:ir.actions.act_window,name:crm_sla_traceability.crm_request_origin_action
+#: model:ir.ui.menu,name:crm_sla_traceability.menu_crm_request_origin
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.crm_request_origin_view_search
+msgid "Traceability Origins"
+msgstr "Orígenes de trazabilidad"
+
+#. module: crm_sla_traceability
+#: model_terms:ir.ui.view,arch_db:crm_sla_traceability.message_waiting_customer_reminder
+msgid "View Opportunity"
+msgstr "Ver oportunidad"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__waiting_customer
+msgid "Waiting for Customer"
+msgstr "En espera de cliente"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,field_description:crm_sla_traceability.field_crm_lead__waiting_customer_date
+msgid "Waiting for Customer Date"
+msgstr "Fecha en espera de cliente"
+
+#. module: crm_sla_traceability
+#: model:ir.model.fields,help:crm_sla_traceability.field_crm_lead__waiting_customer
+msgid "When checked, it pauses the SLA countdown."
+msgstr "Al marcarse, pausa el conteo del SLA."
