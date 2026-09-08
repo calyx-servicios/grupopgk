@@ -22,11 +22,54 @@ class HrLeaveType(models.Model):
     def _format_display_value(self, value):
         return ("%.2f" % value).rstrip("0").rstrip(".")
 
+    def _get_manual_balance_date(self):
+        return (
+            fields.Date.to_date(self.env.context.get("default_date_from"))
+            or fields.Date.context_today(self)
+        )
+
+    def _get_leave_period(self, leave):
+        return fields.Date.to_date(leave.date_from), fields.Date.to_date(leave.date_to)
+
+    def _periods_overlap(self, start_date, end_date, period_start, period_end):
+        return start_date <= period_end and end_date >= period_start
+
+    def _empty_leave_metrics(self):
+        return {
+            "max_leaves": 0.0,
+            "leaves_taken": 0.0,
+            "remaining_leaves": 0.0,
+            "virtual_remaining_leaves": 0.0,
+            "virtual_leaves_taken": 0.0,
+        }
+
+    def _uses_period_balance(self):
+        self.ensure_one()
+        return (
+            self.requires_allocation == "no"
+            or "estudio" in (self.name or "").lower()
+        )
+
+    def _get_employee_balance_metrics(self, employee_id, balance_date=None):
+        self.ensure_one()
+        balance_date = fields.Date.to_date(balance_date)
+        context = {"employee_id": employee_id}
+        if balance_date:
+            context["default_date_from"] = balance_date
+
+        leave_type = self.with_context(**context)
+        manual_metrics = leave_type._get_manual_allocation_metrics(employee_id).get(self.id)
+        if manual_metrics:
+            return manual_metrics
+
+        data_days = leave_type.get_employees_days([employee_id], date=balance_date)
+        return data_days.get(employee_id, {}).get(self.id, self._empty_leave_metrics())
+
     def _get_manual_allocation_metrics(self, employee_id):
-        """Compute per-type allocation balances for leave types without allocation requirement.
+        """Compute period balances for leave types handled by PGK rules.
 
         This is used to display balances in dashboard and leave type selector
-        (eg. mudanza) when business rules still use annual allocations.
+        when business rules need annual allocation-period balances.
         """
         if not employee_id or not self:
             return {}
@@ -45,17 +88,17 @@ class HrLeaveType(models.Model):
         leave_types = self.filtered(
             lambda lt: not lt.company_id or lt.company_id == employee_company
         )
+        leave_types = leave_types.filtered(lambda lt: lt._uses_period_balance())
         if not leave_types:
             return {}
 
-        today = fields.Date.context_today(self)
-        year_start = today.replace(month=1, day=1)
-        year_end = today.replace(month=12, day=31)
+        balance_date = self._get_manual_balance_date()
+        year_start = balance_date.replace(month=1, day=1)
+        year_end = balance_date.replace(month=12, day=31)
         next_year_start = year_end + timedelta(days=1)
 
         allocation_domain = [
             ("holiday_status_id", "in", leave_types.ids),
-            ("holiday_status_id.requires_allocation", "=", "no"),
             ("holiday_status_id.company_id", "in", [False, employee_company.id]),
             ("employee_id", "=", employee_id),
             ("employee_id.company_id", "=", employee_company.id),
@@ -66,12 +109,7 @@ class HrLeaveType(models.Model):
             ("date_to", "=", False),
             ("date_to", ">=", year_start),
         ]
-        grouped_allocations = self.env["hr.leave.allocation"].read_group(
-            allocation_domain,
-            ["holiday_status_id", "number_of_days:sum"],
-            ["holiday_status_id"],
-            lazy=False,
-        )
+        allocations = self.env["hr.leave.allocation"].search(allocation_domain)
 
         fallback_quota_by_type = {}
         for leave_type in leave_types.filtered(lambda lt: lt.requires_allocation == "no"):
@@ -79,11 +117,15 @@ class HrLeaveType(models.Model):
             if "mudanza" in (leave_type.name or "").lower():
                 fallback_quota_by_type[leave_type.id] = 2.0
 
-        max_by_type = {
-            group["holiday_status_id"][0]: group["number_of_days"]
-            for group in grouped_allocations
-            if group.get("holiday_status_id")
-        }
+        allocations_by_type = {}
+        max_by_type = {}
+        for allocation in allocations:
+            leave_type_id = allocation.holiday_status_id.id
+            allocations_by_type.setdefault(leave_type_id, self.env["hr.leave.allocation"])
+            allocations_by_type[leave_type_id] |= allocation
+            max_by_type[leave_type_id] = (
+                max_by_type.get(leave_type_id, 0.0) + allocation.number_of_days
+            )
         for leave_type_id, fallback_quota in fallback_quota_by_type.items():
             max_by_type.setdefault(leave_type_id, fallback_quota)
 
@@ -95,33 +137,23 @@ class HrLeaveType(models.Model):
             ("holiday_status_id.company_id", "in", [False, employee_company.id]),
             ("employee_id", "=", employee_id),
             ("employee_id.company_id", "=", employee_company.id),
-            ("date_from", ">=", fields.Datetime.to_datetime(year_start)),
             ("date_from", "<", fields.Datetime.to_datetime(next_year_start)),
+            ("date_to", ">=", fields.Datetime.to_datetime(year_start)),
         ]
 
-        grouped_virtual_taken = self.env["hr.leave"].read_group(
+        virtual_leaves = self.env["hr.leave"].search(
             leave_domain_common + [("state", "in", ["confirm", "validate1", "validate"])],
-            ["holiday_status_id", "number_of_days:sum"],
-            ["holiday_status_id"],
-            lazy=False,
         )
-        grouped_taken = self.env["hr.leave"].read_group(
+        taken_leaves = self.env["hr.leave"].search(
             leave_domain_common + [("state", "=", "validate")],
-            ["holiday_status_id", "number_of_days:sum"],
-            ["holiday_status_id"],
-            lazy=False,
         )
 
-        virtual_taken_by_type = {
-            group["holiday_status_id"][0]: group["number_of_days"]
-            for group in grouped_virtual_taken
-            if group.get("holiday_status_id")
-        }
-        taken_by_type = {
-            group["holiday_status_id"][0]: group["number_of_days"]
-            for group in grouped_taken
-            if group.get("holiday_status_id")
-        }
+        virtual_taken_by_type = self._sum_manual_leaves_by_type(
+            virtual_leaves, allocations_by_type, year_start, year_end
+        )
+        taken_by_type = self._sum_manual_leaves_by_type(
+            taken_leaves, allocations_by_type, year_start, year_end
+        )
 
         metrics = {}
         for leave_type_id, max_leaves in max_by_type.items():
@@ -137,6 +169,37 @@ class HrLeaveType(models.Model):
                 "remaining_leaves": remaining,
             }
         return metrics
+
+    def _sum_manual_leaves_by_type(
+        self, leaves, allocations_by_type, year_start, year_end
+    ):
+        taken_by_type = {}
+        for leave in leaves:
+            leave_type_id = leave.holiday_status_id.id
+            allocation_periods = allocations_by_type.get(leave_type_id)
+            leave_start, leave_end = self._get_leave_period(leave)
+
+            if allocation_periods:
+                has_matching_period = any(
+                    self._periods_overlap(
+                        leave_start,
+                        leave_end,
+                        allocation.date_from,
+                        allocation.date_to or year_end,
+                    )
+                    for allocation in allocation_periods
+                )
+            else:
+                has_matching_period = self._periods_overlap(
+                    leave_start, leave_end, year_start, year_end
+                )
+
+            if has_matching_period:
+                taken_by_type[leave_type_id] = (
+                    taken_by_type.get(leave_type_id, 0.0) + leave.number_of_days
+                )
+
+        return taken_by_type
 
     def _manual_days_request_data(self, values):
         self.ensure_one()
