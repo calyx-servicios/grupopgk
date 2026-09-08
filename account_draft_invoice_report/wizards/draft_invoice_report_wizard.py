@@ -184,7 +184,8 @@ class AccountDraftInvoiceReportWizard(models.TransientModel):
                     "document_type": (
                         "Nota de crédito" if move.move_type == "out_refund" else "Factura"
                     ),
-                    "observations": move.narration or "",
+                    # Se deja siempre vacío para que el usuario lo complete manualmente.
+                    "observations": "",
                 }
             )
             for totals in (client_data["totals"], company_data["totals"]):
