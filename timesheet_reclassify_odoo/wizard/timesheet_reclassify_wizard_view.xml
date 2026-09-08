@@ -18,7 +18,7 @@
                     <tree editable="bottom" create="true"  options="{'create': True}">
                         <field name="analytic_line" invisible='1'/>
                         <field name="project_no_facturable" invisible='1'/>
-                        <field name="project_id" domain="[('analytic_account_id.active', '=', True)]" attrs="{'readonly': [('analytic_line', '!=', False)]}"/>
+                        <field name="project_id" domain="[('analytic_account_id.active', '=', True), ('allow_timesheets', '=', True)]" attrs="{'readonly': [('analytic_line', '!=', False)]}"/>
                         <field name="name" required="True"/>
                         <field name="unit_amount" readonly="True"/>
                         <field name="unit_amount_reclassify"/>

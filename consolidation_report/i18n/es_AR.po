@@ -345,6 +345,16 @@ msgid "Month of the period"
 msgstr "Mes del periodo"
 
 #. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_hr_employee__no_timesheet
+msgid "Does Not Use Timesheets"
+msgstr "No usa parte de horas"
+
+#. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_data__sige_timesheet
+msgid "SIGE Timesheet"
+msgstr "Parte de horas"
+
+#. module: consolidation_report
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_data__name
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_period__name
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_report__name

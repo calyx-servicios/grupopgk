@@ -1,9 +1,17 @@
-from odoo import api, models
+from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
 
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
+
+    no_timesheet = fields.Boolean(
+        string='Does Not Use Timesheets',
+        default=False,
+        help='El informe de consolidación ignora las horas de este empleado. '
+             'Para quienes no cargan parte de horas y cuyo costo llega por '
+             'factura de proveedor.',
+    )
 
     @api.constrains('identification_id')
     def _check_identification_id(self):
