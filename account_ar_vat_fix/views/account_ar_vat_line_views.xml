@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_account_ar_vat_line_tree" model="ir.ui.view">
+        <field name="name">account.ar.vat.line.tree.percepciones</field>
+        <field name="model">account.ar.vat.line</field>
+        <field name="inherit_id" ref="l10n_ar_reports.view_account_ar_vat_line_tree" />
+        <field name="arch" type="xml">
+            <field name="other_taxes" position="before">
+                <field name="iibb_per" sum="Total" optional="show" />
+                <field name="profit_per" sum="Total" optional="show" />
+            </field>
+        </field>
+    </record>
+
+    <record id="view_account_ar_vat_line_pivot" model="ir.ui.view">
+        <field name="name">account.ar.vat.line.pivot.percepciones</field>
+        <field name="model">account.ar.vat.line</field>
+        <field name="inherit_id" ref="l10n_ar_reports.view_account_ar_vat_line_pivot" />
+        <field name="arch" type="xml">
+            <field name="other_taxes" position="before">
+                <field name="iibb_per" type="measure" />
+                <field name="profit_per" type="measure" />
+            </field>
+        </field>
+    </record>
+
+</odoo>
