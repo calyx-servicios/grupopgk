@@ -1,4 +1,4 @@
-from odoo import tools, models
+from odoo import tools, models, fields
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -6,6 +6,13 @@ _logger = logging.getLogger(__name__)
 class AccountArVatLine(models.Model):
     _inherit = "account.ar.vat.line"
     _auto = False
+
+    iibb_per = fields.Monetary(
+        readonly=True, string="Perc. IIBB", currency_field="company_currency_id"
+    )
+    profit_per = fields.Monetary(
+        readonly=True, string="Perc. Ganancias", currency_field="company_currency_id"
+    )
 
     def init(self):
         _logger.info("Vista account_ar_vat_line regenerada por account_ar_vat_fix_v1.1")
@@ -66,8 +73,14 @@ SELECT
     sum(CASE WHEN ntg.l10n_ar_tribute_afip_code = '06' AND am.move_type IN ('out_invoice', 'out_refund') THEN aml.balance*-1 
              WHEN ntg.l10n_ar_tribute_afip_code = '06' AND am.move_type IN ('in_invoice',  'in_refund')  THEN aml.balance 
     		 ELSE Null END) as vat_per,
-    sum(CASE WHEN ntg.l10n_ar_vat_afip_code is null and ntg.l10n_ar_tribute_afip_code != '06' AND am.move_type IN ('out_invoice', 'out_refund') THEN aml.balance*-1 
-             WHEN ntg.l10n_ar_vat_afip_code is null and ntg.l10n_ar_tribute_afip_code != '06' AND am.move_type IN ('in_invoice',  'in_refund')  THEN aml.balance 
+    sum(CASE WHEN ntg.l10n_ar_tribute_afip_code = '07' AND am.move_type IN ('out_invoice', 'out_refund') THEN aml.balance*-1
+             WHEN ntg.l10n_ar_tribute_afip_code = '07' AND am.move_type IN ('in_invoice',  'in_refund')  THEN aml.balance
+             ELSE Null END) as iibb_per,
+    sum(CASE WHEN ntg.l10n_ar_tribute_afip_code = '09' AND am.move_type IN ('out_invoice', 'out_refund') THEN aml.balance*-1
+             WHEN ntg.l10n_ar_tribute_afip_code = '09' AND am.move_type IN ('in_invoice',  'in_refund')  THEN aml.balance
+             ELSE Null END) as profit_per,
+    sum(CASE WHEN ntg.l10n_ar_tribute_afip_code = '99' AND am.move_type IN ('out_invoice', 'out_refund') THEN aml.balance*-1
+             WHEN ntg.l10n_ar_tribute_afip_code = '99' AND am.move_type IN ('in_invoice',  'in_refund')  THEN aml.balance
              ELSE Null END) as other_taxes,
     sum(CASE WHEN am.move_type IN ('out_invoice', 'out_refund') THEN aml.balance*-1
              WHEN am.move_type IN ('in_invoice', 'in_refund') THEN aml.balance END) as total
