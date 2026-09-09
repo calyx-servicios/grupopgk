@@ -34,7 +34,8 @@ class TestLeaveTypeBalances(TransactionCase):
         })
 
     def _create_leave(self, leave_type, date_from, date_to, days):
-        return self.env["hr.leave"].create({
+        # Directly fixturing a "validate" leave needs this to bypass _check_date_state.
+        return self.env["hr.leave"].with_context(leave_skip_state_check=True).create({
             "name": leave_type.name,
             "holiday_type": "employee",
             "employee_id": self.employee.id,
@@ -112,3 +113,25 @@ class TestLeaveTypeBalances(TransactionCase):
         self.assertEqual(metrics["max_leaves"], 2)
         self.assertEqual(metrics["leaves_taken"], 1)
         self.assertEqual(metrics["virtual_remaining_leaves"], 1)
+
+    def test_refuse_approved_leave_with_negative_balance(self):
+        leave_type = self._create_leave_type("Vacaciones", requires_allocation="yes")
+        allocation = self._create_allocation(
+            leave_type,
+            3,
+            "2026-01-01",
+            "2026-12-31",
+        )
+        leave = self._create_leave(
+            leave_type,
+            datetime(2026, 3, 2, 0, 0, 0),
+            datetime(2026, 3, 4, 23, 59, 59),
+            3,
+        )
+
+        # Simulate a balance that turned negative for reasons unrelated to this leave.
+        allocation.write({"number_of_days": 1})
+
+        leave.action_refuse()
+
+        self.assertEqual(leave.state, "refuse")
