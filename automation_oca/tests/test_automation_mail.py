@@ -2,6 +2,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
 from odoo import tools
+from odoo.exceptions import ValidationError
 from odoo.tests.common import Form, HttpCase
 
 from odoo.addons.mail.tests.common import MockEmail
@@ -49,6 +50,15 @@ Content-Transfer-Encoding: quoted-printable
 </html>
 ------=_Part_4200734_24778174.1344608186754--
 """
+
+
+class TestAutomationMailValidation(AutomationTestCase):
+    def test_mail_step_without_template_raises(self):
+        """
+        A step of type Mail must not be saved without a Mail Template
+        """
+        with self.assertRaises(ValidationError):
+            self.create_mail_activity(mail_template_id=False)
 
 
 class TestAutomationMail(AutomationTestCase, MockEmail, HttpCase):
@@ -103,7 +113,7 @@ class TestAutomationMail(AutomationTestCase, MockEmail, HttpCase):
             "bounced_email": "",
             "bounced_msg_id": [record_activity.message_id],
         }
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertFalse(
             [
                 step
@@ -114,7 +124,7 @@ class TestAutomationMail(AutomationTestCase, MockEmail, HttpCase):
         self.env["mail.thread"]._routing_handle_bounce(False, parsed_bounce_values)
         self.assertEqual("bounce", record_activity.mail_status)
         self.assertTrue(record_child_activity.scheduled_date)
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertTrue(
             [
                 step
@@ -145,7 +155,7 @@ class TestAutomationMail(AutomationTestCase, MockEmail, HttpCase):
         self.assertEqual("sent", record_activity.mail_status)
         self.assertTrue(record_child_activity)
         self.assertFalse(record_child_activity.scheduled_date)
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertFalse(
             [
                 step
@@ -158,7 +168,7 @@ class TestAutomationMail(AutomationTestCase, MockEmail, HttpCase):
         )
         self.assertEqual("reply", record_activity.mail_status)
         self.assertTrue(record_child_activity.scheduled_date)
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertTrue(
             [
                 step
@@ -223,7 +233,7 @@ class TestAutomationMail(AutomationTestCase, MockEmail, HttpCase):
         self.assertEqual("sent", record_activity.mail_status)
         self.assertTrue(record_child_activity)
         self.assertFalse(record_child_activity.scheduled_date)
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertFalse(
             [
                 step
@@ -234,7 +244,7 @@ class TestAutomationMail(AutomationTestCase, MockEmail, HttpCase):
         self.url_open(record_activity._get_mail_tracking_url())
         self.assertEqual("open", record_activity.mail_status)
         self.assertTrue(record_child_activity.scheduled_date)
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertTrue(
             [
                 step
@@ -352,16 +362,16 @@ class TestAutomationMail(AutomationTestCase, MockEmail, HttpCase):
             [("configuration_step_id", "=", child_activity.id)]
         )
         self.assertEqual("sent", record_activity.mail_status)
-        self.configuration.invalidate_recordset()
+        self.configuration.invalidate_cache()
         self.assertEqual(0, self.configuration.click_count)
         self.assertTrue(record_child_activity)
         self.assertFalse(record_child_activity.scheduled_date)
         self.url_open(record_activity._get_mail_tracking_url())
         self.assertEqual("open", record_activity.mail_status)
-        self.configuration.invalidate_recordset()
+        self.configuration.invalidate_cache()
         self.assertEqual(0, self.configuration.click_count)
         self.assertFalse(record_child_activity.scheduled_date)
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertFalse(
             [
                 step
@@ -391,7 +401,7 @@ class TestAutomationMail(AutomationTestCase, MockEmail, HttpCase):
                 ]
             ),
         )
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertTrue(
             [
                 step
@@ -400,7 +410,7 @@ class TestAutomationMail(AutomationTestCase, MockEmail, HttpCase):
             ]
         )
         self.assertTrue(record_child_activity.scheduled_date)
-        self.configuration.invalidate_recordset()
+        self.configuration.invalidate_cache()
         self.assertEqual(1, self.configuration.click_count)
         # Now we will check that a second click does not generate a second log
         self.url_open(
@@ -420,7 +430,7 @@ class TestAutomationMail(AutomationTestCase, MockEmail, HttpCase):
                 ]
             ),
         )
-        self.configuration.invalidate_recordset()
+        self.configuration.invalidate_cache()
         self.assertEqual(1, self.configuration.click_count)
 
     def test_click_wrong_url(self):

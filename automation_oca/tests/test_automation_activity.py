@@ -6,6 +6,15 @@ from odoo.tests import Form, new_test_user
 from .common import AutomationTestCase
 
 
+class TestAutomationActivityValidation(AutomationTestCase):
+    def test_activity_without_activity_type_raises(self):
+        """
+        UAT-01: a step of type Activity must not be saved without an Activity Type
+        """
+        with self.assertRaises(ValidationError):
+            self.create_activity_action(activity_type_id=False)
+
+
 class TestAutomationActivity(AutomationTestCase):
     @classmethod
     def setUpClass(cls):
@@ -34,7 +43,7 @@ class TestAutomationActivity(AutomationTestCase):
             record_activity, self.partner_01.activity_ids.automation_record_step_id
         )
         self.assertFalse(record_activity.activity_done_on)
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertFalse(
             [
                 step
@@ -44,7 +53,7 @@ class TestAutomationActivity(AutomationTestCase):
         )
         self.partner_01.activity_ids.action_feedback()
         self.assertTrue(record_activity.activity_done_on)
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertTrue(
             [
                 step
@@ -71,7 +80,7 @@ class TestAutomationActivity(AutomationTestCase):
             record_activity, self.partner_01.activity_ids.automation_record_step_id
         )
         self.assertFalse(record_activity.activity_done_on)
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertFalse(
             [
                 step
@@ -81,7 +90,7 @@ class TestAutomationActivity(AutomationTestCase):
         )
         self.partner_01.activity_ids.with_user(self.user.id).action_feedback()
         self.assertTrue(record_activity.activity_done_on)
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertTrue(
             [
                 step
@@ -111,7 +120,7 @@ class TestAutomationActivity(AutomationTestCase):
             record_activity, self.partner_01.activity_ids.automation_record_step_id
         )
         self.assertFalse(record_activity.activity_done_on)
-        record_activity.invalidate_recordset()
+        record_activity.invalidate_cache()
         self.assertFalse(
             [
                 step

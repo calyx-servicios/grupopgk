@@ -211,9 +211,12 @@
                         name="automation_step_ids"
                         context="{'default_configuration_id': id}"
                     >
-                        <tree editable="bottom">
+                        <tree>
                             <field name="name" />
                             <field name="step_type" />
+                            <field name="activity_type_id" />
+                            <field name="mail_template_id" />
+                            <field name="server_action_id" />
                             <field name="trigger_type" />
                             <field name="parent_id" />
                             <field name="trigger_interval" />
@@ -221,19 +224,6 @@
                             <field name="graph_done" string="Processed" readonly="1" />
                             <field name="graph_error" string="Errors" readonly="1" />
                         </tree>
-                        <form>
-                            <field name="name" />
-                            <field name="step_type" />
-                            <field name="trigger_date_kind" />
-                            <field name="trigger_interval" />
-                            <field name="trigger_interval_type" />
-                            <field name="trigger_type" />
-                            <field name="configuration_id" invisible="1" />
-                            <field
-                                name="parent_id"
-                                domain="[('configuration_id', '=', configuration_id)]"
-                            />
-                        </form>
                     </field>
                 </sheet>
                 <div class="oe_chatter">

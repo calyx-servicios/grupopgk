@@ -1,7 +1,18 @@
 # Copyright 2024 Dixmit
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
+from odoo.exceptions import ValidationError
+
 from .common import AutomationTestCase
+
+
+class TestAutomationActionValidation(AutomationTestCase):
+    def test_server_action_step_without_action_raises(self):
+        """
+        A step of type Server Action must not be saved without an Action
+        """
+        with self.assertRaises(ValidationError):
+            self.create_server_action(server_action_id=False)
 
 
 class TestAutomationAction(AutomationTestCase):
