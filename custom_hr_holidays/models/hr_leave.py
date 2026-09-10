@@ -1,5 +1,6 @@
 from odoo import fields, models, api, _
 from odoo.exceptions import ValidationError, UserError
+from odoo.tools import float_compare
 import calendar
 from datetime import timedelta, datetime, date
 from dateutil.relativedelta import relativedelta
@@ -37,6 +38,37 @@ class HrLeave(models.Model):
                 leave.employee_id.id, balance_date
             )
             leave.days_remaining = metrics["virtual_remaining_leaves"]
+
+    @api.constrains("state", "number_of_days", "holiday_status_id")
+    def _check_holidays(self):
+        # Override: refusing/cancelling only frees up days, so it must never be
+        # blocked by a balance shortage caused by unrelated over-allocation.
+        mapped_days = self.holiday_status_id.get_employees_days((self.employee_id | self.sudo().employee_ids).ids)
+        for holiday in self:
+            if holiday.state in ('refuse', 'cancel'):
+                continue
+            if holiday.holiday_type != 'employee'\
+                    or not holiday.employee_id and not holiday.employee_ids\
+                    or holiday.holiday_status_id.requires_allocation == 'no':
+                continue
+            if holiday.employee_id:
+                leave_days = mapped_days[holiday.employee_id.id][holiday.holiday_status_id.id]
+                if float_compare(leave_days['remaining_leaves'], 0, precision_digits=2) == -1\
+                        or float_compare(leave_days['virtual_remaining_leaves'], 0, precision_digits=2) == -1:
+                    raise ValidationError(_('The number of remaining time off is not sufficient for this time off type.\n'
+                                            'Please also check the time off waiting for validation.'))
+            else:
+                unallocated_employees = []
+                for employee in holiday.employee_ids:
+                    leave_days = mapped_days[employee.id][holiday.holiday_status_id.id]
+                    if float_compare(leave_days['remaining_leaves'], holiday.number_of_days, precision_digits=2) == -1\
+                            or float_compare(leave_days['virtual_remaining_leaves'], holiday.number_of_days, precision_digits=2) == -1:
+                        unallocated_employees.append(employee.name)
+                if unallocated_employees:
+                    raise ValidationError(_('The number of remaining time off is not sufficient for this time off type.\n'
+                                            'Please also check the time off waiting for validation.')
+                                        + _('\nThe employees that lack allocation days are:\n%s',
+                                            (', '.join(unallocated_employees))))
 
     @api.depends("date_from", "date_to", "employee_id")
     def _compute_number_of_days(self):
