@@ -121,7 +121,12 @@ class AutomationConfigurationStep(models.Model):
         store=True,
     )
     activity_date_deadline_range_type = fields.Selection(
-        [("days", "Day(s)"), ("weeks", "Week(s)"), ("months", "Month(s)")],
+        [
+            ("minutes", "Minute(s)"),
+            ("hours", "Hour(s)"),
+            ("days", "Day(s)"),
+            ("weeks", "Week(s)"),
+        ],
         string="Due type",
         default="days",
         compute="_compute_activity_info",
@@ -166,6 +171,33 @@ class AutomationConfigurationStep(models.Model):
                     json.loads(record.server_context)
                 except Exception as e:
                     raise ValidationError(_("Server Context is not wellformed")) from e
+
+    @api.constrains(
+        "step_type", "activity_type_id", "mail_template_id", "server_action_id"
+    )
+    def _check_step_configuration(self):
+        for record in self:
+            if record.step_type == "activity" and not record.activity_type_id:
+                raise ValidationError(
+                    _(
+                        "Debe seleccionar un Tipo de Actividad válido antes de "
+                        "guardar este paso."
+                    )
+                )
+            if record.step_type == "mail" and not record.mail_template_id:
+                raise ValidationError(
+                    _(
+                        "Debe seleccionar una Plantilla de correo válida antes de "
+                        "guardar este paso."
+                    )
+                )
+            if record.step_type == "action" and not record.server_action_id:
+                raise ValidationError(
+                    _(
+                        "Debe seleccionar una Acción de Servidor válida antes de "
+                        "guardar este paso."
+                    )
+                )
 
     @api.onchange("trigger_type")
     def _onchange_trigger_type(self):

@@ -157,6 +157,17 @@ class AutomationRecordStep(models.Model):
             self._reject()
             return self.browse()
         try:
+            self.configuration_step_id._check_step_configuration()
+        except ValidationError as e:
+            self.write(
+                {
+                    "state": "error",
+                    "error_trace": str(e),
+                    "processed_on": fields.Datetime.now(),
+                }
+            )
+            return self.browse()
+        try:
             result = getattr(self, "_run_%s" % self.configuration_step_id.step_type)()
             self.write({"state": "done", "processed_on": fields.Datetime.now()})
             if result:
@@ -204,9 +215,12 @@ class AutomationRecordStep(models.Model):
         }
         if self.configuration_step_id.activity_date_deadline_range > 0:
             range_type = self.configuration_step_id.activity_date_deadline_range_type
-            vals["date_deadline"] = fields.Date.context_today(self) + relativedelta(
+            # date_deadline only stores a Date, so minutes/hours are computed
+            # on a Datetime and then truncated to keep them meaningful
+            deadline = fields.Datetime.now() + relativedelta(
                 **{range_type: self.configuration_step_id.activity_date_deadline_range}
             )
+            vals["date_deadline"] = fields.Date.to_date(deadline)
         user = False
         if self.configuration_step_id.activity_user_type == "specific":
             user = self.configuration_step_id.activity_user_id
