@@ -9,10 +9,11 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.4.12.7",
+    "version": "15.0.4.12.8",
     "application": False,
     "installable": True,
     "depends": [
+        'account_financial_report',
         'res_users_partner_fields',
         'sale_timesheet',
         'hr_timesheet',
