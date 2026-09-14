@@ -3,17 +3,6 @@ from datetime import date
 from odoo.exceptions import ValidationError
 
 
-class HrEmployeePublic(models.Model):
-    _inherit = 'hr.employee.public'
-    
-
-    partner = fields.Many2one("res.users", string="Partner", domain="[('is_partner', '=', True)]")
-    entry_date = fields.Date(string="Entry Date", required=True)
-    exit_date = fields.Date(string="Exit Date")
-    is_active = fields.Boolean('Active Employee?', compute='_compute_is_active', store=True, default=True)
-    
-
-
 class HrEmployee(models.Model):
     _inherit = 'hr.employee'
     
@@ -45,6 +34,15 @@ class HrEmployee(models.Model):
                 employee.exit_date = date.today()
             else:
                 employee.entry_date = employee.create_date.date()
-            
-            
-            
+
+
+# Declared after HrEmployee so the "partner" column exists on hr_employee
+# before this view (_auto=False) is (re)created referencing it.
+class HrEmployeePublic(models.Model):
+    _inherit = 'hr.employee.public'
+    
+
+    partner = fields.Many2one("res.users", string="Partner", domain="[('is_partner', '=', True)]")
+    entry_date = fields.Date(string="Entry Date", required=True)
+    exit_date = fields.Date(string="Exit Date")
+    is_active = fields.Boolean('Active Employee?', compute='_compute_is_active', store=True, default=True)
