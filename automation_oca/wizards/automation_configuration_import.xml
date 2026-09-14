@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2026 Dixmit
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+
+    <record model="ir.ui.view" id="automation_configuration_import_form_view">
+        <field name="model">automation.configuration.import</field>
+        <field name="arch" type="xml">
+            <form string="Automation Configuration Import">
+                <group>
+                    <field name="file_name" invisible="1" />
+                    <field name="file_content" filename="file_name" required="1" />
+                </group>
+                <footer>
+                    <button
+                        name="action_import"
+                        string="Import"
+                        type="object"
+                        class="btn-primary"
+                    />
+                    <button string="Cancel" class="btn-default" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record
+        model="ir.actions.act_window"
+        id="automation_configuration_import_act_window"
+    >
+        <field name="name">Import Automation Configuration</field>
+        <field name="res_model">automation.configuration.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
