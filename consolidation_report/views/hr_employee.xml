@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
+    <record id="hr_employee_view_form_no_timesheet" model="ir.ui.view">
+        <field name="name">hr.employee.form.no.timesheet.inherit</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='work_email']/.." position="inside">
+                <field name="no_timesheet"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="hr_employee_view_form_inherit_domain" model="ir.ui.view">
         <field name="name">hr.employee.view.form.inherit.domain</field>
         <field name="model">hr.employee</field>

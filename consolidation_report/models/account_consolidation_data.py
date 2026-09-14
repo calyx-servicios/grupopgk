@@ -67,6 +67,9 @@ class AccountConsolidationData(models.Model):
         readonly=True,
         help='ID de la línea analítica de origen (para pruebas).',
     )
+    sige_timesheet = fields.Char(
+        string='SIGE Timesheet'
+    )
     description = fields.Char(
         string='Description'
     )
