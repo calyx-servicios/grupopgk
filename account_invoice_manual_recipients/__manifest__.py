@@ -5,7 +5,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Accounting",
-    "version": "15.0.1.0.2",
+    "version": "15.0.1.0.3",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
@@ -16,4 +16,5 @@
     "data": [
         "views/account_invoice_send_views.xml"
     ],
+    "post_init_hook": "post_init_hook",
 }
