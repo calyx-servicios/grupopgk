@@ -16,6 +16,7 @@
                     <field name="source_analytic_line_id" optional="hide"/>
                     <field name="origin_line_id" optional="hide"/>
                     <field name="project_id" string= 'Proyecto'/>
+                    <field name="sige_timesheet" optional="hide"/>
                     <field name="description"/>
                     <field name="account_id"/>
                     <field name="currency_origin"/>

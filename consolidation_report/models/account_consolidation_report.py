@@ -750,6 +750,8 @@ class AccountConsolidationReport(models.Model):
         _t = _time.time()
 
         for analytic_line in analytic_lines:
+            if analytic_line.employee_id.no_timesheet:
+                continue
             _acc = analytic_line.account_id.id
             if _debit_by_account.get(_acc, 0) == 0 and _credit_by_account.get(_acc, 0) == 0:
                 _logger.info(f"Línea descartada, ID {analytic_line.id}")
@@ -838,6 +840,11 @@ class AccountConsolidationReport(models.Model):
                             and analytic_line.source_analytic_line_id
                         )
                         else analytic_line.id
+                    ),
+                    "sige_timesheet": (
+                        f"{analytic_line.timesheet_id.name} - "
+                        f"{analytic_line.timesheet_id.employee_id.name}"
+                        if analytic_line.timesheet_id else False
                     ),
                     "description": analytic_line.name or "",
                     # si es linea consolidada que no la muestre
@@ -1034,6 +1041,8 @@ class AccountConsolidationReport(models.Model):
 
             total = 0.0
             for analytic_line in analytic_lines:
+                if analytic_line.employee_id.no_timesheet:
+                    continue
                 amount = self._convert_amount(analytic_line, move_data, comp_to_period)
                 total += amount
                 vals_list.append({
@@ -1136,6 +1145,8 @@ class AccountConsolidationReport(models.Model):
 
         vals_to_create = []
         for analytic_line in all_timesheet_lines:
+            if analytic_line.employee_id.no_timesheet:
+                continue
             project = projects_by_account_ts.get(analytic_line.account_id.id)
             if not project:
                 sum += analytic_line.amount
