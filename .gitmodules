@@ -149,4 +149,7 @@
 [submodule "submodules/calyx-servicios/cybrosys-calyx"]
 	path = submodules/calyx-servicios/cybrosys-calyx
 	url = git@github.com:calyx-servicios/cybrosys-calyx.git
-	branch = 15.0
+	branch = 15.0[submodule "submodules/calyx-servicios/odoo-utils"]
+        path = submodules/calyx-servicios/odoo-utils
+        url = git@github.com:calyx-servicios/odoo-utils.git
+        branch = 15.0
