@@ -4,6 +4,7 @@ import xlsxwriter
 import time as _time
 from io import BytesIO
 from odoo.exceptions import UserError
+from odoo.tools import float_round
 import logging
 from datetime import datetime
 
@@ -700,12 +701,7 @@ class AccountConsolidationReport(models.Model):
         )
         _t = _time.time()
 
-        analytic_lines = self.env["account.analytic.line"].search(
-            [
-                ("date", ">=", self.consolidation_period.date_from),
-                ("date", "<=", self.consolidation_period.date_to),
-            ]
-        )
+        analytic_lines = self.env["account.analytic.line"].search(self._period_domain())
         _logger.warning(
             "[TIMING] search analytic_lines (%d registros): %.2fs",
             len(analytic_lines),
@@ -817,7 +813,10 @@ class AccountConsolidationReport(models.Model):
 
             management_account_id = analytic_line.managment_account_id.id
 
-            line_amount = analytic_line.amount * rate if not is_historical else analytic_line.amount
+            line_amount = float_round(
+                analytic_line.amount * rate if not is_historical else analytic_line.amount,
+                precision_digits=2,
+            )
 
             consolidation_data_vals.append(
                 {
@@ -921,6 +920,22 @@ class AccountConsolidationReport(models.Model):
             },
             "target": "current",
         }
+
+    def _period_domain(self):
+        """Lineas del periodo: las del SIGE por el mes de su parte, el resto por fecha."""
+        date_from = self.consolidation_period.date_from
+        date_to = self.consolidation_period.date_to
+        return [
+            "|",
+            "&", "&",
+            ("timesheet_id", "!=", False),
+            ("timesheet_id.start_of_period", ">=", date_from),
+            ("timesheet_id.start_of_period", "<=", date_to),
+            "&", "&",
+            ("timesheet_id", "=", False),
+            ("date", ">=", date_from),
+            ("date", "<=", date_to),
+        ]
 
     def delete_entries(self):
         self.ensure_one()
@@ -1033,17 +1048,18 @@ class AccountConsolidationReport(models.Model):
             ("calyx", GI_SECTOR_CALYX_ID),
             ("otros", GI_SECTOR_PGK_ID),
         ):
-            analytic_lines = self.env["account.analytic.line"].search([
-                ("date", ">=", self.consolidation_period.date_from),
-                ("date", "<=", self.consolidation_period.date_to),
-                ("sector_account_id", "=", sector_id),
-            ])
+            analytic_lines = self.env["account.analytic.line"].search(
+                self._period_domain() + [("sector_account_id", "=", sector_id)]
+            )
 
             total = 0.0
             for analytic_line in analytic_lines:
                 if analytic_line.employee_id.no_timesheet:
                     continue
-                amount = self._convert_amount(analytic_line, move_data, comp_to_period)
+                amount = float_round(
+                    self._convert_amount(analytic_line, move_data, comp_to_period),
+                    precision_digits=2,
+                )
                 total += amount
                 vals_list.append({
                     "name": f"{analytic_line.name} - Línea consolidación",
@@ -1055,7 +1071,8 @@ class AccountConsolidationReport(models.Model):
                     "product_id": (
                         analytic_line.product_id.id if analytic_line.product_id else False
                     ),
-                    "date": analytic_line.date,
+                    # dentro del mes del parte, para que caiga en el mismo periodo
+                    "date": analytic_line.timesheet_id.end_of_period or analytic_line.date,
                     "currency_id": (
                         analytic_line.currency_id.id if analytic_line.currency_id else False
                     ),
@@ -1132,9 +1149,7 @@ class AccountConsolidationReport(models.Model):
             if _p.analytic_account_id.id not in projects_by_account_ts:
                 projects_by_account_ts[_p.analytic_account_id.id] = _p
 
-        all_timesheet_lines = analytic_line_obj.search([
-            ("date", ">=", self.consolidation_period.date_from),
-            ("date", "<=", self.consolidation_period.date_to),
+        all_timesheet_lines = analytic_line_obj.search(self._period_domain() + [
             ("consolidation_line", "=", False),
             ("move_id", "=", False),
             ("amount", "!=", 0),
@@ -1158,8 +1173,8 @@ class AccountConsolidationReport(models.Model):
                 account_id = analytic_line.account_id.id
             else:
                 employee = (
-                    analytic_line.employee_id
-                    or analytic_line.timesheet_id.employee_id
+                    analytic_line.timesheet_id.employee_id
+                    or analytic_line.employee_id
                 )
                 account = getattr(
                     employee.department_id,
@@ -1178,7 +1193,7 @@ class AccountConsolidationReport(models.Model):
                 "product_id": (
                     analytic_line.product_id.id if analytic_line.product_id else False
                 ),
-                "date": analytic_line.date,
+                "date": analytic_line.timesheet_id.end_of_period or analytic_line.date,
                 "currency_id": (
                     analytic_line.currency_id.id if analytic_line.currency_id else False
                 ),
@@ -1246,9 +1261,7 @@ class AccountConsolidationReport(models.Model):
     def calculate_total_amount_cost_sector(self, cache=None):
         """Bolsa de gastos cargados directo a una cuenta de sector, sin proyecto."""
         move_data, comp_to_period = cache or self._build_convert_amount_cache()
-        analytic_lines = self.env["account.analytic.line"].search([
-            ("date", ">=", self.consolidation_period.date_from),
-            ("date", "<=", self.consolidation_period.date_to),
+        analytic_lines = self.env["account.analytic.line"].search(self._period_domain() + [
             ("account_id.is_sector_group", "=", True),
             ("account_id", "not in", list(GI_SECTOR_IDS)),
         ])
@@ -1267,9 +1280,7 @@ class AccountConsolidationReport(models.Model):
     def calculate_total_amount_cost_management(self, cache=None):
         """Bolsa por gerencia: sueldos menos el costo laboral que recupera."""
         move_data, comp_to_period = cache or self._build_convert_amount_cache()
-        analytic_lines = self.env["account.analytic.line"].search([
-            ("date", ">=", self.consolidation_period.date_from),
-            ("date", "<=", self.consolidation_period.date_to),
+        analytic_lines = self.env["account.analytic.line"].search(self._period_domain() + [
             ("managment_account_id.is_management_group", "=", True),
         ])
         project_account_ids = {
@@ -1373,23 +1384,25 @@ class AccountConsolidationReport(models.Model):
             if not total_sales:
                 continue
             for project_id, project_sales in sales.items():
+                if not project_sales:
+                    continue
                 project = projects_by_id.get(project_id)
                 if not project or not project.analytic_account_id:
                     continue
+                account = project.analytic_account_id
+                group = account.group_id
                 amount = (project_sales / total_sales) * pool_amount
                 consolidation_data_vals_cost.append({
                     "name": self.name,
                     "consolidation_period_id": self.consolidation_period.id,
-                    "main_group": (
-                        project.analytic_account_id.group_id.parent_prin_group.id or ""
-                    ),
+                    "main_group": group.parent_prin_group.id or "",
                     "business_group": (
-                        project.analytic_account_id.group_id.parent_id.id or ""
-                    ),
+                        group if group.is_business_group else group.parent_id
+                    ).id or "",
                     "sector_account_group": self.get_sector_id(project) or "",
                     "managment_account_group": (
-                        project.analytic_account_id.parent_id.id or ""
-                    ),
+                        account if account.is_management_group else account.parent_id
+                    ).id or "",
                     "project_id": project_id,
                     "company": project.company_id.ids or "",
                     "description": (
@@ -1442,12 +1455,14 @@ class AccountConsolidationReport(models.Model):
                     "name": self.name,
                     "consolidation_period_id": self.consolidation_period.id,
                     "main_group": cuenta.group_id.parent_prin_group.id or "",
-                    "business_group": (
-                        grupo_fijo if grupo_fijo
-                        else cuenta.group_id.parent_id.id or ""
-                    ),
+                    "business_group": grupo_fijo or (
+                        cuenta.group_id if cuenta.group_id.is_business_group
+                        else cuenta.group_id.parent_id
+                    ).id or "",
                     "sector_account_group": _sector or "",
-                    "managment_account_group": cuenta.parent_id.id or "",
+                    "managment_account_group": (
+                        cuenta if cuenta.is_management_group else cuenta.parent_id
+                    ).id or "",
                     "project_id": project_id,
                     "company": project.company_id.ids or "",
                     "description": (
@@ -1540,8 +1555,13 @@ class AccountConsolidationReport(models.Model):
             LEFT JOIN account_analytic_line aal2 ON aal2.id = aal.source_analytic_line_id
             LEFT JOIN account_move_line aml2 ON aml2.id = aal2.move_id
             LEFT JOIN account_move am2       ON am2.id  = aml2.move_id
-            WHERE aal.date >= %s AND aal.date <= %s
-        """, (self.consolidation_period.date_from, self.consolidation_period.date_to))
+            LEFT JOIN timesheet_sige ts      ON ts.id   = aal.timesheet_id
+            WHERE (ts.id IS NOT NULL AND ts.start_of_period >= %(desde)s AND ts.start_of_period <= %(hasta)s)
+               OR (ts.id IS NULL AND aal.date >= %(desde)s AND aal.date <= %(hasta)s)
+        """, {
+            "desde": self.consolidation_period.date_from,
+            "hasta": self.consolidation_period.date_to,
+        })
         move_data = {row['id']: row for row in self.env.cr.dictfetchall()}
         comp_to_period = {
             cp.company_id.id: cp
