@@ -142,7 +142,7 @@ def _send(self, auto_commit=False, raise_exception=False, smtp_session=None):
                 notif_msg = _('Error without exception. Probably due do concurrent access update of notification records. Please see with an administrator.')
                 notifs.sudo().write({
                     'notification_status': 'exception',
-                    'failure_type': 'UNKNOWN',
+                    'failure_type': 'unknown',
                     'failure_reason': notif_msg,
                 })
                 # `test_mail_bounce_during_send`, force immediate update to obtain the lock.
@@ -213,7 +213,7 @@ def _send(self, auto_commit=False, raise_exception=False, smtp_session=None):
             failure_reason = tools.ustr(e)
             _logger.exception('failed sending mail (id: %s) due to %s', mail.id, failure_reason)
             mail.write({'state': 'exception', 'failure_reason': failure_reason})
-            mail._postprocess_sent_message(success_pids=success_pids, failure_reason=failure_reason, failure_type='UNKNOWN')
+            mail._postprocess_sent_message(success_pids=success_pids, failure_reason=failure_reason, failure_type='unknown')
             if raise_exception:
                 if isinstance(e, (AssertionError, UnicodeEncodeError)):
                     if isinstance(e, UnicodeEncodeError):
