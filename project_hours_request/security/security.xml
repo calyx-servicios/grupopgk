@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <record id="group_project_hours_request_contratos" model="res.groups">
+            <field name="name">Contratos - Solicitudes de horas</field>
+            <field name="category_id" ref="base.module_category_services_project"/>
+            <field name="comment">Puede aprobar o rechazar solicitudes de ampliación del tope de horas de tareas.</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="task_type_edit_hours_control" model="ir.ui.view">
+        <field name="name">project.task.type.form.hours.control</field>
+        <field name="model">project.task.type</field>
+        <field name="inherit_id" ref="project.task_type_edit"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="timesheet_stage_type"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>
