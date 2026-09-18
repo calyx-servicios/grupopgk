@@ -70,6 +70,12 @@ class ProjectProject(models.Model):
     project_manager = fields.Char(
         string="PM"
     )
+    technical_leader_id = fields.Many2one(
+        comodel_name="res.users",
+        string="Líder Técnico",
+        domain=[('share', '=', False)],
+        help="Usuario que actúa como líder técnico del proyecto."
+    )
     reference_month = fields.Text(
         string="Comment actual month"
     )
