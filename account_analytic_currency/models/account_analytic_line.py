@@ -9,6 +9,7 @@ class AccountAnalyticLine(models.Model):
         string="Currency",
         store=True,
         readonly=True,
+        related=False,
         compute='_compute_currency_id'
     )
 
