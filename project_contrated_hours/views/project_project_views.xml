@@ -28,6 +28,7 @@
             </xpath>
             <xpath expr="//field[@name='tag_ids']" position="after">
                 <field name="project_manager"/>
+                <field name="technical_leader_id" widget="many2one_avatar_user"/>
                 <field name="area"/>
                 <field name="total_timesheet_time" string="Actual consumed hours"/>
                 <field name="service_area_id"/>
