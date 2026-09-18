@@ -9,12 +9,13 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.4.1.1",
+    "version": "15.0.4.1.2",
     "application": False,
     "installable": True,
     "depends": [
         "analytic",
         "account",
+        "hr_timesheet",
     ],
     "data": [
         "security/ir.model.access.csv",
