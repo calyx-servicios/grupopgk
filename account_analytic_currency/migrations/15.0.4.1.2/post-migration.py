@@ -12,13 +12,8 @@ def migrate(cr, version):
     Solo cambiaron dos ramas de la fórmula (comprobante y horas); la rama
     restante (`company_id` M2M) sigue igual y no necesita backfill.
 
-    Se hace por SQL directo contra las tablas fuente, no vía recompute del
-    ORM: `account_move_line.company_id` es en si mismo un related+store
-    (`move_id.company_id`), y encadenar el recompute de un related sobre otro
-    related en el mismo flush masivo no garantiza el orden de resolución
-    (confirmado: recalculando de a un registro por vez con el ORM, las
-    líneas de Adaly con comprobante quedaban con la moneda de otra empresa).
-    Leyendo el dato ya persistido en la tabla fuente se evita el problema.
+    Se hace por SQL directo contra las tablas fuente, leyendo la empresa real
+    de cada línea en vez de `company_id` (M2M, ambiguo entre las 6 empresas).
     """
     cr.execute("""
         UPDATE account_analytic_line aal
