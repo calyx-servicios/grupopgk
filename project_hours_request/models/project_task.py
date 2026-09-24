@@ -137,12 +137,7 @@ class ProjectTask(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Enforce estimate permissions while creating tasks."""
-        for vals in vals_list:
-            project = self.env["project.project"].browse(
-                vals.get("project_id")
-            )
-            self._check_estimated_hours_editor(vals, project=project)
+        """Allow task creation; estimate permissions apply on later edits."""
         return super().create(vals_list)
 
     def write(self, vals):

@@ -1732,6 +1732,22 @@ class SaleOrder(models.Model):
             quoter_workflow_transition=True
         ).action_quoter_publish()
 
+    def _prepare_confirmation_values(self):
+        """Cotización: conserva la "Fecha de cotización" original al confirmar.
+
+        El core (``_prepare_confirmation_values``) siempre pisa ``date_order`` con
+        ``fields.Datetime.now()``. Si lo dejáramos escribir y luego lo restauráramos,
+        ``_check_quoter_validity_after_quotation_date`` (constrains sobre date_order)
+        se evalúa dentro del propio ``write()`` de la confirmación, con la fecha de hoy
+        ya puesta y ``validity_date`` todavía sin actualizar: puede rechazar la
+        confirmación antes de llegar a restaurar nada. Por eso se quita la clave acá,
+        para que ``date_order`` nunca cambie en cotizaciones.
+        """
+        vals = super()._prepare_confirmation_values()
+        if self and all(self.mapped("is_quotation")):
+            vals.pop("date_order", None)
+        return vals
+
     def action_confirm(self):
         orders = self
         if self._quoter_user_is_cotizador_profile():
@@ -1754,7 +1770,17 @@ class SaleOrder(models.Model):
                         % ", ".join(draft_blocks.mapped("area_id.display_name"))
                     )
                 order._quoter_sync_area_discount_total_line()
-        return super(SaleOrder, orders).action_confirm()
+        # _prepare_confirmation_values() arma un único vals para todo el recordset: se
+        # separa cotizaciones del resto para que el pop de date_order no afecte pedidos
+        # normales (donde sí corresponde pisarlo con la fecha de confirmación).
+        quotation_orders = orders.filtered("is_quotation")
+        other_orders = orders - quotation_orders
+        res = True
+        if other_orders:
+            res = super(SaleOrder, other_orders).action_confirm() and res
+        if quotation_orders:
+            res = super(SaleOrder, quotation_orders).action_confirm() and res
+        return res
 
     @api.onchange("is_quotation")
     def _onchange_is_quotation(self):

@@ -1,10 +1,22 @@
+import unicodedata
+
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools import html2plaintext
+
+PRUEBAS_OK_STAGE_NAME = "pruebas ok"
 
 
 def _plain_text(description):
     return html2plaintext(description or "").strip()
+
+
+def _normalize_stage_name(name):
+    normalized = unicodedata.normalize("NFKD", name or "")
+    normalized = "".join(
+        character for character in normalized if not unicodedata.combining(character)
+    )
+    return normalized.strip().lower()
 
 
 class ProjectTask(models.Model):
@@ -44,6 +56,7 @@ class ProjectTask(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
+        self._check_stage_change_requires_checklist(vals)
         if "description" in vals:
             new_text = _plain_text(vals.get("description"))
             has_sale_line_field = "sale_line_id" in self._fields
@@ -64,6 +77,24 @@ class ProjectTask(models.Model):
                     task._log_description_change(old_description, vals.get("description"))
             return result
         return super().write(vals)
+
+    def _check_stage_change_requires_checklist(self, vals):
+        # Stages are configured per project in the database (no fixed xml id), so we
+        # match "Pruebas OK" by name; completing the checklist never auto-moves the task.
+        if not vals.get("stage_id"):
+            return
+        target_stage = self.env["project.task.type"].browse(vals["stage_id"])
+        if _normalize_stage_name(target_stage.name) != PRUEBAS_OK_STAGE_NAME:
+            return
+        blocked = self.filtered(
+            lambda task: task.stage_id.id != target_stage.id
+            and not task.acceptance_criteria_validated
+        )
+        if blocked:
+            raise UserError(_(
+                "No se puede mover a la etapa \"Pruebas OK\" sin validar el 100%% "
+                "del checklist de Criterio de aceptación: %s"
+            ) % ", ".join(blocked.mapped("name")))
 
     def _log_description_change(self, old_description, new_description):
         self.ensure_one()
