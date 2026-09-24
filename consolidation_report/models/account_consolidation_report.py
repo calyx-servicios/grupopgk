@@ -1038,6 +1038,22 @@ class AccountConsolidationReport(models.Model):
 
         return project_sales
 
+    def _counterpart_company_vals(self, analytic_line):
+        """Compañias y producto de una contrapartida.
+        """
+        companies = analytic_line.company_id
+        if len(companies.currency_id) > 1:
+            companies = companies.filtered(
+                lambda c: c.currency_id.id == REPORT_CURRENCY_ID
+            )
+        product = analytic_line.product_id
+        if product.company_id and product.company_id not in companies:
+            product = product.browse()
+        return {
+            "company_id": [(6, 0, companies.ids)] if companies else False,
+            "product_id": product.id or False,
+        }
+
     def calculate_total_amount_cost(self):
         """Bolsa de Gastos Indirectos, separada por sector: Calyx y el resto."""
         move_data, comp_to_period = self._build_convert_amount_cache()
@@ -1068,19 +1084,12 @@ class AccountConsolidationReport(models.Model):
                     "managment_account_id": analytic_line.managment_account_id.id,
                     "amount": -1 * amount,
                     "unit_amount": analytic_line.unit_amount,
-                    "product_id": (
-                        analytic_line.product_id.id if analytic_line.product_id else False
-                    ),
                     # dentro del mes del parte, para que caiga en el mismo periodo
                     "date": analytic_line.timesheet_id.end_of_period or analytic_line.date,
                     "currency_id": (
                         analytic_line.currency_id.id if analytic_line.currency_id else False
                     ),
-                    "company_id": (
-                        [(6, 0, analytic_line.company_id.ids)]
-                        if analytic_line.company_id
-                        else False
-                    ),
+                    **self._counterpart_company_vals(analytic_line),
                     "consolidation_line": True,
                     "source_analytic_line_id": analytic_line.id,
                 })
@@ -1190,17 +1199,11 @@ class AccountConsolidationReport(models.Model):
                 "managment_account_id": account_id,
                 "amount": -1 * analytic_line.amount,
                 "unit_amount": analytic_line.unit_amount,
-                "product_id": (
-                    analytic_line.product_id.id if analytic_line.product_id else False
-                ),
                 "date": analytic_line.timesheet_id.end_of_period or analytic_line.date,
                 "currency_id": (
                     analytic_line.currency_id.id if analytic_line.currency_id else False
                 ),
-                "company_id": (
-                    [(6, 0, analytic_line.company_id.ids)]
-                    if analytic_line.company_id else False
-                ),
+                **self._counterpart_company_vals(analytic_line),
                 "consolidation_line": True,
                 "source_analytic_line_id": analytic_line.id,
             })
