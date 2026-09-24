@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_form_calyx_no_create" model="ir.ui.view">
+        <field name="name">project.project.form.calyx.no.create</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="priority" eval="10"/>
+        <field name="arch" type="xml">
+            <form position="attributes">
+                <attribute name="create">0</attribute>
+                <attribute name="edit">0</attribute>
+                <attribute name="delete">0</attribute>
+                <attribute name="duplicate">0</attribute>
+            </form>
+        </field>
+    </record>
+
+    <record id="project_tree_calyx_no_create" model="ir.ui.view">
+        <field name="name">project.project.tree.calyx.no.create</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project"/>
+        <field name="priority" eval="10"/>
+        <field name="arch" type="xml">
+            <tree position="attributes">
+                <attribute name="create">0</attribute>
+                <attribute name="delete">0</attribute>
+                <attribute name="duplicate">0</attribute>
+            </tree>
+        </field>
+    </record>
+
+    <record id="project_kanban_calyx_no_create" model="ir.ui.view">
+        <field name="name">project.project.kanban.calyx.no.create</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.project_view_kanban"/>
+        <field name="priority" eval="10"/>
+        <field name="arch" type="xml">
+            <kanban position="attributes">
+                <attribute name="create">0</attribute>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="project_form_calyx_contracts_create" model="ir.ui.view">
+        <field name="name">project.project.form.calyx.contracts.create</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="groups_id" eval="[(6, 0, [ref('calyx_sale_project_from_order.group_contracts_project_creation_allowed')])]"/>
+        <field name="priority" eval="20"/>
+        <field name="arch" type="xml">
+            <form position="attributes">
+                <attribute name="create">1</attribute>
+                <attribute name="edit">1</attribute>
+                <attribute name="delete">1</attribute>
+                <attribute name="duplicate">1</attribute>
+            </form>
+        </field>
+    </record>
+
+    <record id="project_tree_calyx_contracts_create" model="ir.ui.view">
+        <field name="name">project.project.tree.calyx.contracts.create</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project"/>
+        <field name="groups_id" eval="[(6, 0, [ref('calyx_sale_project_from_order.group_contracts_project_creation_allowed')])]"/>
+        <field name="priority" eval="20"/>
+        <field name="arch" type="xml">
+            <tree position="attributes">
+                <attribute name="create">1</attribute>
+                <attribute name="delete">1</attribute>
+                <attribute name="duplicate">1</attribute>
+            </tree>
+        </field>
+    </record>
+
+    <record id="project_kanban_calyx_contracts_create" model="ir.ui.view">
+        <field name="name">project.project.kanban.calyx.contracts.create</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.project_view_kanban"/>
+        <field name="groups_id" eval="[(6, 0, [ref('calyx_sale_project_from_order.group_contracts_project_creation_allowed')])]"/>
+        <field name="priority" eval="20"/>
+        <field name="arch" type="xml">
+            <kanban position="attributes">
+                <attribute name="create">1</attribute>
+            </kanban>
+        </field>
+    </record>
+    <record id="project_form_calyx_sale_project" model="ir.ui.view">
+        <field name="name">project.project.form.calyx.sale.project</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="calyx_project_manager_id" options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="task_form_calyx_sale_project" model="ir.ui.view">
+        <field name="name">project.task.form.calyx.sale.project</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='planned_hours']" position="after">
+                <field name="is_calyx_sale_root" invisible="1"/>
+                <field name="calyx_budget_hours" readonly="1"
+                       attrs="{'invisible': [('is_calyx_sale_root', '=', False)]}"/>
+                <field name="calyx_allocated_hours" readonly="1"
+                       attrs="{'invisible': [('is_calyx_sale_root', '=', False)]}"/>
+                <field name="calyx_remaining_hours" readonly="1"
+                       attrs="{'invisible': [('is_calyx_sale_root', '=', False)]}"/>
+            </xpath>
+            <xpath expr="//field[@name='planned_hours']" position="attributes">
+                <attribute name="attrs">{'readonly': [('is_calyx_sale_root', '=', True)]}</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
