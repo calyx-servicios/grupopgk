@@ -2,6 +2,17 @@ from odoo import models, fields, api
 
 ADALY_COMPANY_ID = 2
 
+# Campos a recomputar al cambiar la cuenta de una linea
+DEPENDENT_FIELDS = (
+    'group_id',
+    'group_parent_id',
+    'parent_prin_group_id',
+    'bussines_group_id',
+    'sector_account_id',
+    'managment_account_id',
+    'account_id_int',
+)
+
 
 class AccountAnalyticLine(models.Model):
     _inherit = "account.analytic.line"
@@ -29,6 +40,16 @@ class AccountAnalyticLine(models.Model):
         'account.analytic.account',
         string='Managment ID',
         compute='_compute_managment_account_id',
+        store=True
+    )
+    account_id_int = fields.Integer(
+        string='Analytic Account ID',
+        compute='_compute_account_id_int',
+        store=True
+    )
+    sige_period_start = fields.Date(
+        string='SIGE Period',
+        related='timesheet_id.start_of_period',
         store=True
     )
     is_sector_group = fields.Boolean(
@@ -99,6 +120,11 @@ class AccountAnalyticLine(models.Model):
         for line in self:
             line.has_consolidation_data_lines = bool(line.consolidation_data_line_ids)
 
+    @api.depends('account_id')
+    def _compute_account_id_int(self):
+        for line in self:
+            line.account_id_int = line.account_id.id
+
     @api.depends('account_id', 'account_id.is_management_group', 'account_id.parent_id')
     def _compute_managment_account_id(self):
         account_analytic_obj = self.env['account.analytic.account']
@@ -140,3 +166,20 @@ class AccountAnalyticLine(models.Model):
                 continue
             child = groups_ids.children_ids.filtered(lambda g: g.id == group.id)
             line.bussines_group_id = child.parent_id.id if child else False
+
+    def _update_analytic_account(self, account):
+        """Cambia la cuenta de las lineas por SQL"""
+        if not self:
+            return
+        self.env.cr.execute(
+            """
+            UPDATE account_analytic_line
+               SET account_id = %s, write_uid = %s, write_date = (now() at time zone 'UTC')
+             WHERE id IN %s
+            """,
+            (account.id, self.env.uid, tuple(self.ids)),
+        )
+        self.invalidate_cache(['account_id'], self.ids)
+        for field_name in DEPENDENT_FIELDS:
+            self.env.add_to_compute(self._fields[field_name], self)
+        self.flush(list(DEPENDENT_FIELDS), self)
