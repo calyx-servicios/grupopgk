@@ -97,7 +97,6 @@ class ProjectTask(models.Model):
     def _check_estimated_hours_editor(self, vals, project=None):
         """Reject estimate changes made by users other than the tech lead."""
         estimated_fields = {
-            "development_card",
             "estimated_dev_hours",
             "estimated_deploy_hours",
             "estimated_functional_test_hours",
@@ -165,14 +164,16 @@ class ProjectTask(models.Model):
                     ))
         result = super().write(vals)
         if {
-            "development_card",
             "estimated_dev_hours",
             "estimated_deploy_hours",
             "estimated_functional_test_hours",
             "margin_hours",
         }.intersection(vals):
             self.timesheet_ids._validate_development_caps()
-            for task in self.filtered("development_card"):
+            development_tasks = self.filtered(
+                lambda task: task.task_type == "development"
+            )
+            for task in development_tasks:
                 approved_margin = sum(
                     task.hours_request_ids.filtered(
                         lambda request: (
