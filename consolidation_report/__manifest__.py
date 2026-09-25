@@ -9,7 +9,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.9.3.4",
+    "version": "15.0.9.3.5",
     "application": False,
     "installable": True,
     "depends": [
@@ -33,5 +33,11 @@
         "views/account_analytic_line.xml",
         "views/project_project.xml",
         "views/hr_employee.xml",
+        "wizard/account_analytic_line_account_update.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "consolidation_report/static/src/js/field_integer_live.js",
+        ],
+    },
 }
