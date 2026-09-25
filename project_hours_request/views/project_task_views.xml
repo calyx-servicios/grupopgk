@@ -8,11 +8,11 @@
         <field name="arch" type="xml">
             <header position="inside">
                 <button string="Solicitar horas adicionales" name="action_open_hours_request_wizard" type="object"
-                    attrs="{'invisible': [('task_type', '!=', 'development')]}"/>
+                    attrs="{'invisible': ['|', ('task_type', '!=', 'development'), ('parent_id', '!=', False)]}"/>
             </header>
             <div name="button_box" position="inside">
                 <button name="action_view_hours_requests" type="object" class="oe_stat_button" icon="fa-clock-o"
-                    attrs="{'invisible': [('task_type', '!=', 'development')]}">
+                    attrs="{'invisible': ['|', ('task_type', '!=', 'development'), ('parent_id', '!=', False)]}">
                     <field name="hours_request_count" string="Horas adicionales" widget="statinfo"/>
                 </button>
             </div>
