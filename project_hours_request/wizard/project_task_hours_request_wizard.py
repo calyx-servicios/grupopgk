@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class ProjectTaskHoursRequestWizard(models.TransientModel):
@@ -11,6 +12,7 @@ class ProjectTaskHoursRequestWizard(models.TransientModel):
         string="Tarea",
         comodel_name="project.task",
         required=True,
+        domain=[('parent_id', '=', False)],
     )
     segment = fields.Selection(
         selection=[
@@ -46,6 +48,11 @@ class ProjectTaskHoursRequestWizard(models.TransientModel):
     def action_confirm(self):
         """Create and open the additional-hours request."""
         self.ensure_one()
+        if self.task_id.parent_id:
+            raise UserError(_(
+                "Las horas adicionales solo pueden solicitarse desde la "
+                "tarea padre."
+            ))
         request = self.env["project.task.hours.request"].create({
             "task_id": self.task_id.id,
             "segment": self.segment,

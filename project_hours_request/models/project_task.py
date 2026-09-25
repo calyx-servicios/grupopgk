@@ -7,6 +7,13 @@ class ProjectTask(models.Model):
 
     _inherit = 'project.task'
 
+    ESTIMATED_HOURS_FIELDS = {
+        "estimated_dev_hours",
+        "estimated_deploy_hours",
+        "estimated_functional_test_hours",
+        "margin_hours",
+    }
+
     development_card = fields.Boolean(
         string="Tarjeta de Desarrollo",
     )
@@ -86,6 +93,23 @@ class ProjectTask(models.Model):
         for rec in self:
             rec.hours_request_count = len(rec.hours_request_ids)
 
+    def _sync_estimated_hours_from_children(self):
+        """Update parent estimates with the sum of their subtasks."""
+        if self.env.context.get("skip_parent_hours_sync"):
+            return
+        for task in self.filtered(lambda rec: not rec.parent_id):
+            child_tasks = task.child_ids.filtered(
+                lambda child: child.task_type == "development"
+            )
+            vals = {
+                field_name: sum(child_tasks.mapped(field_name))
+                for field_name in self.ESTIMATED_HOURS_FIELDS
+            }
+            task.with_context(
+                skip_parent_hours_sync=True,
+                skip_estimated_hours_editor_check=True,
+            ).sudo().write(vals)
+
     def _compute_can_edit_estimated_hours(self):
         """Allow estimates to be edited only by the project's tech lead."""
         current_user = self.env.user
@@ -96,13 +120,9 @@ class ProjectTask(models.Model):
 
     def _check_estimated_hours_editor(self, vals, project=None):
         """Reject estimate changes made by users other than the tech lead."""
-        estimated_fields = {
-            "estimated_dev_hours",
-            "estimated_deploy_hours",
-            "estimated_functional_test_hours",
-            "margin_hours",
-        }
-        if not estimated_fields.intersection(vals) or self.env.su:
+        if self.env.context.get("skip_estimated_hours_editor_check"):
+            return
+        if not self.ESTIMATED_HOURS_FIELDS.intersection(vals) or self.env.su:
             return
         projects = project or self.mapped("project_id")
         for task_project in projects:
@@ -137,10 +157,15 @@ class ProjectTask(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         """Allow task creation; estimate permissions apply on later edits."""
-        return super().create(vals_list)
+        tasks = super().create(vals_list)
+        tasks.mapped("parent_id")._sync_estimated_hours_from_children()
+        return tasks
 
     def write(self, vals):
         """Enforce estimate permissions and prevent empty finalization."""
+        parents_to_sync = self.env["project.task"]
+        if self.ESTIMATED_HOURS_FIELDS.intersection(vals) or "parent_id" in vals:
+            parents_to_sync = self.mapped("parent_id")
         target_project = self.env["project.project"].browse(
             vals.get("project_id")
         )
@@ -163,12 +188,7 @@ class ProjectTask(models.Model):
                         "No se puede finalizar una tarea sin horas cargadas."
                     ))
         result = super().write(vals)
-        if {
-            "estimated_dev_hours",
-            "estimated_deploy_hours",
-            "estimated_functional_test_hours",
-            "margin_hours",
-        }.intersection(vals):
+        if self.ESTIMATED_HOURS_FIELDS.intersection(vals):
             self.timesheet_ids._validate_development_caps()
             development_tasks = self.filtered(
                 lambda task: task.task_type == "development"
@@ -188,11 +208,26 @@ class ProjectTask(models.Model):
                         "adicionales "
                         "ya aprobadas."
                     ))
+        if parents_to_sync or "parent_id" in vals:
+            parents_to_sync |= self.mapped("parent_id")
+            parents_to_sync._sync_estimated_hours_from_children()
+        return result
+
+    def unlink(self):
+        """Keep parent estimates synchronized when subtasks are removed."""
+        parents_to_sync = self.mapped("parent_id")
+        result = super().unlink()
+        parents_to_sync._sync_estimated_hours_from_children()
         return result
 
     def action_open_hours_request_wizard(self):
         """Open the additional-hours request wizard."""
         self.ensure_one()
+        if self.parent_id:
+            raise UserError(_(
+                "Las horas adicionales solo pueden solicitarse desde la "
+                "tarea padre."
+            ))
         stage_type = self.stage_id.get_timesheet_stage_type()
         segment = (
             stage_type

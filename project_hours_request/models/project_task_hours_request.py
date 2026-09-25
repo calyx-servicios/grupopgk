@@ -19,6 +19,7 @@ class ProjectTaskHoursRequest(models.Model):
         string="Tarea",
         comodel_name="project.task",
         required=True,
+        domain=[('parent_id', '=', False)],
         tracking=True
     )
     segment = fields.Selection(
@@ -148,6 +149,11 @@ class ProjectTaskHoursRequest(models.Model):
                 ))
             if vals.get("task_id"):
                 task = self.env["project.task"].browse(vals["task_id"])
+                if task.parent_id:
+                    raise UserError(_(
+                        "Las horas adicionales solo pueden solicitarse desde "
+                        "la tarea padre."
+                    ))
                 segment = vals.get("segment", "development")
                 if task.task_type != "development":
                     raise UserError(_(
@@ -254,7 +260,7 @@ class ProjectTaskHoursRequest(models.Model):
             rec.message_post(
                 body=_(
                     "Solicitud aprobada. Nuevo tope de horas: %s hs."
-                ) % rec.new_hours_cap
+                ) % rec.task_id.hours_cap
             )
 
     def action_reject(self):

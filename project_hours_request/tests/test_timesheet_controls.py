@@ -112,6 +112,68 @@ class TestTimesheetControls(TransactionCase):
         with self.assertRaises(UserError):
             self._create_timesheet(self.task, 0.5)
 
+    def test_additional_hours_request_only_from_parent_task(self):
+        """Subtasks cannot open or create additional-hours requests."""
+        subtask = self.env["project.task"].with_user(
+            self.tech_lead
+        ).create({
+            "name": "Development subtask",
+            "description": "Child task used to verify request blocking.",
+            "project_id": self.project.id,
+            "parent_id": self.task.id,
+            "stage_id": self.dev_stage.id,
+            "task_type": "development",
+            "estimated_dev_hours": 1.0,
+            "margin_hours": 1.0,
+        })
+
+        with self.assertRaises(UserError):
+            subtask.action_open_hours_request_wizard()
+        with self.assertRaises(UserError):
+            self.env["project.task.hours.request"].create({
+                "task_id": subtask.id,
+                "segment": "development",
+                "requested_hours": 0.5,
+                "reason": "Subtask request must be blocked",
+            })
+
+    def test_parent_estimates_are_sum_of_subtasks(self):
+        """Parent estimate and margin fields follow their subtask totals."""
+        first_subtask = self.env["project.task"].with_user(
+            self.tech_lead
+        ).create({
+            "name": "First development subtask",
+            "description": "First child task with controlled estimates.",
+            "project_id": self.project.id,
+            "parent_id": self.task.id,
+            "stage_id": self.dev_stage.id,
+            "task_type": "development",
+            "estimated_dev_hours": 1.0,
+            "estimated_deploy_hours": 0.5,
+            "estimated_functional_test_hours": 0.25,
+            "margin_hours": 0.75,
+        })
+        self.env["project.task"].with_user(self.tech_lead).create({
+            "name": "Second development subtask",
+            "description": "Second child task with controlled estimates.",
+            "project_id": self.project.id,
+            "parent_id": self.task.id,
+            "stage_id": self.dev_stage.id,
+            "task_type": "development",
+            "estimated_dev_hours": 2.0,
+            "estimated_deploy_hours": 1.5,
+            "estimated_functional_test_hours": 1.25,
+            "margin_hours": 0.25,
+        })
+
+        self.assertEqual(self.task.estimated_dev_hours, 3.0)
+        self.assertEqual(self.task.estimated_deploy_hours, 2.0)
+        self.assertEqual(self.task.estimated_functional_test_hours, 1.5)
+        self.assertEqual(self.task.margin_hours, 1.0)
+
+        first_subtask.estimated_dev_hours = 4.0
+        self.assertEqual(self.task.estimated_dev_hours, 6.0)
+
     def test_development_cap_requires_approved_margin(self):
         """Only approved segment margin permits work above its planned cap."""
         self._create_timesheet(self.task, 2.0)
