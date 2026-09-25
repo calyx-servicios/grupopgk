@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_task_form2_workflow" model="ir.ui.view">
+        <field name="name">project.task.form.workflow</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='stage_id']" position="before">
+                <field name="task_type" invisible="1"/>
+            </xpath>
+            <xpath expr="//header/field[@name='stage_id']" position="attributes">
+                <attribute name="domain">[('project_ids', '=', project_id), ('task_type_scope', '=', task_type)]</attribute>
+            </xpath>
+            <field name="partner_id" position="after">
+                <field name="task_type"/>
+                <field name="max_responsible_id" readonly="1"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>
