@@ -149,7 +149,7 @@ class ProjectTaskHoursRequest(models.Model):
             if vals.get("task_id"):
                 task = self.env["project.task"].browse(vals["task_id"])
                 segment = vals.get("segment", "development")
-                if not task.development_card:
+                if task.task_type != "development":
                     raise UserError(_(
                         "Las horas de margen solo se autorizan en tarjetas "
                         "de Desarrollo."

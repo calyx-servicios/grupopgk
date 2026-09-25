@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="task_type_edit_workflow" model="ir.ui.view">
+        <field name="name">project.task.type.form.workflow</field>
+        <field name="model">project.task.type</field>
+        <field name="inherit_id" ref="project.task_type_edit"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="task_type_scope"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="task_type_tree_workflow" model="ir.ui.view">
+        <field name="name">project.task.type.tree.workflow</field>
+        <field name="model">project.task.type</field>
+        <field name="inherit_id" ref="project.task_type_tree"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="task_type_scope" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

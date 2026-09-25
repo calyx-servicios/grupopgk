@@ -59,7 +59,7 @@ class TestTimesheetControls(TransactionCase):
             "description": "Context and development acceptance criteria.",
             "project_id": cls.project.id,
             "stage_id": cls.dev_stage.id,
-            "development_card": True,
+            "task_type": "development",
             "estimated_dev_hours": 2.0,
             "estimated_deploy_hours": 1.0,
             "estimated_functional_test_hours": 1.0,
@@ -72,6 +72,7 @@ class TestTimesheetControls(TransactionCase):
         return cls.env["project.task.type"].create({
             "name": name,
             "timesheet_stage_type": stage_type,
+            "task_type_scope": "development",
             "project_ids": [(6, 0, cls.project.ids)],
         })
 

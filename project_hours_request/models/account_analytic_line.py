@@ -39,7 +39,7 @@ class AccountAnalyticLine(models.Model):
             raise UserError(_(
                 "No se pueden cargar horas en una tarea en estado %s."
             ) % task.stage_id.name)
-        if task.development_card:
+        if task.task_type == "development":
             allowed_segments = {
                 "development",
                 "deploy",
@@ -55,7 +55,10 @@ class AccountAnalyticLine(models.Model):
 
     def _validate_development_caps(self):
         """Ensure consumed hours do not exceed planned plus approved margin."""
-        for task in self.mapped("task_id").filtered("development_card"):
+        development_tasks = self.mapped("task_id").filtered(
+            lambda task: task.task_type == "development"
+        )
+        for task in development_tasks:
             for segment in (
                 "development",
                 "deploy",

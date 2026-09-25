@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <record id="stage_pendiente_functional" model="project.task.type">
+        <field name="name">Pendiente</field>
+        <field name="sequence">10</field>
+        <field name="task_type_scope">functional</field>
+    </record>
+    <record id="stage_en_curso" model="project.task.type">
+        <field name="name">En curso</field>
+        <field name="sequence">20</field>
+        <field name="task_type_scope">functional</field>
+    </record>
+    <record id="stage_finalizada_functional" model="project.task.type">
+        <field name="name">Finalizada</field>
+        <field name="sequence">30</field>
+        <field name="task_type_scope">functional</field>
+        <field name="fold">1</field>
+        <field name="is_closed">1</field>
+    </record>
+
+    <record id="stage_pendiente_development" model="project.task.type">
+        <field name="name">Pendiente</field>
+        <field name="sequence">10</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_estimacion" model="project.task.type">
+        <field name="name">Estimación</field>
+        <field name="sequence">20</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_desestimada" model="project.task.type">
+        <field name="name">Desestimada</field>
+        <field name="sequence">30</field>
+        <field name="task_type_scope">development</field>
+        <field name="fold">1</field>
+        <field name="is_closed">1</field>
+    </record>
+    <record id="stage_lista_para_hacer" model="project.task.type">
+        <field name="name">Lista para hacer</field>
+        <field name="sequence">40</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_desarrollo" model="project.task.type">
+        <field name="name">Desarrollo</field>
+        <field name="sequence">50</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_suspendida" model="project.task.type">
+        <field name="name">Suspendida</field>
+        <field name="sequence">60</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_deploy_staging" model="project.task.type">
+        <field name="name">Deploy a Staging</field>
+        <field name="sequence">70</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_deploy_failed_staging" model="project.task.type">
+        <field name="name">Deploy Failed Staging</field>
+        <field name="sequence">80</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_pruebas" model="project.task.type">
+        <field name="name">Pruebas</field>
+        <field name="sequence">90</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_testing_failed" model="project.task.type">
+        <field name="name">Testing Failed</field>
+        <field name="sequence">100</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_testing_ok" model="project.task.type">
+        <field name="name">Testing OK</field>
+        <field name="sequence">110</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_uat_cliente" model="project.task.type">
+        <field name="name">UAT Cliente</field>
+        <field name="sequence">120</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_deploy_produccion" model="project.task.type">
+        <field name="name">Deploy a Producción</field>
+        <field name="sequence">130</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_deploy_failed_produccion" model="project.task.type">
+        <field name="name">Deploy Failed Producción</field>
+        <field name="sequence">140</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_revision_general_funcional" model="project.task.type">
+        <field name="name">Revisión general funcional</field>
+        <field name="sequence">150</field>
+        <field name="task_type_scope">development</field>
+    </record>
+    <record id="stage_finalizada_development" model="project.task.type">
+        <field name="name">Finalizada</field>
+        <field name="sequence">160</field>
+        <field name="task_type_scope">development</field>
+        <field name="fold">1</field>
+        <field name="is_closed">1</field>
+    </record>
+
+</odoo>
