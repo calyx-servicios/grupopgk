@@ -275,6 +275,16 @@ msgid "ID"
 msgstr ""
 
 #. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_analytic_line__account_id_int
+msgid "Analytic Account ID"
+msgstr "ID Cuenta analítica"
+
+#. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_analytic_line__sige_period_start
+msgid "SIGE Period"
+msgstr "Periodo SIGE"
+
+#. module: consolidation_report
 #: model:ir.model.fields,field_description:consolidation_report.field_account_analytic_line__is_indirect_expense
 msgid "Indirect Expense"
 msgstr "Gasto Indirecto"
@@ -461,3 +471,69 @@ msgstr "Año del periodo"
 #: model:ir.model.fields,field_description:consolidation_report.field_account_consolidation_company__is_main_currency
 msgid "is main currency?"
 msgstr "¿Es la moneda principal?"
+
+#. module: consolidation_report
+#: model:res.groups,name:consolidation_report.group_update_analytic_account
+msgid "Update Analytic Accounts"
+msgstr "Actualizar cuentas analíticas"
+
+#. module: consolidation_report
+#: model:ir.actions.act_window,name:consolidation_report.action_account_analytic_line_account_update
+#: model_terms:ir.ui.view,arch_db:consolidation_report.account_analytic_line_account_update_view_form
+msgid "Update Analytic Account"
+msgstr "Actualizar cuenta analítica"
+
+#. module: consolidation_report
+#: model:ir.model,name:consolidation_report.model_account_analytic_line_account_update
+msgid "Analytic Line Account Update"
+msgstr "Actualización de cuenta de líneas analíticas"
+
+#. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_analytic_line_account_update__target_account_id_int
+msgid "Target Analytic Account ID"
+msgstr "ID Cuenta analítica destino"
+
+#. module: consolidation_report
+#: model:ir.model.fields,field_description:consolidation_report.field_account_analytic_line_account_update__target_account_id
+msgid "Target Account"
+msgstr "Cuenta destino"
+
+#. module: consolidation_report
+#: model_terms:ir.ui.view,arch_db:consolidation_report.account_analytic_line_account_update_view_form
+msgid "Confirm"
+msgstr "Confirmar"
+
+#. module: consolidation_report
+#: model_terms:ir.ui.view,arch_db:consolidation_report.account_analytic_line_account_update_view_form
+msgid "Cancel"
+msgstr "Cancelar"
+
+#. module: consolidation_report
+#: code:addons/consolidation_report/wizard/account_analytic_line_account_update.py:0
+#, python-format
+msgid "There is no analytic account with ID %s."
+msgstr "No existe una cuenta analítica con ID %s."
+
+#. module: consolidation_report
+#: code:addons/consolidation_report/wizard/account_analytic_line_account_update.py:0
+#, python-format
+msgid "The selected lines belong to different analytic accounts."
+msgstr "Las líneas seleccionadas pertenecen a distintas cuentas analíticas."
+
+#. module: consolidation_report
+#: code:addons/consolidation_report/models/project_project.py:0
+#, python-format
+msgid "Analytic account changed: %s analytic lines updated."
+msgstr "Cambio de cuenta analítica: %s líneas analíticas actualizadas."
+
+#. module: consolidation_report
+#: code:addons/consolidation_report/models/project_project.py:0
+#, python-format
+msgid "Previous account: %s (ID: %s)"
+msgstr "Cuenta anterior: %s (ID: %s)"
+
+#. module: consolidation_report
+#: code:addons/consolidation_report/models/project_project.py:0
+#, python-format
+msgid "New account: %s (ID: %s)"
+msgstr "Cuenta nueva: %s (ID: %s)"

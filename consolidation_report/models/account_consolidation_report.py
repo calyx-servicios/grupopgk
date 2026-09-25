@@ -3,7 +3,7 @@ import base64
 import xlsxwriter
 import time as _time
 from io import BytesIO
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_round
 import logging
 from datetime import datetime
@@ -587,7 +587,57 @@ class AccountConsolidationReport(models.Model):
             'analytic_lines_info': analytic_lines_info
         }
 
+    def validate_orphan_analytic_lines(self):
+        """Lineas de horas cuya cuenta analitica no pertenece a ningun proyecto:
+        no generarian contrapartida."""
+        project_accounts = self.env["project.project"].with_context(
+            active_test=False
+        ).search([]).analytic_account_id
+        lines = self.env["account.analytic.line"].search(self._period_domain() + [
+            ("consolidation_line", "=", False),
+            ("move_id", "=", False),
+            ("amount", "!=", 0),
+            ("project_id", "!=", False),
+            ("account_id", "not in", project_accounts.ids),
+            "|",
+            ("timesheet_id", "!=", False),
+            ("employee_id", "!=", False),
+        ]).filtered(lambda line: not line.employee_id.no_timesheet)
+        if not lines:
+            return
+
+        line_count = {}
+        for line in lines:
+            key = (line.project_id, line.account_id)
+            line_count[key] = line_count.get(key, 0) + 1
+
+        header = "Líneas sin contrapartida: cambiar su cuenta analítica por la actual del proyecto."
+        messages = [
+            (
+                f"Proyecto: '{project.name}' (ID: {project.id})",
+                f"{count} línea(s) apuntan a la cuenta: '{account.name}' (ID: {account.id})",
+                f"Cuenta actual del proyecto: '{project.analytic_account_id.name}' "
+                f"(ID: {project.analytic_account_id.id})",
+            )
+            for (project, account), count in line_count.items()
+        ]
+
+        # Cursor aparte
+        with self.pool.cursor() as cr:
+            self.with_env(self.env(cr=cr)).message_post(
+                body="<br/><br/>".join([header] + ["<br/>".join(m) for m in messages]),
+                subject="Líneas analíticas huérfanas",
+            )
+        raise ValidationError("\n\n".join([header] + ["\n".join(m) for m in messages]))
+
     def generate_consolidation_report_view(self):
+        _t = _time.time()
+        self.validate_orphan_analytic_lines()
+        _logger.warning(
+            "[TIMING] validate_orphan_analytic_lines: %.2fs",
+            _time.time() - _t,
+        )
+
         # Mensaje de prueba en el chatter
         self.message_post(
             body=(
@@ -1559,7 +1609,8 @@ class AccountConsolidationReport(models.Model):
             LEFT JOIN account_move_line aml2 ON aml2.id = aal2.move_id
             LEFT JOIN account_move am2       ON am2.id  = aml2.move_id
             LEFT JOIN timesheet_sige ts      ON ts.id   = aal.timesheet_id
-            WHERE (ts.id IS NOT NULL AND ts.start_of_period >= %(desde)s AND ts.start_of_period <= %(hasta)s)
+            WHERE (ts.id IS NOT NULL AND ts.start_of_period >= %(desde)s
+                   AND ts.start_of_period <= %(hasta)s)
                OR (ts.id IS NULL AND aal.date >= %(desde)s AND aal.date <= %(hasta)s)
         """, {
             "desde": self.consolidation_period.date_from,
