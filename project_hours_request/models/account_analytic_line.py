@@ -56,7 +56,14 @@ class AccountAnalyticLine(models.Model):
     def _validate_development_caps(self):
         """Ensure consumed hours do not exceed planned plus approved margin."""
         development_tasks = self.mapped("task_id").filtered(
-            lambda task: task.task_type == "development"
+            lambda task: (
+                task.task_type == "development"
+                and not task._get_global_hours_cap_root()
+                and not (
+                    "config_level" in task._fields
+                    and task.config_level
+                )
+            )
         )
         for task in development_tasks:
             for segment in (
@@ -83,6 +90,36 @@ class AccountAnalyticLine(models.Model):
                         "allowed": allowed,
                     })
 
+    def _get_global_hours_cap_roots(self, tasks):
+        """Return configured standalone roots represented by tasks."""
+        roots = self.env["project.task"]
+        for task in tasks:
+            roots |= task._get_global_hours_cap_root()
+        return roots
+
+    def _lock_global_hours_cap_roots(self, tasks):
+        """Serialize global-cap validations on standalone task trees."""
+        self._lock_tasks(self._get_global_hours_cap_roots(tasks))
+
+    def _validate_global_hours_caps(self):
+        """Keep configured standalone task trees within their root cap."""
+        roots = self._get_global_hours_cap_roots(self.mapped("task_id"))
+        for root in roots:
+            consumed = root._get_total_consumed_hours()
+            if float_compare(
+                consumed,
+                root.hours_cap,
+                precision_digits=2,
+            ) > 0:
+                raise UserError(_(
+                    "La carga total supera el tope de %(cap)s hs de "
+                    "%(task)s (consumido: %(consumed)s hs)."
+                ) % {
+                    "cap": root.hours_cap,
+                    "task": root.display_name,
+                    "consumed": consumed,
+                })
+
     @api.model_create_multi
     def create(self, vals_list):
         """Validate and persist the segment of new timesheet lines."""
@@ -90,8 +127,10 @@ class AccountAnalyticLine(models.Model):
             [vals["task_id"] for vals in vals_list if vals.get("task_id")]
         )
         self._lock_tasks(tasks)
+        self._lock_global_hours_cap_roots(tasks)
         prepared_vals = [self._prepare_segment(vals) for vals in vals_list]
         lines = super().create(prepared_vals)
+        lines._validate_global_hours_caps()
         lines._validate_development_caps()
         return lines
 
@@ -104,6 +143,7 @@ class AccountAnalyticLine(models.Model):
         if vals.get("task_id"):
             tasks |= self.env["project.task"].browse(vals["task_id"])
         self._lock_tasks(tasks)
+        self._lock_global_hours_cap_roots(tasks)
         if vals.get("task_id"):
             vals = self._prepare_segment(vals)
         else:
@@ -115,6 +155,7 @@ class AccountAnalyticLine(models.Model):
                         "estado %s."
                     ) % task.stage_id.name)
         result = super().write(vals)
+        self._validate_global_hours_caps()
         self._validate_development_caps()
         return result
 

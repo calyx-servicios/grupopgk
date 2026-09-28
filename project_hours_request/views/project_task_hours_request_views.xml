@@ -24,6 +24,7 @@
                             <field name="project_id" readonly="1"/>
                             <field name="segment"/>
                             <field name="margin_authorization" invisible="1"/>
+                            <field name="global_cap_request" invisible="1"/>
                             <field name="previous_hours_cap" readonly="1"/>
                             <field name="requested_hours"/>
                             <field name="new_hours_cap" readonly="1"/>

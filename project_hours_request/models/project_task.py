@@ -52,6 +52,37 @@ class ProjectTask(models.Model):
         ])
         return sum(lines.mapped("unit_amount"))
 
+    def _get_total_consumed_hours(self):
+        """Return consumed hours on this task and all descendant tasks."""
+        self.ensure_one()
+        lines = self.env["account.analytic.line"].sudo().search([
+            ("task_id", "child_of", self.id),
+        ])
+        return sum(lines.mapped("unit_amount"))
+
+    def _get_global_hours_cap_root(self):
+        """Return the configured non-hierarchy root governing this task."""
+        self.ensure_one()
+        root = self
+        while root.parent_id:
+            root = root.parent_id
+        if "config_level" in root._fields and root.config_level:
+            return self.env["project.task"]
+        legacy_approval = root.hours_request_ids.filtered(
+            lambda request: (
+                request.state == "approved"
+                and not request.global_cap_request
+            )
+        )
+        global_approval = root.hours_request_ids.filtered(
+            lambda request: request.global_cap_request
+        )
+        if legacy_approval and not global_approval:
+            return self.env["project.task"]
+        if root.hours_cap > 0 or root.task_type == "functional":
+            return root
+        return self.env["project.task"]
+
     def _get_approved_margin_hours(self, segment):
         """Return approved margin allocated to a segment."""
         self.ensure_one()
@@ -77,6 +108,9 @@ class ProjectTask(models.Model):
     hours_cap = fields.Float(
         string="Tope de horas"
     )
+    can_request_additional_hours = fields.Boolean(
+        compute="_compute_can_request_additional_hours",
+    )
     hours_request_ids = fields.One2many(
         string="Solicitudes de horas adicionales",
         comodel_name="project.task.hours.request",
@@ -92,6 +126,18 @@ class ProjectTask(models.Model):
         """Count additional-hours requests for the task."""
         for rec in self:
             rec.hours_request_count = len(rec.hours_request_ids)
+
+    @api.depends("parent_id", "task_type", "hours_cap")
+    def _compute_can_request_additional_hours(self):
+        """Show requests on root tasks eligible for either cap workflow."""
+        for task in self:
+            task.can_request_additional_hours = bool(
+                not task.parent_id
+                and (
+                    task.hours_cap > 0
+                    or task.task_type in ("development", "functional")
+                )
+            )
 
     def _sync_estimated_hours_from_children(self):
         """Update parent estimates with the sum of their subtasks."""
@@ -180,7 +226,16 @@ class ProjectTask(models.Model):
             if target_stage.get_timesheet_stage_type() == "done":
                 empty_tasks = self.filtered(
                     lambda task: (
-                        sum(task.timesheet_ids.mapped("unit_amount")) <= 0
+                        (
+                            task._get_total_consumed_hours()
+                            if (
+                                "config_level" in task._fields
+                                and task.config_level in (1, 2, 3)
+                            )
+                            else sum(
+                                task.timesheet_ids.mapped("unit_amount")
+                            )
+                        ) <= 0
                     )
                 )
                 if empty_tasks:
@@ -223,10 +278,10 @@ class ProjectTask(models.Model):
     def action_open_hours_request_wizard(self):
         """Open the additional-hours request wizard."""
         self.ensure_one()
-        if self.parent_id:
+        if not self.can_request_additional_hours:
             raise UserError(_(
-                "Las horas adicionales solo pueden solicitarse desde la "
-                "tarea padre."
+                "Las horas adicionales solo pueden solicitarse desde una "
+                "tarea raíz con un flujo de tope habilitado."
             ))
         stage_type = self.stage_id.get_timesheet_stage_type()
         segment = (

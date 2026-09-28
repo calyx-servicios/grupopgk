@@ -53,6 +53,12 @@ class TestTimesheetControls(TransactionCase):
             "deploy",
         )
         cls.test_stage = cls._create_stage("Pruebas", "functional_test")
+        cls.functional_stage = cls.env["project.task.type"].create({
+            "name": "Gestión funcional",
+            "timesheet_stage_type": "unrestricted",
+            "task_type_scope": "functional",
+            "project_ids": [(6, 0, cls.project.ids)],
+        })
         cls.done_stage = cls._create_stage("Finalizada", "done")
         cls.task = cls.env["project.task"].with_user(cls.tech_lead).create({
             "name": "Development card",
@@ -190,6 +196,89 @@ class TestTimesheetControls(TransactionCase):
             self._create_timesheet(self.task, 0.5)
         request.with_user(self.approver).action_approve()
         self._create_timesheet(self.task, 0.5)
+
+    def test_global_cap_request_uses_total_hours_not_planned_hours(self):
+        """A zero planned-hour task requests at its configured global cap."""
+        task = self.env["project.task"].with_user(self.tech_lead).create({
+            "name": "Non-sale project task",
+            "description": "Task with a global hours cap and no sales order.",
+            "project_id": self.project.id,
+            "stage_id": self.dev_stage.id,
+            "task_type": "development",
+            "planned_hours": 0.0,
+            "hours_cap": 1.0,
+        })
+        self._create_timesheet(task, 0.5)
+        with self.assertRaises(UserError):
+            self.env["project.task.hours.request"].create({
+                "task_id": task.id,
+                "requested_hours": 1.0,
+                "reason": "Still below the global cap",
+            })
+        self._create_timesheet(task, 0.5)
+
+        request = self.env["project.task.hours.request"].create({
+            "task_id": task.id,
+            "requested_hours": 1.0,
+            "reason": "Global cap exhausted",
+        })
+        self.assertTrue(request.global_cap_request)
+        request.with_user(self.approver).action_approve()
+        self._create_timesheet(task, 1.0)
+        self.assertEqual(task._get_total_consumed_hours(), 2.0)
+
+    def test_global_cap_request_supports_functional_tasks(self):
+        """Functional roots can request from zero without a segment."""
+        task = self.env["project.task"].with_user(self.tech_lead).create({
+            "name": "Functional work",
+            "description": "Functional task with its own global hour cap.",
+            "project_id": self.project.id,
+            "stage_id": self.functional_stage.id,
+            "task_type": "functional",
+            "planned_hours": 0.0,
+            "hours_cap": 0.0,
+        })
+        self.assertTrue(task.can_request_additional_hours)
+        task.action_open_hours_request_wizard()
+        with self.assertRaises(UserError):
+            self._create_timesheet(task, 0.5)
+
+        request = self.env["project.task.hours.request"].create({
+            "task_id": task.id,
+            "requested_hours": 1.0,
+            "reason": "Functional cap exhausted",
+        })
+        self.assertFalse(request.segment)
+        request.with_user(self.approver).action_approve()
+        line = self._create_timesheet(task, 1.0)
+        self.assertFalse(line.timesheet_segment)
+
+    def test_global_cap_consumption_includes_descendant_tasks(self):
+        """The root request threshold includes hours booked on its children."""
+        root = self.env["project.task"].with_user(self.tech_lead).create({
+            "name": "Root with cap",
+            "description": "Root task for a tree-wide cap test.",
+            "project_id": self.project.id,
+            "stage_id": self.dev_stage.id,
+            "task_type": "development",
+            "hours_cap": 1.0,
+        })
+        child = self.env["project.task"].with_user(self.tech_lead).create({
+            "name": "Child work",
+            "description": "Child task contributes to the root cap.",
+            "project_id": self.project.id,
+            "parent_id": root.id,
+            "stage_id": self.dev_stage.id,
+            "task_type": "development",
+        })
+        self._create_timesheet(child, 1.0)
+
+        request = self.env["project.task.hours.request"].create({
+            "task_id": root.id,
+            "requested_hours": 1.0,
+            "reason": "Root and child hours reached the cap",
+        })
+        self.assertTrue(request.global_cap_request)
 
     def test_request_workflow_and_margin_are_protected(self):
         """Direct approval and authorization above margin are rejected."""

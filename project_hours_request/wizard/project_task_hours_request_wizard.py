@@ -21,7 +21,7 @@ class ProjectTaskHoursRequestWizard(models.TransientModel):
             ("functional_test", "Funcional Pruebas"),
         ],
         string="Tramo",
-        required=True,
+        required=False,
     )
     current_hours_cap = fields.Float(
         string="Tope de horas actual",
@@ -53,9 +53,13 @@ class ProjectTaskHoursRequestWizard(models.TransientModel):
                 "Las horas adicionales solo pueden solicitarse desde la "
                 "tarea padre."
             ))
+        if not self.task_id.can_request_additional_hours:
+            raise UserError(_(
+                "La tarea no tiene habilitada la solicitud de horas."
+            ))
         request = self.env["project.task.hours.request"].create({
             "task_id": self.task_id.id,
-            "segment": self.segment,
+            "segment": self.segment or False,
             "requested_hours": self.requested_hours,
             "reason": self.reason,
         })
