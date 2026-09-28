@@ -1,5 +1,6 @@
 from odoo import fields, models, api, _
 from odoo.exceptions import UserError
+from odoo.tools.float_utils import float_compare
 
 
 class ProjectTaskHoursRequest(models.Model):
@@ -29,9 +30,14 @@ class ProjectTaskHoursRequest(models.Model):
             ("functional_test", "Funcional Pruebas"),
         ],
         string="Tramo",
-        required=True,
-        default="development",
+        required=False,
+        default=False,
         tracking=True,
+    )
+    global_cap_request = fields.Boolean(
+        string="Solicitud sobre tope global",
+        readonly=True,
+        copy=False,
     )
     margin_authorization = fields.Boolean(
         string="Autoriza uso del margen",
@@ -130,7 +136,7 @@ class ProjectTaskHoursRequest(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Create requests only after the selected planned cap is exhausted."""
+        """Create requests only after the applicable cap is exhausted."""
         for vals in vals_list:
             if vals.get("state", "pending") != "pending":
                 raise UserError(_(
@@ -141,7 +147,6 @@ class ProjectTaskHoursRequest(models.Model):
                 "requested_by": self.env.user.id,
                 "approved_by": False,
                 "approval_date": False,
-                "margin_authorization": True,
             })
             if vals.get("requested_hours", 0) <= 0:
                 raise UserError(_(
@@ -154,19 +159,41 @@ class ProjectTaskHoursRequest(models.Model):
                         "Las horas adicionales solo pueden solicitarse desde "
                         "la tarea padre."
                     ))
-                segment = vals.get("segment", "development")
-                if task.task_type != "development":
-                    raise UserError(_(
-                        "Las horas de margen solo se autorizan en tarjetas "
-                        "de Desarrollo."
-                    ))
-                if (
-                    task._get_consumed_hours(segment)
-                    < task._get_planned_hours(segment)
-                ):
-                    raise UserError(_(
-                        "El tope planificado de %s todavía no fue alcanzado."
-                    ) % task._get_segment_label(segment))
+                if task.hours_cap > 0 or task.task_type == "functional":
+                    consumed = task._get_total_consumed_hours()
+                    if float_compare(
+                        consumed,
+                        task.hours_cap,
+                        precision_digits=2,
+                    ) < 0:
+                        raise UserError(_(
+                            "El tope de horas todavía no fue alcanzado "
+                            "(%(consumed)s de %(cap)s hs)."
+                        ) % {
+                            "consumed": consumed,
+                            "cap": task.hours_cap,
+                        })
+                    vals["global_cap_request"] = True
+                    vals["margin_authorization"] = False
+                    vals["segment"] = vals.get("segment") or False
+                else:
+                    segment = vals.get("segment") or "development"
+                    if task.task_type != "development":
+                        raise UserError(_(
+                            "Las horas de margen solo se autorizan en "
+                            "tarjetas de Desarrollo."
+                        ))
+                    if (
+                        task._get_consumed_hours(segment)
+                        < task._get_planned_hours(segment)
+                    ):
+                        raise UserError(_(
+                            "El tope planificado de %s todavía no fue "
+                            "alcanzado."
+                        ) % task._get_segment_label(segment))
+                    vals["global_cap_request"] = False
+                    vals["margin_authorization"] = True
+                    vals["segment"] = segment
                 vals["previous_hours_cap"] = task.hours_cap
         records = super().create(vals_list)
         contratos_group = self.env.ref(
@@ -203,6 +230,7 @@ class ProjectTaskHoursRequest(models.Model):
             "approval_date",
             "previous_hours_cap",
             "margin_authorization",
+            "global_cap_request",
         }
         if workflow_fields.intersection(vals) and not self.env.context.get(
             "hours_request_workflow"
@@ -225,7 +253,7 @@ class ProjectTaskHoursRequest(models.Model):
         return super().write(vals)
 
     def action_approve(self):
-        """Approve a request when enough unallocated margin remains."""
+        """Approve a request after validating any legacy segment margin."""
         for rec in self:
             if not rec.can_approve:
                 raise UserError(_(
@@ -238,19 +266,20 @@ class ProjectTaskHoursRequest(models.Model):
             rec.invalidate_cache()
             if rec.state != "pending":
                 raise UserError(_("La solicitud ya fue resuelta."))
-            approved_margin = sum(
-                rec.task_id.hours_request_ids.filtered(
-                    lambda request: (
-                        request.state == "approved"
-                        and request.margin_authorization
-                    )
-                ).mapped("requested_hours")
-            )
-            requested_margin = approved_margin + rec.requested_hours
-            if requested_margin > rec.task_id.margin_hours:
-                raise UserError(_(
-                    "La solicitud supera las horas de Margen disponibles."
-                ))
+            if not rec.global_cap_request:
+                approved_margin = sum(
+                    rec.task_id.hours_request_ids.filtered(
+                        lambda request: (
+                            request.state == "approved"
+                            and request.margin_authorization
+                        )
+                    ).mapped("requested_hours")
+                )
+                requested_margin = approved_margin + rec.requested_hours
+                if requested_margin > rec.task_id.margin_hours:
+                    raise UserError(_(
+                        "La solicitud supera las horas de Margen disponibles."
+                    ))
             rec.task_id.hours_cap += rec.requested_hours
             rec.with_context(hours_request_workflow=True).write({
                 "state": "approved",
