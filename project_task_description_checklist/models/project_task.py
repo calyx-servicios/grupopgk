@@ -4,7 +4,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import html2plaintext
 
-PRUEBAS_OK_STAGE_NAME = "pruebas ok"
+TESTING_OK_STAGE_NAME = "testing ok"
 
 
 def _plain_text(description):
@@ -80,11 +80,11 @@ class ProjectTask(models.Model):
 
     def _check_stage_change_requires_checklist(self, vals):
         # Stages are configured per project in the database (no fixed xml id), so we
-        # match "Pruebas OK" by name; completing the checklist never auto-moves the task.
+        # match "Testing OK" by name; completing the checklist never auto-moves the task.
         if not vals.get("stage_id"):
             return
         target_stage = self.env["project.task.type"].browse(vals["stage_id"])
-        if _normalize_stage_name(target_stage.name) != PRUEBAS_OK_STAGE_NAME:
+        if _normalize_stage_name(target_stage.name) != TESTING_OK_STAGE_NAME:
             return
         blocked = self.filtered(
             lambda task: task.stage_id.id != target_stage.id
@@ -92,7 +92,7 @@ class ProjectTask(models.Model):
         )
         if blocked:
             raise UserError(_(
-                "No se puede mover a la etapa \"Pruebas OK\" sin validar el 100%% "
+                "No se puede mover a la etapa \"Testing OK\" sin validar el 100%% "
                 "del checklist de Criterio de aceptación: %s"
             ) % ", ".join(blocked.mapped("name")))
 
