@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_restricted_my_tasks" model="ir.actions.act_window">
+        <field name="name">Mis tareas</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">tree,kanban,form,calendar,activity</field>
+        <field name="search_view_id" ref="project.view_task_search_form_extended"/>
+        <field name="context">{'search_default_my_tasks': 1, 'search_default_project': 1, 'all_task': 0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No tenés tareas asignadas.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_restricted_my_tasks"
+              name="Mis tareas"
+              parent="project.menu_main_pm"
+              action="action_restricted_my_tasks"
+              sequence="0"
+              groups="group_project_task_restricted"/>
+
+    <record id="view_task_form2_restricted" model="ir.ui.view">
+        <field name="name">project.task.form.restricted</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="priority">100</field>
+        <field name="groups_id" eval="[(4, ref('group_project_task_restricted'))]"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('oe_read_only')]/field[@name='project_id']" position="attributes">
+                <attribute name="options">{'no_open': True}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='project_id'][hasclass('oe_edit_only')]" position="attributes">
+                <attribute name="options">{'no_open': True, 'no_create': True}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='display_project_id']" position="attributes">
+                <attribute name="options">{'no_open': True, 'no_create': True}</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_task_kanban_restricted" model="ir.ui.view">
+        <field name="name">project.task.kanban.restricted</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_kanban"/>
+        <field name="priority">100</field>
+        <field name="groups_id" eval="[(4, ref('group_project_task_restricted'))]"/>
+        <field name="arch" type="xml">
+            <!-- Grouping by project would otherwise allow opening the project form from the column. -->
+            <kanban position="attributes">
+                <attribute name="group_create">false</attribute>
+                <attribute name="group_edit">false</attribute>
+                <attribute name="group_delete">false</attribute>
+            </kanban>
+        </field>
+    </record>
+</odoo>
