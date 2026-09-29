@@ -59,19 +59,18 @@ class ProjectTask(models.Model):
             return self.env["project.task.type"]
         return self.env.ref(xmlid, raise_if_not_found=False) or self.env["project.task.type"]
 
-    def _get_authorized_pm(self):
-        """Return the user allowed to reopen this task's project to "Pendiente"."""
+    def _get_authorized_users(self):
+        """Return the project PM and technical leader allowed to reopen a task."""
         self.ensure_one()
         project = self.project_id
+        pm = project.user_id
         if "calyx_project_manager_id" in project._fields and project.calyx_project_manager_id:
-            return project.calyx_project_manager_id
-        return project.user_id
+            pm = project.calyx_project_manager_id
+        return pm | project.technical_leader_id
 
     def _check_reopen_to_pendiente(self, vals):
         """Block moving a started task back to "Pendiente" unless done by its PM."""
-        if not vals.get("stage_id") or self.env.su:
-            return
-        if self.env.user.has_group("project.group_project_manager"):
+        if not vals.get("stage_id"):
             return
         new_stage = self.env["project.task.type"].browse(vals["stage_id"])
         blocked_tasks = self.env["project.task"]
@@ -83,11 +82,12 @@ class ProjectTask(models.Model):
                 continue
             if task.stage_id.sequence <= pendiente_stage.sequence:
                 continue
-            if task._get_authorized_pm() != self.env.user:
+            if self.env.user not in task._get_authorized_users():
                 blocked_tasks |= task
         if blocked_tasks:
             raise UserError(_(
-                "Solo el PM del proyecto puede volver a mover a «Pendiente» "
+                "Solo el PM o el Líder Técnico del proyecto pueden volver a "
+                "mover a «Pendiente» "
                 "las siguientes tareas ya iniciadas: %s"
             ) % ", ".join(blocked_tasks.mapped("name")))
 
