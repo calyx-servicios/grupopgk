@@ -313,6 +313,81 @@ class TestTimesheetControls(TransactionCase):
         self.task.with_user(self.tech_lead).estimated_dev_hours = 3.0
         self.assertEqual(self.task.estimated_dev_hours, 3.0)
 
+    def test_only_pm_edits_functional_test_hours(self):
+        """Functional-test estimates belong to the PM, not the tech lead."""
+        self.project.user_id = self.approver
+        with self.assertRaises(UserError):
+            self.task.with_user(
+                self.tech_lead
+            ).estimated_functional_test_hours = 3.0
+        self.task.with_user(
+            self.approver
+        ).estimated_functional_test_hours = 3.0
+        self.assertEqual(self.task.estimated_functional_test_hours, 3.0)
+        with self.assertRaises(UserError):
+            self.task.with_user(self.approver).estimated_dev_hours = 5.0
+
+    def test_pending_named_stage_blocks_even_without_control(self):
+        """A 'Pendiente' stage blocks functional parent and child tasks."""
+        pending = self.env["project.task.type"].create({
+            "name": "Pendiente",
+            "timesheet_stage_type": "unrestricted",
+            "task_type_scope": "functional",
+            "project_ids": [(6, 0, self.project.ids)],
+        })
+        parent = self.env["project.task"].create({
+            "name": "Functional parent",
+            "description": "Pending functional parent task.",
+            "project_id": self.project.id,
+            "stage_id": pending.id,
+            "task_type": "functional",
+            "hours_cap": 5.0,
+        })
+        child = self.env["project.task"].create({
+            "name": "Functional child",
+            "description": "Pending functional child task.",
+            "project_id": self.project.id,
+            "parent_id": parent.id,
+            "stage_id": pending.id,
+            "task_type": "functional",
+        })
+        for task in (parent, child):
+            with self.assertRaises(UserError):
+                self._create_timesheet(task, 0.5)
+
+    def test_functional_cap_applies_after_non_margin_approval(self):
+        """Older non-margin approvals must not disable the global cap."""
+        root = self.env["project.task"].create({
+            "name": "Functional capped root",
+            "description": "Functional task with a one-hour cap.",
+            "project_id": self.project.id,
+            "stage_id": self.functional_stage.id,
+            "task_type": "functional",
+            "hours_cap": 0.0,
+        })
+        child = self.env["project.task"].create({
+            "name": "Functional capped child",
+            "description": "Child consuming the root cap.",
+            "project_id": self.project.id,
+            "parent_id": root.id,
+            "stage_id": self.functional_stage.id,
+            "task_type": "functional",
+        })
+        self.env["project.task.hours.request"].create({
+            "task_id": root.id,
+            "requested_hours": 1.0,
+            "reason": "Initial approval",
+        }).with_context(hours_request_workflow=True).write({
+            "state": "approved",
+            "global_cap_request": False,
+        })
+        root.hours_cap = 1.0
+        with self.assertRaises(UserError):
+            self._create_timesheet(root, 3.0)
+        with self.assertRaises(UserError):
+            self._create_timesheet(child, 3.0)
+        self._create_timesheet(child, 1.0)
+
     def test_task_without_consumed_hours_cannot_be_finalized(self):
         """Finalization requires a positive timesheet balance."""
         empty_task = self.env["project.task"].create({
