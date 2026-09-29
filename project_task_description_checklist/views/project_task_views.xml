@@ -9,6 +9,10 @@
             <field name="description" position="attributes">
                 <attribute name="required">1</attribute>
             </field>
+            <!-- Popup form instead of inline row, so the mandatory description can be filled -->
+            <xpath expr="//field[@name='child_ids']/tree" position="attributes">
+                <attribute name="editable"></attribute>
+            </xpath>
             <page name="description_page" position="after">
                 <page name="acceptance_criteria" string="Criterio de aceptación">
                     <field name="acceptance_criteria_ids">
