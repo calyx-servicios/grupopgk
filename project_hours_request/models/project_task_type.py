@@ -28,9 +28,19 @@ class ProjectTaskType(models.Model):
         if not self:
             return "unrestricted"
         self.ensure_one()
-        if self.timesheet_stage_type != "automatic":
-            return self.timesheet_stage_type
+        inferred_type = self._infer_timesheet_stage_type()
+        if self.timesheet_stage_type == "automatic":
+            return inferred_type
+        # A stage named Pendiente/Finalizada must block even if set to no control.
+        if (
+            self.timesheet_stage_type == "unrestricted"
+            and inferred_type in ("pending", "done")
+        ):
+            return inferred_type
+        return self.timesheet_stage_type
 
+    def _infer_timesheet_stage_type(self):
+        """Infer the timesheet stage type from the stage name."""
         normalized_name = unicodedata.normalize("NFKD", self.name or "")
         normalized_name = "".join(
             character

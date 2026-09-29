@@ -13,6 +13,7 @@ class ProjectTask(models.Model):
         "estimated_functional_test_hours",
         "margin_hours",
     }
+    PM_ESTIMATED_HOURS_FIELDS = {"estimated_functional_test_hours"}
 
     development_card = fields.Boolean(
         string="Tarjeta de Desarrollo",
@@ -30,6 +31,9 @@ class ProjectTask(models.Model):
         string="Horas Margen",
     )
     can_edit_estimated_hours = fields.Boolean(
+        compute="_compute_can_edit_estimated_hours",
+    )
+    can_edit_functional_test_hours = fields.Boolean(
         compute="_compute_can_edit_estimated_hours",
     )
 
@@ -68,16 +72,22 @@ class ProjectTask(models.Model):
             root = root.parent_id
         if "config_level" in root._fields and root.config_level:
             return self.env["project.task"]
-        legacy_approval = root.hours_request_ids.filtered(
+        margin_approval = root.hours_request_ids.filtered(
             lambda request: (
                 request.state == "approved"
+                and request.margin_authorization
                 and not request.global_cap_request
             )
         )
         global_approval = root.hours_request_ids.filtered(
             lambda request: request.global_cap_request
         )
-        if legacy_approval and not global_approval:
+        # Margin approvals raise hours_cap but are governed by segment caps.
+        if (
+            root.task_type == "development"
+            and margin_approval
+            and not global_approval
+        ):
             return self.env["project.task"]
         if root.hours_cap > 0 or root.task_type == "functional":
             return root
@@ -156,26 +166,53 @@ class ProjectTask(models.Model):
                 skip_estimated_hours_editor_check=True,
             ).sudo().write(vals)
 
+    @api.model
+    def _get_project_pm(self, project):
+        """Return the project manager (Calyx PM when available)."""
+        if (
+            "calyx_project_manager_id" in project._fields
+            and project.calyx_project_manager_id
+        ):
+            return project.calyx_project_manager_id
+        return project.user_id
+
     def _compute_can_edit_estimated_hours(self):
-        """Allow estimates to be edited only by the project's tech lead."""
+        """Tech lead edits Dev/Deploy/Margin; PM edits functional tests."""
         current_user = self.env.user
         for task in self:
             task.can_edit_estimated_hours = (
                 task.project_id.technical_leader_id == current_user
             )
+            task.can_edit_functional_test_hours = (
+                self._get_project_pm(task.project_id) == current_user
+            )
 
     def _check_estimated_hours_editor(self, vals, project=None):
-        """Reject estimate changes made by users other than the tech lead."""
+        """Reject estimate changes made by users without that role."""
         if self.env.context.get("skip_estimated_hours_editor_check"):
             return
         if not self.ESTIMATED_HOURS_FIELDS.intersection(vals) or self.env.su:
             return
+        leader_fields = (
+            self.ESTIMATED_HOURS_FIELDS - self.PM_ESTIMATED_HOURS_FIELDS
+        )
         projects = project or self.mapped("project_id")
         for task_project in projects:
-            if task_project.technical_leader_id != self.env.user:
+            if (
+                leader_fields.intersection(vals)
+                and task_project.technical_leader_id != self.env.user
+            ):
                 raise UserError(_(
                     "Solo el Líder Técnico del proyecto puede editar las "
-                    "horas estimadas y el margen."
+                    "horas estimadas Dev, Deploy y el margen."
+                ))
+            if (
+                self.PM_ESTIMATED_HOURS_FIELDS.intersection(vals)
+                and self._get_project_pm(task_project) != self.env.user
+            ):
+                raise UserError(_(
+                    "Solo el PM del proyecto puede editar las Horas "
+                    "Estimada Funcional Pruebas."
                 ))
 
     @api.constrains(

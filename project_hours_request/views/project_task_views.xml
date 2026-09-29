@@ -19,12 +19,13 @@
             <field name="parent_id" position="after">
                 <field name="can_request_additional_hours" invisible="1"/>
                 <field name="can_edit_estimated_hours" invisible="1"/>
+                <field name="can_edit_functional_test_hours" invisible="1"/>
                 <field name="estimated_dev_hours"
                     attrs="{'invisible': [('task_type', '!=', 'development')], 'readonly': [('can_edit_estimated_hours', '=', False)]}"/>
                 <field name="estimated_deploy_hours"
                     attrs="{'invisible': [('task_type', '!=', 'development')], 'readonly': [('can_edit_estimated_hours', '=', False)]}"/>
                 <field name="estimated_functional_test_hours"
-                    attrs="{'invisible': [('task_type', '!=', 'development')], 'readonly': [('can_edit_estimated_hours', '=', False)]}"/>
+                    attrs="{'invisible': [('task_type', '!=', 'development')], 'readonly': [('can_edit_functional_test_hours', '=', False)]}"/>
                 <field name="margin_hours"
                     attrs="{'invisible': [('task_type', '!=', 'development')], 'readonly': [('can_edit_estimated_hours', '=', False)]}"/>
                 <field name="hours_cap" attrs="{'invisible': [('parent_id', '!=', False)]}"/>
