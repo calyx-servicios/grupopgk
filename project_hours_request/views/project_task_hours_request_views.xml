@@ -10,8 +10,10 @@
                     <field name="can_approve" invisible="1"/>
                     <field name="can_cancel" invisible="1"/>
                     <button string="Aprobar" name="action_approve" type="object" class="oe_highlight"
+                        groups="project_hours_request.group_project_hours_request_contratos"
                         attrs="{'invisible': [('can_approve', '=', False)]}"/>
                     <button string="Rechazar" name="action_reject" type="object"
+                        groups="project_hours_request.group_project_hours_request_contratos"
                         attrs="{'invisible': [('can_approve', '=', False)]}"/>
                     <button string="Cancelar" name="action_cancel" type="object"
                         attrs="{'invisible': [('can_cancel', '=', False)]}"/>

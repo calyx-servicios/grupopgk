@@ -3,7 +3,7 @@
     <data noupdate="0">
 
         <record id="group_project_hours_request_contratos" model="res.groups">
-            <field name="name">Contratos - Solicitudes de horas</field>
+            <field name="name">Contratos - Aprobar/Rechazar Solicitudes de horas adicionales</field>
             <field name="category_id" ref="base.module_category_services_project"/>
             <field name="comment">Puede aprobar o rechazar solicitudes de ampliación del tope de horas de tareas.</field>
         </record>

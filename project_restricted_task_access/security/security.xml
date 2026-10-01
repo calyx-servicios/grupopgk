@@ -4,14 +4,14 @@
         <field name="name">Proyecto - Acceso restringido a tareas (Funcional/Developer)</field>
         <field name="category_id" ref="base.module_category_services_project"/>
         <field name="implied_ids" eval="[(4, ref('project.group_project_user'))]"/>
-        <field name="comment">Solo ve sus tareas asignadas, agrupadas por proyecto, sin acceso a la ficha completa del proyecto.</field>
+        <field name="comment">Ve sus tareas asignadas y las que creó, agrupadas por proyecto, sin acceso a la ficha completa del proyecto.</field>
     </record>
 
     <!-- Global: group rules are OR'ed with core task_visibility_rule and would not restrict. -->
     <record id="task_restricted_assigned_only_rule" model="ir.rule">
-        <field name="name">Proyecto restringido: solo tareas asignadas</field>
+        <field name="name">Proyecto restringido: tareas asignadas o creadas</field>
         <field name="model_id" ref="project.model_project_task"/>
         <field name="global" eval="True"/>
-        <field name="domain_force">[('user_ids', 'in', user.id)] if user.has_group('project_restricted_task_access.group_project_task_restricted') else [(1, '=', 1)]</field>
+        <field name="domain_force">['|', ('user_ids', 'in', user.id), ('create_uid', '=', user.id)] if user.has_group('project_restricted_task_access.group_project_task_restricted') else [(1, '=', 1)]</field>
     </record>
 </odoo>

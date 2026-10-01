@@ -5,10 +5,10 @@
         <field name="res_model">project.task</field>
         <field name="view_mode">tree,kanban,form,calendar,activity</field>
         <field name="search_view_id" ref="project.view_task_search_form_extended"/>
-        <field name="context">{'search_default_my_tasks': 1, 'search_default_project': 1, 'all_task': 0}</field>
+        <field name="context">{'search_default_project': 1, 'all_task': 0}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                No tenés tareas asignadas.
+            No tenés tareas asignadas ni creadas.
             </p>
         </field>
     </record>
