@@ -8,6 +8,7 @@
             <xpath expr="//field[@name='next_invoice_date']" position="after">
                 <field name="tariff_update_frequency"/>
                 <field name="last_tariff_update_at"/>
+                <field name="next_tariff_update"/>
             </xpath>
 
             <xpath expr="//notebook/page[@name='other_info']" position="before">
