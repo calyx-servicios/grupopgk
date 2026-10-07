@@ -1,6 +1,8 @@
 import uuid
 
-from odoo import _, fields, models
+from dateutil.relativedelta import relativedelta
+
+from odoo import _, api, fields, models
 from odoo.tools.float_utils import float_compare, float_is_zero
 
 
@@ -19,6 +21,15 @@ TARIFF_FREQUENCY_SELECTION = [
     ("annual", "Anual"),
 ]
 
+TARIFF_FREQUENCY_MONTHS = {
+    "monthly": 1,
+    "bimonthly": 2,
+    "quarterly": 3,
+    "four_monthly": 4,
+    "semiannual": 6,
+    "annual": 12,
+}
+
 
 class SubscriptionPackage(models.Model):
     _inherit = 'subscription.package'
@@ -31,6 +42,12 @@ class SubscriptionPackage(models.Model):
         string="Última actualización de tarifa",
         readonly=True,
         copy=False,
+    )
+    next_tariff_update = fields.Char(
+        string="Próxima actualización",
+        compute="_compute_next_tariff_update",
+        store=True,
+        readonly=True,
     )
     tariff_update_history_ids = fields.One2many(
         "subscription.tariff.update.history",
@@ -50,6 +67,16 @@ class SubscriptionPackage(models.Model):
                 else:
                     subs_ids += sub
         return massive_update_obj.massive_update(_('Massive Update'), subs_ids)
+
+    @api.depends("last_tariff_update_at", "tariff_update_frequency")
+    def _compute_next_tariff_update(self):
+        for sub in self:
+            months = TARIFF_FREQUENCY_MONTHS.get(sub.tariff_update_frequency)
+            if not sub.last_tariff_update_at or not months:
+                sub.next_tariff_update = False
+                continue
+            next_date = sub.last_tariff_update_at + relativedelta(months=months)
+            sub.next_tariff_update = next_date.strftime("%m/%Y")
 
 
 class SubscriptionPackageProductLine(models.Model):
