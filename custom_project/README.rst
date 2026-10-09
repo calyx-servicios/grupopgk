@@ -23,12 +23,29 @@ Custom Project
 
 This module customize project
 
+Task Kanban
+===========
+
+Every task card displays the project, assigned user names, company,
+dedicated hours (effective_hours), and planned hours (planned_hours).
+These details remain visible when opening tasks from a specific project.
+Hours use HH:MM format and remain visible when zero. Empty project, company,
+and assignee values have explicit placeholders. Assignee names replace the
+footer avatars: Odoo 15 Kanban supports only one widget per field name.
+
+The module depends on hr_timesheet for the standard task hour fields.
+
 Install
 =======
 
 * Go to applications
 
 * Find module "custom_project" > Press Install
+
+* If already installed, upgrade "custom_project" to load the new Kanban view.
+
+* Check both the general task Kanban and a project's task Kanban, including
+    cards without assignees and cards with zero hours.
 
 
 Authors
