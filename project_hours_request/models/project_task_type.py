@@ -1,6 +1,6 @@
 import unicodedata
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class ProjectTaskType(models.Model):
@@ -16,6 +16,7 @@ class ProjectTaskType(models.Model):
             ("development", "Desarrollo"),
             ("deploy", "Deploy"),
             ("functional_test", "Funcional Pruebas"),
+            ("uat_support", "UAT/Soporte"),
             ("done", "Finalizada (bloquea horas)"),
         ],
         string="Tramo para control de horas",
@@ -29,6 +30,12 @@ class ProjectTaskType(models.Model):
             return "unrestricted"
         self.ensure_one()
         inferred_type = self._infer_timesheet_stage_type()
+        canonical = self.env.ref(
+            "project_task_type_workflow.stage_uat_cliente",
+            raise_if_not_found=False,
+        )
+        if self == canonical or inferred_type == "uat_support":
+            return "uat_support"
         if self.timesheet_stage_type == "automatic":
             return inferred_type
         # A stage named Pendiente/Finalizada must block even if set to no control.
@@ -54,7 +61,18 @@ class ProjectTaskType(models.Model):
             "deploy a produccion": "deploy",
             "pruebas": "functional_test",
             "funcional pruebas": "functional_test",
+            "uat cliente": "uat_support",
             "finalizada": "done",
             "finalizado": "done",
         }
         return inferred_types.get(normalized_name, "unrestricted")
+
+    @api.model
+    def configure_uat_stage(self) -> None:
+        """Configure only the canonical UAT segment on install and upgrade."""
+        stage = self.env.ref(
+            "project_task_type_workflow.stage_uat_cliente",
+            raise_if_not_found=False,
+        )
+        if stage:
+            stage.write({"timesheet_stage_type": "uat_support"})

@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Project",
-    "version": "15.0.1.1.6",
+    "version": "15.0.1.2.0",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
@@ -19,6 +19,7 @@
         "project_task_type_workflow",
     ],
     "data": [
+        "data/uat_stage.xml",
         "security/security.xml",
         "security/ir.model.access.csv",
         "wizard/project_task_hours_request_wizard_view.xml",
