@@ -102,6 +102,48 @@ class TestTimesheetControls(TransactionCase):
         with self.assertRaises(UserError):
             self._create_timesheet(self.task, 0.5)
 
+    def test_uat_has_its_own_cap_even_with_global_hours(self) -> None:
+        """A global budget and unused margin never expand the UAT cupo."""
+        self.task = self.task.sudo()
+        stage = self._create_stage("UAT Cliente", "automatic")
+        self.assertEqual(stage.get_timesheet_stage_type(), "uat_support")
+        self.task.write({
+            "stage_id": stage.id,
+            "estimated_uat_support_hours": 2.0,
+            "hours_cap": 20.0,
+            "margin_hours": 10.0,
+        })
+        line = self._create_timesheet(self.task, 2.0)
+        self.assertEqual(line.timesheet_segment, "uat_support")
+        self.assertEqual(self.task._get_consumed_hours("development"), 0)
+        self.assertEqual(self.task._get_consumed_hours("functional_test"), 0)
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            self._create_timesheet(self.task, 0.5)
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            self.task.estimated_uat_support_hours = 1.0
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            line.write({"timesheet_segment": "development"})
+        self.task.stage_id = self.dev_stage
+        self.assertEqual(line.timesheet_segment, "uat_support")
+
+    def test_uat_cupo_is_not_overwritten_by_children(self) -> None:
+        """Parent aggregation preserves the independent UAT allocation."""
+        self.task = self.task.sudo()
+        self.task.estimated_uat_support_hours = 2.0
+        self.task.copy({"parent_id": self.task.id})
+        self.assertEqual(self.task.estimated_uat_support_hours, 2.0)
+
+    def test_uat_cupo_requires_pm(self) -> None:
+        """The technical lead cannot grant UAT hours instead of the PM."""
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            self.task.with_user(self.tech_lead).write({
+                "estimated_uat_support_hours": 1.0,
+            })
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            self.task.with_user(self.tech_lead).with_context(
+                skip_estimated_hours_editor_check=True,
+            ).write({"estimated_uat_support_hours": 1.0})
+
     def test_request_wizard_opens_when_task_has_no_stage(self):
         """A missing task stage leaves the request segment unselected."""
         task = self.task.copy({"stage_id": False})

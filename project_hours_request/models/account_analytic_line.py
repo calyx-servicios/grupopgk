@@ -13,6 +13,7 @@ class AccountAnalyticLine(models.Model):
             ("development", "Desarrollo"),
             ("deploy", "Deploy"),
             ("functional_test", "Funcional Pruebas"),
+            ("uat_support", "UAT/Soporte"),
         ],
         string="Tramo de la carga",
         readonly=True,
@@ -24,7 +25,8 @@ class AccountAnalyticLine(models.Model):
         """Serialize cap checks for concurrent timesheet entries."""
         if tasks:
             self.env.cr.execute(
-                "SELECT id FROM project_task WHERE id IN %s FOR UPDATE",
+                "UPDATE project_task SET write_date = "
+                "clock_timestamp() WHERE id IN %s",
                 [tuple(sorted(tasks.ids))],
             )
 
@@ -33,6 +35,8 @@ class AccountAnalyticLine(models.Model):
         """Assign the current task stage segment to a timesheet value set."""
         task = self.env["project.task"].browse(vals.get("task_id"))
         if not task:
+            if vals.get("timesheet_segment"):
+                raise UserError(_("El tramo de horas requiere una tarea."))
             return vals
         stage_type = task.stage_id.get_timesheet_stage_type()
         if stage_type in ("pending", "done"):
@@ -44,17 +48,27 @@ class AccountAnalyticLine(models.Model):
                 "development",
                 "deploy",
                 "functional_test",
+                "uat_support",
             }
             if stage_type not in allowed_segments:
                 raise UserError(_(
                     "La etapa de una tarjeta de Desarrollo debe tener un "
                     "tramo de horas configurado."
                 ))
+            if vals.get("timesheet_segment") not in (None, False, stage_type):
+                raise UserError(_("El tramo debe coincidir con la etapa."))
             vals["timesheet_segment"] = stage_type
+        elif stage_type == "uat_support" or vals.get("timesheet_segment"):
+            raise UserError(_(
+                "UAT/Soporte solo puede cargarse en tareas de Desarrollo."
+            ))
+        else:
+            vals["timesheet_segment"] = False
         return vals
 
     def _validate_development_caps(self):
         """Ensure consumed hours do not exceed planned plus approved margin."""
+        self.mapped("task_id")._validate_uat_hours()
         development_tasks = self.mapped("task_id").filtered(
             lambda task: (
                 task.task_type == "development"
@@ -136,17 +150,55 @@ class AccountAnalyticLine(models.Model):
 
     def write(self, vals):
         """Revalidate lines when their task or consumed hours change."""
+        if "task_id" in vals and all(
+            line.task_id.id == vals["task_id"] for line in self
+        ):
+            vals = dict(vals)
+            vals.pop("task_id")
+        if "timesheet_segment" in vals and "task_id" not in vals:
+            if any(
+                line.timesheet_segment != vals["timesheet_segment"]
+                for line in self
+            ):
+                raise UserError(_("No puede cambiar el tramo histórico."))
+        if "task_id" in vals and not vals["task_id"]:
+            if self.filtered("timesheet_segment"):
+                raise UserError(_(
+                    "No puede quitar la tarea de una carga con tramo."
+                ))
         if not {"task_id", "unit_amount"}.intersection(vals):
             return super().write(vals)
 
         tasks = self.mapped("task_id")
         if vals.get("task_id"):
             tasks |= self.env["project.task"].browse(vals["task_id"])
+            target = self.env["project.task"].browse(vals["task_id"])
+            if self.filtered(
+                lambda line: line.timesheet_segment == "uat_support"
+            ) and target.stage_id.get_timesheet_stage_type() != "uat_support":
+                raise UserError(_(
+                    "Una carga UAT no puede trasladarse a otra bolsa."
+                ))
         self._lock_tasks(tasks)
         self._lock_global_hours_cap_roots(tasks)
         if vals.get("task_id"):
             vals = self._prepare_segment(vals)
         else:
+            if "unit_amount" in vals:
+                for line in self:
+                    if (
+                        line.task_id.stage_id.get_timesheet_stage_type()
+                        == "uat_support"
+                        and line.timesheet_segment != "uat_support"
+                        and float_compare(
+                            vals["unit_amount"], line.unit_amount,
+                            precision_digits=2,
+                        ) > 0
+                    ):
+                        raise UserError(_(
+                            "Durante UAT no puede incrementar un parte de "
+                            "otro tramo. Registre las nuevas horas en UAT."
+                        ))
             for task in tasks:
                 stage_type = task.stage_id.get_timesheet_stage_type()
                 if stage_type in ("pending", "done"):

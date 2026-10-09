@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="task_form_uat_reservation" model="ir.ui.view">
+        <field name="name">project.task.form.uat.reservation</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="calyx_sale_project_from_order.task_form_calyx_sale_project"/>
+        <field name="arch" type="xml">
+            <header position="inside">
+                <button name="action_activate_calyx_uat" type="object" string="Activar reserva UAT"
+                    attrs="{'invisible': ['|', '|', ('is_calyx_sale_root', '=', False), ('can_manage_calyx_uat', '=', False), ('calyx_uat_state', '=', 'active')]}"/>
+            </header>
+            <field name="calyx_budget_hours" position="after">
+                <field name="can_manage_calyx_uat" invisible="1"/>
+                <field name="calyx_uat_quote_snapshot" invisible="1"/>
+                <field name="calyx_uat_state"
+                    attrs="{'invisible': [('is_calyx_sale_root', '=', False)]}"/>
+                <field name="calyx_uat_budget_hours" widget="float_time"
+                    attrs="{'invisible': [('is_calyx_sale_root', '=', False)], 'readonly': ['|', '|', ('calyx_uat_state', '=', 'active'), ('calyx_uat_quote_snapshot', '=', True), ('can_manage_calyx_uat', '=', False)]}"/>
+                <field name="calyx_uat_allocated_hours" widget="float_time"
+                    attrs="{'invisible': [('is_calyx_sale_root', '=', False)]}"/>
+                <field name="calyx_uat_unallocated_hours" widget="float_time"
+                    attrs="{'invisible': [('is_calyx_sale_root', '=', False)]}"/>
+            </field>
+        </field>
+    </record>
+</odoo>

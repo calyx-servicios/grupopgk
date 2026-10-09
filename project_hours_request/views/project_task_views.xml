@@ -26,6 +26,12 @@
                     attrs="{'invisible': [('task_type', '!=', 'development')], 'readonly': [('can_edit_estimated_hours', '=', False)]}"/>
                 <field name="estimated_functional_test_hours"
                     attrs="{'invisible': [('task_type', '!=', 'development')], 'readonly': [('can_edit_functional_test_hours', '=', False)]}"/>
+                <field name="estimated_uat_support_hours" widget="float_time"
+                    attrs="{'invisible': [('task_type', '!=', 'development')], 'readonly': [('can_edit_functional_test_hours', '=', False)]}"/>
+                <field name="uat_consumed_hours" widget="float_time"
+                    attrs="{'invisible': [('task_type', '!=', 'development')]}"/>
+                <field name="uat_remaining_hours" widget="float_time"
+                    attrs="{'invisible': [('task_type', '!=', 'development')]}"/>
                 <field name="margin_hours"
                     attrs="{'invisible': [('task_type', '!=', 'development')], 'readonly': [('can_edit_estimated_hours', '=', False)]}"/>
                 <field name="hours_cap" attrs="{'invisible': [('parent_id', '!=', False)]}"/>

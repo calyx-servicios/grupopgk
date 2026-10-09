@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sale_order_form_uat_reservation" model="ir.ui.view">
+        <field name="name">sale.order.form.uat.reservation</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="project_contrated_hours.view_sale_order_line"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/tree/field[@name='contrated_hours']" position="after">
+                <field name="uat_support_hours" widget="float_time" optional="show"
+                    attrs="{'readonly': [('order_state', 'not in', ['draft', 'sent'])], 'column_invisible': ['|', ('parent.calyx_sale_project_from_order_enabled', '=', False), ('parent.calyx_is_quotation', '=', True)]}"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//field[@name='product_uom_qty']" position="after">
+                <field name="uat_support_hours" widget="float_time"
+                    attrs="{'readonly': [('state', 'in', ['sale', 'done'])], 'invisible': ['|', ('parent.calyx_sale_project_from_order_enabled', '=', False), ('parent.calyx_is_quotation', '=', True)]}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

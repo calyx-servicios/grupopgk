@@ -154,6 +154,13 @@ class ProjectTaskHoursRequest(models.Model):
                 ))
             if vals.get("task_id"):
                 task = self.env["project.task"].browse(vals["task_id"])
+                if (
+                    task.stage_id.get_timesheet_stage_type() == "uat_support"
+                    or vals.get("segment") == "uat_support"
+                ):
+                    raise UserError(_(
+                        "UAT/Soporte no admite ampliaciones de otras bolsas."
+                    ))
                 if task.parent_id:
                     raise UserError(_(
                         "Las horas adicionales solo pueden solicitarse desde "
