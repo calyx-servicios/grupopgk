@@ -1,6 +1,24 @@
 from odoo.api import Environment, SUPERUSER_ID
 
-from .models.project_task_type import CANONICAL_STAGE_XMLIDS
+from .models.project_task_type import (
+    CANONICAL_STAGE_XMLIDS,
+    DEVELOPMENT_STAGE_ROLES,
+    WORKFLOW_ROLES,
+)
+
+
+def initialize_development_permissions(env: Environment) -> None:
+    """Seed policies once when upgrading from the version without roles."""
+    for xmlid, roles in DEVELOPMENT_STAGE_ROLES.items():
+        stage = env.ref(
+            f"project_task_type_workflow.{xmlid}",
+            raise_if_not_found=False,
+        )
+        if stage:
+            stage.write({
+                f"workflow_allow_{role}": role in roles
+                for role in WORKFLOW_ROLES
+            })
 
 
 def _get_canonical_stages(env):

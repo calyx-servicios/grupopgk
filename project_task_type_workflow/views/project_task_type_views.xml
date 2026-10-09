@@ -7,7 +7,16 @@
         <field name="inherit_id" ref="project.task_type_edit"/>
         <field name="arch" type="xml">
             <field name="name" position="after">
-                <field name="task_type_scope"/>
+                <field name="workflow_configuration_allowed" invisible="1"/>
+                <field name="task_type_scope" attrs="{'readonly': [('workflow_configuration_allowed', '=', False)]}"/>
+                <group string="Roles habilitados para mover desde esta etapa" attrs="{'invisible': [('task_type_scope', '!=', 'development')]}">
+                    <field name="workflow_allow_pm" attrs="{'readonly': [('workflow_configuration_allowed', '=', False)]}"/>
+                    <field name="workflow_allow_technical_leader" attrs="{'readonly': [('workflow_configuration_allowed', '=', False)]}"/>
+                    <field name="workflow_allow_scrum_master" attrs="{'readonly': [('workflow_configuration_allowed', '=', False)]}"/>
+                    <field name="workflow_allow_functional" attrs="{'readonly': [('workflow_configuration_allowed', '=', False)]}"/>
+                    <field name="workflow_allow_developer" attrs="{'readonly': [('workflow_configuration_allowed', '=', False)]}"/>
+                    <field name="workflow_allow_deployer" attrs="{'readonly': [('workflow_configuration_allowed', '=', False)]}"/>
+                </group>
             </field>
         </field>
     </record>

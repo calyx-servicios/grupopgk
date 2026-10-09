@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_form_development_roles" model="ir.ui.view">
+        <field name="name">project.project.form.development.roles</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Roles del circuito de Desarrollo">
+                    <field name="workflow_configuration_allowed" invisible="1"/>
+                    <field name="workflow_scrum_master_ids" widget="many2many_tags" attrs="{'readonly': [('workflow_configuration_allowed', '=', False)]}"/>
+                    <field name="workflow_functional_ids" widget="many2many_tags" attrs="{'readonly': [('workflow_configuration_allowed', '=', False)]}"/>
+                    <field name="workflow_developer_ids" widget="many2many_tags" attrs="{'readonly': [('workflow_configuration_allowed', '=', False)]}"/>
+                    <field name="workflow_deployer_ids" widget="many2many_tags" attrs="{'readonly': [('workflow_configuration_allowed', '=', False)]}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
