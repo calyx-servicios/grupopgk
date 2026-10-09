@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_task_kanban_minimum_fields" model="ir.ui.view">
+        <field name="name">project.task.kanban.minimum.fields</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//span[field[@name='project_id']]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_ids'][@widget='many2many_avatar_user']" position="replace"/>
+            <xpath expr="//div[hasclass('o_kanban_record_body')]/field[@name='tag_ids']" position="after">
+                <div class="o_task_kanban_minimum_fields mt-2" style="overflow-wrap: anywhere;">
+                    <div>
+                        <strong>Proyecto: </strong>
+                        <field name="project_id" t-if="record.project_id.raw_value"/>
+                        <span t-else="">Sin proyecto</span>
+                    </div>
+                    <div>
+                        <strong>Persona asignada: </strong>
+                        <field name="user_ids" widget="many2many_tags" t-if="record.user_ids.raw_value.length"/>
+                        <span t-else="">Sin asignar</span>
+                    </div>
+                    <div>
+                        <strong>Compa&#241;&#237;a: </strong>
+                        <field name="company_id" t-if="record.company_id.raw_value"/>
+                        <span t-else="">Sin compa&#241;&#237;a</span>
+                    </div>
+                    <div>
+                        <strong>Horas dedicadas: </strong>
+                        <field name="effective_hours" widget="float_time"/>
+                    </div>
+                    <div>
+                        <strong>Horas planificadas: </strong>
+                        <field name="planned_hours" widget="float_time"/>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

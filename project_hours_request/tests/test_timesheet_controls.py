@@ -32,6 +32,7 @@ class TestTimesheetControls(TransactionCase):
             login="hours_approver",
             groups=(
                 "project.group_project_user,"
+                "hr_timesheet.group_hr_timesheet_user,"
                 "project_hours_request.group_project_hours_request_contratos"
             ),
         )
@@ -79,6 +80,7 @@ class TestTimesheetControls(TransactionCase):
             "name": name,
             "timesheet_stage_type": stage_type,
             "task_type_scope": "development",
+            "workflow_allow_technical_leader": True,
             "project_ids": [(6, 0, cls.project.ids)],
         })
 
@@ -102,9 +104,9 @@ class TestTimesheetControls(TransactionCase):
 
     def test_request_wizard_opens_when_task_has_no_stage(self):
         """A missing task stage leaves the request segment unselected."""
-        self.task.stage_id = False
+        task = self.task.copy({"stage_id": False})
 
-        action = self.task.action_open_hours_request_wizard()
+        action = task.action_open_hours_request_wizard()
 
         self.assertFalse(action["context"]["default_segment"])
         self.assertEqual(
