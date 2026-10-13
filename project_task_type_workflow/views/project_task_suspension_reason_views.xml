@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_project_task_suspension_reason_tree" model="ir.ui.view">
+        <field name="name">project.task.suspension.reason.tree</field>
+        <field name="model">project.task.suspension.reason</field>
+        <field name="arch" type="xml">
+            <tree string="Motivos de suspensión" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="is_other"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_project_task_suspension_reason_form" model="ir.ui.view">
+        <field name="name">project.task.suspension.reason.form</field>
+        <field name="model">project.task.suspension.reason</field>
+        <field name="arch" type="xml">
+            <form string="Motivo de suspensión">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="is_other"/>
+                        <field name="sequence"/>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_project_task_suspension_reason" model="ir.actions.act_window">
+        <field name="name">Motivos de suspensión</field>
+        <field name="res_model">project.task.suspension.reason</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_project_task_suspension_reason"
+        name="Motivos de suspensión"
+        action="action_project_task_suspension_reason"
+        parent="project.menu_project_config"
+        sequence="45"/>
+
+</odoo>

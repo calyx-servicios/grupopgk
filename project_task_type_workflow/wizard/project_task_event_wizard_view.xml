@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_project_task_event_wizard_form" model="ir.ui.view">
+        <field name="name">project.task.event.wizard.form</field>
+        <field name="model">project.task.event.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Registro de evento de tarea">
+                <field name="task_id" invisible="1"/>
+                <field name="event_type" invisible="1"/>
+                <field name="is_other_reason" invisible="1"/>
+
+                <group attrs="{'invisible': [('event_type', '!=', 'testing_failed')]}">
+                    <field name="error_target" widget="radio"
+                        attrs="{'required': [('event_type', '=', 'testing_failed')]}"/>
+                    <field name="description" string="Descripción del fallo"
+                        placeholder="Describa el error observado y a qué apunta..."
+                        attrs="{'required': [('event_type', '=', 'testing_failed')]}"/>
+                    <field name="attachment_ids" widget="many2many_binary" string="Adjuntar archivos (opcional)"/>
+                </group>
+
+                <group attrs="{'invisible': [('event_type', '!=', 'suspended')]}">
+                    <field name="suspension_reason_id" widget="selection"
+                        attrs="{'required': [('event_type', '=', 'suspended')]}"/>
+                    <field name="suspension_reason_detail"
+                        placeholder="Detalle el motivo específico..."
+                        attrs="{'invisible': [('is_other_reason', '=', False)], 'required': [('event_type', '=', 'suspended'), ('is_other_reason', '=', True)]}"/>
+                    <field name="description" string="Comentarios adicionales (opcional)"
+                        attrs="{'invisible': [('is_other_reason', '=', True)]}"/>
+                    <field name="attachment_ids" widget="many2many_binary" string="Adjuntar archivos (opcional)"/>
+                </group>
+
+                <footer>
+                    <button name="action_confirm" string="Confirmar" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

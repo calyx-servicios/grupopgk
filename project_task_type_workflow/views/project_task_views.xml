@@ -6,8 +6,17 @@
         <field name="model">project.task</field>
         <field name="inherit_id" ref="project.view_task_form2"/>
         <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_open_testing_failed_wizard" string="Testing Failed" type="object" class="btn-danger"
+                    attrs="{'invisible': [('can_mark_testing_failed', '=', False)]}"/>
+                <button name="action_open_suspend_wizard" string="Suspender" type="object" class="btn-secondary"
+                    attrs="{'invisible': [('can_suspend_task', '=', False)]}"/>
+            </xpath>
             <xpath expr="//header/field[@name='stage_id']" position="before">
                 <field name="task_type" invisible="1"/>
+                <field name="can_mark_testing_failed" invisible="1"/>
+                <field name="can_suspend_task" invisible="1"/>
+                <field name="event_count" invisible="1"/>
             </xpath>
             <xpath expr="//header/field[@name='stage_id']" position="attributes">
                 <attribute name="domain">[('project_ids', '=', project_id), ('task_type_scope', '=', task_type)]</attribute>
@@ -16,6 +25,46 @@
                 <field name="task_type"/>
                 <field name="max_responsible_id" readonly="1"/>
             </field>
+            <xpath expr="//notebook" position="inside">
+                <page name="task_events" string="Historial de eventos" attrs="{'invisible': [('event_count', '=', 0)]}">
+                    <field name="event_ids" readonly="1">
+                        <tree string="Historial de eventos" decoration-danger="event_type == 'testing_failed'" decoration-warning="event_type == 'suspended'">
+                            <field name="date"/>
+                            <field name="user_id"/>
+                            <field name="event_type"/>
+                            <field name="error_target" attrs="{'invisible': [('event_type', '!=', 'testing_failed')]}"/>
+                            <field name="suspension_reason_id" attrs="{'invisible': [('event_type', '!=', 'suspended')]}"/>
+                            <field name="suspension_reason_detail" attrs="{'invisible': [('event_type', '!=', 'suspended')]}"/>
+                            <field name="description"/>
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_task_kanban_workflow_events" model="ir.ui.view">
+        <field name="name">project.task.kanban.workflow.events</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban" position="inside">
+                <field name="can_mark_testing_failed"/>
+                <field name="can_suspend_task"/>
+            </xpath>
+            <xpath expr="//div[hasclass('o_kanban_record_bottom')]" position="inside">
+                <div class="oe_kanban_bottom_left">
+                    <button t-if="record.can_mark_testing_failed.raw_value" name="action_open_testing_failed_wizard"
+                        type="object" class="btn btn-sm btn-outline-danger mr-1" title="Marcar Testing Failed">
+                        <i class="fa fa-times-circle"/> Testing Failed
+                    </button>
+                    <button t-if="record.can_suspend_task.raw_value" name="action_open_suspend_wizard"
+                        type="object" class="btn btn-sm btn-outline-warning mr-1" title="Suspender tarea">
+                        <i class="fa fa-pause-circle"/> Suspender
+                    </button>
+                </div>
+            </xpath>
         </field>
     </record>
 

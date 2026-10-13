@@ -37,6 +37,124 @@ class ProjectTask(models.Model):
         compute="_compute_max_responsible_id",
         help="PM para tareas de Gestión/Funcional, Líder Técnico para tareas de Desarrollo.",
     )
+    event_ids = fields.One2many(
+        comodel_name="project.task.event",
+        inverse_name="task_id",
+        string="Historial de eventos",
+        readonly=True,
+    )
+    event_count = fields.Integer(
+        string="Cantidad de eventos",
+        compute="_compute_event_count",
+        store=True,
+    )
+    last_testing_failed_event_id = fields.Many2one(
+        comodel_name="project.task.event",
+        string="Último fallo de testing",
+        compute="_compute_last_events",
+        store=True,
+    )
+    last_testing_failed_error_target = fields.Selection(
+        related="last_testing_failed_event_id.error_target",
+        string="Tipo de último fallo",
+        readonly=True,
+    )
+    can_mark_testing_failed = fields.Boolean(
+        compute="_compute_can_event_actions",
+    )
+    can_suspend_task = fields.Boolean(
+        compute="_compute_can_event_actions",
+    )
+
+    @api.depends("event_ids")
+    def _compute_event_count(self):
+        for task in self:
+            task.event_count = len(task.event_ids)
+
+    @api.depends("event_ids.event_type", "event_ids.date")
+    def _compute_last_events(self):
+        for task in self:
+            failed_events = task.event_ids.filtered(lambda e: e.event_type == "testing_failed")
+            if failed_events:
+                sorted_events = sorted(
+                    list(failed_events),
+                    key=lambda e: (e.date or fields.Datetime.now(), (e._origin.id if hasattr(e, '_origin') and e._origin else (e.id or 0)) or 0),
+                    reverse=True,
+                )
+                task.last_testing_failed_event_id = sorted_events[0]
+            else:
+                task.last_testing_failed_event_id = False
+
+    @api.depends("stage_id", "task_type", "project_id", "user_ids")
+    @api.depends_context("uid")
+    def _compute_can_event_actions(self):
+        pruebas_stage = self._workflow_stage("stage_pruebas")
+        desarrollo_stage = self._workflow_stage("stage_desarrollo")
+        for task in self:
+            roles = task.project_id._get_user_workflow_roles() if task.project_id else set()
+            is_functional = bool(roles.intersection({"functional", "pm", "technical_leader"}))
+            task.can_mark_testing_failed = bool(
+                task.task_type == "development"
+                and task.stage_id == pruebas_stage
+                and is_functional
+            )
+            is_authorized_suspend = (
+                bool(roles.intersection({"pm", "technical_leader"}))
+                or self.env.user in task.user_ids
+            )
+            is_valid_stage_for_suspend = bool(
+                desarrollo_stage
+                and task.stage_id
+                and task.stage_id.sequence <= desarrollo_stage.sequence
+            )
+            task.can_suspend_task = bool(
+                task.task_type == "development"
+                and is_valid_stage_for_suspend
+                and is_authorized_suspend
+            )
+
+    def action_open_testing_failed_wizard(self):
+        """Open the wizard to record a testing failed event and move the task."""
+        self.ensure_one()
+        roles = self.project_id._get_user_workflow_roles() if self.project_id else set()
+        if "functional" not in roles and not roles.intersection({"pm", "technical_leader"}):
+            raise UserError(_("Solo los usuarios con rol Funcional pueden marcar Testing Failed."))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Registrar fallo de testing"),
+            "res_model": "project.task.event.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_task_id": self.id,
+                "default_event_type": "testing_failed",
+            },
+        }
+
+    def action_open_suspend_wizard(self):
+        """Open the wizard to suspend the task with a mandatory reason."""
+        self.ensure_one()
+        roles = self.project_id._get_user_workflow_roles() if self.project_id else set()
+        leaders = {"pm", "technical_leader"}
+        if not roles.intersection(leaders) and self.env.user not in self.user_ids:
+            raise UserError(_("Solo el PM, el Líder Técnico o un responsable actual pueden suspender la tarea."))
+        stage_desarrollo = self._workflow_stage("stage_desarrollo")
+        if self.stage_id and stage_desarrollo and self.stage_id.sequence > stage_desarrollo.sequence:
+            raise UserError(_(
+                "El estado «Suspendida» solo está habilitado para tarjetas en estados "
+                "hasta «Desarrollo» inclusive (no disponible desde Deploy a Staging en adelante)."
+            ))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Suspender tarea"),
+            "res_model": "project.task.event.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_task_id": self.id,
+                "default_event_type": "suspended",
+            },
+        }
 
     @api.onchange("project_id", "task_type")
     def _onchange_task_type_stage_domain(self):
@@ -151,6 +269,22 @@ class ProjectTask(models.Model):
                 self._workflow_move_error(destination, leaders)
             return
         if destination == self._workflow_stage("stage_suspendida"):
+            stage_desarrollo = self._workflow_stage("stage_desarrollo")
+            if (
+                self.stage_id
+                and stage_desarrollo
+                and self.stage_id.sequence > stage_desarrollo.sequence
+            ):
+                raise UserError(_(
+                    "El estado «Suspendida» solo está habilitado para tarjetas "
+                    "en estados hasta «Desarrollo» inclusive (no disponible desde "
+                    "Deploy a Staging en adelante)."
+                ))
+            if not self.env.context.get("skip_event_check"):
+                raise UserError(_(
+                    "Para suspender la tarea debe utilizar el botón «Suspender» "
+                    "para indicar el motivo correspondiente."
+                ))
             if (
                 not roles.intersection(leaders)
                 and self.env.user not in self.user_ids
@@ -163,6 +297,31 @@ class ProjectTask(models.Model):
         if destination == self._get_pendiente_stage("development"):
             if not roles.intersection(leaders):
                 self._workflow_move_error(destination, leaders)
+            return
+
+        if self.stage_id == self._workflow_stage("stage_testing_failed"):
+            dev_roles = {"developer", "technical_leader"}
+            if not roles.intersection(dev_roles):
+                self._workflow_move_error(destination, dev_roles)
+            target_code_stage = self._workflow_stage("stage_desarrollo")
+            target_deploy_stage = self._workflow_stage("stage_deploy_failed_staging")
+            last_target = self.last_testing_failed_error_target
+            if last_target == "code":
+                if destination != target_code_stage:
+                    raise UserError(_(
+                        "El último fallo registrado indica un error de código. "
+                        "El único destino habilitado desde Testing Failed es «Desarrollo»."
+                    ))
+            elif last_target == "deploy":
+                if destination != target_deploy_stage:
+                    raise UserError(_(
+                        "El último fallo registrado indica un error de deploy. "
+                        "El único destino habilitado desde Testing Failed es «Deploy Failed Staging»."
+                    ))
+            elif destination not in (target_code_stage | target_deploy_stage):
+                raise UserError(_(
+                    "Desde Testing Failed solo se puede mover a «Desarrollo» o «Deploy Failed Staging»."
+                ))
             return
 
         permitted = (
@@ -181,6 +340,13 @@ class ProjectTask(models.Model):
                     "Desde Pruebas solo se puede mover a Testing OK o "
                     "Testing Failed, salvo las excepciones de retorno "
                     "a Pendiente o pase a Suspendida."
+                ))
+        if destination == self._workflow_stage("stage_testing_failed"):
+            if not self.env.context.get("skip_event_check"):
+                raise UserError(_(
+                    "Para mover la tarjeta a «Testing Failed» debe registrar el caso "
+                    "utilizando el botón «Testing Failed», indicando la descripción y si "
+                    "el error apunta a código o deploy."
                 ))
 
     def _check_development_workflow(self, vals: Dict[str, Any]) -> None:

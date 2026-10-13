@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_project_task_event_tree" model="ir.ui.view">
+        <field name="name">project.task.event.tree</field>
+        <field name="model">project.task.event</field>
+        <field name="arch" type="xml">
+            <tree string="Historial de eventos de tareas" create="false" edit="false" delete="false"
+                decoration-danger="event_type == 'testing_failed'" decoration-warning="event_type == 'suspended'">
+                <field name="date"/>
+                <field name="project_id"/>
+                <field name="task_id"/>
+                <field name="user_id"/>
+                <field name="event_type"/>
+                <field name="error_target" optional="show"/>
+                <field name="suspension_reason_id" optional="show"/>
+                <field name="suspension_reason_detail" optional="hide"/>
+                <field name="description"/>
+                <field name="origin_stage_id" optional="hide"/>
+                <field name="destination_stage_id" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_project_task_event_form" model="ir.ui.view">
+        <field name="name">project.task.event.form</field>
+        <field name="model">project.task.event</field>
+        <field name="arch" type="xml">
+            <form string="Evento de tarea" create="false" edit="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="task_id"/>
+                            <field name="project_id"/>
+                            <field name="event_type"/>
+                            <field name="error_target" attrs="{'invisible': [('event_type', '!=', 'testing_failed')]}"/>
+                            <field name="suspension_reason_id" attrs="{'invisible': [('event_type', '!=', 'suspended')]}"/>
+                            <field name="suspension_reason_detail" attrs="{'invisible': [('event_type', '!=', 'suspended')]}"/>
+                        </group>
+                        <group>
+                            <field name="date"/>
+                            <field name="user_id"/>
+                            <field name="origin_stage_id"/>
+                            <field name="destination_stage_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description"/>
+                        <field name="attachment_ids" widget="many2many_binary"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_project_task_event_search" model="ir.ui.view">
+        <field name="name">project.task.event.search</field>
+        <field name="model">project.task.event</field>
+        <field name="arch" type="xml">
+            <search string="Buscar eventos">
+                <field name="task_id"/>
+                <field name="project_id"/>
+                <field name="user_id"/>
+                <field name="suspension_reason_id"/>
+                <field name="description"/>
+                <filter string="Testing Failed" name="testing_failed" domain="[('event_type', '=', 'testing_failed')]"/>
+                <filter string="Suspendida" name="suspended" domain="[('event_type', '=', 'suspended')]"/>
+                <filter string="Error de código" name="error_code" domain="[('error_target', '=', 'code')]"/>
+                <filter string="Error de deploy" name="error_deploy" domain="[('error_target', '=', 'deploy')]"/>
+                <separator/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Proyecto" name="group_by_project" context="{'group_by': 'project_id'}"/>
+                    <filter string="Tarea" name="group_by_task" context="{'group_by': 'task_id'}"/>
+                    <filter string="Tipo de evento" name="group_by_event_type" context="{'group_by': 'event_type'}"/>
+                    <filter string="A qué apunta el error" name="group_by_error_target" context="{'group_by': 'error_target'}"/>
+                    <filter string="Motivo de suspensión" name="group_by_suspension_reason" context="{'group_by': 'suspension_reason_id'}"/>
+                    <filter string="Usuario" name="group_by_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Fecha (Mes)" name="group_by_date" context="{'group_by': 'date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_project_task_event_pivot" model="ir.ui.view">
+        <field name="name">project.task.event.pivot</field>
+        <field name="model">project.task.event</field>
+        <field name="arch" type="xml">
+            <pivot string="Eventos de tareas">
+                <field name="project_id" type="row"/>
+                <field name="event_type" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_project_task_event_graph" model="ir.ui.view">
+        <field name="name">project.task.event.graph</field>
+        <field name="model">project.task.event</field>
+        <field name="arch" type="xml">
+            <graph string="Eventos de tareas" type="bar">
+                <field name="event_type"/>
+                <field name="project_id"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_project_task_event_report" model="ir.actions.act_window">
+        <field name="name">Historial de eventos de tareas</field>
+        <field name="res_model">project.task.event</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="search_view_id" ref="view_project_task_event_search"/>
+        <field name="context">{'search_default_group_by_project': 1, 'search_default_group_by_event_type': 1}</field>
+    </record>
+
+    <menuitem id="menu_project_task_event_report"
+        name="Historial de eventos"
+        action="action_project_task_event_report"
+        parent="project.menu_project_report"
+        sequence="50"/>
+
+</odoo>
