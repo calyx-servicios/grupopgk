@@ -97,7 +97,7 @@ class TestUatReservations(TestCalyxSaleProjectFromOrder):
         self.assertEqual(root.calyx_budget_hours, 20.0)
         self.assertEqual(root.calyx_uat_allocated_hours, 4.0)
         self.assertEqual(root.estimated_uat_support_hours, 0.0)
-        with self.assertRaises(AccessError), self.env.cr.savepoint():
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
             root.calyx_uat_budget_hours = 3.0
         with self.assertRaises(UserError), self.env.cr.savepoint():
             self._charge(first, 0.5)
@@ -110,8 +110,9 @@ class TestUatReservations(TestCalyxSaleProjectFromOrder):
         self.assertEqual(first._get_consumed_hours("development"), 0)
         with self.assertRaises(ValidationError), self.env.cr.savepoint():
             line.uat_support_hours = 5.0
-        with self.assertRaises(AccessError), self.env.cr.savepoint():
-            root.calyx_uat_budget_hours = 5.0
+        root.with_user(self.pm).write({"calyx_uat_budget_hours": 5.0})
+        self.assertEqual(root.calyx_uat_unallocated_hours, 1.0)
+        self.assertEqual(line.uat_support_hours, 4.0)
 
     def test_normal_work_cannot_spend_reserved_hours(self) -> None:
         """Sixteen normal hours exhaust the normal part of a 20/4 contract."""
@@ -192,8 +193,37 @@ class TestUatReservations(TestCalyxSaleProjectFromOrder):
         root.with_user(self.pm).write({"calyx_uat_budget_hours": 3.0})
         self.assertEqual(root.calyx_uat_unallocated_hours, 0.0)
         root.with_user(self.pm).action_activate_calyx_uat()
+        root.with_user(self.pm).write({"calyx_uat_budget_hours": 4.0})
+        self.assertEqual(root.calyx_uat_unallocated_hours, 1.0)
+
+    def test_managers_can_adjust_active_quoted_reserve_safely(self) -> None:
+        """Managers can edit an active reserve without invalidating budgets."""
+        line, root, first, _ = self._prepare_reservation()
+        responsible = new_test_user(
+            self.env, login="uat_reserve_responsible",
+            groups="project.group_project_user",
+        )
+        root.project_id.write({"user_id": responsible.id})
+        root.action_activate_calyx_uat()
+        self._charge(first, 1.0)
+        for manager in (responsible, self.pm):
+            root.with_user(manager).write({"calyx_uat_budget_hours": 5.0})
+            root.with_user(manager).write({"calyx_uat_budget_hours": 4.0})
+        self.assertEqual(line.uat_support_hours, 4.0)
+        self.assertEqual(root.calyx_uat_state, "active")
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            root.with_user(self.pm).write({"calyx_uat_budget_hours": 3.0})
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            root.with_user(self.pm).write({"calyx_uat_budget_hours": 21.0})
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            root.with_user(self.pm).write({"calyx_uat_budget_hours": -1.0})
+        first.stage_id = self.dev_stage
+        first.estimated_dev_hours = 20.0
+        self._charge(first, 16.0)
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            root.with_user(self.pm).write({"calyx_uat_budget_hours": 4.5})
         with self.assertRaises(AccessError), self.env.cr.savepoint():
-            root.with_user(self.pm).write({"calyx_uat_budget_hours": 4.0})
+            root.with_user(self.worker).write({"calyx_uat_budget_hours": 5.0})
 
     def test_history_survives_stage_changes_and_segment_spoofing(self) -> None:
         """Keep historical UAT in its segment during stage changes."""
@@ -243,6 +273,47 @@ class TestUatReservations(TestCalyxSaleProjectFromOrder):
         """Canonical UAT stages have the explicit UAT segment after upgrade."""
         stage = self.env.ref("project_task_type_workflow.stage_uat_cliente")
         self.assertEqual(stage.timesheet_stage_type, "uat_support")
+
+    def test_uat_allocation_on_unsaved_task_and_children(self) -> None:
+        """Onchange computes NewId allocations without database domains."""
+        _, root, first, _ = self._prepare_reservation()
+        task_model = self.env["project.task"]
+        child = task_model.new({
+            "name": "Unsaved UAT child", "project_id": root.project_id.id,
+            "parent_id": first.parent_id.id,
+            "estimated_uat_support_hours": 1.0,
+        })
+        self.assertEqual(child.calyx_uat_allocated_hours, 1.0)
+        draft = task_model.new({
+            "name": "Unsaved UAT root", "project_id": root.project_id.id,
+            "calyx_uat_budget_hours": 4.0,
+            "child_ids": [(0, 0, {
+                "name": "Unsaved child", "estimated_uat_support_hours": 2.0,
+            })],
+        })
+        self.assertEqual(draft.calyx_uat_allocated_hours, 2.0)
+        self.assertEqual(draft.calyx_uat_unallocated_hours, 2.0)
+
+    def test_responsible_and_calyx_pm_can_edit_uat_cupos(self) -> None:
+        """Different responsible and PM users share UAT editing rights."""
+        _, root, first, _ = self._prepare_reservation()
+        responsible = new_test_user(
+            self.env, login="uat_project_responsible",
+            groups="project.group_project_user",
+        )
+        root.project_id.write({"user_id": responsible.id})
+        self.assertEqual(root.project_id.calyx_project_manager_id, self.pm)
+        for manager in (responsible, self.pm):
+            task = first.with_user(manager)
+            self.assertTrue(task.can_edit_uat_hours)
+            task.write({"estimated_uat_support_hours": 1.5})
+            task.write({"estimated_uat_support_hours": 2.0})
+            self.assertTrue(root.with_user(manager).can_manage_calyx_uat)
+        self.assertFalse(first.with_user(self.worker).can_edit_uat_hours)
+        with self.assertRaises(UserError), self.env.cr.savepoint():
+            first.with_user(self.worker).write({
+                "estimated_uat_support_hours": 1.0,
+            })
 
     def test_hierarchy_shared_excess_cannot_borrow_uat_reservation(
         self,

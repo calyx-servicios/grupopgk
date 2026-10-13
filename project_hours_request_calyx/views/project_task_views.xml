@@ -15,7 +15,7 @@
                 <field name="calyx_uat_state"
                     attrs="{'invisible': [('is_calyx_sale_root', '=', False)]}"/>
                 <field name="calyx_uat_budget_hours" widget="float_time"
-                    attrs="{'invisible': [('is_calyx_sale_root', '=', False)], 'readonly': ['|', '|', ('calyx_uat_state', '=', 'active'), ('calyx_uat_quote_snapshot', '=', True), ('can_manage_calyx_uat', '=', False)]}"/>
+                    attrs="{'invisible': [('is_calyx_sale_root', '=', False)], 'readonly': [('can_manage_calyx_uat', '=', False)]}"/>
                 <field name="calyx_uat_allocated_hours" widget="float_time"
                     attrs="{'invisible': [('is_calyx_sale_root', '=', False)]}"/>
                 <field name="calyx_uat_unallocated_hours" widget="float_time"

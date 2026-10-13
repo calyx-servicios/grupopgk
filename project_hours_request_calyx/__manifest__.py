@@ -4,7 +4,7 @@
     "author": "Calyx Servicios S.A.",
     "license": "AGPL-3",
     "category": "Project",
-    "version": "15.0.1.0.0",
+    "version": "15.0.1.0.2",
     "installable": True,
     "application": False,
     "depends": [
