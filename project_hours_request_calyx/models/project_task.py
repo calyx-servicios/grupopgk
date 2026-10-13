@@ -37,8 +37,7 @@ class ProjectTask(models.Model):
         """Expose preparation and activation only to the project PM."""
         for task in self:
             task.can_manage_calyx_uat = (
-                self.env.su
-                or self._get_project_pm(task.project_id) == self.env.user
+                self._can_manage_uat_hours(task.project_id)
             )
 
     def _get_calyx_uat_root(self) -> Any:
@@ -71,10 +70,9 @@ class ProjectTask(models.Model):
     def _compute_calyx_uat_hours(self) -> None:
         """Show allocation separately from each task's own UAT cupo."""
         for root in self:
-            allocated = sum(
-                root._get_calyx_uat_tree().mapped(
-                    "estimated_uat_support_hours"
-                )
+            children = root.sudo().with_context(active_test=False).child_ids
+            allocated = root.estimated_uat_support_hours + sum(
+                children.mapped("calyx_uat_allocated_hours")
             )
             root.calyx_uat_allocated_hours = allocated
             root.calyx_uat_unallocated_hours = (
@@ -200,11 +198,12 @@ class ProjectTask(models.Model):
     def action_activate_calyx_uat(self) -> bool:
         """Atomically validate preparation and enable the strict reserve."""
         self.ensure_one()
-        if not self.is_calyx_sale_root or (
-            not self.env.su
-            and self._get_project_pm(self.project_id) != self.env.user
+        if not self.is_calyx_sale_root or not self._can_manage_uat_hours(
+            self.project_id,
         ):
-            raise AccessError(_("Solo el PM puede activar la reserva UAT."))
+            raise AccessError(_(
+                "Solo el Responsable o PM puede activar la reserva UAT."
+            ))
         self.env["account.analytic.line"]._lock_tasks(self)
         self._validate_calyx_uat_reservation(activating=True)
         super().write({"calyx_uat_state": "active"})
@@ -244,16 +243,11 @@ class ProjectTask(models.Model):
             for root in self:
                 if (
                     not root.is_calyx_sale_root
-                    or root.calyx_uat_state == "active"
-                    or root.calyx_uat_quote_snapshot
-                    or (not self.env.su and self._get_project_pm(
-                        root.project_id
-                    ) != self.env.user)
+                    or not self._can_manage_uat_hours(root.project_id)
                 ):
                     raise AccessError(_(
-                        "Solo el PM puede preparar UAT de raíces existentes "
-                        "sin previsión cotizada. La reserva cotizada o activa "
-                        "no puede modificarse."
+                        "Solo el Responsable o PM del proyecto puede "
+                        "editar la reserva contractual UAT."
                     ))
         relevant = {
             "estimated_uat_support_hours", "calyx_uat_budget_hours",
@@ -285,14 +279,21 @@ class ProjectTask(models.Model):
                         "No puede trasladar fuera de su imputación "
                         "contractual una tarea con horas cargadas."
                     ))
+        previous_uat_budgets = {
+            root.id: root.calyx_uat_budget_hours for root in self
+        } if "calyx_uat_budget_hours" in values else {}
         result = super().write(values)
         roots |= self._get_calyx_uat_roots()
         roots._validate_calyx_uat_reservation()
         if "calyx_uat_budget_hours" in values:
             for root in self:
                 root.message_post(body=_(
-                    "Previsión contractual UAT preparada: %s hs."
-                ) % root.calyx_uat_budget_hours)
+                    "Reserva contractual UAT ajustada: %(previous)s "
+                    "hs -> %(current)s hs."
+                ) % {
+                    "previous": previous_uat_budgets[root.id],
+                    "current": root.calyx_uat_budget_hours,
+                })
             roots.invalidate_cache([
                 "calyx_uat_allocated_hours", "calyx_uat_unallocated_hours",
             ])

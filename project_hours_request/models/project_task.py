@@ -1,3 +1,5 @@
+from typing import Any
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.float_utils import float_compare
@@ -16,7 +18,7 @@ class ProjectTask(models.Model):
         "margin_hours",
     }
     PM_ESTIMATED_HOURS_FIELDS = {
-        "estimated_functional_test_hours", "estimated_uat_support_hours",
+        "estimated_functional_test_hours",
     }
 
     development_card = fields.Boolean(
@@ -49,6 +51,9 @@ class ProjectTask(models.Model):
     )
     can_edit_functional_test_hours = fields.Boolean(
         compute="_compute_can_edit_estimated_hours",
+    )
+    can_edit_uat_hours = fields.Boolean(
+        compute="_compute_can_edit_uat_hours",
     )
 
     def _get_planned_hours(self, segment):
@@ -195,6 +200,20 @@ class ProjectTask(models.Model):
             return project.calyx_project_manager_id
         return project.user_id
 
+    def _can_manage_uat_hours(self, project: Any) -> bool:
+        """Authorize the project responsible or its configured Calyx PM."""
+        managers = project.user_id | self._get_project_pm(project)
+        return self.env.su or self.env.user in managers
+
+    @api.depends("project_id", "project_id.user_id")
+    @api.depends_context("uid")
+    def _compute_can_edit_uat_hours(self) -> None:
+        """Expose the UAT cupo to either project management user."""
+        for task in self:
+            task.can_edit_uat_hours = self._can_manage_uat_hours(
+                task.project_id,
+            )
+
     def _compute_can_edit_estimated_hours(self):
         """Tech lead edits Dev/Deploy/Margin; PM edits functional tests."""
         current_user = self.env.user
@@ -211,9 +230,10 @@ class ProjectTask(models.Model):
         projects = project or self.mapped("project_id")
         if "estimated_uat_support_hours" in vals and not self.env.su:
             for task_project in projects:
-                if self._get_project_pm(task_project) != self.env.user:
+                if not self._can_manage_uat_hours(task_project):
                     raise UserError(_(
-                        "Solo el PM del proyecto puede editar UAT/Soporte."
+                        "Solo el Responsable o PM del proyecto puede "
+                        "editar UAT/Soporte."
                     ))
         if self.env.context.get("skip_estimated_hours_editor_check"):
             return
@@ -221,6 +241,7 @@ class ProjectTask(models.Model):
             return
         leader_fields = (
             self.ESTIMATED_HOURS_FIELDS - self.PM_ESTIMATED_HOURS_FIELDS
+            - {"estimated_uat_support_hours"}
         )
         for task_project in projects:
             if (
@@ -237,7 +258,7 @@ class ProjectTask(models.Model):
             ):
                 raise UserError(_(
                     "Solo el PM del proyecto puede editar las Horas "
-                    "Estimada Funcional Pruebas y UAT/Soporte."
+                    "Estimada Funcional Pruebas."
                 ))
 
     @api.constrains(

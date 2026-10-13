@@ -21,7 +21,8 @@ Operacion
    servicio. Debe ser un valor no negativo dentro de las horas contratadas.
 2. Confirmar la orden. La raiz recibe una copia contractual de esa prevision,
    independiente de las estimaciones de las subtareas. La prevision cotizada
-   queda congelada desde la confirmacion.
+   de la linea queda congelada; el Responsable/PM puede ajustar la reserva
+   de la raiz con validacion y registro en el chatter.
 3. El PM asigna Horas UAT/Soporte a las tareas Desarrollo cobrables. La suma
    de cupos, incluidos los de tareas archivadas, no puede superar la reserva.
    En Configuraciones los cupos corresponden al nivel 4, no a contenedores.
@@ -32,7 +33,8 @@ Operacion
 
 Durante la preparacion no se admiten nuevas cargas UAT. Las cargas de los
 otros estados mantienen los controles existentes. Una vez activa, la reserva
-no puede desactivarse ni editarse directamente.
+no puede desactivarse. El Responsable/PM puede editar su importe de horas
+sin superar el total contratado ni invalidar cupos o consumo existente.
 
 Las tareas muestran cupo, consumo y disponible UAT. La raiz muestra reserva,
 asignacion y horas sin asignar. Los cupos son valores propios de cada tarea,
@@ -124,3 +126,29 @@ una transaccion concurrente; el reintento vuelve a comprobar el presupuesto.
 
 No incluye soporte posterior fuera de UAT Cliente, ampliaciones UAT ni
 inferencia del triage desde descripciones de partes sin tarea.
+
+Correcciones del 13/10/2026
+----------------------------------------
+
+Versiones: nucleo 15.0.1.2.2 y puente 15.0.1.0.2.
+
+La asignacion visible se calcula desde la relacion de subtareas, incluyendo
+las archivadas, sin usar un dominio SQL con el identificador temporal NewId
+del formulario. Esto permite abrir subtareas y calcular hijos sin guardar.
+
+El cupo UAT es editable por el Responsable del proyecto (user_id) o el PM
+Calyx (calyx_project_manager_id), aunque sean usuarios diferentes. Ambos
+pueden preparar raices existentes sin prevision cotizada y activar la reserva.
+Los campos calculados de consumo, disponible y asignacion siguen siendo
+solo lectura. La reserva de la raiz es editable incluso si esta activa o
+proviene de una OV confirmada. El ajuste conserva el total contratado,
+valida las asignaciones y el consumo, y registra valor anterior y nuevo.
+No reescribe las horas UAT originales ni el importe comercial de la OV.
+
+Asignadas se modifica distribuyendo cupos en las subtareas; sin asignar
+se calcula como reserva menos asignadas. No son cantidades independientes
+que puedan escribirse manualmente sobre la raiz.
+
+Actualizar ambos modulos y reiniciar el servidor para aplicar modelos y
+vistas. Estas correcciones no habilitan globalmente el circuito Calyx en
+companias donde esta desactivado.
