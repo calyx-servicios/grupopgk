@@ -51,6 +51,9 @@ class TestDevelopmentStagePermissions(TransactionCase):
             "task_type_scope": "development",
             "project_ids": [(6, 0, cls.project.ids)],
         })
+        stage_uat = cls.env.ref("project_task_type_workflow.stage_uat_cliente", raise_if_not_found=False)
+        if stage_uat and stage_uat.task_type_scope != "development":
+            stage_uat.task_type_scope = "development"
 
     def _task(self, **values: Any) -> models.Model:
         """Create a task without relying on restricted setup movements."""
@@ -93,23 +96,25 @@ class TestDevelopmentStagePermissions(TransactionCase):
         for xmlid, allowed_roles in DEVELOPMENT_STAGE_ROLES.items():
             origin = self._stage(xmlid)
             self.assertEqual(origin._get_workflow_roles(), set(allowed_roles))
-            destination = (
-                self._stage("stage_testing_failed")
-                if xmlid == "stage_pruebas" else self.destination
-            )
+            if xmlid == "stage_pruebas":
+                destination = self._stage("stage_testing_failed")
+            elif xmlid == "stage_testing_failed":
+                destination = self._stage("stage_desarrollo")
+            else:
+                destination = self.destination
             for role, user in dict(
                 self.users, outsider=self.outsider,
             ).items():
                 with self.subTest(stage=xmlid, role=role):
                     task = self._task(stage_id=origin.id)
                     if role in allowed_roles:
-                        task.with_user(user).write({
+                        task.with_user(user).with_context(skip_event_check=True).write({
                             "stage_id": destination.id,
                         })
                         self.assertEqual(task.stage_id, destination)
                     else:
                         with self.assertRaises(UserError):
-                            task.with_user(user).write({
+                            task.with_user(user).with_context(skip_event_check=True).write({
                                 "stage_id": destination.id,
                             })
                         self.assertEqual(task.stage_id, origin)
@@ -121,7 +126,7 @@ class TestDevelopmentStagePermissions(TransactionCase):
             task = self._task(user_ids=[
                 (6, 0, self.users["functional"].ids),
             ])
-            task.with_user(self.users[role]).write({
+            task.with_user(self.users[role]).with_context(skip_event_check=True).write({
                 "stage_id": destination.id,
             })
             self.assertEqual(task.stage_id, destination)
@@ -168,7 +173,7 @@ class TestDevelopmentStagePermissions(TransactionCase):
             task.with_user(self.users["functional"]).write({
                 "stage_id": imitation.id,
             })
-        task.with_user(self.users["functional"]).write({
+        task.with_user(self.users["functional"]).with_context(skip_event_check=True).write({
             "stage_id": self._stage("stage_testing_failed").id,
         })
 

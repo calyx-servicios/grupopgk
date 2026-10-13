@@ -59,6 +59,8 @@ class ProjectTaskType(models.Model):
             "desarrollo": "development",
             "deploy a staging": "deploy",
             "deploy a produccion": "deploy",
+            "deploy failed staging": "deploy",
+            "deploy failed produccion": "deploy",
             "pruebas": "functional_test",
             "funcional pruebas": "functional_test",
             "uat cliente": "uat_support",
@@ -69,10 +71,16 @@ class ProjectTaskType(models.Model):
 
     @api.model
     def configure_uat_stage(self) -> None:
-        """Configure only the canonical UAT segment on install and upgrade."""
+        """Configure canonical stages on install and upgrade."""
         stage = self.env.ref(
             "project_task_type_workflow.stage_uat_cliente",
             raise_if_not_found=False,
         )
         if stage:
             stage.write({"timesheet_stage_type": "uat_support"})
+        deploy_failed_stage = self.env.ref(
+            "project_task_type_workflow.stage_deploy_failed_staging",
+            raise_if_not_found=False,
+        )
+        if deploy_failed_stage:
+            deploy_failed_stage.write({"timesheet_stage_type": "deploy"})
