@@ -100,6 +100,8 @@ class TestDevelopmentStagePermissions(TransactionCase):
                 destination = self._stage("stage_testing_failed")
             elif xmlid == "stage_testing_failed":
                 destination = self._stage("stage_desarrollo")
+            elif xmlid == "stage_uat_cliente":
+                destination = self._stage("stage_deploy_produccion")
             else:
                 destination = self.destination
             for role, user in dict(
