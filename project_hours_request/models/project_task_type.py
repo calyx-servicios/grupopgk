@@ -77,7 +77,10 @@ class ProjectTaskType(models.Model):
             raise_if_not_found=False,
         )
         if stage:
-            stage.write({"timesheet_stage_type": "uat_support"})
+            stage.write({
+                "task_type_scope": "development",
+                "timesheet_stage_type": "uat_support",
+            })
         deploy_failed_stage = self.env.ref(
             "project_task_type_workflow.stage_deploy_failed_staging",
             raise_if_not_found=False,
