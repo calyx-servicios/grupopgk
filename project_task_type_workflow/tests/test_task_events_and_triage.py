@@ -264,6 +264,32 @@ class TestTaskEventsAndTriage(TransactionCase):
         self.assertEqual(event.event_type, "suspended")
         self.assertEqual(event.suspension_reason_id, self.reason_technical)
 
+    def test_functional_role_alone_cannot_suspend(self):
+        """Functional project membership is not PM or task responsibility."""
+        task = self._task(
+            stage_id=self._stage("stage_desarrollo").id,
+            user_ids=[(6, 0, [self.users["developer"].id])],
+        )
+        functional = self.users["functional"]
+        self.assertIn(functional, self.project.workflow_functional_ids)
+        self.assertNotIn(functional, task.user_ids)
+        self.assertNotIn(functional, self.project._get_workflow_pm())
+        self.assertNotIn(functional, self.project.technical_leader_id)
+        self.assertFalse(task.with_user(functional).can_suspend_task)
+
+        with self.assertRaises(UserError):
+            task.with_user(functional).action_open_suspend_wizard()
+
+        wizard = self.env["project.task.event.wizard"].with_user(functional).create({
+            "task_id": task.id,
+            "event_type": "suspended",
+            "suspension_reason_id": self.reason_technical.id,
+        })
+        with self.assertRaises(UserError), self.cr.savepoint():
+            wizard.action_confirm()
+        self.assertEqual(task.stage_id, self._stage("stage_desarrollo"))
+        self.assertFalse(task.event_ids)
+
     def test_suspend_wizard_other_requires_detail(self):
         """Selecting 'Otro' requires detail."""
         task = self._task(stage_id=self._stage("stage_desarrollo").id)
