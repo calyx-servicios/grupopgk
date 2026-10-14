@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_management_report_config_tree" model="ir.ui.view">
+        <field name="name">timesheet.management.report.config.tree</field>
+        <field name="model">timesheet.management.report.config</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="company_id"/>
+                <field name="weekly_report_enabled"/>
+                <field name="operations_director_email"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_management_report_config_form" model="ir.ui.view">
+        <field name="name">timesheet.management.report.config.form</field>
+        <field name="model">timesheet.management.report.config</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="company_id"/>
+                        <field name="weekly_report_enabled"/>
+                        <field name="operations_director_email"
+                               attrs="{'required': [('weekly_report_enabled', '=', True)]}"/>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        El reporte se genera los lunes a las 08:00 de
+                        Argentina e incluye las actividades de la semana
+                        anterior.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_management_report_config" model="ir.actions.act_window">
+        <field name="name">Configuración semanal</field>
+        <field name="res_model">timesheet.management.report.config</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>
