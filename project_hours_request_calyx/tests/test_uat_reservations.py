@@ -2,7 +2,7 @@ from typing import Any, Callable, Tuple, Type
 
 from psycopg2.errors import SerializationFailure
 
-from odoo import SUPERUSER_ID, api
+from odoo import SUPERUSER_ID, api, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import tagged
 from odoo.tests.common import new_test_user
@@ -82,13 +82,23 @@ class TestUatReservations(TestCalyxSaleProjectFromOrder):
 
     def _charge(self, task: Any, hours: float) -> Any:
         """Charge task-based hours through the common timesheet ORM."""
+        values = {
+            "name": "UAT test work",
+            "task_id": task.id,
+            "project_id": task.project_id.id,
+            "employee_id": self.employee.id,
+            "unit_amount": hours,
+        }
+        if "hour_type_id" in self.env["account.analytic.line"]._fields:
+            values.update({
+                "hour_type_id": self.env.ref(
+                    "timesheet_activity_management.hour_type_management"
+                ).id,
+                "activity_date": fields.Date.today(),
+            })
         return self.env["account.analytic.line"].with_user(
             self.worker,
-        ).create({
-            "name": "UAT test work", "task_id": task.id,
-            "project_id": task.project_id.id,
-            "employee_id": self.employee.id, "unit_amount": hours,
-        })
+        ).create(values)
 
     def test_quotation_snapshot_allocation_and_exact_limit(self) -> None:
         """UAT keeps its own cupo and cannot spend other available hours."""
@@ -437,11 +447,19 @@ def check_concurrent_allocations(env: Any) -> None:
 
     def charge(cursor_env: Any, hours: float) -> Any:
         """Charge the standalone task through the common timesheet model."""
-        return cursor_env["account.analytic.line"].create({
+        values = {
             "name": "Concurrent UAT work", "task_id": standalone.id,
             "project_id": project.id, "employee_id": employee.id,
             "unit_amount": hours,
-        })
+        }
+        if "hour_type_id" in cursor_env["account.analytic.line"]._fields:
+            values.update({
+                "hour_type_id": cursor_env.ref(
+                    "timesheet_activity_management.hour_type_management"
+                ).id,
+                "activity_date": fields.Date.today(),
+            })
+        return cursor_env["account.analytic.line"].create(values)
 
     try:
         check_race(

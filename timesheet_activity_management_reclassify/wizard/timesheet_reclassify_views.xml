@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_timesheet_reclassify_wizard_activity" model="ir.ui.view">
+        <field name="name">timesheet.reclassify.wizard.activity</field>
+        <field name="model">timesheet.reclassify.wizard</field>
+        <field name="inherit_id" ref="timesheet_reclassify_odoo.view_timesheet_reclassify_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='unit_amount_reclassify']"
+                   position="before">
+                <field name="activity_date"
+                       attrs="{'required': [('unit_amount_reclassify', '&gt;', 0)]}"/>
+                <field name="hour_type_id"
+                       domain="[('active', '=', True)]"
+                       options="{'no_create': True, 'no_create_edit': True}"
+                       attrs="{'required': [('unit_amount_reclassify', '&gt;', 0)]}"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_reclassify_form_activity" model="ir.ui.view">
+        <field name="name">timesheet.reclassify.form.activity</field>
+        <field name="model">timesheet.reclassify</field>
+        <field name="inherit_id" ref="timesheet_reclassify_odoo.view_reclassify_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='unit_amount_reclassify']"
+                   position="before">
+                <field name="activity_date"/>
+                <field name="hour_type_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

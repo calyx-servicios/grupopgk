@@ -1,3 +1,4 @@
+from odoo import fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.tests.common import new_test_user
@@ -93,13 +94,23 @@ class TestConfigurationHierarchy(TransactionCase):
 
     def _create_timesheet(self, task, hours):
         """Create a worker timesheet line on a hierarchy task."""
-        return self.env["account.analytic.line"].with_user(self.worker).create({
+        values = {
             "name": "Functional configuration work",
             "project_id": self.project.id,
             "task_id": task.id,
             "employee_id": self.employee.id,
             "unit_amount": hours,
-        })
+        }
+        if "hour_type_id" in self.env["account.analytic.line"]._fields:
+            values.update({
+                "hour_type_id": self.env.ref(
+                    "timesheet_activity_management.hour_type_management"
+                ).id,
+                "activity_date": fields.Date.today(),
+            })
+        return self.env["account.analytic.line"].with_user(
+            self.worker
+        ).create(values)
 
     def test_root_builds_four_levels_and_rejects_level_five(self):
         """The Calyx root accepts exactly three nested task levels."""
