@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_uat_wizard,uat.wizard,model_project_task_uat_wizard,project.group_project_user,1,1,1,1
+access_uat_client_wizard,uat.client.wizard,model_project_task_uat_client_wizard,project.group_project_user,1,1,1,1
+access_uat_approval,uat.approval,model_project_task_uat_approval,project.group_project_user,1,0,1,0
+access_uat_quotation_wizard,uat.quotation.wizard,model_project_task_uat_quotation_wizard,sales_team.group_sale_salesman,1,1,1,1
