@@ -98,10 +98,7 @@ class ProjectTask(models.Model):
                 and task.stage_id == pruebas_stage
                 and is_functional
             )
-            is_authorized_suspend = (
-                bool(roles.intersection({"pm", "technical_leader"}))
-                or self.env.user in task.user_ids
-            )
+            is_authorized_suspend = task._is_user_authorized_to_suspend()
             is_valid_stage_for_suspend = bool(
                 desarrollo_stage
                 and task.stage_id
@@ -134,9 +131,7 @@ class ProjectTask(models.Model):
     def action_open_suspend_wizard(self):
         """Open the wizard to suspend the task with a mandatory reason."""
         self.ensure_one()
-        roles = self.project_id._get_user_workflow_roles() if self.project_id else set()
-        leaders = {"pm", "technical_leader"}
-        if not roles.intersection(leaders) and self.env.user not in self.user_ids:
+        if not self._is_user_authorized_to_suspend():
             raise UserError(_("Solo el PM, el Líder Técnico o un responsable actual pueden suspender la tarea."))
         stage_desarrollo = self._workflow_stage("stage_desarrollo")
         if self.stage_id and stage_desarrollo and self.stage_id.sequence > stage_desarrollo.sequence:
@@ -155,6 +150,17 @@ class ProjectTask(models.Model):
                 "default_event_type": "suspended",
             },
         }
+
+    def _is_user_authorized_to_suspend(self) -> bool:
+        """Allow suspension only to a project PM, leader, or task assignee."""
+        self.ensure_one()
+        roles = (
+            self.project_id._get_user_workflow_roles()
+            if self.project_id else set()
+        )
+        return bool(roles.intersection({"pm", "technical_leader"})) or (
+            self.env.user in self.user_ids
+        )
 
     @api.onchange("project_id", "task_type")
     def _onchange_task_type_stage_domain(self):
@@ -285,10 +291,7 @@ class ProjectTask(models.Model):
                     "Para suspender la tarea debe utilizar el botón «Suspender» "
                     "para indicar el motivo correspondiente."
                 ))
-            if (
-                not roles.intersection(leaders)
-                and self.env.user not in self.user_ids
-            ):
+            if not self._is_user_authorized_to_suspend():
                 raise UserError(_(
                     "Solo el PM, el Líder Técnico o un responsable "
                     "actual pueden suspender la tarea «%s»."
