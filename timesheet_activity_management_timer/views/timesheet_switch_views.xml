@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_timesheet_switch_activity_management"
+            model="ir.ui.view">
+        <field name="name">hr.timesheet.switch.activity.management</field>
+        <field name="model">hr.timesheet.switch</field>
+        <field name="inherit_id"
+               ref="project_timesheet_time_control.hr_timesheet_switch_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='date_time']" position="after">
+                <field name="activity_date" required="1"/>
+                <field name="hour_type_id" required="1"
+                       domain="[('active', '=', True)]"
+                       options="{'no_create': True, 'no_create_edit': True}"/>
+                <field name="hour_type_in_management_report" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
