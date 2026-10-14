@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_uat_quotation_wizard" model="ir.ui.view">
+        <field name="name">project.task.uat.quotation.wizard.form</field>
+        <field name="model">project.task.uat.quotation.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Cotizar Mejora UAT">
+                <group>
+                    <field name="task_id"/>
+                    <field name="product_id"/>
+                    <field name="price_unit"/>
+                    <field name="user_id"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Crear cotización dedicada" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="view_uat_wizard" model="ir.ui.view">
+        <field name="name">project.task.uat.wizard.form</field>
+        <field name="model">project.task.uat.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Validar UAT">
+                <group>
+                    <field name="task_id"/>
+                    <field name="result" widget="radio"/>
+                    <field name="description" placeholder="Describa el reporte o la aclaración acordada con el cliente."/>
+                    <field name="attachment_ids" widget="many2many_binary"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Registrar triage" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="view_uat_client_wizard" model="ir.ui.view">
+        <field name="name">project.task.uat.client.wizard.form</field>
+        <field name="model">project.task.uat.client.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Registrar aprobación del cliente">
+                <group>
+                    <field name="task_id"/>
+                    <field name="description"/>
+                    <field name="attachment_ids" widget="many2many_binary" required="1"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Registrar aprobación" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

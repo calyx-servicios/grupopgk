@@ -111,6 +111,28 @@ class TestTimesheetControls(TransactionCase):
         with self.assertRaises(UserError):
             self._create_timesheet(self.task, 0.5)
 
+    def test_uat_configuration_repairs_functional_stage_on_upgrade(
+        self,
+    ) -> None:
+        """The upgrade helper fixes UAT scope without resetting its workflow."""
+        stage = self.env.ref("project_task_type_workflow.stage_uat_cliente")
+        preserved_fields = [
+            "name", "sequence", "fold", "project_ids",
+            "workflow_allow_functional",
+        ]
+        previous = stage.read(preserved_fields)[0]
+        stage.write({
+            "task_type_scope": "functional",
+            "timesheet_stage_type": "unrestricted",
+        })
+        self.env["project.task.type"].configure_uat_stage()
+        self.assertEqual(stage.task_type_scope, "development")
+        self.assertEqual(stage.timesheet_stage_type, "uat_support")
+        self.assertEqual(stage.read(preserved_fields)[0], previous)
+        self.env["project.task.type"].configure_uat_stage()
+        self.assertEqual(stage.task_type_scope, "development")
+        self.assertEqual(stage.timesheet_stage_type, "uat_support")
+
     def test_uat_has_its_own_cap_even_with_global_hours(self) -> None:
         """A global budget and unused margin never expand the UAT cupo."""
         self.task = self.task.sudo()

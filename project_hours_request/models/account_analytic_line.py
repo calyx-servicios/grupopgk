@@ -119,7 +119,7 @@ class AccountAnalyticLine(models.Model):
         """Keep configured standalone task trees within their root cap."""
         roots = self._get_global_hours_cap_roots(self.mapped("task_id"))
         for root in roots:
-            consumed = root._get_total_consumed_hours()
+            consumed = root._get_budget_consumed_hours()
             if float_compare(
                 consumed,
                 root.hours_cap,

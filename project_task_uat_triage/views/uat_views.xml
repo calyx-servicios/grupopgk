@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_task_uat_form" model="ir.ui.view">
+        <field name="name">project.task.uat.form</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project_task_type_workflow.view_task_form2_workflow"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="can_validate_uat" invisible="1"/>
+                <field name="can_record_uat_client" invisible="1"/>
+                <field name="can_approve_uat_commercial" invisible="1"/>
+                <field name="can_create_uat_quotation" invisible="1"/>
+                <button name="action_open_uat_wizard" string="Validar UAT" type="object" class="btn-primary"
+                    attrs="{'invisible': [('can_validate_uat', '=', False)]}"/>
+                <button name="action_open_uat_client_approval" string="Aprobación del cliente" type="object"
+                    attrs="{'invisible': [('can_record_uat_client', '=', False)]}"/>
+                <button name="action_approve_uat_commercial" string="Aprobar Mejora (Comercial)" type="object"
+                    attrs="{'invisible': [('can_approve_uat_commercial', '=', False)]}"/>
+                <button name="action_open_uat_quotation" string="Cotizar Mejora" type="object"
+                    attrs="{'invisible': [('can_create_uat_quotation', '=', False)]}"/>
+            </xpath>
+            <field name="max_responsible_id" position="after">
+                <field name="uat_last_result" readonly="1" attrs="{'invisible': [('uat_last_result', '=', False)]}"/>
+                <field name="uat_origin_id" attrs="{'invisible': [('uat_origin_id', '=', False)]}"/>
+                <field name="uat_bug_event_id" attrs="{'invisible': [('uat_bug_event_id', '=', False)]}"/>
+            </field>
+            <xpath expr="//field[@name='event_ids']/tree/field[@name='event_type']" position="after">
+                <field name="uat_result" optional="show"/>
+                <field name="uat_improvement_id" optional="show"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Mejoras UAT" attrs="{'invisible': [('uat_improvement_ids', '=', [])]}">
+                    <field name="uat_improvement_ids" readonly="1">
+                        <tree create="false" edit="false" delete="false">
+                            <field name="name"/>
+                            <field name="stage_id"/>
+                            <field name="uat_sale_line_id"/>
+                            <field name="uat_ready"/>
+                        </tree>
+                    </field>
+                </page>
+                <page string="Aprobación de Mejora" attrs="{'invisible': [('uat_origin_id', '=', False)]}">
+                    <group>
+                        <field name="uat_sale_line_id" options="{'no_create': True}"/>
+                        <field name="uat_revision" readonly="1"/>
+                        <field name="uat_ready" readonly="1"/>
+                    </group>
+                    <div class="alert alert-info" role="status">
+                        La Mejora requiere estimación, evidencia de aprobación del cliente, aprobación
+                        del responsable comercial y una nueva orden confirmada. No usa la bolsa original.
+                    </div>
+                    <field name="uat_approval_ids" readonly="1">
+                        <tree create="false" edit="false" delete="false">
+                            <field name="date"/>
+                            <field name="revision"/>
+                            <field name="approval_type"/>
+                            <field name="user_id"/>
+                            <field name="sale_line_id"/>
+                            <field name="description"/>
+                            <field name="proposal"/>
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_task_uat_kanban" model="ir.ui.view">
+        <field name="name">project.task.uat.kanban</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban" position="inside">
+                <field name="can_validate_uat"/>
+            </xpath>
+            <xpath expr="//div[hasclass('o_kanban_record_bottom')]" position="inside">
+                <button t-if="record.can_validate_uat.raw_value" name="action_open_uat_wizard"
+                    type="object" class="btn btn-sm btn-outline-primary">Validar UAT</button>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_event_uat_tree" model="ir.ui.view">
+        <field name="name">project.task.event.uat.tree</field>
+        <field name="model">project.task.event</field>
+        <field name="inherit_id" ref="project_task_type_workflow.view_project_task_event_tree"/>
+        <field name="arch" type="xml">
+            <field name="event_type" position="after">
+                <field name="uat_result" optional="show"/>
+                <field name="uat_improvement_id" optional="show"/>
+            </field>
+        </field>
+    </record>
+    <record id="view_event_uat_form" model="ir.ui.view">
+        <field name="name">project.task.event.uat.form</field>
+        <field name="model">project.task.event</field>
+        <field name="inherit_id" ref="project_task_type_workflow.view_project_task_event_form"/>
+        <field name="arch" type="xml">
+            <field name="event_type" position="after">
+                <field name="uat_result" attrs="{'invisible': [('event_type', '!=', 'uat')]}"/>
+                <field name="uat_improvement_id" attrs="{'invisible': [('uat_result', '!=', 'improvement')]}"/>
+            </field>
+        </field>
+    </record>
+    <record id="view_event_uat_search" model="ir.ui.view">
+        <field name="name">project.task.event.uat.search</field>
+        <field name="model">project.task.event</field>
+        <field name="inherit_id" ref="project_task_type_workflow.view_project_task_event_search"/>
+        <field name="arch" type="xml">
+            <field name="description" position="after">
+                <field name="uat_result"/>
+                <filter name="uat" string="UAT Cliente" domain="[('event_type', '=', 'uat')]"/>
+                <filter name="uat_bug" string="Bug" domain="[('uat_result', '=', 'bug')]"/>
+                <filter name="uat_improvement" string="Mejora" domain="[('uat_result', '=', 'improvement')]"/>
+                <filter name="uat_misunderstanding" string="Malentendido" domain="[('uat_result', '=', 'misunderstanding')]"/>
+            </field>
+            <filter name="group_by_event_type" position="after">
+                <filter name="group_by_uat_result" string="Resultado UAT" context="{'group_by': 'uat_result'}"/>
+            </filter>
+        </field>
+    </record>
+    <record id="view_analytic_uat_tree" model="ir.ui.view">
+        <field name="name">account.analytic.line.uat.tree</field>
+        <field name="model">account.analytic.line</field>
+        <field name="inherit_id" ref="hr_timesheet.hr_timesheet_line_tree"/>
+        <field name="arch" type="xml">
+            <field name="unit_amount" position="after">
+                <field name="uat_rework_event_id" optional="show"/>
+            </field>
+        </field>
+    </record>
+</odoo>

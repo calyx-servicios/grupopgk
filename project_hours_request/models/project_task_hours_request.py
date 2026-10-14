@@ -167,7 +167,7 @@ class ProjectTaskHoursRequest(models.Model):
                         "la tarea padre."
                     ))
                 if task.hours_cap > 0 or task.task_type == "functional":
-                    consumed = task._get_total_consumed_hours()
+                    consumed = task._get_budget_consumed_hours()
                     if float_compare(
                         consumed,
                         task.hours_cap,

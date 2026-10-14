@@ -73,7 +73,18 @@ class ProjectTask(models.Model):
         lines = self.env["account.analytic.line"].sudo().search([
             ("task_id", "=", self.id),
             ("timesheet_segment", "=", segment),
-        ])
+        ] + self._get_budget_timesheet_domain())
+        return sum(lines.mapped("unit_amount"))
+
+    def _get_budget_timesheet_domain(self):
+        """Allow integrations to separate internal effort from client budgets."""
+        return []
+
+    def _get_budget_consumed_hours(self):
+        self.ensure_one()
+        lines = self.env["account.analytic.line"].sudo().search([
+            ("task_id", "child_of", self.id),
+        ] + self._get_budget_timesheet_domain())
         return sum(lines.mapped("unit_amount"))
 
     def _get_total_consumed_hours(self):

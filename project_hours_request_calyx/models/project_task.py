@@ -86,7 +86,7 @@ class ProjectTask(models.Model):
             ("task_id", "child_of", self.id),
             "|", ("timesheet_segment", "=", False),
             ("timesheet_segment", "!=", "uat_support"),
-        ])
+        ] + self._get_budget_timesheet_domain())
         return sum(lines.mapped("unit_amount"))
 
     def _get_calyx_uat_total_cap(self) -> float:
@@ -161,7 +161,7 @@ class ProjectTask(models.Model):
                     "Su tope disponible es %s hs."
                 ) % (consumed, available))
             if float_compare(
-                root._get_total_consumed_hours(),
+                root._get_budget_consumed_hours(),
                 root._get_calyx_uat_total_cap(), precision_digits=2,
             ) > 0:
                 raise UserError(_("La carga supera el total contractual."))
