@@ -29,7 +29,7 @@ class AccountAnalyticLine(models.Model):
         roots = self._get_configuration_roots(self.mapped("task_id"))
         self._lock_configuration_roots(self.mapped("task_id"))
         for root in roots:
-            consumed = root._get_total_consumed_hours()
+            consumed = root._get_budget_consumed_hours()
             if float_compare(
                 consumed,
                 root.hours_cap,
@@ -46,7 +46,7 @@ class AccountAnalyticLine(models.Model):
             allocated = sum(level_three.mapped("hours_cap"))
             shared_allowance = max(root.hours_cap - allocated, 0.0)
             branch_overage = sum(
-                max(task._get_total_consumed_hours() - task.hours_cap, 0.0)
+                max(task._get_budget_consumed_hours() - task.hours_cap, 0.0)
                 for task in level_three
             )
             if float_compare(

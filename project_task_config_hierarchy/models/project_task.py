@@ -40,7 +40,7 @@ class ProjectTask(models.Model):
             root = task._get_configuration_root()
             if root and task.config_level in (3, 4):
                 task.config_available_hours = (
-                    root.hours_cap - root._get_total_consumed_hours()
+                    root.hours_cap - root._get_budget_consumed_hours()
                 )
             else:
                 task.config_available_hours = 0.0
