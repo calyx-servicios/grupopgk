@@ -5,6 +5,7 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.tests.common import new_test_user
 
+from ..hooks import backfill_subtask_projects
 from ..models.project_task_type import DEVELOPMENT_STAGE_ROLES, WORKFLOW_ROLES
 
 
@@ -74,6 +75,126 @@ class TestDevelopmentStagePermissions(TransactionCase):
         """Return a canonical stage by its stable external identity."""
         return self.env.ref(f"project_task_type_workflow.{xmlid}")
 
+    def test_creation_defaults_to_pending_per_type(self) -> None:
+        """Batch creation chooses pending by type, not stage sequence."""
+        self.origin.sequence = -100
+        tasks = self.env["project.task"].create([
+            {
+                "name": f"New {task_type}",
+                "description": "Context for a new typed task.",
+                "project_id": self.project.id,
+                "task_type": task_type,
+            }
+            for task_type in ("development", "functional")
+        ])
+        for task in tasks:
+            self.assertEqual(
+                task.stage_id, task._get_pendiente_stage(task.task_type),
+            )
+
+    def test_pending_defaults_in_form_and_context(self) -> None:
+        """Defaults and new-form type changes choose matching pending."""
+        for task_type in ("development", "functional"):
+            model = self.env["project.task"].with_context(
+                default_project_id=self.project.id,
+                default_task_type=task_type,
+                default_stage_id=self.origin.id,
+            )
+            values = model.default_get([
+                "project_id", "task_type", "stage_id",
+            ])
+            pending = model._get_pendiente_stage(task_type)
+            self.assertEqual(values["stage_id"], pending.id)
+            task = model.new({
+                "project_id": self.project.id,
+                "task_type": task_type,
+                "stage_id": self.origin.id,
+            })
+            task._onchange_task_type_stage_domain()
+            self.assertEqual(task.stage_id, pending)
+            created = model.create({
+                "name": "Context task",
+                "description": "Typed creation from context defaults.",
+            })
+            self.assertEqual(created.stage_id, pending)
+
+    def test_pending_default_preserves_explicit_stage(self) -> None:
+        """A default does not overwrite intentional initial placement."""
+        task = self._task()
+        self.assertEqual(task.stage_id, self.origin)
+        missing = self._task(stage_id=False)
+        self.assertFalse(missing.stage_id)
+        existing = self._task().with_user(self.users["developer"])
+        existing._onchange_task_type_stage_domain()
+        self.assertEqual(existing.stage_id, self.origin)
+
+    def test_subtasks_inherit_both_projects_at_every_level(self) -> None:
+        """Creation fills both project fields through four hierarchy levels."""
+        parent = self._task()
+        for level in range(2, 5):
+            child = self.env["project.task"].create({
+                "name": f"Level {level}",
+                "description": "Nested task project inheritance.",
+                "parent_id": parent.id,
+                "task_type": "development",
+            })
+            self.assertEqual(child.project_id, self.project)
+            self.assertEqual(child.display_project_id, self.project)
+            self.assertEqual(
+                child.stage_id, self._stage("stage_pendiente_development"),
+            )
+            parent = child
+
+    def test_subtask_defaults_and_parent_onchange(self) -> None:
+        """The visible project is populated before a subtask is saved."""
+        parent = self._task()
+        model = self.env["project.task"].with_context(
+            default_parent_id=parent.id,
+            default_project_id=False,
+            default_task_type="development",
+        )
+        values = model.default_get([
+            "parent_id", "project_id", "display_project_id", "task_type",
+        ])
+        self.assertEqual(values["project_id"], self.project.id)
+        self.assertEqual(values["display_project_id"], self.project.id)
+        task = model.new({"parent_id": parent.id})
+        task._onchange_parent_workflow_project()
+        self.assertEqual(task.display_project_id, self.project)
+        created = model.create({
+            "name": "Context subtask",
+            "description": "Subtask created through parent defaults.",
+        })
+        self.assertEqual(created.display_project_id, self.project)
+
+    def test_linking_parent_populates_visible_project(self) -> None:
+        """Linking an existing task to a parent fills its visible project."""
+        parent = self._task()
+        child = self._task()
+        child.with_user(self.users["pm"]).write({"parent_id": parent.id})
+        self.assertEqual(child.project_id, self.project)
+        self.assertEqual(child.display_project_id, self.project)
+
+    def test_root_project_change_propagates_to_descendants(self) -> None:
+        """Changing a root project updates every descendant's project."""
+        stage = self._stage("stage_pendiente_development")
+        root = self._task(stage_id=stage.id)
+        descendants = self.env["project.task"]
+        parent = root
+        for level in range(2, 5):
+            child = self._task(parent_id=parent.id, stage_id=stage.id)
+            descendants |= child
+            parent = child
+        other = self.env["project.project"].create({
+            "name": "New hierarchy project",
+            "privacy_visibility": "employees",
+            "user_id": self.users["pm"].id,
+        })
+        root.with_user(self.users["pm"]).write({"project_id": other.id})
+        for child in descendants:
+            self.assertEqual(child.project_id, other)
+            self.assertEqual(child.display_project_id, other)
+
     def test_development_allows_only_dev_and_leader(self) -> None:
         """Only the configured project roles may leave development."""
         for role, user in self.users.items():
@@ -122,11 +243,11 @@ class TestDevelopmentStagePermissions(TransactionCase):
                         self.assertEqual(task.stage_id, origin)
 
     def test_suspend_uses_current_assignees(self) -> None:
-        """Suspension accepts leaders or existing assignees, not new ones."""
+        """Suspension accepts leaders and non-functional current assignees."""
         destination = self._stage("stage_suspendida")
-        for role in ("pm", "technical_leader", "functional"):
+        for role in ("pm", "technical_leader", "developer"):
             task = self._task(user_ids=[
-                (6, 0, self.users["functional"].ids),
+                (6, 0, self.users["developer"].ids),
             ])
             task.with_user(self.users[role]).with_context(skip_event_check=True).write({
                 "stage_id": destination.id,
@@ -143,6 +264,31 @@ class TestDevelopmentStagePermissions(TransactionCase):
             with self.assertRaises(UserError):
                 task.with_user(self.users["scrum_master"]).write(vals)
         self.assertFalse(task.user_ids)
+
+    def test_backfill_preserves_stages_and_existing_projects(self) -> None:
+        """Upgrade fills missing projects without resetting task stages."""
+        root = self._task()
+        descendants = self.env["project.task"]
+        parent = root
+        for level in range(2, 5):
+            child = self._task(parent_id=parent.id)
+            descendants |= child
+            parent = child
+        descendants.flush()
+        self.cr.execute("""
+            UPDATE project_task
+               SET project_id = NULL, display_project_id = NULL
+             WHERE id IN %s
+        """, [tuple(descendants.ids)])
+        descendants.invalidate_cache(["project_id", "display_project_id"])
+        backfill_subtask_projects(self.env)
+        for task in descendants:
+            self.assertEqual(task.project_id, self.project)
+            self.assertEqual(task.display_project_id, self.project)
+            self.assertEqual(task.stage_id, self.origin)
+        backfill_subtask_projects(self.env)
+        self.assertEqual(root.project_id, self.project)
+        self.assertEqual(root.stage_id, self.origin)
 
     def test_reopen_ignores_origin_roles_and_sequence(self) -> None:
         """PM and leader may reopen even from a functional-only origin."""

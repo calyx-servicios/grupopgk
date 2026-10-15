@@ -290,6 +290,63 @@ class TestTaskEventsAndTriage(TransactionCase):
         self.assertEqual(task.stage_id, self._stage("stage_desarrollo"))
         self.assertFalse(task.event_ids)
 
+    def test_assigned_functional_cannot_suspend(self) -> None:
+        """Assignment must not grant suspension to a functional user."""
+        functional = self.users["functional"]
+        task = self._task(
+            stage_id=self._stage("stage_desarrollo").id,
+            user_ids=[(6, 0, functional.ids)],
+        )
+        self.assertIn(functional, task.user_ids)
+        self.assertFalse(task.with_user(functional).can_suspend_task)
+        with self.assertRaises(UserError):
+            task.with_user(functional).action_open_suspend_wizard()
+        wizard = self.env["project.task.event.wizard"].with_user(
+            functional
+        ).create({
+            "task_id": task.id,
+            "event_type": "suspended",
+            "suspension_reason_id": self.reason_technical.id,
+        })
+        with self.assertRaises(UserError), self.cr.savepoint():
+            wizard.action_confirm()
+        with self.assertRaises(UserError):
+            task.with_user(functional).with_context(
+                skip_event_check=True,
+            ).write({"stage_id": self._stage("stage_suspendida").id})
+        self.assertEqual(task.stage_id, self._stage("stage_desarrollo"))
+        self.assertFalse(task.event_ids)
+
+    def test_suspension_priority_for_leaders_and_assignees(self) -> None:
+        """Keep PM/leader priority and ordinary developer responsibility."""
+        self.project.workflow_functional_ids = [
+            (4, self.users["pm"].id),
+            (4, self.users["technical_leader"].id),
+        ]
+        for role in ("pm", "technical_leader", "developer"):
+            task = self._task(
+                stage_id=self._stage("stage_desarrollo").id,
+            )
+            user = self.users[role]
+            self.assertTrue(task.with_user(user).can_suspend_task)
+            task.with_user(user).action_open_suspend_wizard()
+            wizard = self.env["project.task.event.wizard"].with_user(
+                user
+            ).create({
+                "task_id": task.id,
+                "event_type": "suspended",
+                "suspension_reason_id": self.reason_technical.id,
+            })
+            wizard.action_confirm()
+            self.assertEqual(task.stage_id, self._stage("stage_suspendida"))
+
+    def test_functional_and_developer_assignee_stays_blocked(self) -> None:
+        """Adding Dev does not undo the functional-assignee exclusion."""
+        self.project.workflow_developer_ids = [
+            (4, self.users["functional"].id),
+        ]
+        self.test_assigned_functional_cannot_suspend()
+
     def test_suspend_wizard_other_requires_detail(self):
         """Selecting 'Otro' requires detail."""
         task = self._task(stage_id=self._stage("stage_desarrollo").id)

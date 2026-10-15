@@ -7,6 +7,35 @@ from .models.project_task_type import (
 )
 
 
+def backfill_subtask_projects(env: Environment) -> None:
+    """Fill missing actual/visible projects without moving existing tasks."""
+    env["project.task"].flush(["parent_id", "project_id", "display_project_id"])
+    env.cr.execute("""
+        WITH RECURSIVE inherited_projects AS (
+            SELECT id, project_id
+              FROM project_task
+             WHERE parent_id IS NULL
+            UNION ALL
+            SELECT child.id, COALESCE(child.project_id, parent.project_id)
+              FROM project_task child
+              JOIN inherited_projects parent ON child.parent_id = parent.id
+        )
+        UPDATE project_task task
+           SET project_id = COALESCE(task.project_id, inherited.project_id),
+               display_project_id = COALESCE(
+                   task.display_project_id, inherited.project_id
+               )
+          FROM inherited_projects inherited
+         WHERE task.id = inherited.id
+           AND task.parent_id IS NOT NULL
+           AND inherited.project_id IS NOT NULL
+           AND (task.project_id IS NULL OR task.display_project_id IS NULL)
+    """)
+    env["project.task"].invalidate_cache([
+        "project_id", "display_project_id",
+    ])
+
+
 def initialize_development_permissions(env: Environment) -> None:
     """Seed policies once when upgrading from the version without roles."""
     for xmlid, roles in DEVELOPMENT_STAGE_ROLES.items():
