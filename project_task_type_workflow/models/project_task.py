@@ -1,4 +1,4 @@
-from typing import Any, Dict, Set
+from typing import Any, Dict, List, Set
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -85,7 +85,11 @@ class ProjectTask(models.Model):
             else:
                 task.last_testing_failed_event_id = False
 
-    @api.depends("stage_id", "task_type", "project_id", "user_ids")
+    @api.depends(
+        "stage_id", "task_type", "project_id", "user_ids",
+        "project_id.user_id", "project_id.technical_leader_id",
+        "project_id.workflow_functional_ids",
+    )
     @api.depends_context("uid")
     def _compute_can_event_actions(self):
         pruebas_stage = self._workflow_stage("stage_pruebas")
@@ -132,7 +136,11 @@ class ProjectTask(models.Model):
         """Open the wizard to suspend the task with a mandatory reason."""
         self.ensure_one()
         if not self._is_user_authorized_to_suspend():
-            raise UserError(_("Solo el PM, el Líder Técnico o un responsable actual pueden suspender la tarea."))
+            raise UserError(_(
+                "Solo el PM, el Líder Técnico o un responsable actual "
+                "sin rol Funcional pueden suspender la tarea. "
+                "Estar asignado no habilita al Funcional para suspender."
+            ))
         stage_desarrollo = self._workflow_stage("stage_desarrollo")
         if self.stage_id and stage_desarrollo and self.stage_id.sequence > stage_desarrollo.sequence:
             raise UserError(_(
@@ -152,22 +160,90 @@ class ProjectTask(models.Model):
         }
 
     def _is_user_authorized_to_suspend(self) -> bool:
-        """Allow suspension only to a project PM, leader, or task assignee."""
+        """Exclude functional assignees unless they are the project PM/leader."""
         self.ensure_one()
         roles = (
             self.project_id._get_user_workflow_roles()
             if self.project_id else set()
         )
         return bool(roles.intersection({"pm", "technical_leader"})) or (
-            self.env.user in self.user_ids
+            "functional" not in roles and self.env.user in self.user_ids
         )
 
     @api.onchange("project_id", "task_type")
     def _onchange_task_type_stage_domain(self):
         """Offer only stages enabled for the selected task type in the UI."""
+        if not self._origin.id:
+            pending = self._get_pendiente_stage(self.task_type)
+            if pending:
+                self.stage_id = pending
         domain = [("project_ids", "=", self.project_id.id)] if self.project_id else []
         domain += [("task_type_scope", "=", self.task_type)]
         return {"domain": {"stage_id": domain}}
+
+    @api.onchange("parent_id")
+    def _onchange_parent_workflow_project(self) -> None:
+        """Show the parent's project in both native subtask project fields."""
+        if self.parent_id:
+            self.project_id = self.parent_id.project_id
+            self.display_project_id = self.parent_id.project_id
+
+    @api.model
+    def _prepare_parent_project_values(
+        self, values: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Keep the actual and visible project aligned with the parent."""
+        prepared = dict(values)
+        parent = self.browse(prepared.get("parent_id")).exists()
+        if parent:
+            prepared.update({
+                "project_id": parent.project_id.id,
+                "display_project_id": parent.project_id.id,
+            })
+        return prepared
+
+    @api.model
+    def default_get(self, fields_list: List[str]) -> Dict[str, Any]:
+        """Default new classified tasks to their canonical pending stage."""
+        values = super().default_get(fields_list)
+        parent = self.browse(values.get(
+            "parent_id", self.env.context.get("default_parent_id"),
+        )).exists()
+        if parent:
+            for field_name in ("project_id", "display_project_id"):
+                if field_name in fields_list:
+                    values[field_name] = parent.project_id.id
+        task_type = values.get(
+            "task_type", self.env.context.get("default_task_type"),
+        )
+        if "stage_id" in fields_list:
+            pending = self._get_pendiente_stage(task_type)
+            if pending:
+                values["stage_id"] = pending.id
+        return values
+
+    @api.model_create_multi
+    def create(self, vals_list: List[Dict[str, Any]]) -> models.Model:
+        """Apply type-specific defaults also to RPC and batch creation."""
+        prepared = []
+        for vals in vals_list:
+            values = dict(vals)
+            parent_id = values.get(
+                "parent_id", self.env.context.get("default_parent_id"),
+            )
+            if parent_id:
+                values["parent_id"] = parent_id
+                values = self._prepare_parent_project_values(values)
+            task_type = values.get(
+                "task_type",
+                self.env.context.get("default_task_type", "unclassified"),
+            )
+            if "stage_id" not in values:
+                pending = self._get_pendiente_stage(task_type)
+                if pending:
+                    values["stage_id"] = pending.id
+            prepared.append(values)
+        return super().create(prepared)
 
     @api.depends("task_type", "project_id.user_id", "project_id.technical_leader_id")
     def _compute_max_responsible_id(self):
@@ -286,16 +362,18 @@ class ProjectTask(models.Model):
                     "en estados hasta «Desarrollo» inclusive (no disponible desde "
                     "Deploy a Staging en adelante)."
                 ))
+            if not self._is_user_authorized_to_suspend():
+                raise UserError(_(
+                    "Solo el PM, el Líder Técnico o un responsable "
+                    "actual sin rol Funcional pueden suspender la tarea "
+                    "«%s». Estar asignado no habilita al Funcional "
+                    "para suspender."
+                ) % self.display_name)
             if not self.env.context.get("skip_event_check"):
                 raise UserError(_(
                     "Para suspender la tarea debe utilizar el botón «Suspender» "
                     "para indicar el motivo correspondiente."
                 ))
-            if not self._is_user_authorized_to_suspend():
-                raise UserError(_(
-                    "Solo el PM, el Líder Técnico o un responsable "
-                    "actual pueden suspender la tarea «%s»."
-                ) % self.display_name)
             return
         if destination == self._get_pendiente_stage("development"):
             if not roles.intersection(leaders):
@@ -388,9 +466,23 @@ class ProjectTask(models.Model):
 
     def write(self, vals: Dict[str, Any]) -> bool:
         """Enforce development permissions and preserve functional reopening."""
+        if "parent_id" in vals:
+            vals = self._prepare_parent_project_values(vals)
         self._check_development_workflow(vals)
         self._check_reopen_to_pendiente(vals)
-        return super().write(vals)
+        result = super().write(vals)
+        if "project_id" in vals:
+            for task in self:
+                children = task.with_context(active_test=False).child_ids
+                inherited = children.filtered(
+                    lambda child: (
+                        child.project_id != task.project_id
+                        or child.display_project_id != task.project_id
+                    )
+                )
+                if inherited:
+                    inherited.write({"parent_id": task.id})
+        return result
 
     @api.constrains("task_type", "stage_id")
     def _check_stage_matches_task_type(self):
