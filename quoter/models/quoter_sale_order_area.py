@@ -250,11 +250,6 @@ class QuoterSaleOrderArea(models.Model):
         string="Puede editar descuento/recargo",
         readonly=True,
     )
-    quoter_is_first_auditoria = fields.Boolean(
-        related="order_id.quoter_is_first_quotation",
-        string="¿Es primera auditoría?",
-        readonly=False,
-    )
     global_discount_amount = fields.Float(
         string="Descuento % (área)",
         default=0.0,
@@ -795,14 +790,8 @@ class QuoterSaleOrderArea(models.Model):
             else:
                 rec.complexity_level_change_allowed = not rec.complexity_level_frozen
 
-    def _quoter_highest_complexity_level(self):
-        self.ensure_one()
-        if not self.area_id:
-            return self.env["quoter.complexity.level"]
-        return self.area_id.complexity_level_ids.sorted(key=lambda lev: lev.id, reverse=True)[:1]
-
     def _quoter_auto_assign_complexity_level(self):
-        """Asigna nivel automático (único nivel del área o primera auditoría)."""
+        """Asigna nivel automático (único nivel del área)."""
         for rec in self:
             if not rec.area_id:
                 continue
@@ -825,16 +814,6 @@ class QuoterSaleOrderArea(models.Model):
             levels = rec.area_id.complexity_level_ids
             if len(levels) == 1 and not rec.complexity_level_id:
                 rec.complexity_level_id = levels[0]
-            elif (
-                len(levels) > 1
-                and not rec.complexity_level_id
-                and rec.area_id.is_auditoria_area
-                and rec.order_id
-                and rec.order_id.quoter_is_first_quotation
-            ):
-                level = rec._quoter_highest_complexity_level()
-                if level:
-                    rec.complexity_level_id = level
 
     def _quoter_try_autoload_default_products(self):
         """Carga predeterminados si hay nivel y el bloque aún no tiene productos."""
@@ -857,33 +836,6 @@ class QuoterSaleOrderArea(models.Model):
             if not has_products:
                 rec.action_quoter_load_default_products()
 
-    @api.onchange("quoter_is_first_auditoria")
-    def _onchange_quoter_is_first_auditoria(self):
-        for rec in self:
-            if not rec.area_id or not rec.area_id.is_auditoria_area:
-                continue
-            if rec.quoter_is_first_auditoria:
-                level = rec._quoter_highest_complexity_level()
-                if level:
-                    rec.complexity_level_id = level
-
-    def _quoter_apply_first_auditoria_effect(self):
-        """Primera auditoría: riesgo más alto; predeterminados si el bloque está vacío."""
-        for rec in self:
-            if not rec.area_id or not rec.area_id.is_auditoria_area:
-                continue
-            if not rec.order_id or not rec.order_id.is_quotation:
-                continue
-            if rec.order_id.quoter_is_first_quotation:
-                level = rec._quoter_highest_complexity_level()
-                if level and rec.complexity_level_id != level:
-                    rec.write({"complexity_level_id": level.id})
-            else:
-                rec._quoter_auto_assign_complexity_level()
-            rec._quoter_try_autoload_default_products()
-            if rec.complexity_level_id:
-                rec._quoter_recalc_all_block_products_for_level()
-
     def _quoter_complexity_level_label(self):
         self.ensure_one()
         if self.area_id.is_auditoria_area:
@@ -896,6 +848,9 @@ class QuoterSaleOrderArea(models.Model):
     _QUOTER_CHATTER_FIELDS = {
         "complexity_level_id": None,  # etiqueta dinámica en _quoter_log_block_changes
         "branch_id": _("Rama"),
+        "labor_agreement_ids": _("Convenios colectivos"),
+        "prev_year_revenue": _("Facturación año anterior"),
+        "industry_id": _("Industria"),
         "manager_id": _("Gerente Responsable"),
         "global_discount_amount": _("Descuento %"),
         "global_surcharge_amount": _("Recargo %"),
@@ -1050,20 +1005,13 @@ class QuoterSaleOrderArea(models.Model):
                                 ),
                             )
                         )
-        first_auditoria_flag = None
-        if "quoter_is_first_auditoria" in vals:
-            first_auditoria_flag = bool(vals.pop("quoter_is_first_auditoria"))
-            for rec in self:
-                if rec.order_id:
-                    rec.order_id.with_context(
-                        quoter_skip_first_quotation_risk_levels=True
-                    ).write({"quoter_is_first_quotation": first_auditoria_flag})
         if "complexity_level_id" in vals:
             for rec in self:
                 if (
                     rec.complexity_level_frozen
                     and not rec.area_id.allow_change_complexity_level
                     and not rec.area_id.is_auditoria_area
+                    and not self.env.context.get("quoter_derived_complexity_level")
                 ):
                     raise ValidationError(
                         _("El nivel del área no puede modificarse una vez guardado en la cotización.")
@@ -1118,10 +1066,6 @@ class QuoterSaleOrderArea(models.Model):
                 removed_lines_for_chatter = self.env["sale.order.line"].browse(
                     list(unlink_line_ids)
                 ).exists()
-        if first_auditoria_flag is not None:
-            # El efecto de primera auditoría recrea/sincroniza líneas en servidor;
-            # los comandos (1, id, vals) del form embebido suelen quedar obsoletos.
-            other_line_ops = []
         if other_line_ops and len(self) == 1:
             other_line_ops = self._quoter_drop_missing_line_commands(
                 self._quoter_sanitize_line_command_list(other_line_ops)
@@ -1160,11 +1104,7 @@ class QuoterSaleOrderArea(models.Model):
             for rec in self:
                 if rec.order_id and rec.order_id.is_quotation:
                     rec.order_id._quoter_sync_area_discount_total_line()
-        if (
-            "complexity_level_id" in vals
-            and line_cmds is None
-            and first_auditoria_flag is None
-        ):
+        if "complexity_level_id" in vals and line_cmds is None:
             changed_blocks = self.filtered(
                 lambda b: b.complexity_level_id
                 and b.order_id
@@ -1193,11 +1133,6 @@ class QuoterSaleOrderArea(models.Model):
                     and not rec.area_id.is_auditoria_area
                 ):
                     rec.complexity_level_frozen = True
-        if first_auditoria_flag is True:
-            self._quoter_apply_first_auditoria_effect()
-        elif first_auditoria_flag is False:
-            self._quoter_auto_assign_complexity_level()
-            self._quoter_try_autoload_default_products()
         if "area_id" in vals:
             self.filtered("area_is_regular_manual")._quoter_apply_area_configured_complexity_level()
         if "chain_employee_count" in vals or "complexity_level_id" in vals:
@@ -1343,14 +1278,6 @@ class QuoterSaleOrderArea(models.Model):
             if rec.order_id and rec.order_id.is_quotation:
                 rec.order_id._quoter_sync_area_discount_total_line()
             rec._quoter_auto_assign_complexity_level()
-            if (
-                rec.order_id
-                and rec.order_id.quoter_is_first_quotation
-                and rec.area_id.is_auditoria_area
-            ):
-                level = rec._quoter_highest_complexity_level()
-                if level:
-                    rec.complexity_level_id = level
             if (
                 rec.complexity_level_id
                 and rec.order_id

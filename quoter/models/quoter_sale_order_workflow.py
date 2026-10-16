@@ -173,6 +173,8 @@ class SaleOrderQuoterWorkflow(models.Model):
             "quoter_confirm_bypass_workflow_lock"
         ) and self._quoter_user_is_cotizador_profile():
             return
+        if self._quoter_workflow_derived_recompute_allowed():
+            return
         if self.env.context.get("quoter_workflow_transition"):
             if not self._quoter_workflow_only_transition_vals(vals):
                 raise AccessError(
@@ -282,7 +284,22 @@ class SaleOrderQuoterWorkflow(models.Model):
 
     def _quoter_workflow_can_edit_content(self):
         self.ensure_one()
-        return self.quoter_workflow_can_edit_content
+        return (
+            self.quoter_workflow_can_edit_content
+            or self._quoter_workflow_derived_recompute_allowed()
+        )
+
+    def _quoter_workflow_derived_recompute_allowed(self):
+        """Recálculo del nivel por cambio de configuración (botón del área).
+
+        Lo ejecuta un administrador del cotizador aunque no tenga perfil Cotizador,
+        y solo sobre cotizaciones que todavía están en preparación.
+        """
+        self.ensure_one()
+        return bool(
+            self.env.context.get("quoter_recompute_derived_levels")
+            and (self.quoter_workflow_state or "en_preparacion") == "en_preparacion"
+        )
 
     def _quoter_workflow_transition(self, new_state, rejection_reason=None, chatter_body=None):
         self.ensure_one()

@@ -130,7 +130,7 @@ class SaleOrderQuoterReport(models.Model):
                     cells.append(block.branch_id.display_name)
                 else:
                     cells.append(QUOTER_REPORT_EMPTY)
-            rows.append({"label": _("Tipo de empresa"), "cells": cells})
+            rows.append({"label": _("Industria"), "cells": cells})
         return {"areas": areas, "rows": rows}
 
     def _quoter_report_strategic_questions(self):

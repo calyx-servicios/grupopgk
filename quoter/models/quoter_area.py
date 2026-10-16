@@ -2,6 +2,7 @@
 
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tools.float_utils import float_round
 
 
 class QuoterProfessionalArea(models.Model):
@@ -183,6 +184,13 @@ class QuoterProfessionalArea(models.Model):
         help="Tabla resultado (salida): si una hora calculada o ingresada queda por debajo "
         "de este valor, se eleva a este mínimo (p. ej. 0,9 con mínimo 1 → 1). "
         "0 = sin ajuste automático.",
+    )
+    output_hours_rounding = fields.Float(
+        string="Redondear horas a múltiplos de",
+        default=0.0,
+        help="Tabla resultado (salida): redondea cada hora calculada al múltiplo más "
+        "cercano (p. ej. 0,5 → 37,25 queda 37,5). Se aplica antes del mínimo. "
+        "0 = sin redondeo.",
     )
     formula_test_volume = fields.Float(
         string="Volumen de prueba (vista fórmula)",
@@ -443,7 +451,12 @@ class QuoterProfessionalArea(models.Model):
                 )
 
     def _apply_output_hours_minimum(self, hours):
+        """Ajuste final de una hora de salida: redondeo del área y luego mínimo."""
         self.ensure_one()
+        if self.output_hours_rounding > 0.0:
+            hours = float_round(
+                float(hours or 0.0), precision_rounding=self.output_hours_rounding
+            )
         return self.env["quoter.hours.policy"].apply_output_hours_minimum(
             hours, self.output_hours_minimum
         )
