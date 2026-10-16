@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Bajo / Medio / Alto compartidos por TAX y PayRoll: aptos para convenio.
+         En bases existentes se vinculan a los niveles creados desde la UI (pre-migración 15.0.6.9.0). -->
+    <record id="quoter_complexity_level_low" model="quoter.complexity.level">
+        <field name="name">Bajo</field>
+        <field name="sequence">10</field>
+        <field name="labor_agreement_ok" eval="True"/>
+    </record>
+    <record id="quoter_complexity_level_medium" model="quoter.complexity.level">
+        <field name="name">Medio</field>
+        <field name="sequence">20</field>
+        <field name="labor_agreement_ok" eval="True"/>
+    </record>
+    <record id="quoter_complexity_level_high" model="quoter.complexity.level">
+        <field name="name">Alto</field>
+        <field name="sequence">30</field>
+        <field name="labor_agreement_ok" eval="True"/>
+    </record>
+
+    <!-- Auditoría: nivel de riesgo por tamaño de empresa, propios del área (no aptos para convenio). -->
+    <record id="quoter_complexity_level_audit_low" model="quoter.complexity.level">
+        <field name="name">Bajo</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="quoter_complexity_level_audit_medium" model="quoter.complexity.level">
+        <field name="name">Medio</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="quoter_complexity_level_audit_high" model="quoter.complexity.level">
+        <field name="name">Alto</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="quoter_complexity_level_audit_very_high" model="quoter.complexity.level">
+        <field name="name">Muy alto</field>
+        <field name="sequence">40</field>
+    </record>
+</odoo>

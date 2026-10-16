@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Sales",
-    "version": "15.0.6.6.26",
+    "version": "15.0.6.9.0",
     "development_status": "Beta",
     "application": True,
     "installable": True,
@@ -33,6 +33,12 @@
         "data/quoter_product_category_data.xml",
         "data/sequence_data.xml",
         "data/quoter_branch_data.xml",
+        # Configuración de la complejidad automática (noupdate). La que depende de áreas
+        # creadas desde la UI está en data/quoter_area_complexity_data.xml y la carga la
+        # migración 15.0.6.9.0.
+        "data/quoter_complexity_level_data.xml",
+        "data/quoter_industry_data.xml",
+        "data/quoter_labor_agreement_data.xml",
         "data/pricelist_data.xml",
         "data/quoter_product_attribute.xml",
         "views/quoter_generic_product_wizard_views.xml",
@@ -49,6 +55,7 @@
         "views/quoter_menu.xml",
         "views/quoter_settings_views.xml",
         "views/quoter_formula_views.xml",
+        "views/quoter_complexity_source_views.xml",
     ],
     "assets": {
         "web.assets_backend": [
