@@ -225,6 +225,8 @@
                                 <field name="show_block_complexity_level" invisible="1"/>
                                 <field name="show_block_chain_complexity_level" invisible="1"/>
                                 <field name="area_use_branching" invisible="1"/>
+                                <field name="area_complexity_source" invisible="1"/>
+                                <field name="company_size_inputs_required" invisible="1"/>
                                 <field name="area_is_tax" invisible="1"/>
                                 <field name="area_is_auditoria" invisible="1"/>
                                 <field name="area_is_formula" invisible="1"/>
@@ -252,8 +254,18 @@
                                                domain="[('id', 'in', manager_selectable_user_ids), ('share', '=', False), ('active', '=', True)]"
                                                options="{'no_create': True, 'no_open': True}"
                                                attrs="{'readonly': [('block_editable', '=', False)], 'required': [('manager_required', '=', True)]}"/>
-                                        <field name="quoter_is_first_auditoria"
-                                               attrs="{'invisible': [('area_is_auditoria', '=', False)]}"/>
+                                        <field name="labor_agreement_ids"
+                                               widget="many2many_tags"
+                                               options="{'no_create': True, 'no_open': True}"
+                                               attrs="{'invisible': [('area_complexity_source', '!=', 'labor_agreement')], 'readonly': [('block_editable', '=', False)]}"/>
+                                        <field name="prev_year_revenue"
+                                               attrs="{'invisible': [('area_complexity_source', '!=', 'company_size')], 'readonly': [('block_editable', '=', False)], 'required': [('company_size_inputs_required', '=', True)]}"/>
+                                        <field name="industry_id"
+                                               options="{'no_create': True, 'no_open': True}"
+                                               attrs="{'invisible': [('area_complexity_source', '!=', 'company_size')], 'readonly': [('block_editable', '=', False)], 'required': [('company_size_inputs_required', '=', True)]}"/>
+                                        <field name="company_size"
+                                               readonly="1"
+                                               attrs="{'invisible': [('area_complexity_source', '!=', 'company_size')]}"/>
                                         <field name="chain_employee_count"
                                                class="o_quoter_block_chain_employees"
                                                string="Cantidad de empleados"
@@ -263,18 +275,18 @@
                                                string="Nivel del área"
                                                domain="[('id', 'in', area_chain_level_ids)]"
                                                options="{'no_create': True, 'no_open': True}"
-                                               attrs="{'invisible': ['|', ('area_is_formula_chain', '=', False), ('show_block_chain_complexity_level', '=', False)], 'readonly': [('complexity_level_change_allowed', '=', False)]}"/>
+                                               attrs="{'invisible': ['|', ('area_is_formula_chain', '=', False), ('show_block_chain_complexity_level', '=', False)], 'readonly': ['|', ('complexity_level_change_allowed', '=', False), ('area_complexity_source', '!=', 'manual')]}"/>
                                         <field name="complexity_level_id"
                                                class="o_quoter_block_complexity_level"
                                                string="Nivel del área"
                                                domain="[('id', 'in', area_level_ids)]"
                                                options="{'no_create': True, 'no_open': True}"
-                                               attrs="{'invisible': ['|', '|', '|', ('area_is_formula', '=', True), ('area_is_formula_chain', '=', True), ('area_is_regular_manual', '=', True), ('show_block_complexity_level', '=', False)], 'readonly': ['|', ('area_is_regular_manual', '=', True), ('complexity_level_change_allowed', '=', False)]}"/>
+                                               attrs="{'invisible': ['|', '|', '|', ('area_is_formula', '=', True), ('area_is_formula_chain', '=', True), ('area_is_regular_manual', '=', True), ('show_block_complexity_level', '=', False)], 'readonly': ['|', '|', ('area_is_regular_manual', '=', True), ('complexity_level_change_allowed', '=', False), ('area_complexity_source', '!=', 'manual')]}"/>
                                         <field name="branch_id"
                                                string="Rama"
                                                options="{'no_create': True}"
                                                domain="[('id', 'in', area_branch_ids)]"
-                                               attrs="{'readonly': [('block_editable', '=', False)], 'invisible': ['|', ('area_use_branching', '=', False), ('complexity_level_id', '=', False)]}"/>
+                                               attrs="{'readonly': [('block_editable', '=', False)], 'invisible': ['|', '|', ('area_use_branching', '=', False), ('complexity_level_id', '=', False), ('area_complexity_source', '=', 'company_size')]}"/>
                                         <field name="global_discount_amount"
                                                string="Descuento %"
                                                attrs="{'readonly': ['|', ('block_editable', '=', False), ('quoter_user_is_assigned_partner', '=', False)], 'invisible': [('area_is_formula_chain', '=', True)]}"/>
@@ -284,12 +296,16 @@
                                     </group>
                                 </group>
                                 <div class="alert alert-info" role="alert"
-                                     attrs="{'invisible': ['|', '|', '|', '|', ('area_is_formula', '=', True), ('area_is_formula_chain', '=', True), ('area_is_regular_manual', '=', True), ('complexity_level_id', '!=', False), ('area_is_tax', '=', True)]}">
+                                     attrs="{'invisible': ['|', '|', '|', '|', '|', ('area_is_formula', '=', True), ('area_is_formula_chain', '=', True), ('area_is_regular_manual', '=', True), ('complexity_level_id', '!=', False), ('area_is_tax', '=', True), ('area_complexity_source', '=', 'company_size')]}">
                                     Seleccione el nivel del área y guarde el bloque para habilitar productos y líneas.
                                 </div>
                                 <div class="alert alert-info" role="alert"
-                                     attrs="{'invisible': ['|', '|', '|', ('area_is_formula', '=', True), ('area_is_formula_chain', '=', True), ('complexity_level_id', '!=', False), ('area_is_tax', '=', False)]}">
+                                     attrs="{'invisible': ['|', '|', '|', '|', ('area_is_formula', '=', True), ('area_is_formula_chain', '=', True), ('complexity_level_id', '!=', False), ('area_is_tax', '=', False), ('area_complexity_source', '=', 'company_size')]}">
                                     Seleccione el nivel de complejidad y guarde el bloque para habilitar productos y líneas.
+                                </div>
+                                <div class="alert alert-info" role="alert"
+                                     attrs="{'invisible': ['|', '|', '|', ('area_is_formula', '=', True), ('area_is_formula_chain', '=', True), ('complexity_level_id', '!=', False), ('area_complexity_source', '!=', 'company_size')]}">
+                                    Complete la facturación del año anterior y la industria, y guarde el bloque para habilitar productos y líneas.
                                 </div>
                                 <field name="order_line_ids"
                                        context="{'default_quoter_tab_area_id': area_id, 'default_quoter_block_id': id, 'default_order_id': order_id}"
