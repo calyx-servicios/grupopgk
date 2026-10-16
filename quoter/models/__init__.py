@@ -6,6 +6,7 @@ from . import quoter_complexity_level
 from . import quoter_area_complexity_range
 from . import quoter_area_branch
 from . import quoter_area
+from . import quoter_complexity_source
 from . import quoter_formula_product_config
 from . import quoter_formula_product_config_param
 from . import quoter_formula_product_config_range
@@ -33,6 +34,7 @@ from . import quoter_bulk_add_lines_wizard
 from . import quoter_generic_product_wizard
 from . import sale_order_line_range_hour
 from . import quoter_sale_order_area
+from . import quoter_sale_order_area_complexity
 from . import res_config_settings
 # from . import quoter_service_config
 # from . import quoter_service_product_line

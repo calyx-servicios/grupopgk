@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Convenios colectivos (Payroll) -->
+    <record id="view_quoter_labor_agreement_tree" model="ir.ui.view">
+        <field name="name">quoter.labor.agreement.tree</field>
+        <field name="model">quoter.labor.agreement</field>
+        <field name="arch" type="xml">
+            <tree string="Convenios colectivos" editable="bottom">
+                <field name="name"/>
+                <field name="complexity_level_id" options="{'no_create': True}"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_quoter_labor_agreement_search" model="ir.ui.view">
+        <field name="name">quoter.labor.agreement.search</field>
+        <field name="model">quoter.labor.agreement</field>
+        <field name="arch" type="xml">
+            <search string="Convenios colectivos">
+                <field name="name"/>
+                <field name="complexity_level_id"/>
+                <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Nivel de complejidad" name="group_by_level"
+                            context="{'group_by': 'complexity_level_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_quoter_labor_agreement" model="ir.actions.act_window">
+        <field name="name">Convenios colectivos</field>
+        <field name="res_model">quoter.labor.agreement</field>
+        <field name="view_mode">tree</field>
+        <field name="search_view_id" ref="view_quoter_labor_agreement_search"/>
+    </record>
+
+    <!-- Industrias y topes SICYPYME -->
+    <record id="view_quoter_industry_tree" model="ir.ui.view">
+        <field name="name">quoter.industry.tree</field>
+        <field name="model">quoter.industry</field>
+        <field name="arch" type="xml">
+            <tree string="Industrias">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_quoter_industry_form" model="ir.ui.view">
+        <field name="name">quoter.industry.form</field>
+        <field name="model">quoter.industry</field>
+        <field name="arch" type="xml">
+            <form string="Industria">
+                <sheet>
+                    <widget name="web_ribbon" title="Archivado" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
+                    <group>
+                        <field name="name"/>
+                        <field name="active" invisible="1"/>
+                    </group>
+                    <group string="Topes de facturación (ARS)">
+                        <field name="threshold_ids" nolabel="1" colspan="2">
+                            <tree editable="bottom">
+                                <field name="date_from"/>
+                                <field name="resolution"/>
+                                <field name="micro_max"/>
+                                <field name="small_max"/>
+                                <field name="medium_max"/>
+                            </tree>
+                        </field>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quoter_industry" model="ir.actions.act_window">
+        <field name="name">Industrias</field>
+        <field name="res_model">quoter.industry</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_quoter_sicypyme_threshold_tree" model="ir.ui.view">
+        <field name="name">quoter.sicypyme.threshold.tree</field>
+        <field name="model">quoter.sicypyme.threshold</field>
+        <field name="arch" type="xml">
+            <tree string="Topes SICYPYME" editable="bottom">
+                <field name="date_from"/>
+                <field name="industry_id" options="{'no_create': True}"/>
+                <field name="resolution"/>
+                <field name="micro_max"/>
+                <field name="small_max"/>
+                <field name="medium_max"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_quoter_sicypyme_threshold_search" model="ir.ui.view">
+        <field name="name">quoter.sicypyme.threshold.search</field>
+        <field name="model">quoter.sicypyme.threshold</field>
+        <field name="arch" type="xml">
+            <search string="Topes SICYPYME">
+                <field name="industry_id"/>
+                <field name="resolution"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Vigencia" name="group_by_date_from"
+                            context="{'group_by': 'date_from:year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_quoter_sicypyme_threshold" model="ir.actions.act_window">
+        <field name="name">Topes SICYPYME</field>
+        <field name="res_model">quoter.sicypyme.threshold</field>
+        <field name="view_mode">tree</field>
+        <field name="search_view_id" ref="view_quoter_sicypyme_threshold_search"/>
+    </record>
+
+    <!-- Área: cómo se determina el nivel -->
+    <record id="view_quoter_professional_area_form_complexity_source" model="ir.ui.view">
+        <field name="name">quoter.professional.area.form.complexity.source</field>
+        <field name="model">quoter.professional.area</field>
+        <field name="inherit_id" ref="view_quoter_professional_area_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='area_tab_table_rules']/group[1]" position="after">
+                <group string="Determinación del nivel de complejidad" colspan="2">
+                    <field name="complexity_source"
+                           widget="radio"
+                           attrs="{'readonly': [('quoter_config_edit_mode', '=', False)]}"/>
+                    <div class="alert alert-warning mb-0" role="alert" colspan="2"
+                         attrs="{'invisible': [('complexity_source', '!=', 'company_size')]}">
+                        El nivel define las horas que se cotizan: si dos tamaños comparten
+                        nivel, cotizan las mismas horas. Los cambios aplican a las cotizaciones
+                        nuevas; use «Recalcular cotizaciones en borrador» para las que están
+                        en preparación.
+                    </div>
+                    <field name="size_level_ids"
+                           nolabel="1"
+                           colspan="2"
+                           context="{'default_area_id': active_id}"
+                           attrs="{'invisible': [('complexity_source', '!=', 'company_size')], 'readonly': [('quoter_config_edit_mode', '=', False)]}">
+                        <tree editable="bottom">
+                            <field name="area_id" invisible="1"/>
+                            <field name="area_level_ids" invisible="1"/>
+                            <field name="company_size"/>
+                            <field name="complexity_level_id"
+                                   domain="[('id', 'in', area_level_ids)]"
+                                   options="{'no_create': True}"/>
+                        </tree>
+                    </field>
+                    <button name="action_quoter_recompute_draft_levels"
+                            type="object"
+                            string="Recalcular cotizaciones en borrador"
+                            icon="fa-refresh"
+                            class="btn-secondary"
+                            groups="quoter.group_quoter_admin"
+                            attrs="{'invisible': [('complexity_source', '=', 'manual')]}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Riesgo / complejidad por tamaño de empresa (acceso directo a la tabla de cada área) -->
+    <record id="view_quoter_area_size_level_tree" model="ir.ui.view">
+        <field name="name">quoter.area.size.level.tree</field>
+        <field name="model">quoter.area.size.level</field>
+        <field name="arch" type="xml">
+            <tree string="Riesgo por tamaño de empresa" editable="bottom" create="0" delete="0">
+                <header>
+                    <button name="action_quoter_recompute_draft_levels"
+                            type="object"
+                            string="Recalcular cotizaciones en borrador"
+                            groups="quoter.group_quoter_admin"/>
+                </header>
+                <field name="area_id" readonly="1"/>
+                <field name="area_level_ids" invisible="1"/>
+                <field name="company_size" readonly="1"/>
+                <field name="complexity_level_id"
+                       domain="[('id', 'in', area_level_ids)]"
+                       options="{'no_create': True, 'no_open': True}"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_quoter_area_size_level" model="ir.actions.act_window">
+        <field name="name">Riesgo por tamaño de empresa</field>
+        <field name="res_model">quoter.area.size.level</field>
+        <field name="view_mode">tree</field>
+        <field name="domain">[('area_id.complexity_source', '=', 'company_size')]</field>
+        <field name="context">{'group_by': 'area_id'}</field>
+        <field name="help" type="html">
+            <p>
+                Nivel de riesgo o complejidad por tamaño de empresa en cada área que calcula
+                el nivel con facturación e industria. El nivel define las horas: si dos tamaños
+                comparten nivel, cotizan las mismas horas. Para aplicar un cambio a las
+                cotizaciones en preparación, seleccione las filas del área y use «Recalcular
+                cotizaciones en borrador».
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_quoter_area_size_level"
+              name="Riesgo por tamaño de empresa"
+              parent="menu_quoter_configuration"
+              action="action_quoter_area_size_level"
+              sequence="14"
+              groups="quoter.group_quoter_admin"/>
+
+    <menuitem id="menu_quoter_labor_agreement"
+              name="Convenios colectivos"
+              parent="menu_quoter_configuration"
+              action="action_quoter_labor_agreement"
+              sequence="11"
+              groups="quoter.group_quoter_admin"/>
+
+    <menuitem id="menu_quoter_industry"
+              name="Industrias"
+              parent="menu_quoter_configuration"
+              action="action_quoter_industry"
+              sequence="12"
+              groups="quoter.group_quoter_admin"/>
+
+    <menuitem id="menu_quoter_sicypyme_threshold"
+              name="Topes SICYPYME"
+              parent="menu_quoter_configuration"
+              action="action_quoter_sicypyme_threshold"
+              sequence="13"
+              groups="quoter.group_quoter_admin"/>
+</odoo>
