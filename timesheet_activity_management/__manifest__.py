@@ -4,7 +4,7 @@
     "author": "Calyx Servicios S.A.",
     "license": "AGPL-3",
     "category": "Timesheets",
-    "version": "15.0.1.0.0",
+    "version": "15.0.1.0.1",
     "application": False,
     "installable": True,
     "post_init_hook": "post_init_hook",

@@ -19,6 +19,20 @@
             </xpath>
         </field>
     </record>
+    <record id="view_task_form2_activity_management" model="ir.ui.view">
+        <field name="name">project.task.form.activity.management</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="hr_timesheet.view_task_form2_inherited"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='timesheet_ids']/tree/field[@name='name']"
+                   position="before">
+                <field name="activity_date" required="1"/>
+                <field name="hour_type_id" required="1"
+                       domain="[('active', '=', True)]"
+                       options="{'no_create': True, 'no_create_edit': True}"/>
+            </xpath>
+        </field>
+    </record>
     <record id="view_hr_timesheet_line_tree_activity_management" model="ir.ui.view">
         <field name="name">account.analytic.line.tree.activity.management</field>
         <field name="model">account.analytic.line</field>
