@@ -1,5 +1,6 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, ValidationError
+from odoo.tools import format_datetime
 
 from .project_task import (
     UAT_OPERATION, UAT_RESULTS, uat_accessible_task_ids, uat_task_access_domain,
@@ -27,6 +28,17 @@ class ProjectTaskEvent(models.Model):
 
     def _search_uat_task_access(self, operator, value):
         return uat_task_access_domain(self.env, operator, value)
+
+    def name_get(self):
+        uat_events = self.filtered(lambda e: e.event_type == "uat" and e.uat_result)
+        names = dict(super(ProjectTaskEvent, self - uat_events).name_get())
+        results = dict(UAT_RESULTS)
+        for event in uat_events:
+            names[event.id] = "%s UAT · %s" % (
+                results[event.uat_result],
+                format_datetime(self.env, event.date, dt_format="dd/MM/yyyy HH:mm"),
+            )
+        return [(event.id, names[event.id]) for event in self]
 
     @api.model_create_multi
     def create(self, vals_list):
