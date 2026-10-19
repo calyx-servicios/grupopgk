@@ -33,12 +33,10 @@
         "data/quoter_product_category_data.xml",
         "data/sequence_data.xml",
         "data/quoter_branch_data.xml",
-        # Configuración de la complejidad automática (noupdate). La que depende de áreas
-        # creadas desde la UI está en data/quoter_area_complexity_data.xml y la carga la
-        # migración 15.0.6.9.0.
-        "data/quoter_complexity_level_data.xml",
+        # Industrias, topes SICYPYME y ramas por industria (noupdate). El resto de la
+        # configuración de la complejidad automática se carga desde la UI en cada base:
+        # ver docs/complejidad_automatica/README.md.
         "data/quoter_industry_data.xml",
-        "data/quoter_labor_agreement_data.xml",
         "data/pricelist_data.xml",
         "data/quoter_product_attribute.xml",
         "views/quoter_generic_product_wizard_views.xml",

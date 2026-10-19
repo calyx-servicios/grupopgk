@@ -259,3 +259,47 @@ class TestQuoterComplexitySource(TransactionCase):
         )
         unused.labor_agreement_ok = False
         self.assertFalse(unused.labor_agreement_ok)
+
+    def test_replace_branches_reassigns_active_branch(self):
+        # Como desde el formulario: la rama activa no se edita, solo la lista de ramas.
+        services_branch = self.env.ref("quoter.quoter_area_branch_industry_services")
+        commerce_branch = self.env.ref("quoter.quoter_area_branch_industry_commerce")
+        mining_branch = self.env.ref("quoter.quoter_area_branch_industry_mining")
+        area = self.env["quoter.professional.area"].create(
+            {
+                "name": "Test ramas",
+                "hour_matrix_mode": "regular",
+                "branch_ids": [(6, 0, (services_branch | commerce_branch).ids)],
+                "matrix_branch_id": services_branch.id,
+            }
+        )
+        area.write({"branch_ids": [(6, 0, mining_branch.ids)]})
+        self.assertEqual(area.matrix_branch_id, mining_branch)
+        with self.assertRaises(ValidationError):
+            area.write({"matrix_branch_id": services_branch.id})
+
+    def test_replace_branches_skips_quotations_out_of_preparation(self):
+        services_branch = self.env.ref("quoter.quoter_area_branch_industry_services")
+        mining_branch = self.env.ref("quoter.quoter_area_branch_industry_mining")
+        area = self.env["quoter.professional.area"].create(
+            {
+                "name": "Test ramas cotizaciones",
+                "hour_matrix_mode": "regular",
+                "branch_ids": [(6, 0, services_branch.ids)],
+                "matrix_branch_id": services_branch.id,
+            }
+        )
+        draft = self._create_block(area)
+        approved = self._create_block(area)
+        approved.order_id.with_context(quoter_workflow_transition=True).write(
+            {"quoter_workflow_state": "aprobado_cliente"}
+        )
+        # Sin perfil Cotizador (administrador del cotizador) y con una cotización aprobada.
+        with patch.object(
+            type(self.env["sale.order"]),
+            "_quoter_user_is_cotizador_profile",
+            return_value=False,
+        ):
+            area.write({"branch_ids": [(6, 0, mining_branch.ids)]})
+        self.assertEqual(draft.branch_id, mining_branch)
+        self.assertEqual(approved.branch_id, services_branch)

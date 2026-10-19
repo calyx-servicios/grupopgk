@@ -512,6 +512,8 @@ class QuoterProfessionalArea(models.Model):
 
     @api.constrains("matrix_branch_id", "branch_ids")
     def _check_matrix_branch_in_area(self):
+        if self.env.context.get("quoter_defer_matrix_branch_check"):
+            return
         for rec in self:
             if rec.matrix_branch_id and rec.matrix_branch_id not in rec._effective_branch_ids():
                 raise ValidationError(
@@ -729,7 +731,19 @@ class QuoterProfessionalArea(models.Model):
                     area.matrix_branch_id = area._resolve_matrix_branch()
                 elif not area.matrix_branch_id and branches:
                     area.matrix_branch_id = area._resolve_matrix_branch()
-        res = super().write(vals)
+        # La rama activa no está en el formulario: si el usuario quita esa rama, se valida
+        # después de reasignarla a una de las ramas nuevas.
+        defer_matrix_branch = "branch_ids" in vals and "matrix_branch_id" not in vals
+        write_recs = (
+            self.with_context(quoter_defer_matrix_branch_check=True)
+            if defer_matrix_branch
+            else self
+        )
+        res = super(QuoterProfessionalArea, write_recs).write(vals)
+        if defer_matrix_branch:
+            for area in self:
+                if area.matrix_branch_id not in area._effective_branch_ids():
+                    area.matrix_branch_id = area._resolve_matrix_branch()
         for rec in self:
             before = snapshots[rec.id]
             after = {f: rec[f] for f in policy_fields}
@@ -765,9 +779,19 @@ class QuoterProfessionalArea(models.Model):
         if "branch_ids" in vals:
             for area in self:
                 area.line_ids._sync_product_level_ranges()
-            orders = self.env["sale.order"].search([("quoter_area_ids", "in", self.ids)])
+            # Solo cotizaciones en preparación: las que avanzaron en el workflow conservan su
+            # rama y sus horas (y el workflow no deja modificarlas).
+            orders = self.env["sale.order"].search(
+                [
+                    ("quoter_area_ids", "in", self.ids),
+                    ("is_quotation", "=", True),
+                    ("quoter_workflow_state", "=", "en_preparacion"),
+                ]
+            )
             if orders:
-                orders._quoter_align_block_branches_with_area()
+                orders.with_context(
+                    quoter_recompute_derived_levels=True
+                )._quoter_align_block_branches_with_area()
         if resort_lines_by_separator:
             blocks = self.env["quoter.sale.order.area"].search(
                 [
