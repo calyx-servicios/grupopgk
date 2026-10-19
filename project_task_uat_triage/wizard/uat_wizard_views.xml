@@ -25,7 +25,7 @@
             <form string="Validar UAT">
                 <group>
                     <field name="task_id"/>
-                    <field name="result" widget="radio"/>
+                    <field name="result" widget="radio" required="1"/>
                     <field name="description" placeholder="Describa el reporte o la aclaración acordada con el cliente."/>
                     <field name="attachment_ids" widget="many2many_binary"/>
                 </group>

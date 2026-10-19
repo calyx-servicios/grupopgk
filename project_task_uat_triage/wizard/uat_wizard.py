@@ -11,7 +11,7 @@ class ProjectTaskUatWizard(models.TransientModel):
     _description = "Validación de UAT Cliente no exitosa"
 
     task_id = fields.Many2one("project.task", required=True, readonly=True)
-    result = fields.Selection(UAT_RESULTS, string="Resultado", required=True)
+    result = fields.Selection(UAT_RESULTS, string="Resultado")
     description = fields.Text(string="Descripción / aclaración", required=True)
     attachment_ids = fields.Many2many("ir.attachment", string="Adjuntos")
     task_version = fields.Integer(readonly=True)
@@ -22,6 +22,7 @@ class ProjectTaskUatWizard(models.TransientModel):
         for vals in vals_list:
             if {"task_version", "event_id"}.intersection(vals):
                 raise AccessError(_("El estado del asistente lo determina el servidor."))
+            vals.setdefault("task_id", self.env.context.get("default_task_id"))
             task = self.env["project.task"].browse(vals.get("task_id"))
             task.check_access_rights("read")
             task.check_access_rule("read")

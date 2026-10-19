@@ -2,7 +2,7 @@
     "name": "Project - Triage UAT Cliente",
     "summary": "Bug, Mejora y Malentendido con trazabilidad y presupuesto independiente",
     "description": "Triage de UAT Cliente con historial, retrabajo interno y doble aprobación de mejoras.",
-    "version": "15.0.1.0.0",
+    "version": "15.0.1.0.1",
     "author": "Calyx Servicios S.A.",
     "license": "AGPL-3",
     "category": "Project",
