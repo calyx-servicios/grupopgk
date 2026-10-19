@@ -115,6 +115,12 @@ class ProjectTask(models.Model):
     def _uat_capability(self):
         return self.env.context.get("_uat_operation") is UAT_OPERATION
 
+    def _uat_in_bug_rework(self):
+        self.ensure_one()
+        return bool(self.uat_bug_event_id) and self.stage_id.get_timesheet_stage_type() in (
+            "development", "deploy", "functional_test",
+        )
+
     def _uat_estimate(self):
         self.ensure_one()
         return {

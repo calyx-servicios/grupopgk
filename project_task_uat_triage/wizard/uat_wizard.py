@@ -192,6 +192,7 @@ class ProjectTaskUatClientWizard(models.TransientModel):
         for vals in vals_list:
             if "proposal_key" in vals:
                 raise AccessError(_("La revisión la determina el servidor."))
+            vals.setdefault("task_id", self.env.context.get("default_task_id"))
             task = self.env["project.task"].browse(vals.get("task_id"))
             task.check_access_rule("read")
             vals["proposal_key"] = task._uat_proposal_key()

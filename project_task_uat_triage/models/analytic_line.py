@@ -48,9 +48,7 @@ class AccountAnalyticLine(models.Model):
                 vals["uat_budget_line_id"] = task.uat_sale_line_id.id
                 if vals.get("so_line") not in (None, False, task.uat_sale_line_id.id):
                     raise UserError(_("La Mejora solo puede usar su contrato dedicado."))
-            if task and task.uat_bug_event_id and task.stage_id.get_timesheet_stage_type() in (
-                "development", "deploy", "functional_test",
-            ):
+            if task and task._uat_in_bug_rework():
                 if vals.get("so_line"):
                     raise UserError(_("El retrabajo Bug UAT no puede facturarse."))
                 vals["uat_rework_event_id"] = task.uat_bug_event_id.id
@@ -131,7 +129,9 @@ class AccountAnalyticLine(models.Model):
 
     def _timesheet_determine_sale_line(self):
         self.ensure_one()
-        if self.uat_rework_event_id:
+        if self.uat_rework_event_id or (
+            not self._origin and self.task_id and self.task_id._uat_in_bug_rework()
+        ):
             return self.env["sale.order.line"]
         if self.task_id.uat_origin_id:
             return self.task_id.uat_sale_line_id
