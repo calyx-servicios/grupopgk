@@ -250,6 +250,25 @@ class QuoterAreaSizeLevel(models.Model):
                     }
                 )
 
+    # Un área que ya calcula por tamaño no puede quedarse sin alguno de sus 4 tamaños. Si el
+    # cambio viene del formulario del área, lo valida el área al terminar de guardar (puede
+    # borrar una fila y crear otra en el mismo guardado).
+    def write(self, vals):
+        areas = self.mapped("area_id")
+        res = super().write(vals)
+        if {"area_id", "company_size"} & set(vals) and not self.env.context.get(
+            "quoter_size_levels_from_area"
+        ):
+            (areas | self.mapped("area_id"))._check_size_levels_complete()
+        return res
+
+    def unlink(self):
+        areas = self.mapped("area_id")
+        res = super().unlink()
+        if not self.env.context.get("quoter_size_levels_from_area"):
+            areas.exists()._check_size_levels_complete()
+        return res
+
     def action_quoter_recompute_draft_levels(self):
         return self.mapped("area_id").action_quoter_recompute_draft_levels()
 
@@ -274,6 +293,11 @@ class QuoterProfessionalAreaComplexitySource(models.Model):
         inverse_name="area_id",
         string="Nivel por tamaño de empresa",
     )
+
+    def write(self, vals):
+        if "size_level_ids" in vals:
+            self = self.with_context(quoter_size_levels_from_area=True)
+        return super(QuoterProfessionalAreaComplexitySource, self).write(vals)
 
     def _quoter_ordered_complexity_levels(self):
         """Niveles del área de menor a mayor complejidad (secuencia del nivel)."""

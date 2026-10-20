@@ -6,7 +6,8 @@
 #      3 productos creados) y dejar abierto el editor de tabla del área.
 #   2. Ajustes → Técnico → Acciones de servidor → Crear:
 #        Nombre: "Cotizador: cargar horas AE de Auditoría"
-#        Modelo: Área profesional (quoter.professional.area)
+#        Modelo: Acción de servidor (ir.actions.server); con otro modelo Odoo 15 no
+#                muestra el botón "Ejecutar". El código no usa el registro, solo env.
 #        Acción a realizar: Ejecutar código Python
 #      y pegar este archivo completo en "Código Python".
 #   3. Guardar y usar el botón "Ejecutar".
