@@ -303,3 +303,37 @@ class TestQuoterComplexitySource(TransactionCase):
             area.write({"branch_ids": [(6, 0, mining_branch.ids)]})
         self.assertEqual(draft.branch_id, mining_branch)
         self.assertEqual(approved.branch_id, services_branch)
+
+    def test_size_levels_created_before_choosing_company_size(self):
+        # Desde el menú: primero las 4 filas, después «Tamaño de empresa» en el área.
+        area = self.env["quoter.professional.area"].create(
+            {
+                "name": "Test filas antes",
+                "hour_matrix_mode": "regular",
+                "complexity_level_ids": [(6, 0, (self.low | self.medium | self.high).ids)],
+            }
+        )
+        SizeLevel = self.env["quoter.area.size.level"]
+        rows = SizeLevel.create(
+            [
+                {"area_id": area.id, "company_size": size, "complexity_level_id": level.id}
+                for size, level in zip(
+                    ("micro", "small", "medium", "large"),
+                    (self.low, self.low, self.medium, self.high),
+                )
+            ]
+        )
+        area.complexity_source = "company_size"
+        # Ya calcula por tamaño: no se puede borrar una fila suelta.
+        with self.assertRaises(ValidationError):
+            rows[:1].unlink()
+        # Desde el formulario del área sí se puede reemplazar una fila en el mismo guardado.
+        area.write(
+            {
+                "size_level_ids": [
+                    (2, rows[0].id),
+                    (0, 0, {"company_size": "micro", "complexity_level_id": self.medium.id}),
+                ]
+            }
+        )
+        self.assertEqual(area._quoter_level_for_company_size("micro"), self.medium)

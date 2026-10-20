@@ -392,7 +392,14 @@ recuperan si se vuelve atrás.
   - `quoter.professional.area._check_size_levels_complete`: los 4 tamaños con nivel asignado.
   - `quoter.area.size.level._check_level_in_area`: el nivel tiene que ser uno de los del área.
 - Menú **Configuración → Riesgo por tamaño de empresa** (`action_quoter_area_size_level`): lista
-  editable agrupada por área, sin alta ni baja de filas, con el nivel filtrado a los niveles del área.
+  editable de todas las áreas. Permite crear filas (área y tamaño se eligen al crear y después
+  quedan fijos) y borrarlas, con el nivel filtrado a los niveles del área. En un área que ya
+  calcula por tamaño no se puede borrar ni mover una fila si la deja sin sus 4 tamaños; desde
+  el formulario del área sí se puede reemplazar una fila en el mismo guardado (lo valida el área
+  al final, contexto `quoter_size_levels_from_area`).
+  - La acción tiene `domain` y `context` explícitos (vacíos): versiones anteriores filtraban por
+    área configurada y agrupaban por área, y Odoo no resetea esos campos al quitarlos del XML.
+    Con la lista agrupada, Odoo oculta el botón "Crear".
 - Botón **"Recalcular cotizaciones en borrador"**:
   - En el encabezado de esa lista (aparece al seleccionar filas) y en el formulario del área,
     junto a la tabla.
@@ -527,33 +534,47 @@ Menú **Áreas profesionales** → PayRoll → **Abrir editor de tabla** → pes
 Guardar → **Cerrar editor de tabla**.
 
 ### Paso 4. TAX
-Áreas profesionales → TAX → **Abrir editor de tabla** → Reglas de tablas:
-- "Determinación del nivel de complejidad" = **Tamaño de empresa (facturación × industria)**.
-- En la tabla que aparece, agregar 4 filas (Tabla #4): Micro → Bajo, Pequeña → Bajo,
-  Mediana → Medio, Grande → Alto.
-- Guardar todo junto (el sistema exige los 4 tamaños) → **Cerrar editor de tabla**.
+1. Menú **Riesgo por tamaño de empresa** → **Crear** 4 filas para el área TAX (Tabla #4):
+   Micro → Bajo, Pequeña → Bajo, Mediana → Medio, Grande → Alto. Guardar.
+2. Áreas profesionales → TAX → **Abrir editor de tabla** → Reglas de tablas →
+   "Determinación del nivel de complejidad" = **Tamaño de empresa (facturación × industria)** →
+   Guardar → **Cerrar editor de tabla**. El sistema exige que el área tenga las 4 filas.
+
+Alternativa: hacerlo todo en el formulario del área (al elegir "Tamaño de empresa" aparece la
+tabla para cargar las 4 filas) y guardar todo junto.
 
 ### Paso 5. Auditoría
-1. **Niveles de complejidad → Crear** 4 niveles: **Bajo, Medio, Alto, Muy alto**, sin
-   "Apto para convenio", ordenados en ese orden.
+1. **Niveles de complejidad → Crear** 4 niveles: **Riesgo Bajo, Riesgo Medio, Riesgo Alto,
+   Riesgo Muy alto**, sin "Apto para convenio", ordenados en ese orden. Usar nombres distintos
+   de los de TAX/PayRoll: el selector de niveles del área muestra solo el nombre, y con dos
+   "Bajo" no se distingue cuál es cuál.
+   - Si la base ya tiene niveles propios de Auditoría (UAT tenía Riesgo Bajo/Medio/Alto),
+     reutilizarlos y crear solo los que falten. Desmarcarles "Apto para convenio" si lo tienen.
+     Revisar también si tienen excepciones de tabla B por nivel (en UAT: Socio 15 % en
+     Riesgo Medio y 20 % en Riesgo Alto); se aplican a los productos nuevos.
 2. Áreas profesionales → Auditoría → **Abrir editor de tabla**. Desmarcar
    **"Cerrado (en cotizaciones)"** y guardar: con el área cerrada no se pueden cambiar los niveles.
-3. **Archivar los productos actuales de Auditoría**: menú **Líneas de servicio** → filtrar el
-   área Auditoría → seleccionar todas → Acción → **Archivar**. Archivar también sus productos
-   (menú Productos). Hacerlo antes del paso siguiente, para que no se les generen horas.
+3. **Archivar los productos actuales de Auditoría**: en el formulario del área, botón
+   **Productos** (ícono de lista, arriba a la derecha) → seleccionar todas → Acción →
+   **Archivar** (el menú Líneas de servicio no permite filtrar por área). Archivar también sus
+   productos: menú **Productos** → vista lista → buscar "Auditoría" y elegir
+   "Búsqueda Área para: Auditoría" → seleccionar todos → Acción → **Archivar**. Hacerlo antes
+   del paso siguiente, para que no se les generen horas.
 4. Pestaña **Reglas de tablas**:
-   - "Niveles de complejidad": quitar Bajo/Medio/Alto de TAX/PayRoll y dejar los 4 del paso 5.1.
+   - "Niveles de complejidad": quitar los niveles de TAX/PayRoll (si los usa) y dejar los 4 del paso 5.1.
    - "Ramas": quitar Pyme y Gran y agregar las 7 industrias (Construcción, Servicios, Comercio,
      Industria, Agropecuario, Bancos y seguros, Minería). La rama activa se ajusta sola.
    - Guardar.
-5. En la misma pestaña:
-   - "Determinación del nivel de complejidad" = **Tamaño de empresa (facturación × industria)**,
-     con 4 filas: Micro → Bajo, Pequeña → Medio, Mediana → Alto, Grande → Muy alto (los niveles
-     del paso 5.1; el selector solo ofrece los niveles del área).
+5. Menú **Riesgo por tamaño de empresa** → **Crear** 4 filas para el área Auditoría:
+   Micro → Riesgo Bajo, Pequeña → Riesgo Medio, Mediana → Riesgo Alto, Grande → Riesgo Muy alto (los niveles del paso 5.1;
+   el selector solo ofrece los niveles del área, por eso va después del paso 4). Después, en
+   la pestaña **Reglas de tablas** del área:
+   - "Determinación del nivel de complejidad" = **Tamaño de empresa (facturación × industria)**.
    - "Horas resultado": **"Redondear el mínimo a" = 0** (la Tabla #3 tiene Socio = 0 h) y
      **"Redondear horas a múltiplos de" = 0,5**.
    - Guardar.
-6. (Control) Menú **Riesgo por tamaño de empresa**: deben verse TAX y Auditoría con 4 filas cada una.
+6. (Control) Menú **Riesgo por tamaño de empresa**: deben verse TAX y Auditoría con 4 filas cada una
+   y ninguna otra área.
 7. Pestaña **Productos** → agregar 3 líneas con estos nombres exactos (el script del paso 8 los
    busca por nombre) y la sección del cotizador que corresponda en UAT:
    - `Auditoría`
@@ -563,7 +584,8 @@ Guardar → **Cerrar editor de tabla**.
 8. **Horas AE** (84 valores, Tabla #3). Con el editor de tabla todavía abierto:
    - **Opción recomendada**: activar el modo desarrollador → Ajustes → Técnico → Acciones de
      servidor → Crear: Nombre "Cotizador: cargar horas AE de Auditoría", Modelo
-     "Área profesional", Acción "Ejecutar código Python", y pegar el contenido de
+     **"Acción de servidor"** (con otro modelo Odoo 15 no muestra el botón Ejecutar), Acción
+     "Ejecutar el código Python", y pegar el contenido de
      `accion_servidor_horas_ae_auditoria.py`. Guardar y **Ejecutar**. Debe avisar
      "Combinaciones cargadas: 84 (esperadas: 84)". Valida antes que el área, los niveles, las
      ramas y los productos estén bien configurados.
@@ -572,13 +594,27 @@ Guardar → **Cerrar editor de tabla**.
      MGR, Gerente y Socio se calculan solos (cascada 50 % / 30 % / 10 %).
 9. **Cerrar editor de tabla** y volver a marcar **"Cerrado (en cotizaciones)"**.
 
+Solo las áreas marcadas "Cerrado (en cotizaciones)" se pueden elegir en una cotización
+(en UAT, TAX no lo estaba).
+
+En el menú **Riesgo por tamaño de empresa** la lista es editable: mientras una fila está en
+edición el botón Crear no se ve; guardar cada fila (o Enter) antes de crear la siguiente.
+
 ### Paso 6. Verificación con una cotización de prueba
 | Área | Datos | Resultado esperado |
 |---|---|---|
 | PayRoll | Convenios Aceiteros + Actores | Nivel Medio |
 | PayRoll | + Bancarios (3 convenios) | Nivel Alto |
 | TAX | Servicios, facturación 30.000.000.000 | Grande / Alto |
-| Auditoría | Construcción, facturación 700.000.000, los 3 productos | Micro / Bajo; 200 h, 13 h y 20 h |
+| TAX | Producto "Confección DJ IIGG Anual" en ese bloque | 80 / 40 / 24 / 8 = 152 h |
+| Auditoría | Construcción, facturación 700.000.000, los 3 productos | Micro / Riesgo Bajo; 200 h, 13 h y 20 h |
+| Auditoría | Bancos y seguros, 30.000.000.000 | Grande / Riesgo Muy alto; 562,5 + 168 + 93,5 = 824 h |
+
+Probado el 2026-10-20 sobre una copia de UAT (dump `20260907-grupopgk_2026-10-20_18-07-12`):
+configuración completa por UI con Playwright siguiendo esta sección, la cotización de arriba
+y el botón "Recalcular cotizaciones en borrador" (Grande → Riesgo Alto y vuelta). Todo dio lo
+esperado; las horas resultado de Auditoría coinciden con stg celda por celda salvo Socio en
+Riesgo Medio/Alto, por las excepciones de tabla B propias de UAT (ver paso 5.1).
 
 ### Notas
 - Las cotizaciones que ya pasaron de "En preparación" no se modifican al configurar.
