@@ -62,6 +62,24 @@
                        attrs="{'invisible': [('is_quotation', '=', False)], 'readonly': [('is_quotation', '=', True)]}"/>
             </xpath>
 
+            <!-- Columna derecha de la cabecera. Grupo propio: en cotizaciones quoter_tab_labels.js
+                 oculta entero order_details (Tipo, PM del proyecto, Factura dividida). Únicos por
+                 cotización: los usan las áreas que calculan el nivel por tamaño de empresa. -->
+            <xpath expr="//group[@name='order_details']" position="before">
+                <group name="quoter_company_size_details"
+                       attrs="{'invisible': [('quoter_company_size_inputs_required', '=', False)]}">
+                    <field name="quoter_company_size_inputs_required" invisible="1"/>
+                    <field name="quoter_prev_year_revenue"
+                           attrs="{'invisible': [('quoter_company_size_inputs_required', '=', False)], 'required': [('quoter_company_size_inputs_required', '=', True)]}"/>
+                    <field name="quoter_industry_id"
+                           options="{'no_create': True, 'no_open': True}"
+                           attrs="{'invisible': [('quoter_company_size_inputs_required', '=', False)], 'required': [('quoter_company_size_inputs_required', '=', True)]}"/>
+                    <field name="quoter_company_size"
+                           readonly="1"
+                           attrs="{'invisible': [('quoter_company_size_inputs_required', '=', False)]}"/>
+                </group>
+            </xpath>
+
             <!-- Ocultar solo la fecha del encabezado derecho (order_details), no la de cabecera cotizador. -->
             <xpath expr="//group[@name='order_details']//label[@for='date_order']" position="attributes">
                 <attribute name="attrs">{'invisible': [('is_quotation', '=', True)]}</attribute>
@@ -226,7 +244,6 @@
                                 <field name="show_block_chain_complexity_level" invisible="1"/>
                                 <field name="area_use_branching" invisible="1"/>
                                 <field name="area_complexity_source" invisible="1"/>
-                                <field name="company_size_inputs_required" invisible="1"/>
                                 <field name="area_is_tax" invisible="1"/>
                                 <field name="area_is_auditoria" invisible="1"/>
                                 <field name="area_is_formula" invisible="1"/>
@@ -258,14 +275,6 @@
                                                widget="many2many_tags"
                                                options="{'no_create': True, 'no_open': True}"
                                                attrs="{'invisible': [('area_complexity_source', '!=', 'labor_agreement')], 'readonly': [('block_editable', '=', False)]}"/>
-                                        <field name="prev_year_revenue"
-                                               attrs="{'invisible': [('area_complexity_source', '!=', 'company_size')], 'readonly': [('block_editable', '=', False)], 'required': [('company_size_inputs_required', '=', True)]}"/>
-                                        <field name="industry_id"
-                                               options="{'no_create': True, 'no_open': True}"
-                                               attrs="{'invisible': [('area_complexity_source', '!=', 'company_size')], 'readonly': [('block_editable', '=', False)], 'required': [('company_size_inputs_required', '=', True)]}"/>
-                                        <field name="company_size"
-                                               readonly="1"
-                                               attrs="{'invisible': [('area_complexity_source', '!=', 'company_size')]}"/>
                                         <field name="chain_employee_count"
                                                class="o_quoter_block_chain_employees"
                                                string="Cantidad de empleados"
@@ -305,7 +314,7 @@
                                 </div>
                                 <div class="alert alert-info" role="alert"
                                      attrs="{'invisible': ['|', '|', '|', ('area_is_formula', '=', True), ('area_is_formula_chain', '=', True), ('complexity_level_id', '!=', False), ('area_complexity_source', '!=', 'company_size')]}">
-                                    Complete la facturación del año anterior y la industria, y guarde el bloque para habilitar productos y líneas.
+                                    Complete la facturación del año anterior y la industria en la cabecera de la cotización, y guarde para habilitar productos y líneas.
                                 </div>
                                 <field name="order_line_ids"
                                        context="{'default_quoter_tab_area_id': area_id, 'default_quoter_block_id': id, 'default_order_id': order_id}"

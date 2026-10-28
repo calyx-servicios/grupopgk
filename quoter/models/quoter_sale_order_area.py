@@ -849,8 +849,6 @@ class QuoterSaleOrderArea(models.Model):
         "complexity_level_id": None,  # etiqueta dinámica en _quoter_log_block_changes
         "branch_id": _("Rama"),
         "labor_agreement_ids": _("Convenios colectivos"),
-        "prev_year_revenue": _("Facturación año anterior"),
-        "industry_id": _("Industria"),
         "manager_id": _("Gerente Responsable"),
         "global_discount_amount": _("Descuento %"),
         "global_surcharge_amount": _("Recargo %"),

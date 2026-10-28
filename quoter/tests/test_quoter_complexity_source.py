@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 from odoo import fields
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import tagged
 from odoo.tests.common import TransactionCase
 
@@ -67,8 +67,15 @@ class TestQuoterComplexitySource(TransactionCase):
     def _payroll_level(self, agreements):
         return self.payroll_area._quoter_level_for_labor_agreements(agreements)
 
-    def _create_block(self, area):
-        order = self.env["sale.order"].create(
+    @staticmethod
+    def _set_size_inputs(block, industry_id, revenue):
+        # Facturación e industria son de la cotización, no del bloque.
+        block.order_id.write(
+            {"quoter_industry_id": industry_id, "quoter_prev_year_revenue": revenue}
+        )
+
+    def _create_order(self):
+        return self.env["sale.order"].create(
             {
                 "partner_id": self.partner.id,
                 "is_quotation": True,
@@ -79,6 +86,9 @@ class TestQuoterComplexitySource(TransactionCase):
                 "date_of_issue": fields.Date.today(),
             }
         )
+
+    def _create_block(self, area):
+        order = self._create_order()
         # Como en la UI: el bloque se crea al agregar el área a la cotización.
         order.write({"quoter_area_ids": [(4, area.id)]})
         return order.quoter_area_block_ids.filtered(lambda b: b.area_id == area)
@@ -133,10 +143,10 @@ class TestQuoterComplexitySource(TransactionCase):
     def test_block_tax_level_follows_company_size(self):
         block = self._create_block(self.tax_area)
         self.assertFalse(block.complexity_level_id)
-        block.write({"industry_id": self.services.id, "prev_year_revenue": 1000000000})
+        self._set_size_inputs(block, self.services.id, 1000000000)
         self.assertEqual(block.company_size, "small")
         self.assertEqual(block.complexity_level_id, self.low)
-        block.write({"prev_year_revenue": 30000000000})
+        block.order_id.write({"quoter_prev_year_revenue": 30000000000})
         self.assertEqual(block.company_size, "large")
         self.assertEqual(block.complexity_level_id, self.high)
 
@@ -147,7 +157,7 @@ class TestQuoterComplexitySource(TransactionCase):
 
     def test_block_frozen_level_rejects_manual_change(self):
         block = self._create_block(self.tax_area)
-        block.write({"industry_id": self.services.id, "prev_year_revenue": 1000000000})
+        self._set_size_inputs(block, self.services.id, 1000000000)
         with self.assertRaises(ValidationError):
             block.write({"complexity_level_id": self.high.id})
 
@@ -185,7 +195,7 @@ class TestQuoterComplexitySource(TransactionCase):
         # Micro pasa a riesgo medio: cotiza igual que Pequeña.
         area = self._create_audit_area(self.medium + self.medium + self.high + self.high)
         block = self._create_block(area)
-        block.write({"industry_id": self.services.id, "prev_year_revenue": 300000000})
+        self._set_size_inputs(block, self.services.id, 300000000)
         self.assertEqual(block.company_size, "micro")
         self.assertEqual(block.complexity_level_id, self.medium)
 
@@ -200,9 +210,9 @@ class TestQuoterComplexitySource(TransactionCase):
 
     def test_recompute_draft_levels(self):
         block = self._create_block(self.tax_area)
-        block.write({"industry_id": self.services.id, "prev_year_revenue": 300000000})
+        self._set_size_inputs(block, self.services.id, 300000000)
         in_approval = self._create_block(self.tax_area)
-        in_approval.write({"industry_id": self.services.id, "prev_year_revenue": 300000000})
+        self._set_size_inputs(in_approval, self.services.id, 300000000)
         in_approval.order_id.with_context(quoter_workflow_transition=True).write(
             {"quoter_workflow_state": "en_aprobacion"}
         )
@@ -220,17 +230,69 @@ class TestQuoterComplexitySource(TransactionCase):
         )
         area = self._create_audit_area(self.low | self.medium | self.high | very_high)
         block = self._create_block(area)
-        block.write({"industry_id": self.services.id, "prev_year_revenue": 30000000000})
+        self._set_size_inputs(block, self.services.id, 30000000000)
         self.assertEqual(block.complexity_level_id, very_high)
         self.assertEqual(block.branch_id, self.services.branch_id)
         commerce = self.env.ref("quoter.quoter_industry_commerce")
-        block.write({"industry_id": commerce.id})
+        block.order_id.write({"quoter_industry_id": commerce.id})
         self.assertEqual(block.branch_id, commerce.branch_id)
+        self.assertEqual(block.complexity_level_id, self.high)
+
+    def test_size_inputs_shared_by_order_areas(self):
+        very_high = self.env["quoter.complexity.level"].create(
+            {"name": "Test muy alto", "sequence": 140}
+        )
+        audit_area = self._create_audit_area(self.low | self.medium | self.high | very_high)
+        order = self._create_order()
+        order.write({"quoter_area_ids": [(6, 0, (self.tax_area | audit_area).ids)]})
+        tax_block = order.quoter_area_block_ids.filtered(lambda b: b.area_id == self.tax_area)
+        audit_block = order.quoter_area_block_ids.filtered(lambda b: b.area_id == audit_area)
+        order.write(
+            {"quoter_industry_id": self.services.id, "quoter_prev_year_revenue": 1000000000}
+        )
+        self.assertEqual(order.quoter_company_size, "small")
+        self.assertEqual(tax_block.company_size, "small")
+        self.assertEqual(audit_block.company_size, "small")
+        self.assertEqual(tax_block.complexity_level_id, self.low)
+        self.assertEqual(audit_block.complexity_level_id, self.medium)
+        self.assertEqual(audit_block.branch_id, self.services.branch_id)
+
+    def test_block_added_after_size_inputs_gets_level(self):
+        order = self._create_order()
+        order.write(
+            {"quoter_industry_id": self.services.id, "quoter_prev_year_revenue": 30000000000}
+        )
+        order.write({"quoter_area_ids": [(4, self.tax_area.id)]})
+        self.assertEqual(order.quoter_area_block_ids.complexity_level_id, self.high)
+
+    def test_size_inputs_required_only_with_company_size_area(self):
+        order = self._create_order()
+        order.write({"quoter_area_ids": [(4, self.payroll_area.id)]})
+        self.assertFalse(order.quoter_company_size_inputs_required)
+        # El bloque de Payroll ya existe y no tiene gerente: no es lo que se prueba acá.
+        order.with_context(quoter_skip_manager_required_check=True).write(
+            {"quoter_area_ids": [(4, self.tax_area.id)]}
+        )
+        self.assertTrue(order.quoter_company_size_inputs_required)
+        tax_block = order.quoter_area_block_ids.filtered(lambda b: b.area_id == self.tax_area)
+        tax_block.action_quoter_cancel_block()
+        self.assertFalse(order.quoter_company_size_inputs_required)
+
+    def test_size_inputs_locked_while_block_closed(self):
+        block = self._create_block(self.tax_area)
+        self._set_size_inputs(block, self.services.id, 300000000)
+        block.write({"state": "published"})
+        with self.assertRaisesRegex(UserError, "reabra antes los bloques"):
+            block.order_id.write({"quoter_prev_year_revenue": 30000000000})
+        # Sin cambio real de valor no hay nada que bloquear.
+        block.order_id.write({"quoter_industry_id": self.services.id})
+        block.action_quoter_reopen()
+        block.order_id.write({"quoter_prev_year_revenue": 30000000000})
         self.assertEqual(block.complexity_level_id, self.high)
 
     def test_recompute_draft_levels_without_cotizador_profile(self):
         block = self._create_block(self.tax_area)
-        block.write({"industry_id": self.services.id, "prev_year_revenue": 300000000})
+        self._set_size_inputs(block, self.services.id, 300000000)
         micro = self.tax_area.size_level_ids.filtered(lambda r: r.company_size == "micro")
         micro.complexity_level_id = self.medium
         # Administrador del cotizador sin perfil Cotizador.
