@@ -9,8 +9,10 @@ tener que volver a hacer el análisis.
 | Cliente | grupopgk (implementa Calyx) |
 | Módulo | `extra-addons/grupopgk/quoter` (no confundir con la copia vieja `extra-addons/quoter`) |
 | Rama git | `15.0_staging` |
-| Versión del módulo | `15.0.6.9.0` (antes `15.0.6.6.26`) |
-| Estado al 2026-10-16 | Desarrollo completo (incluye los cambios de las secciones 10 a 12), probado en `pgk-stg` por tests, shell y UI. **Sin commitear.** |
+| Versión del módulo | `15.0.6.10.0` (antes `15.0.6.6.26`) |
+| Estado al 2026-10-19 | Desarrollo completo (secciones 10 a 13), probado en `pgk-stg` por tests, shell y UI. **Sin commitear.** |
+| Cambio 2026-10-28 | Facturación e industria pasan del bloque a la cotización (sección 14) |
+| **Para configurar UAT / producción** | **Ver la sección 13: la configuración se carga a mano después de actualizar el módulo.** |
 | Excel de origen | `Nuevo Parametros AUD-PY.xlsx` (no está en el repo; las tablas están en los CSV de esta carpeta) |
 
 Archivos de esta carpeta:
@@ -21,6 +23,8 @@ Archivos de esta carpeta:
 | `tabla1_convenios_payroll.csv` | Tabla #1: 128 convenios colectivos y su complejidad base |
 | `tabla2_sicypyme_topes.csv` | Tabla #2: topes de facturación por industria (Res. SICYPYME 1/2026) |
 | `tabla3_horas_auditoria.csv` | Tabla #3: horas por rol de los 3 productos de Auditoría, con los valores del Excel y los que calcula el sistema |
+| `importar_convenios.csv` | Los 128 convenios listos para Configuración → Convenios colectivos → Importar |
+| `accion_servidor_horas_ae_auditoria.py` | Código para una acción de servidor que carga las 84 horas AE de Auditoría |
 
 ---
 
@@ -189,7 +193,7 @@ Cada área tiene un campo nuevo `complexity_source` ("Determinación del nivel")
 |---|---|---|
 | `manual` | BPO, Finanzas | Como antes, lo elige el usuario |
 | `labor_agreement` | PayRoll | Tabla #5 sobre los convenios del bloque |
-| `company_size` | TAX, Auditoría | Facturación + industria → tamaño (SICYPYME) → nivel (tabla `size_level_ids` del área) |
+| `company_size` | TAX, Auditoría | Facturación + industria de la cotización → tamaño (SICYPYME) → nivel (tabla `size_level_ids` del área) |
 
 En `company_size`, si el área usa ramas (Auditoría), la rama del bloque se completa con la
 rama vinculada a la industria (`quoter.industry.branch_id`).
@@ -207,15 +211,18 @@ rama vinculada a la industria (`quoter.industry.branch_id`).
   4 tamaños tienen que tener nivel, y el nivel tiene que ser uno de los del área.
 
 ### Bloque (`models/quoter_sale_order_area_complexity.py`)
-- Campos: `labor_agreement_ids`, `prev_year_revenue`, `industry_id`, `company_size` (compute
-  almacenado), `area_complexity_source` y `company_size_inputs_required`.
+- Campos del bloque: `labor_agreement_ids`, `area_complexity_source` y `company_size` (related
+  al de la cotización).
+- Campos de la cotización (sección 14): `quoter_prev_year_revenue`, `quoter_industry_id`,
+  `quoter_company_size` (compute almacenado) y `quoter_company_size_inputs_required`.
 - `_quoter_apply_derived_complexity_level()` escribe nivel y rama juntos con el contexto
   `quoter_derived_complexity_level=True` y devuelve los bloques cuyo nivel cambió. Se llama al
-  final de `create` y de `write` cuando cambian convenios, facturación, industria, área, nivel o
-  rama, y desde `sale.order.write` si cambia `date_order`. Solo actúa sobre cotizaciones con el
+  final de `create` y de `write` del bloque cuando cambian convenios, área, nivel o rama, y desde
+  `sale.order.write` si cambian la facturación, la industria o `date_order`. Solo actúa sobre cotizaciones con el
   bloque en borrador. **No** se dispara al cambiar la configuración: para eso está el botón de
   recálculo (sección 10).
-- Un onchange muestra el nivel calculado antes de guardar.
+- Un onchange muestra el nivel calculado por convenios antes de guardar. El tamaño de empresa
+  se ve en la cabecera al tipear; el nivel de los bloques se actualiza al guardar.
 - En `quoter_sale_order_area.py`, el chequeo de "nivel congelado" se saltea con ese contexto
   (Tax tiene `allow_change_complexity_level = False`).
 
@@ -226,46 +233,29 @@ rama vinculada a la industria (`quoter.industry.branch_id`).
   (campo, onchange, efectos en create/write, `_quoter_highest_complexity_level`).
 - `quoter_sale_order_report.py`: la fila del PDF "Tipo de empresa" ahora se llama "Industria".
 - Vistas:
-  - `sale_order_views.xml`: campos nuevos debajo del Gerente; nivel readonly si no es manual;
-    Rama oculta en `company_size`; aviso "Complete la facturación del año anterior y la industria…".
+  - `sale_order_views.xml`: convenios debajo del Gerente; facturación, industria y tamaño en la
+    columna derecha de la cabecera (sección 14); nivel readonly si no es manual; Rama oculta en
+    `company_size`; aviso "Complete la facturación del año anterior y la industria en la cabecera…".
   - `quoter_complexity_source_views.xml`: menús Configuración → Convenios colectivos, Industrias
     y Topes SICYPYME, más "Determinación del nivel" en el formulario del área.
   - `quoter_service_views.xml`: handle de secuencia en niveles; campo de redondeo en el área.
-- Datos (todos `noupdate="1"`, ver sección 12):
-  - `data/quoter_complexity_level_data.xml`: Bajo/Medio/Alto compartidos + 4 niveles de Auditoría.
-  - `data/quoter_industry_data.xml`: 7 ramas-industria, 7 industrias y topes 2026.
-  - `data/quoter_labor_agreement_data.xml`: 128 convenios.
-  - `data/quoter_area_complexity_data.xml`: mapeos tamaño → nivel y productos de Auditoría
-    (no está en el manifest; lo carga la migración).
+- Datos: solo `data/quoter_industry_data.xml` (`noupdate`): 7 ramas-industria, 7 industrias y
+  topes 2026. No depende de registros creados desde la UI. El resto de la configuración se
+  carga a mano en cada base (sección 13).
+- `quoter_area.py` (correcciones necesarias para configurar desde la UI, sección 13):
+  - Al cambiar las ramas sin indicar la rama activa (campo que no está en el formulario), la
+    rama activa se reasigna a una de las nuevas en lugar de fallar con "La rama activa debe
+    pertenecer a las ramas definidas en el área".
+  - Al cambiar las ramas, solo se realinea la rama de los bloques de cotizaciones
+    "En preparación"; antes intentaba modificar también las aprobadas y el workflow lo impedía.
 - Seguridad: lectura para vendedores y ABM para el gerente de ventas en los 4 modelos nuevos.
 
 ### Migraciones
-Una sola versión, **`migrations/15.0.6.9.0/`** (reemplaza a las de desarrollo 6.7.0, 6.8.0 y
-6.8.2, que solo corrieron en stg):
-- **`pre-migration.py`** (solo SQL): asigna xmlid a lo creado desde la UI para que los datos lo
-  reutilicen. Vincula las áreas TAX/Auditoría/PayRoll (por grupo), Bajo/Medio/Alto (los que usan
-  TAX o PayRoll), las secciones Default/Adicional (por nombre) y, si ya existían, convenios,
-  mapeos y productos de Auditoría. También marca Bajo/Medio/Alto como aptos para convenio y les
-  pone secuencia 10/20/30.
-- **`post-migration.py`** (idempotente):
-  1. Si Auditoría no está configurada: archiva los productos anteriores, abre el área
-     (`cerrado` y `quoter_config_edit_mode`) y le asigna los 4 niveles, las 7 ramas y
-     `matrix_branch_id`.
-  2. Carga `data/quoter_area_complexity_data.xml`.
-  3. TAX → `company_size`; Auditoría → `company_size`, mínimo 0 y redondeo 0,5;
-     PayRoll → `labor_agreement`. Solo si estaban en `manual`.
-  4. Carga las horas AE (`AE_HOURS`) solo en los productos de Auditoría que creó el paso 2.
-     No se puede usar "ya tiene horas" como criterio: al crearse, la matriz A queda en 1 h.
-  5. Valida, recalcula y vuelve a cerrar el área.
-
-  Corre con el contexto `quoter_workflow_transition=True` porque, al cambiar las ramas, el área
-  realinea los bloques de cotizaciones ya aprobadas.
-
-Gotchas de la migración de Auditoría (los tres aparecieron al probar):
-- El cambio de `branch_ids` y `matrix_branch_id` tiene que ir en el mismo `write` (si no, salta
-  "La rama activa debe pertenecer a las ramas definidas").
-- `quoter.service.line.separator_tag_id` es obligatorio.
-- Un área cerrada (`cerrado`) no deja cambiar `complexity_level_ids`.
+Solo `15.0.6.10.0` (sección 14), que copia facturación e industria del bloque a la cotización.
+Para el resto del requerimiento no hay migración: los campos nuevos tienen valores por defecto que dejan
+el cotizador funcionando como antes ("Determinación del nivel" = Manual en todas las áreas)
+hasta que se configure (sección 13). Durante el desarrollo hubo migraciones que configuraban
+todo automáticamente; se quitaron (sección 12).
 
 ### Configuración resultante en stg (área → valor)
 - TAX: `company_size`, mapeo de la Tabla #4.
@@ -284,9 +274,7 @@ Nuevos:
 - `models/quoter_complexity_source.py`
 - `models/quoter_sale_order_area_complexity.py`
 - `views/quoter_complexity_source_views.xml`
-- `data/quoter_complexity_level_data.xml`, `data/quoter_industry_data.xml`,
-  `data/quoter_labor_agreement_data.xml`, `data/quoter_area_complexity_data.xml`
-- `migrations/15.0.6.9.0/pre-migration.py` y `post-migration.py`
+- `data/quoter_industry_data.xml`
 - `tests/test_quoter_complexity_source.py`
 - `docs/complejidad_automatica/*` (esta carpeta)
 
@@ -370,9 +358,8 @@ abierto: no esperar `networkidle`, sino la ausencia de `.o_blockUI`.
    `_quoter_log_block_changes(tracked)` se llama después y compara el valor nuevo contra sí mismo.
    Viene del commit `e3dc310`. Arreglo propuesto: tomar los valores anteriores antes del `super().write`.
 4. Prueba funcional del cliente en stg.
-5. **Pase a producción** (confirmado: producción ya tiene `quoter` instalado): actualizar el
-   módulo a `15.0.6.9.0`; la migración configura todo sola. El camino se probó con una
-   simulación (sección 12).
+5. **Pase a UAT y producción**: actualizar el módulo a `15.0.6.9.0` y después hacer la
+   configuración manual de la sección 13 (producción ya tiene `quoter` instalado).
 
 ## 9. Notas para retomar
 
@@ -380,8 +367,8 @@ abierto: no esperar `networkidle`, sino la ausencia de `.o_blockUI`.
   "Recalcular cotizaciones en borrador" (ver sección 10).
 
 - Los niveles de Auditoría se llaman igual que los de Tax/Payroll (Bajo/Medio/Alto) pero son
-  registros distintos (xmlid `quoter.quoter_complexity_level_audit_*`). En la lista de niveles
-  aparecen nombres repetidos.
+  registros distintos. En la lista de niveles aparecen nombres repetidos; la columna "Áreas"
+  los distingue.
 - El diálogo JS "¿Desea modificar el nivel de riesgo?" (`quoter_area_block_embed.js`) solo se
   dispara con cambios manuales; con el campo en solo lectura ya no aparece.
 - Para cambiar topes en el futuro: agregar filas nuevas en Topes SICYPYME con la nueva fecha de
@@ -411,7 +398,14 @@ recuperan si se vuelve atrás.
   - `quoter.professional.area._check_size_levels_complete`: los 4 tamaños con nivel asignado.
   - `quoter.area.size.level._check_level_in_area`: el nivel tiene que ser uno de los del área.
 - Menú **Configuración → Riesgo por tamaño de empresa** (`action_quoter_area_size_level`): lista
-  editable agrupada por área, sin alta ni baja de filas, con el nivel filtrado a los niveles del área.
+  editable de todas las áreas. Permite crear filas (área y tamaño se eligen al crear y después
+  quedan fijos) y borrarlas, con el nivel filtrado a los niveles del área. En un área que ya
+  calcula por tamaño no se puede borrar ni mover una fila si la deja sin sus 4 tamaños; desde
+  el formulario del área sí se puede reemplazar una fila en el mismo guardado (lo valida el área
+  al final, contexto `quoter_size_levels_from_area`).
+  - La acción tiene `domain` y `context` explícitos (vacíos): versiones anteriores filtraban por
+    área configurada y agrupaban por área, y Odoo no resetea esos campos al quitarlos del XML.
+    Con la lista agrupada, Odoo oculta el botón "Crear".
 - Botón **"Recalcular cotizaciones en borrador"**:
   - En el encabezado de esa lista (aparece al seleccionar filas) y en el formulario del área,
     junto a la tabla.
@@ -458,8 +452,7 @@ ya usan los convenios.
 - Un nivel usado por convenios (incluidos los archivados) no puede dejar de ser apto.
 - Vistas: interruptor en la lista y casilla en el formulario de niveles; columna "Áreas" en la
   lista para distinguir los Bajo/Medio/Alto de TAX/PayRoll de los de Auditoría.
-- Datos: Bajo/Medio/Alto compartidos vienen marcados como aptos en
-  `data/quoter_complexity_level_data.xml`; en bases existentes los marca la pre-migración 6.9.0.
+- Se marca a mano en cada base (sección 13, paso 1).
 
 ### Estado en stg
 Aptos: Bajo, Medio y Alto de TAX/PayRoll (ids 2, 3 y 4; los usan los 128 convenios). No aptos:
@@ -478,54 +471,212 @@ Ver sección 12.
 
 ---
 
-## 12. Configuración como archivos de datos (2026-10-16, versión 15.0.6.9.0)
+## 12. Historia: intento de cargar la configuración automáticamente (2026-10-16 / 2026-10-19)
+
+Se probó dejar la configuración en archivos de datos `noupdate` (niveles, convenios, mapeos,
+productos de Auditoría) más una migración `15.0.6.9.0` que vinculaba por nombre o por grupo los
+registros creados desde la UI (áreas, niveles Bajo/Medio/Alto, secciones del cotizador).
+
+**En UAT falló**: `External ID not found in the system: quoter.quoter_line_separator_tag_default`
+al cargar los productos de Auditoría. La migración buscaba la sección "Default" por nombre y en
+UAT no existe con ese nombre (en stg era un dato de prueba). Como Odoo confirma la transacción
+de cada módulo después de su post-migración, la actualización se revirtió entera y UAT quedó en
+la versión anterior.
+
+**Decisión**: el módulo solo instala lo que no depende de registros creados desde la UI
+(industrias, topes, ramas-industria). Todo lo demás se configura a mano en cada base con la
+guía de la sección 13. Se quitaron los archivos de datos de niveles, convenios y configuración
+de áreas y la migración 6.9.0.
+
+**Prueba de la guía (2026-10-19)**: sobre una copia de stg llevada al estado de producción
+(sin convenios, industrias ni mapeos; áreas en Manual; Auditoría con sus productos viejos y
+ramas Pyme/Gran; módulo en 6.6.26) se actualizó el módulo y se hicieron los pasos de la
+sección 13. Resultado idéntico a stg: misma configuración de áreas, 128 convenios (42/50/36) y
+las 336 horas de Auditoría iguales celda por celda. Cotizaciones de prueba: PayRoll con 2 y 3
+convenios = Medio / Alto; TAX Servicios 30.000 M = Grande / Alto; Auditoría Construcción 700 M =
+Micro / Bajo con 200 + 13 + 20 h. La simulación encontró los dos errores de `quoter_area.py`
+descritos en la sección 5 (rama activa y realineación de cotizaciones aprobadas); ya están
+corregidos y tienen test.
+
+---
+
+## 13. Configuración manual en UAT / producción
+
+**Qué hay que pedir**: después de actualizar el módulo a `15.0.6.9.0`, alguien con los grupos
+**"Quoter - Administrador"** y **"Quoter - Gerente"** tiene que crear y configurar los registros
+de esta sección (son de cada base; el módulo no los crea). El módulo ya trae las 7 industrias,
+los topes SICYPYME 2026 y las 7 ramas-industria.
+
+Resumen de lo que se crea o modifica a mano:
+
+| Qué | Cantidad | Paso |
+|---|---|---|
+| Niveles Bajo / Medio / Alto de TAX y PayRoll: marcar "Apto para convenio" y ordenar | 3 (modificar) | 1 |
+| Convenios colectivos (importación) | 128 | 2 |
+| PayRoll: "Determinación del nivel" | 1 área (modificar) | 3 |
+| TAX: "Determinación del nivel" y riesgo por tamaño | 4 filas | 4 |
+| Niveles de riesgo de Auditoría | 4 (crear) | 5.1 |
+| Auditoría: productos viejos archivados, niveles, ramas, riesgo por tamaño, horas | 4 filas + configuración | 5.2 a 5.6 |
+| Productos de Auditoría | 3 (crear) | 5.7 |
+| Horas AE de Auditoría (acción de servidor) | 84 | 5.8 |
+
+Todos los menús están en **Cotizador → Configuración**.
+
+### Paso 1. Niveles Bajo / Medio / Alto (TAX y PayRoll)
+Menú **Niveles de complejidad**. Usar la columna "Áreas" para identificar los que usan TAX y PayRoll.
+- Activar **"Apto para convenio"** en Bajo, Medio y Alto.
+- Ordenarlos con la flecha de arrastre: **Bajo arriba de Medio arriba de Alto**. La regla de
+  convenios ("2 convenios = como mínimo Medio") usa ese orden.
+
+### Paso 2. Convenios colectivos
+Menú **Convenios colectivos** → Favoritos (estrella) → **Importar registros** → subir
+`importar_convenios.csv`. Las columnas se reconocen solas (Convenio, Nivel de complejidad).
+- Hacerlo **antes del paso 5.1**, para que al importar no haya niveles con nombres repetidos.
+- Control: 128 convenios (42 Bajo, 50 Medio, 36 Alto). "Refractarios" queda en Alto.
+
+### Paso 3. PayRoll
+Menú **Áreas profesionales** → PayRoll → **Abrir editor de tabla** → pestaña
+**Reglas de tablas** → "Determinación del nivel de complejidad" = **Convenios colectivos** →
+Guardar → **Cerrar editor de tabla**.
+
+### Paso 4. TAX
+1. Menú **Riesgo por tamaño de empresa** → **Crear** 4 filas para el área TAX (Tabla #4):
+   Micro → Bajo, Pequeña → Bajo, Mediana → Medio, Grande → Alto. Guardar.
+2. Áreas profesionales → TAX → **Abrir editor de tabla** → Reglas de tablas →
+   "Determinación del nivel de complejidad" = **Tamaño de empresa (facturación × industria)** →
+   Guardar → **Cerrar editor de tabla**. El sistema exige que el área tenga las 4 filas.
+
+Alternativa: hacerlo todo en el formulario del área (al elegir "Tamaño de empresa" aparece la
+tabla para cargar las 4 filas) y guardar todo junto.
+
+### Paso 5. Auditoría
+1. **Niveles de complejidad → Crear** 4 niveles: **Riesgo Bajo, Riesgo Medio, Riesgo Alto,
+   Riesgo Muy alto**, sin "Apto para convenio", ordenados en ese orden. Usar nombres distintos
+   de los de TAX/PayRoll: el selector de niveles del área muestra solo el nombre, y con dos
+   "Bajo" no se distingue cuál es cuál.
+   - Si la base ya tiene niveles propios de Auditoría (UAT tenía Riesgo Bajo/Medio/Alto),
+     reutilizarlos y crear solo los que falten. Desmarcarles "Apto para convenio" si lo tienen.
+     Revisar también si tienen excepciones de tabla B por nivel (en UAT: Socio 15 % en
+     Riesgo Medio y 20 % en Riesgo Alto); se aplican a los productos nuevos.
+2. Áreas profesionales → Auditoría → **Abrir editor de tabla**. Desmarcar
+   **"Cerrado (en cotizaciones)"** y guardar: con el área cerrada no se pueden cambiar los niveles.
+3. **Archivar los productos actuales de Auditoría**: en el formulario del área, botón
+   **Productos** (ícono de lista, arriba a la derecha) → seleccionar todas → Acción →
+   **Archivar** (el menú Líneas de servicio no permite filtrar por área). Archivar también sus
+   productos: menú **Productos** → vista lista → buscar "Auditoría" y elegir
+   "Búsqueda Área para: Auditoría" → seleccionar todos → Acción → **Archivar**. Hacerlo antes
+   del paso siguiente, para que no se les generen horas.
+4. Pestaña **Reglas de tablas**:
+   - "Niveles de complejidad": quitar los niveles de TAX/PayRoll (si los usa) y dejar los 4 del paso 5.1.
+   - "Ramas": quitar Pyme y Gran y agregar las 7 industrias (Construcción, Servicios, Comercio,
+     Industria, Agropecuario, Bancos y seguros, Minería). La rama activa se ajusta sola.
+   - Guardar.
+5. Menú **Riesgo por tamaño de empresa** → **Crear** 4 filas para el área Auditoría:
+   Micro → Riesgo Bajo, Pequeña → Riesgo Medio, Mediana → Riesgo Alto, Grande → Riesgo Muy alto (los niveles del paso 5.1;
+   el selector solo ofrece los niveles del área, por eso va después del paso 4). Después, en
+   la pestaña **Reglas de tablas** del área:
+   - "Determinación del nivel de complejidad" = **Tamaño de empresa (facturación × industria)**.
+   - "Horas resultado": **"Redondear el mínimo a" = 0** (la Tabla #3 tiene Socio = 0 h) y
+     **"Redondear horas a múltiplos de" = 0,5**.
+   - Guardar.
+6. (Control) Menú **Riesgo por tamaño de empresa**: deben verse TAX y Auditoría con 4 filas cada una
+   y ninguna otra área.
+7. Pestaña **Productos** → agregar 3 líneas con estos nombres exactos (el script del paso 8 los
+   busca por nombre) y la sección del cotizador que corresponda en UAT:
+   - `Auditoría`
+   - `Armado de balance en Excel y Word`
+   - `Cálculo de AXI contable`
+   Guardar. Cada producto queda con 28 filas de horas (4 niveles × 7 industrias).
+8. **Horas AE** (84 valores, Tabla #3). Con el editor de tabla todavía abierto:
+   - **Opción recomendada**: activar el modo desarrollador → Ajustes → Técnico → Acciones de
+     servidor → Crear: Nombre "Cotizador: cargar horas AE de Auditoría", Modelo
+     **"Acción de servidor"** (con otro modelo Odoo 15 no muestra el botón Ejecutar), Acción
+     "Ejecutar el código Python", y pegar el contenido de
+     `accion_servidor_horas_ae_auditoria.py`. Guardar y **Ejecutar**. Debe avisar
+     "Combinaciones cargadas: 84 (esperadas: 84)". Valida antes que el área, los niveles, las
+     ramas y los productos estén bien configurados.
+   - Alternativa manual: en cada producto, botón del reloj ("Horas por nivel") y cargar la hora
+     AE de cada nivel × industria según la columna `ae_cargado` de `tabla3_horas_auditoria.csv`.
+     MGR, Gerente y Socio se calculan solos (cascada 50 % / 30 % / 10 %).
+9. **Cerrar editor de tabla** y volver a marcar **"Cerrado (en cotizaciones)"**.
+
+Solo las áreas marcadas "Cerrado (en cotizaciones)" se pueden elegir en una cotización
+(en UAT, TAX no lo estaba).
+
+En el menú **Riesgo por tamaño de empresa** la lista es editable: mientras una fila está en
+edición el botón Crear no se ve; guardar cada fila (o Enter) antes de crear la siguiente.
+
+### Paso 6. Verificación con una cotización de prueba
+La facturación y la industria son únicas por cotización (sección 14): para las filas de TAX y
+Auditoría, cambiarlas en la cabecera (o usar una cotización por fila).
+
+| Área | Datos | Resultado esperado |
+|---|---|---|
+| PayRoll | Convenios Aceiteros + Actores | Nivel Medio |
+| PayRoll | + Bancarios (3 convenios) | Nivel Alto |
+| TAX | Servicios, facturación 30.000.000.000 | Grande / Alto |
+| TAX | Producto "Confección DJ IIGG Anual" en ese bloque | 80 / 40 / 24 / 8 = 152 h |
+| Auditoría | Construcción, facturación 700.000.000, los 3 productos | Micro / Riesgo Bajo; 200 h, 13 h y 20 h |
+| Auditoría | Bancos y seguros, 30.000.000.000 | Grande / Riesgo Muy alto; 562,5 + 168 + 93,5 = 824 h |
+
+Probado el 2026-10-20 sobre una copia de UAT (dump `20260907-grupopgk_2026-10-20_18-07-12`):
+configuración completa por UI con Playwright siguiendo esta sección, la cotización de arriba
+y el botón "Recalcular cotizaciones en borrador" (Grande → Riesgo Alto y vuelta). Todo dio lo
+esperado; las horas resultado de Auditoría coinciden con stg celda por celda salvo Socio en
+Riesgo Medio/Alto, por las excepciones de tabla B propias de UAT (ver paso 5.1).
+
+### Notas
+- Las cotizaciones que ya pasaron de "En preparación" no se modifican al configurar.
+- Los borradores en preparación toman el nivel nuevo cuando se edita la facturación o la
+  industria de la cotización, o los convenios del bloque, o con el botón "Recalcular cotizaciones en borrador"
+  (Riesgo por tamaño de empresa o formulario del área).
+
+---
+
+## 14. Cambio posterior: facturación e industria en la cotización (2026-10-28, versión 15.0.6.10.0)
 
 ### Pedido
-Dejar en archivos de datos `noupdate` todos los registros de configuración que necesita el
-requerimiento (convenios, niveles de riesgo, productos de Auditoría, etc.), en lugar de crearlos
-desde migraciones.
+La facturación del año anterior y la industria estaban en cada bloque de área, así que una
+cotización con TAX y Auditoría podía tener valores distintos en cada una, lo que es
+incorrecto. Ahora se cargan una sola vez, en la cabecera de la cotización, y las áreas que
+calculan el nivel por tamaño de empresa los toman de ahí.
 
-### Cómo quedó
-| Archivo (`noupdate="1"`) | Registros | Carga |
-|---|---|---|
-| `data/quoter_complexity_level_data.xml` | `quoter_complexity_level_{low,medium,high}` (compartidos, aptos para convenio) y `quoter_complexity_level_audit_{low,medium,high,very_high}` | Manifest |
-| `data/quoter_industry_data.xml` | `quoter_area_branch_industry_*` (7), `quoter_industry_*` (7), `quoter_sicypyme_2026_*` (7) | Manifest |
-| `data/quoter_labor_agreement_data.xml` | `quoter_labor_agreement_<slug del nombre>` (128) | Manifest |
-| `data/quoter_area_complexity_data.xml` | `quoter_area_size_level_{tax,auditoria}_{micro,small,medium,large}` (8) y `quoter_service_line_audit_{audit,balance,axi}` (3) | Post-migración 6.9.0 |
+### Implementación (`models/quoter_sale_order_area_complexity.py`)
+- `sale.order`: `quoter_prev_year_revenue` y `quoter_industry_id` (con seguimiento en el
+  chatter), `quoter_company_size` (compute almacenado, mismos topes y fecha que antes) y
+  `quoter_company_size_inputs_required`: alguna de las áreas de la cotización, con su bloque
+  no cancelado, tiene "Determinación del nivel" = Tamaño de empresa.
+- En la columna derecha de la cabecera: Facturación, Industria y Tamaño de empresa. Se ven y
+  son obligatorios solo con `quoter_company_size_inputs_required`, y quedan de solo lectura fuera
+  de "En preparación" o sin perfil Cotizador (igual que el resto de la cabecera).
+  Van en un grupo propio (`quoter_company_size_details`) antes de `order_details`, no dentro:
+  en cotizaciones `quoter_tab_labels.js` oculta entero `order_details` (al buscar «¿Factura
+  dividida?»), junto con Tipo y PM del proyecto. En pedidos de venta el grupo queda oculto y
+  `order_details` sigue a la derecha.
+- Bloque: se eliminaron `prev_year_revenue`, `industry_id` y `company_size_inputs_required`;
+  `company_size` es related al de la cotización y la rama de Auditoría sale de
+  `order_id.quoter_industry_id.branch_id`.
+- Al guardar la cotización con facturación o industria nuevas se recalcula el nivel (y la rama)
+  de todos sus bloques abiertos. Un bloque agregado después toma el nivel al crearse.
+- Si un bloque Cerrado de un área por tamaño depende de esos datos, la cotización no deja
+  cambiarlos: hay que reabrir el bloque antes (si no, quedaría con el nivel de los datos viejos).
 
-- El último archivo no está en el manifest porque referencia áreas (`quoter_area_tax`,
-  `quoter_area_auditoria`) y secciones (`quoter_line_separator_tag_default/additional`) que se
-  crean desde la UI. La pre-migración les asigna esos xmlid.
-- Las horas AE de la Tabla #3 no pueden ser datos XML (las filas de horas se generan al crear el
-  producto y no tienen xmlid). Quedan en `AE_HOURS` de la post-migración.
-- Con `noupdate`, una actualización crea lo que falta y nunca pisa lo existente: los cambios que
-  se hagan después desde la UI (riesgo por tamaño, niveles de convenios, etc.) se conservan.
+### Migración `15.0.6.10.0` (post)
+Copia a cada cotización la facturación y la industria del primer bloque que las tenga
+completas (orden de los bloques). Si los bloques tenían datos distintos, lo avisa en el log
+(`Revisar el nivel de: …`); el nivel de los bloques no se toca y se puede recalcular con el
+botón "Recalcular cotizaciones en borrador". En bases sin la complejidad automática
+(producción en 15.0.6.6.x) no hace nada. Las columnas viejas del bloque quedan sin uso.
+
+Resultado local: `pgk-stg` copió 2 cotizaciones y avisó Q00037 (TAX: Servicios 30.000 M;
+Auditoría: Bancos y seguros 100 M; quedó la de TAX). `pgk-uat` copió C00001 y la avisó
+(TAX Servicios, Auditoría Bancos y seguros; quedó Servicios).
 
 ### Pruebas
-- **stg** (ya configurada, 6.8.2 → 6.9.0): no se creó ni cambió ningún registro (conteos
-  idénticos) y se asignaron 147 xmlid (3 áreas, 3 niveles, 2 secciones, 128 convenios, 8 mapeos,
-  3 productos). Pasan los 19 tests.
-- **Instalación desde cero sobre una copia de producción** (`pgk-prod_pre-neutralize_20260804.dump`,
-  restaurada en una base temporal con crons y correo desactivados, y eliminada después): se
-  instala sin errores y crea 7 niveles (3 aptos), 128 convenios sobre Bajo/Medio/Alto,
-  7 industrias, 7 topes y las ramas.
-
-### Producción
-El dump `pgk-prod_pre-neutralize_20260804.dump` no tiene `quoter`, pero el equipo confirmó que
-**producción hoy sí lo tiene instalado**: el pase es una actualización a `15.0.6.9.0`.
-
-### Simulación del pase a producción (2026-10-16)
-1. Se restauró el backup de stg previo a Auditoría (`db_15:/tmp/pgk-stg-pre-audit-20261015.dump`)
-   en una base temporal, con crons y correo desactivados.
-2. Se la llevó al estado previo al requerimiento: sin convenios, industrias, topes ni mapeos;
-   áreas en `manual`; niveles con secuencia 10; Auditoría con sus 4 productos de prueba y
-   ramas Pyme/Gran; módulo en `15.0.6.6.26`.
-3. Se actualizó a `15.0.6.9.0`.
-
-Resultado: los conteos y la configuración de las áreas quedaron idénticos a stg; las 336 horas
-de Auditoría son iguales celda por celda; los 4 productos viejos quedaron archivados; los 128
-convenios tienen xmlid y la distribución 42 / 50 / 36. Pasan los 19 tests. La base se eliminó.
-
-La primera corrida encontró un error real: las horas AE no se cargaban porque la matriz A de
-un producto nuevo arranca en 1 h y la migración lo tomaba como "ya cargado". Se corrigió
-(paso 4 de la post-migración).
+- Tests nuevos: datos compartidos por TAX y Auditoría, bloque agregado con datos ya cargados,
+  obligatoriedad según las áreas y bloqueo con bloque cerrado. 26 tests OK en `pgk-stg`.
+- UI (Playwright, Q00073 con TAX + Auditoría + PayRoll): los campos están en la columna derecha
+  de la cabecera y no en las pestañas de área; al tipear la facturación el tamaño cambia en vivo; al guardar
+  300.000.000 / Servicios, TAX y Auditoría pasan a Bajo y Auditoría a la rama Servicios.
+  En una cotización nueva los campos no aparecen con solo PayRoll y aparecen como
+  obligatorios al agregar TAX.

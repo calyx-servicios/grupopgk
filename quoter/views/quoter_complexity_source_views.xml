@@ -168,16 +168,20 @@
         <field name="name">quoter.area.size.level.tree</field>
         <field name="model">quoter.area.size.level</field>
         <field name="arch" type="xml">
-            <tree string="Riesgo por tamaño de empresa" editable="bottom" create="0" delete="0">
+            <tree string="Riesgo por tamaño de empresa" editable="bottom">
                 <header>
                     <button name="action_quoter_recompute_draft_levels"
                             type="object"
                             string="Recalcular cotizaciones en borrador"
                             groups="quoter.group_quoter_admin"/>
                 </header>
-                <field name="area_id" readonly="1"/>
+                <field name="id" invisible="1"/>
+                <!-- Área y tamaño se eligen al crear la fila; después solo cambia el nivel. -->
+                <field name="area_id"
+                       options="{'no_create': True, 'no_open': True}"
+                       attrs="{'readonly': [('id', '!=', False)]}"/>
                 <field name="area_level_ids" invisible="1"/>
-                <field name="company_size" readonly="1"/>
+                <field name="company_size" attrs="{'readonly': [('id', '!=', False)]}"/>
                 <field name="complexity_level_id"
                        domain="[('id', 'in', area_level_ids)]"
                        options="{'no_create': True, 'no_open': True}"/>
@@ -185,19 +189,40 @@
         </field>
     </record>
 
+    <record id="view_quoter_area_size_level_search" model="ir.ui.view">
+        <field name="name">quoter.area.size.level.search</field>
+        <field name="model">quoter.area.size.level</field>
+        <field name="arch" type="xml">
+            <search string="Riesgo por tamaño de empresa">
+                <field name="area_id"/>
+                <field name="complexity_level_id"/>
+                <group expand="0" string="Agrupar por">
+                    <filter string="Área" name="group_by_area" context="{'group_by': 'area_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="action_quoter_area_size_level" model="ir.actions.act_window">
         <field name="name">Riesgo por tamaño de empresa</field>
         <field name="res_model">quoter.area.size.level</field>
         <field name="view_mode">tree</field>
-        <field name="domain">[('area_id.complexity_source', '=', 'company_size')]</field>
-        <field name="context">{'group_by': 'area_id'}</field>
+        <field name="search_view_id" ref="view_quoter_area_size_level_search"/>
+        <!-- Explícitos: versiones anteriores filtraban por área ya configurada y agrupaban
+             por área (lista agrupada = sin botón Crear). -->
+        <field name="domain" eval="False"/>
+        <field name="context">{}</field>
         <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Cargue el nivel de riesgo o complejidad de cada tamaño de empresa
+            </p>
             <p>
-                Nivel de riesgo o complejidad por tamaño de empresa en cada área que calcula
-                el nivel con facturación e industria. El nivel define las horas: si dos tamaños
-                comparten nivel, cotizan las mismas horas. Para aplicar un cambio a las
-                cotizaciones en preparación, seleccione las filas del área y use «Recalcular
-                cotizaciones en borrador».
+                Cada área que calcula el nivel con facturación e industria necesita 4 filas
+                (Micro, Pequeña, Mediana y Grande). Cárguelas acá o en el formulario del área
+                antes de elegir «Tamaño de empresa» en «Determinación del nivel». El nivel
+                define las horas: si dos tamaños comparten nivel, cotizan las mismas horas.
+                Para aplicar un cambio a las cotizaciones en preparación, seleccione las filas
+                del área y use «Recalcular cotizaciones en borrador».
             </p>
         </field>
     </record>
