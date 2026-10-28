@@ -9,8 +9,9 @@ tener que volver a hacer el análisis.
 | Cliente | grupopgk (implementa Calyx) |
 | Módulo | `extra-addons/grupopgk/quoter` (no confundir con la copia vieja `extra-addons/quoter`) |
 | Rama git | `15.0_staging` |
-| Versión del módulo | `15.0.6.9.0` (antes `15.0.6.6.26`) |
+| Versión del módulo | `15.0.6.10.0` (antes `15.0.6.6.26`) |
 | Estado al 2026-10-19 | Desarrollo completo (secciones 10 a 13), probado en `pgk-stg` por tests, shell y UI. **Sin commitear.** |
+| Cambio 2026-10-28 | Facturación e industria pasan del bloque a la cotización (sección 14) |
 | **Para configurar UAT / producción** | **Ver la sección 13: la configuración se carga a mano después de actualizar el módulo.** |
 | Excel de origen | `Nuevo Parametros AUD-PY.xlsx` (no está en el repo; las tablas están en los CSV de esta carpeta) |
 
@@ -192,7 +193,7 @@ Cada área tiene un campo nuevo `complexity_source` ("Determinación del nivel")
 |---|---|---|
 | `manual` | BPO, Finanzas | Como antes, lo elige el usuario |
 | `labor_agreement` | PayRoll | Tabla #5 sobre los convenios del bloque |
-| `company_size` | TAX, Auditoría | Facturación + industria → tamaño (SICYPYME) → nivel (tabla `size_level_ids` del área) |
+| `company_size` | TAX, Auditoría | Facturación + industria de la cotización → tamaño (SICYPYME) → nivel (tabla `size_level_ids` del área) |
 
 En `company_size`, si el área usa ramas (Auditoría), la rama del bloque se completa con la
 rama vinculada a la industria (`quoter.industry.branch_id`).
@@ -210,15 +211,18 @@ rama vinculada a la industria (`quoter.industry.branch_id`).
   4 tamaños tienen que tener nivel, y el nivel tiene que ser uno de los del área.
 
 ### Bloque (`models/quoter_sale_order_area_complexity.py`)
-- Campos: `labor_agreement_ids`, `prev_year_revenue`, `industry_id`, `company_size` (compute
-  almacenado), `area_complexity_source` y `company_size_inputs_required`.
+- Campos del bloque: `labor_agreement_ids`, `area_complexity_source` y `company_size` (related
+  al de la cotización).
+- Campos de la cotización (sección 14): `quoter_prev_year_revenue`, `quoter_industry_id`,
+  `quoter_company_size` (compute almacenado) y `quoter_company_size_inputs_required`.
 - `_quoter_apply_derived_complexity_level()` escribe nivel y rama juntos con el contexto
   `quoter_derived_complexity_level=True` y devuelve los bloques cuyo nivel cambió. Se llama al
-  final de `create` y de `write` cuando cambian convenios, facturación, industria, área, nivel o
-  rama, y desde `sale.order.write` si cambia `date_order`. Solo actúa sobre cotizaciones con el
+  final de `create` y de `write` del bloque cuando cambian convenios, área, nivel o rama, y desde
+  `sale.order.write` si cambian la facturación, la industria o `date_order`. Solo actúa sobre cotizaciones con el
   bloque en borrador. **No** se dispara al cambiar la configuración: para eso está el botón de
   recálculo (sección 10).
-- Un onchange muestra el nivel calculado antes de guardar.
+- Un onchange muestra el nivel calculado por convenios antes de guardar. El tamaño de empresa
+  se ve en la cabecera al tipear; el nivel de los bloques se actualiza al guardar.
 - En `quoter_sale_order_area.py`, el chequeo de "nivel congelado" se saltea con ese contexto
   (Tax tiene `allow_change_complexity_level = False`).
 
@@ -229,8 +233,9 @@ rama vinculada a la industria (`quoter.industry.branch_id`).
   (campo, onchange, efectos en create/write, `_quoter_highest_complexity_level`).
 - `quoter_sale_order_report.py`: la fila del PDF "Tipo de empresa" ahora se llama "Industria".
 - Vistas:
-  - `sale_order_views.xml`: campos nuevos debajo del Gerente; nivel readonly si no es manual;
-    Rama oculta en `company_size`; aviso "Complete la facturación del año anterior y la industria…".
+  - `sale_order_views.xml`: convenios debajo del Gerente; facturación, industria y tamaño en la
+    columna derecha de la cabecera (sección 14); nivel readonly si no es manual; Rama oculta en
+    `company_size`; aviso "Complete la facturación del año anterior y la industria en la cabecera…".
   - `quoter_complexity_source_views.xml`: menús Configuración → Convenios colectivos, Industrias
     y Topes SICYPYME, más "Determinación del nivel" en el formulario del área.
   - `quoter_service_views.xml`: handle de secuencia en niveles; campo de redondeo en el área.
@@ -246,7 +251,8 @@ rama vinculada a la industria (`quoter.industry.branch_id`).
 - Seguridad: lectura para vendedores y ABM para el gerente de ventas en los 4 modelos nuevos.
 
 ### Migraciones
-No hay migración para este requerimiento: los campos nuevos tienen valores por defecto que dejan
+Solo `15.0.6.10.0` (sección 14), que copia facturación e industria del bloque a la cotización.
+Para el resto del requerimiento no hay migración: los campos nuevos tienen valores por defecto que dejan
 el cotizador funcionando como antes ("Determinación del nivel" = Manual en todas las áreas)
 hasta que se configure (sección 13). Durante el desarrollo hubo migraciones que configuraban
 todo automáticamente; se quitaron (sección 12).
@@ -601,6 +607,9 @@ En el menú **Riesgo por tamaño de empresa** la lista es editable: mientras una
 edición el botón Crear no se ve; guardar cada fila (o Enter) antes de crear la siguiente.
 
 ### Paso 6. Verificación con una cotización de prueba
+La facturación y la industria son únicas por cotización (sección 14): para las filas de TAX y
+Auditoría, cambiarlas en la cabecera (o usar una cotización por fila).
+
 | Área | Datos | Resultado esperado |
 |---|---|---|
 | PayRoll | Convenios Aceiteros + Actores | Nivel Medio |
@@ -618,6 +627,56 @@ Riesgo Medio/Alto, por las excepciones de tabla B propias de UAT (ver paso 5.1).
 
 ### Notas
 - Las cotizaciones que ya pasaron de "En preparación" no se modifican al configurar.
-- Los borradores en preparación toman el nivel nuevo cuando se edita la facturación, la
-  industria o los convenios del bloque, o con el botón "Recalcular cotizaciones en borrador"
+- Los borradores en preparación toman el nivel nuevo cuando se edita la facturación o la
+  industria de la cotización, o los convenios del bloque, o con el botón "Recalcular cotizaciones en borrador"
   (Riesgo por tamaño de empresa o formulario del área).
+
+---
+
+## 14. Cambio posterior: facturación e industria en la cotización (2026-10-28, versión 15.0.6.10.0)
+
+### Pedido
+La facturación del año anterior y la industria estaban en cada bloque de área, así que una
+cotización con TAX y Auditoría podía tener valores distintos en cada una, lo que es
+incorrecto. Ahora se cargan una sola vez, en la cabecera de la cotización, y las áreas que
+calculan el nivel por tamaño de empresa los toman de ahí.
+
+### Implementación (`models/quoter_sale_order_area_complexity.py`)
+- `sale.order`: `quoter_prev_year_revenue` y `quoter_industry_id` (con seguimiento en el
+  chatter), `quoter_company_size` (compute almacenado, mismos topes y fecha que antes) y
+  `quoter_company_size_inputs_required`: alguna de las áreas de la cotización, con su bloque
+  no cancelado, tiene "Determinación del nivel" = Tamaño de empresa.
+- En la columna derecha de la cabecera: Facturación, Industria y Tamaño de empresa. Se ven y
+  son obligatorios solo con `quoter_company_size_inputs_required`, y quedan de solo lectura fuera
+  de "En preparación" o sin perfil Cotizador (igual que el resto de la cabecera).
+  Van en un grupo propio (`quoter_company_size_details`) antes de `order_details`, no dentro:
+  en cotizaciones `quoter_tab_labels.js` oculta entero `order_details` (al buscar «¿Factura
+  dividida?»), junto con Tipo y PM del proyecto. En pedidos de venta el grupo queda oculto y
+  `order_details` sigue a la derecha.
+- Bloque: se eliminaron `prev_year_revenue`, `industry_id` y `company_size_inputs_required`;
+  `company_size` es related al de la cotización y la rama de Auditoría sale de
+  `order_id.quoter_industry_id.branch_id`.
+- Al guardar la cotización con facturación o industria nuevas se recalcula el nivel (y la rama)
+  de todos sus bloques abiertos. Un bloque agregado después toma el nivel al crearse.
+- Si un bloque Cerrado de un área por tamaño depende de esos datos, la cotización no deja
+  cambiarlos: hay que reabrir el bloque antes (si no, quedaría con el nivel de los datos viejos).
+
+### Migración `15.0.6.10.0` (post)
+Copia a cada cotización la facturación y la industria del primer bloque que las tenga
+completas (orden de los bloques). Si los bloques tenían datos distintos, lo avisa en el log
+(`Revisar el nivel de: …`); el nivel de los bloques no se toca y se puede recalcular con el
+botón "Recalcular cotizaciones en borrador". En bases sin la complejidad automática
+(producción en 15.0.6.6.x) no hace nada. Las columnas viejas del bloque quedan sin uso.
+
+Resultado local: `pgk-stg` copió 2 cotizaciones y avisó Q00037 (TAX: Servicios 30.000 M;
+Auditoría: Bancos y seguros 100 M; quedó la de TAX). `pgk-uat` copió C00001 y la avisó
+(TAX Servicios, Auditoría Bancos y seguros; quedó Servicios).
+
+### Pruebas
+- Tests nuevos: datos compartidos por TAX y Auditoría, bloque agregado con datos ya cargados,
+  obligatoriedad según las áreas y bloqueo con bloque cerrado. 26 tests OK en `pgk-stg`.
+- UI (Playwright, Q00073 con TAX + Auditoría + PayRoll): los campos están en la columna derecha
+  de la cabecera y no en las pestañas de área; al tipear la facturación el tamaño cambia en vivo; al guardar
+  300.000.000 / Servicios, TAX y Auditoría pasan a Bajo y Auditoría a la rama Servicios.
+  En una cotización nueva los campos no aparecen con solo PayRoll y aparecen como
+  obligatorios al agregar TAX.
