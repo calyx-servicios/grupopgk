@@ -43,11 +43,11 @@ class SubscriptionPackage(models.Model):
         readonly=True,
         copy=False,
     )
-    next_tariff_update = fields.Char(
+    next_tariff_update = fields.Date(
         string="Próxima actualización",
         compute="_compute_next_tariff_update",
         store=True,
-        readonly=True,
+        readonly=False,
     )
     tariff_update_history_ids = fields.One2many(
         "subscription.tariff.update.history",
@@ -76,7 +76,7 @@ class SubscriptionPackage(models.Model):
                 sub.next_tariff_update = False
                 continue
             next_date = sub.last_tariff_update_at + relativedelta(months=months)
-            sub.next_tariff_update = next_date.strftime("%m/%Y")
+            sub.next_tariff_update = next_date.date().replace(day=1)
 
 
 class SubscriptionPackageProductLine(models.Model):

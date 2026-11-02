@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Technical Settings",
-    "version": "15.0.1.14.0",
+    "version": "15.0.1.15.0",
     "development_status": "Production/Stable",
     "application": False,
     "installable": True,
@@ -27,5 +27,10 @@
         "report/subscription_tariff_control_report_templates.xml",
         "views/action_menu.xml",
         "wizards/subscription_massive_update.xml",
-    ]
+    ],
+    "assets": {
+        "web.assets_backend": [
+            "subscription_massive_update/static/src/js/month_year_widget.js",
+        ],
+    },
 }
