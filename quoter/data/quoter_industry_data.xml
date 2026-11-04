@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Industrias y topes de facturación (ARS) de la Resolución N° 1/2026 (SICYPYME).
+         Minería usa los topes de Industria y Bancos y seguros los de Servicios.
+         Los topes se actualizan anualmente agregando filas con nueva vigencia. -->
+    <!-- Una rama de la matriz de horas por industria (Auditoría cotiza por rama). -->
+    <record id="quoter_area_branch_industry_construction" model="quoter.area.branch">
+        <field name="name">Construcción</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="quoter_area_branch_industry_services" model="quoter.area.branch">
+        <field name="name">Servicios</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="quoter_area_branch_industry_commerce" model="quoter.area.branch">
+        <field name="name">Comercio</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="quoter_area_branch_industry_industry" model="quoter.area.branch">
+        <field name="name">Industria</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="quoter_area_branch_industry_agriculture" model="quoter.area.branch">
+        <field name="name">Agropecuario</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="quoter_area_branch_industry_banking_insurance" model="quoter.area.branch">
+        <field name="name">Bancos y seguros</field>
+        <field name="sequence">60</field>
+    </record>
+    <record id="quoter_area_branch_industry_mining" model="quoter.area.branch">
+        <field name="name">Minería</field>
+        <field name="sequence">70</field>
+    </record>
+
+    <record id="quoter_industry_construction" model="quoter.industry">
+        <field name="name">Construcción</field>
+        <field name="sequence">10</field>
+        <field name="branch_id" ref="quoter_area_branch_industry_construction"/>
+    </record>
+    <record id="quoter_industry_services" model="quoter.industry">
+        <field name="name">Servicios</field>
+        <field name="sequence">20</field>
+        <field name="branch_id" ref="quoter_area_branch_industry_services"/>
+    </record>
+    <record id="quoter_industry_commerce" model="quoter.industry">
+        <field name="name">Comercio</field>
+        <field name="sequence">30</field>
+        <field name="branch_id" ref="quoter_area_branch_industry_commerce"/>
+    </record>
+    <record id="quoter_industry_industry" model="quoter.industry">
+        <field name="name">Industria</field>
+        <field name="sequence">40</field>
+        <field name="branch_id" ref="quoter_area_branch_industry_industry"/>
+    </record>
+    <record id="quoter_industry_agriculture" model="quoter.industry">
+        <field name="name">Agropecuario</field>
+        <field name="sequence">50</field>
+        <field name="branch_id" ref="quoter_area_branch_industry_agriculture"/>
+    </record>
+    <record id="quoter_industry_banking_insurance" model="quoter.industry">
+        <field name="name">Bancos y seguros</field>
+        <field name="sequence">60</field>
+        <field name="branch_id" ref="quoter_area_branch_industry_banking_insurance"/>
+    </record>
+    <record id="quoter_industry_mining" model="quoter.industry">
+        <field name="name">Minería</field>
+        <field name="sequence">70</field>
+        <field name="branch_id" ref="quoter_area_branch_industry_mining"/>
+    </record>
+    <record id="quoter_sicypyme_2026_construction" model="quoter.sicypyme.threshold">
+        <field name="industry_id" ref="quoter_industry_construction"/>
+        <field name="date_from">2026-01-01</field>
+        <field name="resolution">Resolución N° 1/2026 (SICYPYME)</field>
+        <field name="micro_max">743730000</field>
+        <field name="small_max">4412940000</field>
+        <field name="medium_max">36927730000</field>
+    </record>
+    <record id="quoter_sicypyme_2026_services" model="quoter.sicypyme.threshold">
+        <field name="industry_id" ref="quoter_industry_services"/>
+        <field name="date_from">2026-01-01</field>
+        <field name="resolution">Resolución N° 1/2026 (SICYPYME)</field>
+        <field name="micro_max">374060000</field>
+        <field name="small_max">2255110000</field>
+        <field name="medium_max">26655990000</field>
+    </record>
+    <record id="quoter_sicypyme_2026_commerce" model="quoter.sicypyme.threshold">
+        <field name="industry_id" ref="quoter_industry_commerce"/>
+        <field name="date_from">2026-01-01</field>
+        <field name="resolution">Resolución N° 1/2026 (SICYPYME)</field>
+        <field name="micro_max">1738060000</field>
+        <field name="small_max">12380800000</field>
+        <field name="medium_max">84070280000</field>
+    </record>
+    <record id="quoter_sicypyme_2026_industry" model="quoter.sicypyme.threshold">
+        <field name="industry_id" ref="quoter_industry_industry"/>
+        <field name="date_from">2026-01-01</field>
+        <field name="resolution">Resolución N° 1/2026 (SICYPYME)</field>
+        <field name="micro_max">1207910000</field>
+        <field name="small_max">9025610000</field>
+        <field name="medium_max">129764070000</field>
+    </record>
+    <record id="quoter_sicypyme_2026_agriculture" model="quoter.sicypyme.threshold">
+        <field name="industry_id" ref="quoter_industry_agriculture"/>
+        <field name="date_from">2026-01-01</field>
+        <field name="resolution">Resolución N° 1/2026 (SICYPYME)</field>
+        <field name="micro_max">909260000</field>
+        <field name="small_max">3349360000</field>
+        <field name="medium_max">31263100000</field>
+    </record>
+    <record id="quoter_sicypyme_2026_banking_insurance" model="quoter.sicypyme.threshold">
+        <field name="industry_id" ref="quoter_industry_banking_insurance"/>
+        <field name="date_from">2026-01-01</field>
+        <field name="resolution">Resolución N° 1/2026 (SICYPYME)</field>
+        <field name="micro_max">374060000</field>
+        <field name="small_max">2255110000</field>
+        <field name="medium_max">26655990000</field>
+    </record>
+    <record id="quoter_sicypyme_2026_mining" model="quoter.sicypyme.threshold">
+        <field name="industry_id" ref="quoter_industry_mining"/>
+        <field name="date_from">2026-01-01</field>
+        <field name="resolution">Resolución N° 1/2026 (SICYPYME)</field>
+        <field name="micro_max">1207910000</field>
+        <field name="small_max">9025610000</field>
+        <field name="medium_max">129764070000</field>
+    </record>
+</odoo>

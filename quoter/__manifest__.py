@@ -8,7 +8,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Sales",
-    "version": "15.0.6.6.26",
+    "version": "15.0.6.10.0",
     "development_status": "Beta",
     "application": True,
     "installable": True,
@@ -33,6 +33,10 @@
         "data/quoter_product_category_data.xml",
         "data/sequence_data.xml",
         "data/quoter_branch_data.xml",
+        # Industrias, topes SICYPYME y ramas por industria (noupdate). El resto de la
+        # configuración de la complejidad automática se carga desde la UI en cada base:
+        # ver docs/complejidad_automatica/README.md.
+        "data/quoter_industry_data.xml",
         "data/pricelist_data.xml",
         "data/quoter_product_attribute.xml",
         "views/quoter_generic_product_wizard_views.xml",
@@ -49,6 +53,7 @@
         "views/quoter_menu.xml",
         "views/quoter_settings_views.xml",
         "views/quoter_formula_views.xml",
+        "views/quoter_complexity_source_views.xml",
     ],
     "assets": {
         "web.assets_backend": [

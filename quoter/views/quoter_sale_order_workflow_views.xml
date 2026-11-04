@@ -120,6 +120,12 @@
             <xpath expr="//field[@name='quoter_area_ids']" position="attributes">
                 <attribute name="attrs">{'invisible': [('is_quotation', '=', False)], 'readonly': [('quoter_workflow_can_edit_content', '=', False)]}</attribute>
             </xpath>
+            <xpath expr="//field[@name='quoter_prev_year_revenue']" position="attributes">
+                <attribute name="attrs">{'invisible': [('quoter_company_size_inputs_required', '=', False)], 'required': [('quoter_company_size_inputs_required', '=', True)], 'readonly': [('quoter_workflow_can_edit_content', '=', False)]}</attribute>
+            </xpath>
+            <xpath expr="//field[@name='quoter_industry_id']" position="attributes">
+                <attribute name="attrs">{'invisible': [('quoter_company_size_inputs_required', '=', False)], 'required': [('quoter_company_size_inputs_required', '=', True)], 'readonly': [('quoter_workflow_can_edit_content', '=', False)]}</attribute>
+            </xpath>
             <xpath expr="//field[@name='date_order']" position="attributes">
                 <attribute name="attrs">{'invisible': [('is_quotation', '=', False)], 'readonly': ['|', ('quoter_workflow_can_edit_content', '=', False), ('state', 'in', ('done', 'cancel'))]}</attribute>
             </xpath>

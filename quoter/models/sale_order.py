@@ -116,13 +116,6 @@ class SaleOrder(models.Model):
         size=140,
         copy=False,
     )
-    quoter_is_first_quotation = fields.Boolean(
-        string="Primera cotización",
-        default=False,
-        copy=False,
-        help="En áreas de Auditoría, fija el nivel de riesgo al más alto (mayor id) "
-        "en los bloques del pedido.",
-    )
 
     quoter_area_ids = fields.Many2many(
         comodel_name="quoter.professional.area",
@@ -1163,8 +1156,6 @@ class SaleOrder(models.Model):
                 order._quoter_sync_area_discount_total_line()
                 order._quoter_sync_date_of_issue_from_order_date()
                 order._quoter_compute_validity_date_from_payment_term()
-                if vals.get("quoter_is_first_quotation"):
-                    order._quoter_apply_first_quotation_risk_levels()
         records.filtered("is_quotation")._quoter_reconcile_area_ids_from_blocks()
         records.filtered("is_quotation")._quoter_log_order_created()
         return records
@@ -1279,10 +1270,6 @@ class SaleOrder(models.Model):
         if quotation_orders:
             quotation_orders.invalidate_cache(["order_line"])
             quotation_orders._quoter_sync_area_discount_total_line()
-        if vals.get("quoter_is_first_quotation") and not self.env.context.get(
-            "quoter_skip_first_quotation_risk_levels"
-        ):
-            self.filtered("quoter_is_first_quotation")._quoter_apply_first_quotation_risk_levels()
         # Solo registros ya guardados (id entero). Con NewId aún no hay fila en BD:
         # pedir la secuencia aquí consumía Q... al editar el formulario antes del 1er guardado.
         missing_seq = self.filtered(
@@ -1394,14 +1381,6 @@ class SaleOrder(models.Model):
                 vals = dict(vals)
                 vals.pop("quoter_area_ids", None)
         return vals
-
-    def _quoter_apply_first_quotation_risk_levels(self):
-        """Primera cotización: nivel de riesgo más alto en bloques de áreas Auditoría."""
-        for order in self.filtered(lambda o: o.is_quotation and o.quoter_is_first_quotation):
-            for block in order.quoter_area_block_ids:
-                if not block.area_id.is_auditoria_area:
-                    continue
-                block._quoter_apply_first_auditoria_effect()
 
     def _quoter_reconcile_area_ids_from_blocks(self):
         """Tras guardar: si hay bloques con área, el m2m de cabecera debe coincidir."""
