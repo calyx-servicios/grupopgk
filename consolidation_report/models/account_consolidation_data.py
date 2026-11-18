@@ -35,7 +35,8 @@ class AccountConsolidationData(models.Model):
     )
     daughter_account = fields.Many2one(
         'account.analytic.line',
-        string='Analytic Account Line'
+        string='Analytic Account Line',
+        index=True
     )
     daughter_account_id = fields.Integer(
         related='daughter_account.id',
@@ -58,6 +59,7 @@ class AccountConsolidationData(models.Model):
         'account.analytic.line',
         string='Línea analítica origen',
         ondelete='set null',
+        index=True,
         help='Línea analítica de la que proviene esta fila del informe (para filtros).',
     )
     origin_line_id = fields.Integer(
