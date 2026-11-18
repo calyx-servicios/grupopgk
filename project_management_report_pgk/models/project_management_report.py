@@ -12,6 +12,7 @@ REPORT_TITLE = "Informe Gestión de Proyectos – Servicios Profesionales (PGK)"
 # Tipos de columna -> formato de Excel
 TEXT = "text"
 BOOL = "bool"
+DATE = "date"
 HOURS = "hours"
 INTEGER = "integer"
 PERCENT = "percent"
@@ -55,6 +56,7 @@ COLUMNS = [
 NUMBER_FORMAT = "#,##0.00########"
 INTEGER_FORMAT = "#,##0"
 PERCENT_FORMAT = "0.00########%"
+DATE_FORMAT = "dd/mm/yyyy"
 
 DIST_KEYS = {"gs": "dist_sector", "gg": "dist_management", "gi": "dist_indirect"}
 
@@ -62,6 +64,22 @@ DIST_KEYS = {"gs": "dist_sector", "gg": "dist_management", "gi": "dist_indirect"
 class ProjectManagementReport(models.AbstractModel):
     _name = "project.management.report"
     _description = "Informe Gestión de Proyectos PGK"
+
+    # ------------------------------------------------------------------
+    # Definición del informe (se redefine en informes derivados)
+    # ------------------------------------------------------------------
+    @api.model
+    def _get_columns(self):
+        """Lista de (clave, título, tipo) en el orden del archivo."""
+        return COLUMNS
+
+    @api.model
+    def _get_report_title(self):
+        return REPORT_TITLE
+
+    @api.model
+    def _get_file_prefix(self):
+        return "gestion_proyectos_pgk"
 
     # ------------------------------------------------------------------
     # Datos
@@ -76,6 +94,11 @@ class ProjectManagementReport(models.AbstractModel):
         - Dist. Gtos. Sector / Gcia / Indirectos: según `distribution_type`.
         Los montos de consolidación son negativos para los costos; se
         devuelven con signo invertido (costo positivo).
+        Los importes guardados arrastran ruido de punto flotante (p. ej.
+        527514.5799999997): se suman como `numeric` (float8 -> numeric conserva
+        15 dígitos significativos), así el total es exacto, estable entre
+        ejecuciones, y un costo que se compensa da 0 y no 1e-10, que dispararía
+        Realización (0,55 / costo).
         `periods` None = todos los períodos consolidados.
         Devuelve {account_id: {'cost': x, 'dist_sector': y, ...}}.
         """
@@ -88,7 +111,8 @@ class ProjectManagementReport(models.AbstractModel):
         )
         self.env["account.analytic.line"].flush(["general_account_id"])
         query = """
-            SELECT d.analytic_account_id, d.distribution_type, SUM(d.amount)
+            SELECT d.analytic_account_id, d.distribution_type,
+                   SUM(d.amount::numeric)
               FROM account_consolidation_data d
               LEFT JOIN account_analytic_line l ON l.id = d.daughter_account
               LEFT JOIN account_account ga ON ga.id = l.general_account_id
@@ -104,8 +128,13 @@ class ProjectManagementReport(models.AbstractModel):
         self.env.cr.execute(query, params)
         for account_id, dist_type, amount in self.env.cr.fetchall():
             key = DIST_KEYS.get(dist_type, "cost")
-            result[account_id][key] += -(amount or 0.0)
+            result[account_id][key] -= float(amount or 0)
         return result
+
+    @api.model
+    def _get_pes_currency(self):
+        return self.env.ref("base.ARS", raise_if_not_found=False) or \
+            self.env.company.currency_id
 
     @api.model
     def _get_rows(self, projects, date_from=None, date_to=None):
@@ -172,6 +201,8 @@ class ProjectManagementReport(models.AbstractModel):
                 "allow_billable": bool(project.allow_billable),
                 # Para el formato de las columnas en moneda del proyecto
                 "_project_currency": project.project_currency_id,
+                # Para informes derivados que agregan columnas
+                "_project": project,
             })
         return rows
 
@@ -188,7 +219,7 @@ class ProjectManagementReport(models.AbstractModel):
         stamp = fields.Datetime.context_timestamp(
             wizard, fields.Datetime.now()
         ).strftime("%Y%m%d_%H%M")
-        base_name = "gestion_proyectos_pgk_%s" % stamp
+        base_name = "%s_%s" % (self._get_file_prefix(), stamp)
         if wizard.file_format == "csv":
             return self._build_csv(rows, header_lines), base_name + ".csv"
         return self._build_xlsx(rows, header_lines), base_name + ".xlsx"
@@ -204,6 +235,7 @@ class ProjectManagementReport(models.AbstractModel):
 
     @api.model
     def _build_xlsx(self, rows, header_lines):
+        columns = self._get_columns()
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {"in_memory": True})
         sheet = workbook.add_worksheet("Gestión de Proyectos")
@@ -217,12 +249,12 @@ class ProjectManagementReport(models.AbstractModel):
         formats = {
             TEXT: None,
             BOOL: None,
+            DATE: workbook.add_format({"num_format": DATE_FORMAT}),
             HOURS: workbook.add_format({"num_format": NUMBER_FORMAT}),
             INTEGER: workbook.add_format({"num_format": INTEGER_FORMAT}),
             PERCENT: workbook.add_format({"num_format": PERCENT_FORMAT}),
         }
-        pes = self.env.ref("base.ARS", raise_if_not_found=False) or \
-            self.env.company.currency_id
+        pes = self._get_pes_currency()
         formats[MONEY_PES] = workbook.add_format(
             {"num_format": self._currency_format(pes)}
         )
@@ -238,7 +270,7 @@ class ProjectManagementReport(models.AbstractModel):
             return currency_formats[currency.id]
 
         row_idx = 0
-        sheet.write(row_idx, 0, REPORT_TITLE, title_fmt)
+        sheet.write(row_idx, 0, self._get_report_title(), title_fmt)
         row_idx += 1
         for line in header_lines:
             sheet.write(row_idx, 0, line, info_fmt)
@@ -246,18 +278,23 @@ class ProjectManagementReport(models.AbstractModel):
         row_idx += 1
 
         header_row = row_idx
-        for col_idx, (_key, label, _kind) in enumerate(COLUMNS):
+        for col_idx, (_key, label, _kind) in enumerate(columns):
             sheet.write(header_row, col_idx, label, head_fmt)
         sheet.set_row(header_row, 45)
 
         for row in rows:
             row_idx += 1
-            for col_idx, (key, _label, kind) in enumerate(COLUMNS):
+            for col_idx, (key, _label, kind) in enumerate(columns):
                 value = row[key]
                 if kind == TEXT:
                     sheet.write_string(row_idx, col_idx, value)
                 elif kind == BOOL:
                     sheet.write_boolean(row_idx, col_idx, value)
+                elif kind == DATE:
+                    if value:
+                        sheet.write_datetime(row_idx, col_idx, value, formats[DATE])
+                    else:
+                        sheet.write_blank(row_idx, col_idx, None)
                 elif kind == MONEY_PROJECT:
                     sheet.write_number(
                         row_idx, col_idx, value,
@@ -266,28 +303,31 @@ class ProjectManagementReport(models.AbstractModel):
                 else:
                     sheet.write_number(row_idx, col_idx, value, formats[kind])
 
-        for col_idx, (_key, _label, kind) in enumerate(COLUMNS):
+        for col_idx, (_key, _label, kind) in enumerate(columns):
             sheet.set_column(col_idx, col_idx, 32 if kind == TEXT else 18)
         sheet.freeze_panes(header_row + 1, 0)
-        sheet.autofilter(header_row, 0, max(row_idx, header_row), len(COLUMNS) - 1)
+        sheet.autofilter(header_row, 0, max(row_idx, header_row), len(columns) - 1)
         workbook.close()
         return output.getvalue()
 
     @api.model
     def _build_csv(self, rows, header_lines):
+        columns = self._get_columns()
         output = io.StringIO()
         writer = csv.writer(output, delimiter=";")
-        writer.writerow([REPORT_TITLE])
+        writer.writerow([self._get_report_title()])
         for line in header_lines:
             writer.writerow([line])
         writer.writerow([])
-        writer.writerow([label for _key, label, _kind in COLUMNS])
+        writer.writerow([label for _key, label, _kind in columns])
         for row in rows:
             values = []
-            for key, _label, kind in COLUMNS:
+            for key, _label, kind in columns:
                 value = row[key]
                 if kind == BOOL:
                     value = _("Sí") if value else _("No")
+                elif kind == DATE:
+                    value = value.strftime("%d/%m/%Y") if value else ""
                 elif kind != TEXT:
                     # repr conserva todos los decimales del float
                     value = repr(value)
