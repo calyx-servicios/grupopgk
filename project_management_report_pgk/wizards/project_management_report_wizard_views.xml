@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_project_management_report_wizard_form" model="ir.ui.view">
+        <field name="name">project.management.report.wizard.form</field>
+        <field name="model">project.management.report.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Gestión de Proyectos - Servicios Profesionales (PGK)">
+                <group>
+                    <group string="Fechas">
+                        <field name="date_mode" widget="radio"/>
+                        <field name="date_from"
+                               attrs="{'invisible': [('date_mode', '!=', 'range')], 'required': [('date_mode', '=', 'range')]}"/>
+                        <field name="date_to"
+                               attrs="{'invisible': [('date_mode', '!=', 'range')], 'required': [('date_mode', '=', 'range')]}"/>
+                    </group>
+                    <group string="Considerar">
+                        <field name="consider_billable"/>
+                        <field name="consider_non_billable"/>
+                        <field name="consider_timesheet"/>
+                    </group>
+                </group>
+                <group string="Filtros">
+                    <field name="company_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    <field name="parent_analytic_account_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    <field name="partner_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    <field name="stage_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                    <field name="file_format"/>
+                </group>
+                <p class="text-muted">
+                    Los filtros vacíos no limitan el informe. Con rango de fechas solo se limitan
+                    Facturación realizada, Horas facturadas, Tiempo total del parte de horas,
+                    Costos y Dist. Gtos.; las columnas derivadas se recalculan con esos valores.
+                </p>
+                <footer>
+                    <button name="action_export" string="Exportar" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_project_management_report_wizard" model="ir.actions.act_window">
+        <field name="name">Gestión de Proyectos PGK</field>
+        <field name="res_model">project.management.report.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="view_project_management_report_wizard_form"/>
+        <field name="groups_id" eval="[(4, ref('group_project_management_report'))]"/>
+    </record>
+
+    <menuitem
+        id="menu_project_management_report"
+        name="Gestión de Proyectos PGK"
+        parent="project.menu_project_report"
+        action="action_project_management_report_wizard"
+        sequence="50"
+        groups="group_project_management_report"
+    />
+</odoo>
