@@ -99,3 +99,18 @@ class AccountConsolidationPeriod(models.Model):
             ).date()
             rec.date_from = first_day
             rec.date_to = last_day
+
+    @api.model
+    def _search_in_range(self, date_from=None, date_to=None):
+        """Periodos cuyo mes comienza dentro de [date_from, date_to].
+
+        Las fechas de un periodo no se almacenan (salen de año y mes), por eso
+        se filtra en Python. Sin limites devuelve todos los periodos.
+        """
+        periods = self.search([])
+        if not date_from and not date_to:
+            return periods
+        return periods.filtered(
+            lambda p: (not date_from or p.date_from >= date_from)
+            and (not date_to or p.date_from <= date_to)
+        )

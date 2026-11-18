@@ -28,6 +28,14 @@ EXCHANGE_DIFF_CODE = "4.2.1.01.020"
 EXCHANGE_DIFF_CODE_ALT = "5.8.1.01.016"
 
 # Textos de la descripcion de cada distribucion: prefijo y rotulo del total
+# Tipo de distribucion guardado en las lineas (account.consolidation.data y
+# account.analytic.line) para que otros informes las lean sin parsear textos
+DISTRIBUTION_TYPES = [
+    ("gs", "Dist. Gtos. Sector"),
+    ("gg", "Dist. Gtos. Gcia."),
+    ("gi", "Dist. Gtos. Indirectos"),
+]
+
 POOL_TEXTS = {
     "GI": ("Dist. Gtos. Indirectos", "Total fact.:"),
     "GS": ("Dist. Gtos. Sector", "Total fact. S:"),
@@ -1461,6 +1469,7 @@ class AccountConsolidationReport(models.Model):
                     "amount": amount,
                     "currency": REPORT_CURRENCY_ID,
                     "rate": 1,
+                    "distribution_type": label.lower(),
                 })
         return consolidation_data_vals_cost
 
@@ -1522,6 +1531,7 @@ class AccountConsolidationReport(models.Model):
                     "currency": REPORT_CURRENCY_ID,
                     "rate": 1,
                     "is_indirect_expense": True,
+                    "distribution_type": "gi",
                 })
 
         _logger.warning(
@@ -1567,6 +1577,7 @@ class AccountConsolidationReport(models.Model):
                 # se saca del dict: despues alimenta account.consolidation.data,
                 # que no tiene este campo
                 "is_indirect_expense": analytic_line.pop("is_indirect_expense", False),
+                "distribution_type": analytic_line.get("distribution_type"),
             })
 
         created_lines = analytic_line_cost_projet.create(vals_list)
