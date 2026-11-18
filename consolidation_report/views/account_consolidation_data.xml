@@ -18,6 +18,7 @@
                     <field name="project_id" string= 'Proyecto'/>
                     <field name="sige_timesheet" optional="hide"/>
                     <field name="description"/>
+                    <field name="distribution_type" optional="show"/>
                     <field name="account_id"/>
                     <field name="currency_origin"/>
                     <field name="currency"/>
