@@ -10,6 +10,9 @@ class ProjectManagementReportWizard(models.TransientModel):
     _name = "project.management.report.wizard"
     _description = "Asistente Informe Gestión de Proyectos PGK"
 
+    # Modelo que arma el archivo (los informes derivados lo redefinen)
+    _report_model = "project.management.report"
+
     date_mode = fields.Selection(
         [
             ("all", "Sin filtro de fechas (acumulado total)"),
@@ -185,13 +188,16 @@ class ProjectManagementReportWizard(models.TransientModel):
             _("Cliente: %s") % names(self.partner_ids),
             _("Etapa: %s") % (names(self.stage_ids) if self.stage_ids else _("Todas")),
             _("Considerar: %s") % ", ".join(consider),
-            _("Montos en PES, salvo Importe total proyecto y Facturación por "
-              "avance - PGK (moneda del proyecto)."),
+            self._get_currency_note(),
             _("Emitido el %(date)s por %(user)s") % {
                 "date": now.strftime(date_format + " %H:%M"),
                 "user": self.env.user.name,
             },
         ]
+
+    def _get_currency_note(self):
+        return _("Montos en PES, salvo Importe total proyecto y Facturación por "
+                 "avance - PGK (moneda del proyecto).")
 
     # ------------------------------------------------------------------
     # Acción
@@ -199,7 +205,7 @@ class ProjectManagementReportWizard(models.TransientModel):
     def action_export(self):
         self.ensure_one()
         self._check_values()
-        content, file_name = self.env["project.management.report"]._generate_file(self)
+        content, file_name = self.env[self._report_model]._generate_file(self)
         self.write({
             "file_data": base64.b64encode(content),
             "file_name": file_name,
