@@ -997,11 +997,6 @@ class AccountConsolidationReport(models.Model):
 
     def delete_entries(self):
         self.ensure_one()
-        self.env.cr.execute("""
-            DROP INDEX IF EXISTS account_analytic_line_consolidation_idx;
-            CREATE INDEX IF NOT EXISTS account_analytic_line_consolidation_period_idx
-            ON account_analytic_line (consolidation_line, date) WHERE consolidation_line = TRUE
-        """)
         self.env.cr.execute(
             "DELETE FROM account_consolidation_data WHERE consolidation_period_id = %s",
             (self.consolidation_period.id,)
