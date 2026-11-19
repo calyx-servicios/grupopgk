@@ -95,6 +95,14 @@ class AccountAnalyticLine(models.Model):
              'que el informe de consolidación del período pesifique esa línea.',
     )
 
+    def init(self):
+        super().init()
+        self.env.cr.execute("""
+            DROP INDEX IF EXISTS account_analytic_line_consolidation_idx;
+            CREATE INDEX IF NOT EXISTS account_analytic_line_consolidation_period_idx
+            ON account_analytic_line (consolidation_line, date) WHERE consolidation_line = TRUE
+        """)
+
     def _compute_amount_ars_currency_id(self):
         ars = self.env.ref('base.ARS')
         for line in self:
