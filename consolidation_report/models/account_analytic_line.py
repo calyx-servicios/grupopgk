@@ -1,5 +1,7 @@
 from odoo import models, fields, api
 
+from .account_consolidation_report import DISTRIBUTION_TYPES
+
 ADALY_COMPANY_ID = 2
 
 # Campos a recomputar al cambiar la cuenta de una linea
@@ -64,6 +66,12 @@ class AccountAnalyticLine(models.Model):
         string='Indirect Expense',
         default=False,
         store=True,
+    )
+    distribution_type = fields.Selection(
+        DISTRIBUTION_TYPES,
+        string='Tipo de distribución',
+        index=True,
+        copy=False,
     )
     source_analytic_line_id = fields.Many2one(
         'account.analytic.line',

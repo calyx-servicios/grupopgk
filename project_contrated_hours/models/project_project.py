@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from collections import defaultdict
+
 from odoo import models, fields, api, _
 
 ADALY_COMPANY_ID = 2
@@ -70,6 +72,12 @@ class ProjectProject(models.Model):
     project_manager = fields.Char(
         string="PM"
     )
+    technical_leader_id = fields.Many2one(
+        comodel_name="res.users",
+        string="Líder Técnico",
+        domain=[('share', '=', False)],
+        help="Usuario que actúa como líder técnico del proyecto."
+    )
     reference_month = fields.Text(
         string="Comment actual month"
     )
@@ -136,33 +144,28 @@ class ProjectProject(models.Model):
 
     @api.depends('real_billing', 'cost')
     def _compute_overbilling_cost(self):
-        """ 
-        Calcular:
-        - overbilling_cost_rate = % de costos sobre ingresos
-        - achievement_rate según regla de negocio:
-          * Si % de costos = 0  -> 100%
-          * Si % de costos > 0  -> 55% / % de costos
-        """
         for rec in self:
-            rec.overbilling_cost_rate = 0.0
-            rec.achievement_rate = 0.0
+            rec.overbilling_cost_rate, rec.achievement_rate = self._get_cost_rates(
+                rec.real_billing, rec.cost
+            )
 
-            # Si no hay facturación real, no podemos calcular el % de costos
-            if not rec.real_billing:
-                continue
+    @staticmethod
+    def _get_cost_rates(real_billing, cost):
+        """Devuelve (% de costos sobre ingresos, realización).
 
-            # % de costos sobre ingresos
-            if rec.cost:
-                rec.overbilling_cost_rate = rec.cost / rec.real_billing
-            else:
-                rec.overbilling_cost_rate = 0.0
-
-            # Regla solicitada
-            if rec.overbilling_cost_rate == 0:
-                # 100% (1.0 en float, el widget percentage lo mostrará como 100%)
-                rec.achievement_rate = 1.0
-            else:
-                rec.achievement_rate = 0.55 / rec.overbilling_cost_rate
+        - overbilling_cost_rate = costos / facturación
+        - achievement_rate según regla de negocio:
+          * Si % de costos = 0  -> 100% (1.0)
+          * Si % de costos > 0  -> 55% / % de costos
+        Sin facturación no se puede calcular: ambos quedan en 0.
+        Se usa también desde informes que recalculan con montos filtrados.
+        """
+        if not real_billing:
+            return 0.0, 0.0
+        overbilling_cost_rate = cost / real_billing if cost else 0.0
+        if overbilling_cost_rate == 0:
+            return overbilling_cost_rate, 1.0
+        return overbilling_cost_rate, 0.55 / overbilling_cost_rate
 
     def _compute_cost(self):
         """
@@ -299,6 +302,41 @@ class ProjectProject(models.Model):
     def _compute_real_billing(self):
         """Compute billing amount and billed hours from posted income lines.
 
+        La lógica vive en `_get_billing_data` para poder reutilizarla con un
+        rango de fechas desde los informes.
+        """
+        data = self._get_billing_data()
+        for rec in self:
+            rec.real_billing, rec.billing_hours = data[rec.id]
+
+    @api.model
+    def _get_billing_date_domain(self, date_from=None, date_to=None):
+        """Dominio por fecha del comprobante (o fecha contable si no tiene)."""
+        if not date_from and not date_to:
+            return []
+        invoice_range, date_range = [], []
+        if date_from:
+            invoice_range.append(('move_id.invoice_date', '>=', date_from))
+            date_range.append(('date', '>=', date_from))
+        if date_to:
+            invoice_range.append(('move_id.invoice_date', '<=', date_to))
+            date_range.append(('date', '<=', date_to))
+        with_invoice = ['&'] * len(invoice_range) + [
+            ('move_id.invoice_date', '!=', False)
+        ] + invoice_range
+        without_invoice = ['&'] * len(date_range) + [
+            ('move_id.invoice_date', '=', False)
+        ] + date_range
+        return ['|'] + with_invoice + without_invoice
+
+    def _get_billing_data(self, date_from=None, date_to=None):
+        """Facturación realizada y horas facturadas por proyecto.
+
+        Devuelve {project_id: (real_billing, billing_hours)}. Sin fechas es el
+        acumulado total (valor de los campos computados). Con fechas, filtra
+        las líneas por fecha del comprobante y la parte de Adaly por los
+        períodos de consolidación cuyo mes empieza dentro del rango.
+
         Adaly S.A. no pesifica sus comprobantes al momento de cargarlos (su
         moneda funcional es USD): se excluye de esta suma en ARS y, si ya se
         emitio el informe de consolidacion del periodo, se suma aparte el
@@ -306,38 +344,95 @@ class ProjectProject(models.Model):
         Mientras no haya informe, el aporte de Adaly queda afuera del total
         (no se estima), tal como pide el requerimiento.
         """
+        result = {rec.id: (0.0, 0) for rec in self}
+        accounts = self.analytic_account_id
+        if not accounts:
+            return result
+
+        # Las sumas siguen el orden de búsqueda por defecto, igual que el
+        # cálculo original registro a registro, para no alterar decimales.
+        billing = defaultdict(float)
+        hours = defaultdict(int)
+        move_lines = self.env['account.move.line'].search([
+            ('analytic_account_id', 'in', accounts.ids),
+            ('move_id.state', '=', 'posted'),
+            ('account_id.internal_group', '=', 'income'),
+            ('display_type', '=', False),
+            ('exclude_from_invoice_tab', '=', False),
+            ('company_id', '!=', ADALY_COMPANY_ID),
+        ] + self._get_billing_date_domain(date_from, date_to))
+        for line in move_lines:
+            account_id = line.analytic_account_id.id
+            line_amount = line.credit - line.debit
+            billing[account_id] += line_amount
+            if line_amount > 0:
+                hours[account_id] += line.quantity
+            elif line_amount < 0:
+                hours[account_id] -= line.quantity
+
+        consolidated_domain = [
+            ('analytic_account_id', 'in', accounts.ids),
+            ('daughter_account.general_account_id.internal_group', '=', 'income'),
+            '|',
+            ('daughter_account.move_id.company_id', '=', ADALY_COMPANY_ID),
+            ('daughter_account.employee_id.company_id', '=', ADALY_COMPANY_ID),
+        ]
+        if date_from or date_to:
+            periods = self.env['account.consolidation.period']._search_in_range(
+                date_from, date_to
+            )
+            consolidated_domain.append(('consolidation_period_id', 'in', periods.ids))
+        consolidated = defaultdict(list)
+        for row in self.env['account.consolidation.data'].search(consolidated_domain):
+            consolidated[row.analytic_account_id.id].append(row.amount)
+
         for rec in self:
-            rec.real_billing = 0.0
-            rec.billing_hours = 0
-            if not rec.analytic_account_id:
+            account_id = rec.analytic_account_id.id
+            if not account_id:
                 continue
+            result[rec.id] = (
+                billing[account_id] + sum(consolidated[account_id]),
+                hours[account_id],
+            )
+        return result
 
-            move_lines = self.env['account.move.line'].search([
-                ('analytic_account_id', '=', rec.analytic_account_id.id),
-                ('move_id.state', '=', 'posted'),
-                ('account_id.internal_group', '=', 'income'),
-                ('display_type', '=', False),
-                ('exclude_from_invoice_tab', '=', False),
-                ('company_id', '!=', ADALY_COMPANY_ID),
-            ])
+    def _get_timesheet_time(self, date_from=None, date_to=None):
+        """Tiempo total del parte de horas por proyecto, opcionalmente por fecha.
 
-            for line in move_lines:
-                line_amount = line.credit - line.debit
-                rec.real_billing += line_amount
-
-                if line_amount > 0:
-                    rec.billing_hours += line.quantity
-                elif line_amount < 0:
-                    rec.billing_hours -= line.quantity
-
-            consolidated_billing = self.env['account.consolidation.data'].search([
-                ('analytic_account_id', '=', rec.analytic_account_id.id),
-                ('daughter_account.general_account_id.internal_group', '=', 'income'),
-                '|',
-                ('daughter_account.move_id.company_id', '=', ADALY_COMPANY_ID),
-                ('daughter_account.employee_id.company_id', '=', ADALY_COMPANY_ID),
-            ])
-            rec.real_billing += sum(consolidated_billing.mapped('amount'))
+        Replica `hr_timesheet` `_compute_total_timesheet_time` (conversión de
+        unidad y redondeo a entero) agregando el filtro por
+        `account.analytic.line.date`. Devuelve {project_id: int}.
+        """
+        domain = [('project_id', 'in', self.ids)]
+        if date_from:
+            domain.append(('date', '>=', date_from))
+        if date_to:
+            domain.append(('date', '<=', date_to))
+        groups = self.env['account.analytic.line'].read_group(
+            domain,
+            ['project_id', 'unit_amount', 'product_uom_id'],
+            ['project_id', 'product_uom_id'],
+            lazy=False,
+        )
+        time_by_project = defaultdict(list)
+        uom_ids = set(self.timesheet_encode_uom_id.ids)
+        for group in groups:
+            uom_id = group['product_uom_id'] and group['product_uom_id'][0]
+            if uom_id:
+                uom_ids.add(uom_id)
+            time_by_project[group['project_id'][0]].append(
+                (uom_id, group['unit_amount'])
+            )
+        uoms = {uom.id: uom for uom in self.env['uom.uom'].browse(uom_ids)}
+        result = {}
+        for project in self:
+            total_time = sum([
+                unit_amount * uoms.get(uom_id, project.timesheet_encode_uom_id).factor_inv
+                for uom_id, unit_amount in time_by_project[project.id]
+            ], 0.0)
+            total_time *= project.timesheet_encode_uom_id.factor
+            result[project.id] = int(round(total_time))
+        return result
 
     @api.depends('expected_go_live_date', 'real_go_live_date')
     def _compute_delivery_time_deviation(self):
