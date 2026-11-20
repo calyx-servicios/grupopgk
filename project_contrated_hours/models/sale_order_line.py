@@ -33,7 +33,7 @@ class SaleOrderLine(models.Model):
         Add the values of the first sale order line pointing to project_id
         """
         res = super(SaleOrderLine, self).write(vals)
-        for rec in self:
+        for rec in self.filtered(lambda line: line._should_sync_project_amount()):
             if rec.project_id:
                 lines = self.search([
                     ('project_id', '=', rec.project_id.id)
@@ -46,3 +46,8 @@ class SaleOrderLine(models.Model):
                             'project_currency_id': oldest_line.currency_id.id,
                         })
         return res
+
+    def _should_sync_project_amount(self):
+        """Separate independent commercial scopes from the original project."""
+        self.ensure_one()
+        return True
