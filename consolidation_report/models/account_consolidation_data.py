@@ -1,5 +1,7 @@
 from odoo import fields, models
 
+from .account_consolidation_report import DISTRIBUTION_TYPES
+
 
 class AccountConsolidationData(models.Model):
     _name = 'account.consolidation.data'
@@ -91,6 +93,13 @@ class AccountConsolidationData(models.Model):
     )
     amount = fields.Float(
         string='Amount'
+    )
+    distribution_type = fields.Selection(
+        DISTRIBUTION_TYPES,
+        string='Tipo de distribución',
+        index=True,
+        help='Distribución de gastos que originó la fila. Vacío en las filas '
+             'que no son distribuciones.',
     )
     project_id = fields.Many2one(
         'project.project',
