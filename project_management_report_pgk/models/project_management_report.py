@@ -51,11 +51,11 @@ COLUMNS = [
     ("allow_billable", "Facturable", BOOL),
 ]
 
-# Sin redondeo de presentación: los decimales opcionales (#) muestran el valor
-# tal cual está guardado.
-NUMBER_FORMAT = "#,##0.00########"
+# Los formatos solo definen cuántos decimales se VEN. En la celda se escribe el
+# valor completo de Odoo (sin redondear), visible en la barra de fórmulas.
+HOURS_DIGITS = 2
 INTEGER_FORMAT = "#,##0"
-PERCENT_FORMAT = "0.00########%"
+PERCENT_PRECISION = "Percentage"  # Ajustes > Técnico > Precisión decimal
 DATE_FORMAT = "dd/mm/yyyy"
 
 DIST_KEYS = {"gs": "dist_sector", "gg": "dist_management", "gi": "dist_indirect"}
@@ -225,13 +225,24 @@ class ProjectManagementReport(models.AbstractModel):
         return self._build_xlsx(rows, header_lines), base_name + ".xlsx"
 
     @api.model
+    def _number_format(self, digits):
+        return "#,##0" + ("." + "0" * digits if digits > 0 else "")
+
+    @api.model
+    def _percent_format(self):
+        digits = self.env["decimal.precision"].precision_get(PERCENT_PRECISION)
+        return ("0." + "0" * digits if digits > 0 else "0") + "%"
+
+    @api.model
     def _currency_format(self, currency):
+        """Formato de moneda con los decimales configurados en la moneda."""
+        number_format = self._number_format(currency.decimal_places)
         symbol = (currency.symbol or currency.name or "").replace('"', "")
         if not symbol:
-            return NUMBER_FORMAT
+            return number_format
         if currency.position == "after":
-            return '%s "%s"' % (NUMBER_FORMAT, symbol)
-        return '"%s" %s' % (symbol, NUMBER_FORMAT)
+            return '%s "%s"' % (number_format, symbol)
+        return '"%s" %s' % (symbol, number_format)
 
     @api.model
     def _build_xlsx(self, rows, header_lines):
@@ -250,9 +261,11 @@ class ProjectManagementReport(models.AbstractModel):
             TEXT: None,
             BOOL: None,
             DATE: workbook.add_format({"num_format": DATE_FORMAT}),
-            HOURS: workbook.add_format({"num_format": NUMBER_FORMAT}),
+            HOURS: workbook.add_format(
+                {"num_format": self._number_format(HOURS_DIGITS)}
+            ),
             INTEGER: workbook.add_format({"num_format": INTEGER_FORMAT}),
-            PERCENT: workbook.add_format({"num_format": PERCENT_FORMAT}),
+            PERCENT: workbook.add_format({"num_format": self._percent_format()}),
         }
         pes = self._get_pes_currency()
         formats[MONEY_PES] = workbook.add_format(
@@ -304,7 +317,7 @@ class ProjectManagementReport(models.AbstractModel):
                     sheet.write_number(row_idx, col_idx, value, formats[kind])
 
         for col_idx, (_key, _label, kind) in enumerate(columns):
-            sheet.set_column(col_idx, col_idx, 32 if kind == TEXT else 18)
+            sheet.set_column(col_idx, col_idx, 32 if kind == TEXT else 20)
         sheet.freeze_panes(header_row + 1, 0)
         sheet.autofilter(header_row, 0, max(row_idx, header_row), len(columns) - 1)
         workbook.close()

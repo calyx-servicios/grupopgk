@@ -9,7 +9,7 @@
     "website": "https://odoo.calyx-cloud.com.ar/",
     "license": "AGPL-3",
     "category": "Services/Project",
-    "version": "15.0.1.1.0",
+    "version": "15.0.1.2.0",
     "application": False,
     "installable": True,
     "depends": [
@@ -20,6 +20,7 @@
         "res_users_partner_fields",
     ],
     "data": [
+        "data/decimal_precision.xml",
         "security/security.xml",
         "security/ir.model.access.csv",
         "wizards/project_management_report_wizard_views.xml",
