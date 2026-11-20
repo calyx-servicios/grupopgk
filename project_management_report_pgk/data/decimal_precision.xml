@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Decimales con que se muestran los porcentajes en los informes de
+         gestión de proyectos (solo formato de celda, no redondea el valor). -->
+    <record id="decimal_percentage" model="decimal.precision">
+        <field name="name">Percentage</field>
+        <field name="digits">2</field>
+    </record>
+</odoo>

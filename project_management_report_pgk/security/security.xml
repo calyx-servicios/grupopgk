@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_project_management_report" model="res.groups">
+        <field name="name">Informe Gestión de Proyectos PGK</field>
+        <field name="comment">Puede emitir el informe Gestión de Proyectos - Servicios Profesionales (PGK).</field>
+    </record>
+
+    <record id="project.group_project_manager" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_project_management_report'))]"/>
+    </record>
+</odoo>
