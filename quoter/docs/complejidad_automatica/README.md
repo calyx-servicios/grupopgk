@@ -502,9 +502,10 @@ corregidos y tienen test.
 
 ## 13. Configuración manual en UAT / producción
 
-**Qué hay que pedir**: después de actualizar el módulo a `15.0.6.9.0`, alguien con los grupos
-**"Quoter - Administrador"** y **"Quoter - Gerente"** tiene que crear y configurar los registros
-de esta sección (son de cada base; el módulo no los crea). El módulo ya trae las 7 industrias,
+**Qué hay que pedir**: después de actualizar el módulo a `15.0.6.9.0`, alguien con el grupo
+**"Quoter - Administrador"** tiene que crear y configurar los registros de esta sección (son de
+cada base; el módulo no los crea). Desde `15.0.6.10.1` no hace falta que además sea
+"Quoter - Gerente". El módulo ya trae las 7 industrias,
 los topes SICYPYME 2026 y las 7 ramas-industria.
 
 Resumen de lo que se crea o modifica a mano:

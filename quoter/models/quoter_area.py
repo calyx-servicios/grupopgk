@@ -21,7 +21,6 @@ class QuoterProfessionalArea(models.Model):
     cerrado = fields.Boolean(
         string="Cerrado (en cotizaciones)",
         default=False,
-        groups="quoter.group_quoter_manager",
         help="Si está marcado, el área puede elegirse en pedidos/cotizaciones (campo Áreas). "
         "No bloquea la edición: use «Abrir editor de tabla» / «Cerrar editor de tabla» para eso.",
     )
@@ -614,6 +613,25 @@ class QuoterProfessionalArea(models.Model):
                 )
                 rec.table_rules_status += _(" · Base B: %s") % basis_label
 
+    # Configurar un área (editor de tabla, matrices, tablas en cadena y «Cerrado») es tarea de
+    # Quoter - Administrador, el grupo del menú de áreas. Quoter - Gerente conserva el permiso
+    # que tenía antes, pero ya no hace falta: el administrador puede no ser gerente.
+    _QUOTER_AREA_CONFIG_GROUPS = "quoter.group_quoter_admin,quoter.group_quoter_manager"
+
+    @api.model
+    def _quoter_user_can_configure_area(self):
+        return self.user_has_groups(self._QUOTER_AREA_CONFIG_GROUPS)
+
+    @api.model
+    def _quoter_check_user_can_configure_area(self):
+        if not self._quoter_user_can_configure_area():
+            raise AccessError(
+                _(
+                    "Solo Quoter - Administrador o Quoter - Gerente pueden configurar "
+                    "áreas del cotizador."
+                )
+            )
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -676,6 +694,10 @@ class QuoterProfessionalArea(models.Model):
                 Template.quoter_apply_default_sale_taxes(tmpl)
 
     def write(self, vals):
+        if "cerrado" in vals and not self.env.su:
+            # El campo no lleva groups: lo leen el formulario y las cotizaciones de todos los
+            # usuarios. Solo se restringe quién lo cambia.
+            self._quoter_check_user_can_configure_area()
         closed = self.filtered("cerrado")
         if closed:
             if vals.get("hour_matrix_mode"):
@@ -1483,7 +1505,7 @@ class QuoterProfessionalArea(models.Model):
                 self._recompute_shared_b_calc_outputs()
         if combined_preview:
             self._recompute_normal_combined_outputs()
-        can_edit_matrix = self.env.user.has_group("quoter.group_quoter_manager")
+        can_edit_matrix = self._quoter_user_can_configure_area()
         matrix_read_only = not self.quoter_config_edit_mode or not can_edit_matrix
         ranges = self.area_range_ids.sorted(key=lambda r: (r.sequence, r.id))
         levels = self._complexity_levels_ordered()
@@ -1558,7 +1580,7 @@ class QuoterProfessionalArea(models.Model):
         if not self.quoter_config_edit_mode:
             labels["matrix_edit_hint"] = _(
                 "Pulse «Abrir editor de tabla» en la cabecera del área para modificar la matriz. "
-                "(Solo el grupo Quoter - Gerente.)"
+                "(Solo Quoter - Administrador o Quoter - Gerente.)"
             )
         rows_out = []
         unify_branch_rows = []
@@ -1779,13 +1801,12 @@ class QuoterProfessionalArea(models.Model):
     def matrix_preview_write_unify_branch(self, line_id, branch_id, value):
         """Horas manuales en la tabla por rama (productos con «Unifica valor»)."""
         self.ensure_one()
-        if not self.env.user.has_group("quoter.group_quoter_manager"):
-            raise AccessError(_("Solo el grupo Quoter - Gerente puede editar la matriz."))
+        self._quoter_check_user_can_configure_area()
         if not self.quoter_config_edit_mode:
             raise UserError(
                 _(
-                    "La configuración del área está bloqueada: solo un usuario del grupo "
-                    "Quoter - Gerente puede abrir el editor de tabla desde la cabecera del área."
+                    "La configuración del área está bloqueada: solo Quoter - Administrador o "
+                    "Quoter - Gerente pueden abrir el editor de tabla desde la cabecera del área."
                 )
             )
         try:
@@ -1825,13 +1846,12 @@ class QuoterProfessionalArea(models.Model):
     ):
         """Persistir celda desde la matriz JS (salida en regular; A y B en combinada)."""
         self.ensure_one()
-        if not self.env.user.has_group("quoter.group_quoter_manager"):
-            raise AccessError(_("Solo el grupo Quoter - Gerente puede editar la matriz."))
+        self._quoter_check_user_can_configure_area()
         if not self.quoter_config_edit_mode:
             raise UserError(
                 _(
-                    "La configuración del área está bloqueada: solo un usuario del grupo "
-                    "Quoter - Gerente puede abrir el editor de tabla desde la cabecera del área."
+                    "La configuración del área está bloqueada: solo Quoter - Administrador o "
+                    "Quoter - Gerente pueden abrir el editor de tabla desde la cabecera del área."
                 )
             )
         try:
@@ -2074,13 +2094,12 @@ class QuoterProfessionalArea(models.Model):
 
     def matrix_preview_set_option(self, option_name, enabled):
         self.ensure_one()
-        if not self.env.user.has_group("quoter.group_quoter_manager"):
-            raise AccessError(_("Solo el grupo Quoter - Gerente puede modificar opciones de la matriz."))
+        self._quoter_check_user_can_configure_area()
         if not self.quoter_config_edit_mode:
             raise UserError(
                 _(
-                    "La configuración del área está bloqueada: solo un usuario del grupo "
-                    "Quoter - Gerente puede abrir el editor de tabla desde la cabecera del área."
+                    "La configuración del área está bloqueada: solo Quoter - Administrador o "
+                    "Quoter - Gerente pueden abrir el editor de tabla desde la cabecera del área."
                 )
             )
         allowed = {
@@ -2175,20 +2194,14 @@ class QuoterProfessionalArea(models.Model):
 
     def action_quoter_area_unlock_config(self):
         self.ensure_one()
-        if not self.env.user.has_group("quoter.group_quoter_manager"):
-            raise AccessError(
-                _("Solo los usuarios del grupo Quoter - Gerente pueden abrir o cerrar el editor de tabla.")
-            )
+        self._quoter_check_user_can_configure_area()
         self._quoter_sync_level_range_matrix_rows()
         self.write({"quoter_config_edit_mode": True})
         return True
 
     def action_quoter_area_lock_config(self):
         self.ensure_one()
-        if not self.env.user.has_group("quoter.group_quoter_manager"):
-            raise AccessError(
-                _("Solo los usuarios del grupo Quoter - Gerente pueden abrir o cerrar el editor de tabla.")
-            )
+        self._quoter_check_user_can_configure_area()
         self._quoter_validate_config_before_lock()
         self._quoter_recompute_after_config_save()
         self.write({"quoter_config_edit_mode": False})
@@ -2211,7 +2224,7 @@ class QuoterProfessionalArea(models.Model):
 
     def _formula_matrix_read_only(self):
         self.ensure_one()
-        can_edit = self.env.user.has_group("quoter.group_quoter_manager")
+        can_edit = self._quoter_user_can_configure_area()
         return not self.quoter_config_edit_mode or not can_edit
 
     def _formula_matrix_row_payload(self, sline, config, ranges, Policy):
@@ -2328,8 +2341,7 @@ class QuoterProfessionalArea(models.Model):
         self.ensure_one()
         if self.hour_matrix_mode != "formula":
             return self.get_formula_test_preview_data()
-        if not self.env.user.has_group("quoter.group_quoter_manager"):
-            raise AccessError(_("Solo el grupo Quoter - Gerente puede editar la matriz."))
+        self._quoter_check_user_can_configure_area()
         if self._formula_matrix_read_only():
             raise UserError(
                 _(
