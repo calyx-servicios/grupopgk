@@ -2,3 +2,4 @@
 
 from . import test_quoter_workflow
 from . import test_quoter_complexity_source
+from . import test_quoter_area_config_access

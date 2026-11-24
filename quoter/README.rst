@@ -242,9 +242,12 @@ Grupo                                 Uso
 ===================================== ==========================================
 ``group_quoter_access``               Grupo base; da el menú y el icono de la
                                       app. Todos los demás lo implican.
-``group_quoter_admin``                Configuración maestra: áreas, roles,
+``group_quoter_admin``                Configuración maestra: áreas (editor de
+                                      tabla, matrices y «Cerrado»), roles,
                                       niveles, secciones, ramas, tarifas.
 ``group_quoter_manager``              Puede asignarse como gerente responsable.
+                                      Conserva el permiso de configurar áreas,
+                                      pero el administrador no necesita serlo.
 ``group_quoter_partner``              Puede asignarse como socio.
 ``group_quoter_cotizador``            Perfil del flujo: prepara cotizaciones.
 ``group_quoter_aprobador``            Perfil del flujo: aprueba / ajusta %.
@@ -392,6 +395,13 @@ El área tiene dos candados independientes:
 * ``cerrado`` — habilita el área para elegirla en cotizaciones. Con el área
   cerrada, ``write`` rechaza cambios de ``hour_matrix_mode`` y de niveles de
   complejidad.
+
+Los dos candados, las matrices y las tablas en cadena los manejan
+**Quoter - Administrador** o **Quoter - Gerente**
+(``_quoter_user_can_configure_area``). ``cerrado`` no lleva ``groups`` en el
+modelo: los ``attrs`` del formulario lo usan y Odoo quita de la vista los
+campos que el usuario no puede leer, lo que rompía el formulario («Unknown
+field cerrado in domain»). Solo ``write`` controla quién lo cambia.
 
 
 Uso
