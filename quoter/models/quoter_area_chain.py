@@ -1,7 +1,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl-3.0.html)
 
 from odoo import _, api, fields, models
-from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class QuoterProfessionalAreaChain(models.Model):
@@ -188,8 +188,7 @@ class QuoterProfessionalAreaChain(models.Model):
         self.ensure_one()
         if self.hour_matrix_mode != "formula_chain":
             raise UserError(_("El área no usa modo fórmula en cadena."))
-        if not self.env.user.has_group("quoter.group_quoter_manager"):
-            raise AccessError(_("Solo Quoter - Gerente puede editar tablas."))
+        self._quoter_check_user_can_configure_area()
         if not self.quoter_config_edit_mode:
             raise UserError(_("Abra el editor de tabla para crear tablas."))
         can_create, hint = self._chain_create_table_state()
@@ -227,8 +226,7 @@ class QuoterProfessionalAreaChain(models.Model):
         table = self.env["quoter.chain.table"].browse(int(table_id or 0)).exists()
         if not table or table.area_id != self:
             raise UserError(_("Tabla no encontrada."))
-        if not self.env.user.has_group("quoter.group_quoter_manager"):
-            raise AccessError(_("Solo Quoter - Gerente puede eliminar tablas."))
+        self._quoter_check_user_can_configure_area()
         if not self.quoter_config_edit_mode:
             raise UserError(_("Abra el editor de tabla para eliminar."))
         table.unlink()
@@ -389,7 +387,7 @@ class QuoterProfessionalAreaChain(models.Model):
 
     def _chain_matrix_read_only(self):
         self.ensure_one()
-        if not self.env.user.has_group("quoter.group_quoter_manager"):
+        if not self._quoter_user_can_configure_area():
             return True
         return not self.quoter_config_edit_mode
 
