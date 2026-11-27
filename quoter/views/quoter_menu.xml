@@ -121,6 +121,14 @@
               sequence="1"
               groups="quoter.group_quoter_admin"/>
 
+    <!-- Usuarios de los grupos del cotizador sin Ajustes nativos: solo Quoter - Administrador. -->
+    <menuitem id="menu_quoter_admin_user_groups"
+              name="Grupos de usuarios"
+              parent="menu_quoter_configuration"
+              action="action_quoter_admin_user_groups"
+              sequence="2"
+              groups="quoter.group_quoter_admin"/>
+
     <menuitem id="menu_quoter_professional_area"
               name="Áreas profesionales"
               parent="menu_quoter_configuration"

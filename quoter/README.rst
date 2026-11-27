@@ -271,6 +271,18 @@ Reglas de registro:
   impedía abrir pedidos que referencian áreas de otros equipos.
 * ``group_quoter_admin`` tiene acceso completo a ``product.pricelist`` y
   ``product.pricelist.item`` para gestionar tarifas desde el menú Cotizador.
+* ``group_quoter_admin`` agrega y quita usuarios de los grupos del cotizador
+  desde **Cotizador → Configuración → Grupos de usuarios** sin el permiso nativo
+  *Ajustes / Derechos de acceso*. No recibe ACL sobre ``res.groups``:
+  ``models/res_groups.py`` hace con ``sudo`` solo la escritura del campo
+  ``users`` (vincular o desvincular usuarios existentes) y solo sobre los
+  grupos de ``QUOTER_MANAGED_GROUP_XMLIDS``. Cualquier otra escritura sigue el
+  control nativo. Esa lista coincide con el dominio de
+  ``action_quoter_admin_user_groups`` y de ``action_quoter_security_groups``
+  (botón de Ajustes): al agregar un grupo hay que actualizar las tres.
+  ``Quoter - Acceso`` y los grupos de Ventas implícitos no están en la lista:
+  quitar a un usuario de un rol no lo quita de ellos (comportamiento nativo de
+  Odoo con los grupos implícitos).
 
 .. warning::
 
@@ -365,7 +377,11 @@ Configuración inicial
 Todo el menú **Cotizador → Configuración** requiere ``group_quoter_admin``.
 
 1. **Ajustes** (``Cotizador → Configuración → Ajustes``): plazo de pago, equipo
-   de ventas y compañía del informe PDF por defecto.
+   de ventas y compañía del informe PDF por defecto. Requiere además el permiso
+   nativo de Ajustes de Odoo.
+   **Grupos de usuarios** (``Cotizador → Configuración → Grupos de usuarios``):
+   alta y baja de usuarios en los grupos del cotizador, solo con
+   ``group_quoter_admin``.
 2. **Categorías de recursos**: crear los roles (Asistente, Senior, Gerente,
    Socio…) con su secuencia.
 3. **Niveles de complejidad**: Bajo / Medio / Alto, con secuencia creciente y

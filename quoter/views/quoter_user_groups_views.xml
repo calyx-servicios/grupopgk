@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Grupos de usuarios del cotizador para Quoter - Administrador (sin Ajustes nativos).
+         Solo se editan los usuarios: res.groups.write acota el permiso (models/res_groups.py).
+         edit="1" explícito: sin él Odoo deja la vista en solo lectura porque el usuario no
+         tiene ACL de escritura sobre res.groups. -->
+    <record id="view_quoter_user_groups_tree" model="ir.ui.view">
+        <field name="name">res.groups.tree.quoter.user.groups</field>
+        <field name="model">res.groups</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <tree string="Grupos de usuarios del cotizador" create="0" delete="0">
+                <field name="name"/>
+                <field name="comment"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_quoter_user_groups_form" model="ir.ui.view">
+        <field name="name">res.groups.form.quoter.user.groups</field>
+        <field name="model">res.groups</field>
+        <field name="priority">100</field>
+        <field name="arch" type="xml">
+            <form string="Grupo del cotizador" create="0" delete="0" edit="1" duplicate="0">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <field name="comment" readonly="1" class="text-muted"/>
+                    <separator string="Usuarios"/>
+                    <field name="users" options="{'no_create': True, 'no_open': True}">
+                        <tree>
+                            <field name="name"/>
+                            <field name="login"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_quoter_admin_user_groups" model="ir.actions.act_window">
+        <field name="name">Grupos de usuarios</field>
+        <field name="res_model">res.groups</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_quoter_user_groups_tree')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_quoter_user_groups_form')}),
+        ]"/>
+        <!-- Misma lista que QUOTER_MANAGED_GROUP_XMLIDS (models/res_groups.py) y que
+             quoter.action_quoter_security_groups (views/quoter_menu.xml). -->
+        <field name="domain" eval="[('id', 'in', [ref('quoter.group_quoter_admin'), ref('quoter.group_quoter_manager'), ref('quoter.group_quoter_partner'), ref('quoter.group_quoter_cotizador'), ref('quoter.group_quoter_aprobador'), ref('quoter.group_quoter_contratos'), ref('quoter.group_quoter_tax'), ref('quoter.group_quoter_auditoria'), ref('quoter.group_quoter_formula'), ref('quoter.group_quoter_payroll'), ref('quoter.group_quoter_finanzas')])]"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p>Agregar o quitar usuarios de los grupos del cotizador.</p>
+        </field>
+    </record>
+</odoo>
