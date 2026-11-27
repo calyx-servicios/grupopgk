@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_project_task_real_progress_search" model="ir.ui.view">
+        <field name="name">project.task.real.progress.search</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <search string="Avance real">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="stage_id"/>
+                <field name="user_ids"/>
+                <field name="partner_id"/>
+                <field name="task_type"/>
+                <filter string="Mis tareas" name="my_tasks" domain="[('user_ids', 'in', uid)]"/>
+                <separator/>
+                <group expand="1" string="Agrupar por">
+                    <filter string="Proyecto" name="project" context="{'group_by': 'project_id'}"/>
+                    <filter string="Etapa" name="stage" context="{'group_by': 'stage_id'}"/>
+                    <filter string="Responsables" name="users" context="{'group_by': 'user_ids'}"/>
+                    <filter string="Cliente" name="customer" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Tipo de tarea" name="task_type" context="{'group_by': 'task_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_project_task_real_progress_graph" model="ir.ui.view">
+        <field name="name">project.task.real.progress.graph</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <graph string="Avance real" type="bar" sample="1">
+                <field name="project_id"/>
+                <field name="progress" type="measure"/>
+                <field name="progress_completed_items" type="measure"/>
+                <field name="progress_total_items" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_project_task_real_progress_pivot" model="ir.ui.view">
+        <field name="name">project.task.real.progress.pivot</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <pivot string="Avance real" sample="1">
+                <field name="project_id" type="row"/>
+                <field name="stage_id" type="col"/>
+                <field name="progress" type="measure"/>
+                <field name="progress_completed_items" type="measure"/>
+                <field name="progress_total_items" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_project_task_real_progress_report" model="ir.actions.act_window">
+        <field name="name">Avance real</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">graph,pivot</field>
+        <field name="search_view_id" ref="view_project_task_real_progress_search"/>
+        <field name="domain">[('project_id', '!=', False)]</field>
+        <field name="context">{'graph_measure': 'progress'}</field>
+    </record>
+
+    <record id="action_project_task_real_progress_graph" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="view_project_task_real_progress_graph"/>
+        <field name="act_window_id" ref="action_project_task_real_progress_report"/>
+    </record>
+
+    <record id="action_project_task_real_progress_pivot" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="view_project_task_real_progress_pivot"/>
+        <field name="act_window_id" ref="action_project_task_real_progress_report"/>
+    </record>
+
+    <record id="view_project_task_hours_consumption_graph" model="ir.ui.view">
+        <field name="name">project.task.hours.consumption.graph</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <graph string="Consumo de horas" type="bar" sample="1">
+                <field name="project_id"/>
+                <field name="planned_hours" type="measure"/>
+                <field name="effective_hours" type="measure"/>
+                <field name="total_hours_spent" type="measure"/>
+                <field name="remaining_hours" type="measure"/>
+                <field name="overtime" type="measure"/>
+                <field name="hours_consumption_percentage" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_project_task_hours_consumption_pivot" model="ir.ui.view">
+        <field name="name">project.task.hours.consumption.pivot</field>
+        <field name="model">project.task</field>
+        <field name="arch" type="xml">
+            <pivot string="Consumo de horas" sample="1">
+                <field name="project_id" type="row"/>
+                <field name="stage_id" type="col"/>
+                <field name="planned_hours" type="measure"/>
+                <field name="effective_hours" type="measure"/>
+                <field name="total_hours_spent" type="measure"/>
+                <field name="remaining_hours" type="measure"/>
+                <field name="overtime" type="measure"/>
+                <field name="hours_consumption_percentage" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_project_task_hours_consumption_report" model="ir.actions.act_window">
+        <field name="name">Consumo de horas</field>
+        <field name="res_model">project.task</field>
+        <field name="view_mode">graph,pivot</field>
+        <field name="search_view_id" ref="view_project_task_real_progress_search"/>
+        <field name="domain">[('project_id', '!=', False)]</field>
+        <field name="context">{'graph_measure': 'total_hours_spent'}</field>
+    </record>
+
+    <record id="action_project_task_hours_consumption_graph" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">graph</field>
+        <field name="view_id" ref="view_project_task_hours_consumption_graph"/>
+        <field name="act_window_id" ref="action_project_task_hours_consumption_report"/>
+    </record>
+
+    <record id="action_project_task_hours_consumption_pivot" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">pivot</field>
+        <field name="view_id" ref="view_project_task_hours_consumption_pivot"/>
+        <field name="act_window_id" ref="action_project_task_hours_consumption_report"/>
+    </record>
+
+    <record id="project.menu_project_report_task_analysis" model="ir.ui.menu">
+        <field name="name">Tasks Analysis</field>
+        <field name="action" ref="project.action_project_task_user_tree"/>
+    </record>
+
+    <menuitem id="menu_project_task_real_progress_report"
+        name="Avance real"
+        action="action_project_task_real_progress_report"
+        parent="project.menu_project_report"
+        sequence="15"/>
+
+    <menuitem id="menu_project_task_hours_consumption_report"
+        name="Consumo de horas"
+        action="action_project_task_hours_consumption_report"
+        parent="project.menu_project_report"
+        sequence="20"/>
+
+</odoo>

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_task_form_real_progress" model="ir.ui.view">
+        <field name="name">project.task.form.real.progress</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="hr_timesheet.view_task_form2_inherited"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@id='timesheets_tab']//field[@name='progress']" position="after">
+                <field name="progress_completed_items" readonly="1"/>
+                <field name="progress_total_items" readonly="1"/>
+                <field name="hours_consumption_percentage" readonly="1"/>
+            </xpath>
+            <xpath expr="//field[@name='remaining_hours'][@decoration-danger]" position="before">
+                <field name="hours_consumption_percentage" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='remaining_hours'][@decoration-danger]" position="attributes">
+                <attribute name="decoration-danger">hours_consumption_percentage &gt;= 100</attribute>
+                <attribute name="decoration-warning">hours_consumption_percentage &gt;= 80 and hours_consumption_percentage &lt; 100</attribute>
+            </xpath>
+            <xpath expr="//field[@name='depend_on_ids']/tree//field[@name='remaining_hours']" position="before">
+                <field name="hours_consumption_percentage" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='depend_on_ids']/tree//field[@name='remaining_hours']" position="attributes">
+                <attribute name="decoration-danger">hours_consumption_percentage &gt;= 100</attribute>
+                <attribute name="decoration-warning">hours_consumption_percentage &gt;= 80 and hours_consumption_percentage &lt; 100</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_task_tree_real_progress" model="ir.ui.view">
+        <field name="name">project.task.tree.real.progress</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="hr_timesheet.view_task_tree2_inherited"/>
+        <field name="arch" type="xml">
+            <field name="progress" position="before">
+                <field name="progress_completed_items" optional="hide"/>
+                <field name="progress_total_items" optional="hide"/>
+                <field name="hours_consumption_percentage" optional="hide"/>
+            </field>
+            <field name="remaining_hours" position="attributes">
+                <attribute name="decoration-danger">hours_consumption_percentage &gt;= 100</attribute>
+                <attribute name="decoration-warning">hours_consumption_percentage &gt;= 80 and hours_consumption_percentage &lt; 100</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_task_kanban_real_progress" model="ir.ui.view">
+        <field name="name">project.task.kanban.real.progress</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="hr_timesheet.view_task_kanban_inherited_progress"/>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban/field[@name='progress']" position="after">
+                <field name="progress_completed_items"/>
+                <field name="progress_total_items"/>
+                <field name="hours_consumption_percentage"/>
+            </xpath>
+            <xpath expr="//t[@t-set='badge'][contains(@t-if, 'record.progress.raw_value')]" position="attributes">
+                <attribute name="t-if">record.hours_consumption_percentage.raw_value &gt;= 80 and record.hours_consumption_percentage.raw_value &lt; 100</attribute>
+            </xpath>
+            <xpath expr="//div[hasclass('o_kanban_record_body')]/field[@name='tag_ids']" position="after">
+                <div class="mt-2">
+                    <strong>Avance real: </strong>
+                    <field name="progress" widget="progressbar"/>
+                    <span>
+                        (<field name="progress_completed_items"/>/<field name="progress_total_items"/> ítems)
+                    </span>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="project_sharing_task_form_real_progress" model="ir.ui.view">
+        <field name="name">project.sharing.task.form.real.progress</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="hr_timesheet.project_sharing_inherit_project_task_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='remaining_hours'][@decoration-danger]" position="before">
+                <field name="hours_consumption_percentage" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='remaining_hours'][@decoration-danger]" position="attributes">
+                <attribute name="decoration-danger">hours_consumption_percentage &gt;= 100</attribute>
+                <attribute name="decoration-warning">hours_consumption_percentage &gt;= 80 and hours_consumption_percentage &lt; 100</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="project_sharing_task_tree_real_progress" model="ir.ui.view">
+        <field name="name">project.sharing.task.tree.real.progress</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="hr_timesheet.project_sharing_inherit_project_task_view_tree"/>
+        <field name="arch" type="xml">
+            <field name="remaining_hours" position="before">
+                <field name="hours_consumption_percentage" invisible="1"/>
+            </field>
+            <field name="remaining_hours" position="attributes">
+                <attribute name="decoration-danger">hours_consumption_percentage &gt;= 100</attribute>
+                <attribute name="decoration-warning">hours_consumption_percentage &gt;= 80 and hours_consumption_percentage &lt; 100</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="project_sharing_task_kanban_real_progress" model="ir.ui.view">
+        <field name="name">project.sharing.task.kanban.real.progress</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="hr_timesheet.project_sharing_kanban_inherit_project_task_view_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban/field[@name='progress']" position="after">
+                <field name="hours_consumption_percentage"/>
+            </xpath>
+            <xpath expr="//t[@t-set='badge'][contains(@t-if, 'record.progress.raw_value')]" position="attributes">
+                <attribute name="t-if">record.hours_consumption_percentage.raw_value &gt;= 80 and record.hours_consumption_percentage.raw_value &lt; 100</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

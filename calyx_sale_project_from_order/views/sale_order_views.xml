@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_calyx_sale_project" model="ir.ui.view">
+        <field name="name">sale.order.form.calyx.sale.project</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+                  <field name="calyx_sale_project_from_order_enabled" invisible="1"/>
+                  <field name="calyx_is_quotation" invisible="1"/>
+                <field name="calyx_project_manager_id"
+                      attrs="{'required': [('calyx_sale_project_from_order_enabled', '=', True), ('calyx_is_quotation', '=', False)], 'readonly': [('state', 'not in', ['draft', 'sent'])]}"
+                       options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

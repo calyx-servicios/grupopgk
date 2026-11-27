@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_project_task_event_user,project.task.event.user,model_project_task_event,project.group_project_user,1,1,1,0
+access_project_task_event_manager,project.task.event.manager,model_project_task_event,project.group_project_manager,1,1,1,1
+access_project_task_suspension_reason_user,project.task.suspension.reason.user,model_project_task_suspension_reason,project.group_project_user,1,0,0,0
+access_project_task_suspension_reason_manager,project.task.suspension.reason.manager,model_project_task_suspension_reason,project.group_project_manager,1,1,1,1
+access_project_task_event_wizard_user,project.task.event.wizard.user,model_project_task_event_wizard,project.group_project_user,1,1,1,1

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_task_form_config_hierarchy" model="ir.ui.view">
+        <field name="name">project.task.form.config.hierarchy</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project_hours_request.view_task_form2_hours_request"/>
+        <field name="arch" type="xml">
+            <field name="hours_cap" position="attributes">
+                <attribute name="attrs">{'invisible': ['|', ('config_level', '=', 4), '&amp;', ('config_level', '=', 0), ('parent_id', '!=', False)], 'readonly': ['|', ('config_level', 'in', [1, 4]), '&amp;', ('config_level', 'in', [2, 3]), ('id', '!=', False)]}</attribute>
+            </field>
+            <field name="hours_cap" position="after">
+                <field name="config_level" readonly="1"/>
+                <field name="config_available_hours" attrs="{'invisible': [('config_level', 'not in', [3, 4])] }" readonly="1"/>
+            </field>
+            <page name="sub_tasks_page" position="attributes">
+                <attribute name="attrs">{'invisible': ['|', ('allow_subtasks', '=', False), ('config_level', '=', 4)]}</attribute>
+            </page>
+        </field>
+    </record>
+</odoo>
