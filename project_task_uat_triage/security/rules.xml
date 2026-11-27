@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rule_uat_event_task_access" model="ir.rule">
+        <field name="name">UAT: acceso al historial según la tarea</field>
+        <field name="model_id" ref="project_task_type_workflow.model_project_task_event"/>
+        <field name="domain_force">['|', ('event_type', '!=', 'uat'), ('uat_task_access', '=', True)]</field>
+    </record>
+    <record id="rule_uat_approval_task_access" model="ir.rule">
+        <field name="name">UAT: acceso a aprobaciones según la tarea</field>
+        <field name="model_id" ref="model_project_task_uat_approval"/>
+        <field name="domain_force">[('uat_task_access', '=', True)]</field>
+    </record>
+</odoo>
