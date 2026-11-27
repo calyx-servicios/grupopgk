@@ -38,3 +38,4 @@ from . import quoter_sale_order_area_complexity
 from . import res_config_settings
 # from . import quoter_service_config
 # from . import quoter_service_product_line
+from . import res_groups
