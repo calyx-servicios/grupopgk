@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_project_task_hours_request_user,project.task.hours.request.user,model_project_task_hours_request,base.group_user,1,1,1,0
+access_project_task_hours_request_admin,project.task.hours.request.admin,model_project_task_hours_request,base.group_system,1,1,1,1
+access_project_task_hours_request_wizard_user,project.task.hours.request.wizard.user,model_project_task_hours_request_wizard,base.group_user,1,1,1,1

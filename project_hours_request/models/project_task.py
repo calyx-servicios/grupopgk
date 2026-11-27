@@ -1,0 +1,464 @@
+from typing import Any
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError, ValidationError
+from odoo.tools.float_utils import float_compare
+
+
+class ProjectTask(models.Model):
+    """Apply planning and lifecycle rules to project tasks."""
+
+    _inherit = 'project.task'
+
+    ESTIMATED_HOURS_FIELDS = {
+        "estimated_dev_hours",
+        "estimated_deploy_hours",
+        "estimated_functional_test_hours",
+        "estimated_uat_support_hours",
+        "margin_hours",
+    }
+    PM_ESTIMATED_HOURS_FIELDS = {
+        "estimated_functional_test_hours",
+    }
+
+    development_card = fields.Boolean(
+        string="Tarjeta de Desarrollo",
+    )
+    estimated_dev_hours = fields.Float(
+        string="Horas Estimadas Dev",
+    )
+    estimated_deploy_hours = fields.Float(
+        string="Horas Estimada Deploy",
+    )
+    estimated_functional_test_hours = fields.Float(
+        string="Horas Estimada Funcional Pruebas",
+    )
+    margin_hours = fields.Float(
+        string="Horas Margen",
+    )
+    estimated_uat_support_hours = fields.Float(
+        string="Horas UAT/Soporte",
+        copy=False,
+    )
+    uat_consumed_hours = fields.Float(
+        string="UAT/Soporte consumidas", compute="_compute_uat_hours",
+    )
+    uat_remaining_hours = fields.Float(
+        string="UAT/Soporte disponibles", compute="_compute_uat_hours",
+    )
+    can_edit_estimated_hours = fields.Boolean(
+        compute="_compute_can_edit_estimated_hours",
+    )
+    can_edit_functional_test_hours = fields.Boolean(
+        compute="_compute_can_edit_estimated_hours",
+    )
+    can_edit_uat_hours = fields.Boolean(
+        compute="_compute_can_edit_uat_hours",
+    )
+
+    def _get_planned_hours(self, segment):
+        """Return planned hours for a controlled timesheet segment."""
+        self.ensure_one()
+        field_by_segment = {
+            "development": "estimated_dev_hours",
+            "deploy": "estimated_deploy_hours",
+            "functional_test": "estimated_functional_test_hours",
+            "uat_support": "estimated_uat_support_hours",
+        }
+        return self[field_by_segment[segment]]
+
+    def _get_consumed_hours(self, segment):
+        """Return hours charged to one stored segment."""
+        self.ensure_one()
+        lines = self.env["account.analytic.line"].sudo().search([
+            ("task_id", "=", self.id),
+            ("timesheet_segment", "=", segment),
+        ] + self._get_budget_timesheet_domain())
+        return sum(lines.mapped("unit_amount"))
+
+    def _get_budget_timesheet_domain(self):
+        """Allow integrations to separate internal effort from client budgets."""
+        return []
+
+    def _get_budget_consumed_hours(self):
+        self.ensure_one()
+        lines = self.env["account.analytic.line"].sudo().search([
+            ("task_id", "child_of", self.id),
+        ] + self._get_budget_timesheet_domain())
+        return sum(lines.mapped("unit_amount"))
+
+    def _get_total_consumed_hours(self):
+        """Return consumed hours on this task and all descendant tasks."""
+        self.ensure_one()
+        lines = self.env["account.analytic.line"].sudo().search([
+            ("task_id", "child_of", self.id),
+        ])
+        return sum(lines.mapped("unit_amount"))
+
+    def _get_global_hours_cap_root(self):
+        """Return the configured non-hierarchy root governing this task."""
+        self.ensure_one()
+        root = self
+        while root.parent_id:
+            root = root.parent_id
+        if "config_level" in root._fields and root.config_level:
+            return self.env["project.task"]
+        margin_approval = root.hours_request_ids.filtered(
+            lambda request: (
+                request.state == "approved"
+                and request.margin_authorization
+                and not request.global_cap_request
+            )
+        )
+        global_approval = root.hours_request_ids.filtered(
+            lambda request: request.global_cap_request
+        )
+        # Margin approvals raise hours_cap but are governed by segment caps.
+        if (
+            root.task_type == "development"
+            and margin_approval
+            and not global_approval
+        ):
+            return self.env["project.task"]
+        if root.hours_cap > 0 or root.task_type == "functional":
+            return root
+        return self.env["project.task"]
+
+    def _get_approved_margin_hours(self, segment):
+        """Return approved margin allocated to a segment."""
+        self.ensure_one()
+        requests = self.hours_request_ids.filtered(
+            lambda request: (
+                request.state == "approved"
+                and request.margin_authorization
+                and request.segment == segment
+            )
+        )
+        return sum(requests.mapped("requested_hours"))
+
+    @api.model
+    def _get_segment_label(self, segment):
+        """Return the user-facing label for a segment."""
+        labels = {
+            "development": _("Desarrollo"),
+            "deploy": _("Deploy"),
+            "functional_test": _("Funcional Pruebas"),
+            "uat_support": _("UAT/Soporte"),
+        }
+        return labels[segment]
+
+    hours_cap = fields.Float(
+        string="Tope de horas"
+    )
+    can_request_additional_hours = fields.Boolean(
+        compute="_compute_can_request_additional_hours",
+    )
+    hours_request_ids = fields.One2many(
+        string="Solicitudes de horas adicionales",
+        comodel_name="project.task.hours.request",
+        inverse_name="task_id"
+    )
+    hours_request_count = fields.Integer(
+        string="Cantidad de solicitudes",
+        compute="_compute_hours_request_count"
+    )
+
+    @api.depends("hours_request_ids")
+    def _compute_hours_request_count(self):
+        """Count additional-hours requests for the task."""
+        for rec in self:
+            rec.hours_request_count = len(rec.hours_request_ids)
+
+    @api.depends("parent_id", "task_type", "hours_cap")
+    def _compute_can_request_additional_hours(self):
+        """Show requests on root tasks eligible for either cap workflow."""
+        for task in self:
+            task.can_request_additional_hours = bool(
+                not task.parent_id
+                and (
+                    task.hours_cap > 0
+                    or task.task_type in ("development", "functional")
+                )
+            )
+
+    def _sync_estimated_hours_from_children(self):
+        """Update parent estimates with the sum of their subtasks."""
+        if self.env.context.get("skip_parent_hours_sync"):
+            return
+        for task in self.filtered(lambda rec: not rec.parent_id):
+            child_tasks = task.child_ids.filtered(
+                lambda child: child.task_type == "development"
+            )
+            vals = {
+                field_name: sum(child_tasks.mapped(field_name))
+                for field_name in (
+                    self.ESTIMATED_HOURS_FIELDS
+                    - {"estimated_uat_support_hours"}
+                )
+            }
+            task.with_context(
+                skip_parent_hours_sync=True,
+                skip_estimated_hours_editor_check=True,
+            ).sudo().write(vals)
+
+    @api.model
+    def _get_project_pm(self, project):
+        """Return the project manager (Calyx PM when available)."""
+        if (
+            "calyx_project_manager_id" in project._fields
+            and project.calyx_project_manager_id
+        ):
+            return project.calyx_project_manager_id
+        return project.user_id
+
+    def _can_manage_uat_hours(self, project: Any) -> bool:
+        """Authorize the project responsible or its configured Calyx PM."""
+        managers = project.user_id | self._get_project_pm(project)
+        return self.env.su or self.env.user in managers
+
+    @api.depends("project_id", "project_id.user_id")
+    @api.depends_context("uid")
+    def _compute_can_edit_uat_hours(self) -> None:
+        """Expose the UAT cupo to either project management user."""
+        for task in self:
+            task.can_edit_uat_hours = self._can_manage_uat_hours(
+                task.project_id,
+            )
+
+    def _compute_can_edit_estimated_hours(self):
+        """Tech lead edits Dev/Deploy/Margin; PM edits functional tests."""
+        current_user = self.env.user
+        for task in self:
+            task.can_edit_estimated_hours = (
+                task.project_id.technical_leader_id == current_user
+            )
+            task.can_edit_functional_test_hours = (
+                self._get_project_pm(task.project_id) == current_user
+            )
+
+    def _check_estimated_hours_editor(self, vals, project=None):
+        """Reject estimate changes made by users without that role."""
+        projects = project or self.mapped("project_id")
+        if "estimated_uat_support_hours" in vals and not self.env.su:
+            for task_project in projects:
+                if not self._can_manage_uat_hours(task_project):
+                    raise UserError(_(
+                        "Solo el Responsable o PM del proyecto puede "
+                        "editar UAT/Soporte."
+                    ))
+        if self.env.context.get("skip_estimated_hours_editor_check"):
+            return
+        if not self.ESTIMATED_HOURS_FIELDS.intersection(vals) or self.env.su:
+            return
+        leader_fields = (
+            self.ESTIMATED_HOURS_FIELDS - self.PM_ESTIMATED_HOURS_FIELDS
+            - {"estimated_uat_support_hours"}
+        )
+        for task_project in projects:
+            if (
+                leader_fields.intersection(vals)
+                and task_project.technical_leader_id != self.env.user
+            ):
+                raise UserError(_(
+                    "Solo el Líder Técnico del proyecto puede editar las "
+                    "horas estimadas Dev, Deploy y el margen."
+                ))
+            if (
+                self.PM_ESTIMATED_HOURS_FIELDS.intersection(vals)
+                and self._get_project_pm(task_project) != self.env.user
+            ):
+                raise UserError(_(
+                    "Solo el PM del proyecto puede editar las Horas "
+                    "Estimada Funcional Pruebas."
+                ))
+
+    @api.constrains(
+        "estimated_dev_hours",
+        "estimated_deploy_hours",
+        "estimated_functional_test_hours",
+        "estimated_uat_support_hours",
+        "margin_hours",
+    )
+    def _check_nonnegative_estimated_hours(self):
+        """Prevent negative planned-hour values."""
+        for task in self:
+            if any(
+                hours < 0
+                for hours in (
+                    task.estimated_dev_hours,
+                    task.estimated_deploy_hours,
+                    task.estimated_functional_test_hours,
+                    task.estimated_uat_support_hours,
+                    task.margin_hours,
+                )
+            ):
+                raise ValidationError(_(
+                    "Las horas estimadas y el margen no pueden ser negativos."
+                ))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Allow task creation; estimate permissions apply on later edits."""
+        for vals in vals_list:
+            if vals.get("estimated_uat_support_hours"):
+                project = self.env["project.project"].browse(
+                    vals.get("project_id")
+                )
+                self._check_estimated_hours_editor(
+                    {"estimated_uat_support_hours":
+                     vals["estimated_uat_support_hours"]}, project=project,
+                )
+        tasks = super().create(vals_list)
+        tasks._validate_uat_hours()
+        tasks.mapped("parent_id")._sync_estimated_hours_from_children()
+        return tasks
+
+    def write(self, vals):
+        """Enforce estimate permissions and prevent empty finalization."""
+        if {"estimated_uat_support_hours", "task_type"}.intersection(vals):
+            self.env["account.analytic.line"]._lock_tasks(self)
+        parents_to_sync = self.env["project.task"]
+        if self.ESTIMATED_HOURS_FIELDS.intersection(vals) or "parent_id" in vals:
+            parents_to_sync = self.mapped("parent_id")
+        target_project = self.env["project.project"].browse(
+            vals.get("project_id")
+        )
+        self._check_estimated_hours_editor(
+            vals,
+            project=target_project or self.mapped("project_id"),
+        )
+        if vals.get("stage_id"):
+            target_stage = self.env["project.task.type"].browse(
+                vals["stage_id"]
+            )
+            if target_stage.get_timesheet_stage_type() == "done":
+                empty_tasks = self.filtered(
+                    lambda task: (
+                        (
+                            task._get_total_consumed_hours()
+                            if (
+                                "config_level" in task._fields
+                                and task.config_level in (1, 2, 3)
+                            )
+                            else sum(
+                                task.timesheet_ids.mapped("unit_amount")
+                            )
+                        ) <= 0
+                    )
+                )
+                if empty_tasks:
+                    raise UserError(_(
+                        "No se puede finalizar una tarea sin horas cargadas."
+                    ))
+        result = super().write(vals)
+        if {"estimated_uat_support_hours", "task_type"}.intersection(vals):
+            self._validate_uat_hours()
+        if self.ESTIMATED_HOURS_FIELDS.intersection(vals):
+            self.timesheet_ids._validate_development_caps()
+            development_tasks = self.filtered(
+                lambda task: task.task_type == "development"
+            )
+            for task in development_tasks:
+                approved_margin = sum(
+                    task.hours_request_ids.filtered(
+                        lambda request: (
+                            request.state == "approved"
+                            and request.margin_authorization
+                        )
+                    ).mapped("requested_hours")
+                )
+                if approved_margin > task.margin_hours:
+                    raise UserError(_(
+                        "El Margen no puede ser menor que las horas "
+                        "adicionales "
+                        "ya aprobadas."
+                    ))
+        if parents_to_sync or "parent_id" in vals:
+            parents_to_sync |= self.mapped("parent_id")
+            parents_to_sync._sync_estimated_hours_from_children()
+        return result
+
+    def _validate_uat_hours(self) -> None:
+        """Keep UAT consumption within its own cupo, without margin."""
+        for task in self.sudo():
+            consumed = task._get_consumed_hours("uat_support")
+            if (task.estimated_uat_support_hours or consumed) and (
+                task.task_type != "development"
+            ):
+                raise UserError(_(
+                    "La bolsa UAT/Soporte requiere una tarea de Desarrollo."
+                ))
+            if float_compare(
+                consumed, task.estimated_uat_support_hours,
+                precision_digits=2,
+            ) > 0:
+                raise UserError(_(
+                    "La carga supera el cupo UAT/Soporte (%s hs). "
+                    "No puede utilizar Pruebas, Desarrollo ni Margen."
+                ) % task.estimated_uat_support_hours)
+
+    @api.depends(
+        "estimated_uat_support_hours", "timesheet_ids.unit_amount",
+        "timesheet_ids.timesheet_segment",
+    )
+    def _compute_uat_hours(self) -> None:
+        """Display consumed and remaining UAT hours on the task itself."""
+        for task in self:
+            consumed = task._get_consumed_hours("uat_support")
+            task.uat_consumed_hours = consumed
+            task.uat_remaining_hours = (
+                task.estimated_uat_support_hours - consumed
+            )
+
+    def unlink(self):
+        """Keep parent estimates synchronized when subtasks are removed."""
+        parents_to_sync = self.mapped("parent_id")
+        result = super().unlink()
+        parents_to_sync._sync_estimated_hours_from_children()
+        return result
+
+    def action_open_hours_request_wizard(self):
+        """Open the additional-hours request wizard."""
+        self.ensure_one()
+        if not self.can_request_additional_hours:
+            raise UserError(_(
+                "Las horas adicionales solo pueden solicitarse desde una "
+                "tarea raíz con un flujo de tope habilitado."
+            ))
+        stage_type = self.stage_id.get_timesheet_stage_type()
+        if stage_type == "uat_support":
+            raise UserError(_(
+                "UAT/Soporte no admite ampliaciones desde otras bolsas."
+            ))
+        segment = (
+            stage_type
+            if stage_type in (
+                "development",
+                "deploy",
+                "functional_test",
+            )
+            else False
+        )
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Solicitar horas adicionales",
+            "res_model": "project.task.hours.request.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_task_id": self.id,
+                "default_segment": segment,
+            },
+        }
+
+    def action_view_hours_requests(self):
+        """Open additional-hours requests linked to the task."""
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Solicitudes de horas adicionales",
+            "res_model": "project.task.hours.request",
+            "view_mode": "tree,form",
+            "domain": [("task_id", "=", self.id)],
+            "context": {"default_task_id": self.id},
+        }
