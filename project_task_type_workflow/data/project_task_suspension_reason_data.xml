@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <record id="reason_espera_definicion" model="project.task.suspension.reason">
+        <field name="name">Espera de definición funcional / cliente</field>
+        <field name="sequence">10</field>
+        <field name="is_other" eval="False"/>
+    </record>
+
+    <record id="reason_bloqueo_tecnico" model="project.task.suspension.reason">
+        <field name="name">Bloqueo técnico / dependencias</field>
+        <field name="sequence">20</field>
+        <field name="is_other" eval="False"/>
+    </record>
+
+    <record id="reason_repriorizacion" model="project.task.suspension.reason">
+        <field name="name">Re-priorización de negocio</field>
+        <field name="sequence">30</field>
+        <field name="is_other" eval="False"/>
+    </record>
+
+    <record id="reason_espera_accesos" model="project.task.suspension.reason">
+        <field name="name">Espera de accesos / credenciales / ambiente</field>
+        <field name="sequence">40</field>
+        <field name="is_other" eval="False"/>
+    </record>
+
+    <record id="reason_otro" model="project.task.suspension.reason">
+        <field name="name">Otro</field>
+        <field name="sequence">100</field>
+        <field name="is_other" eval="True"/>
+    </record>
+
+</odoo>
