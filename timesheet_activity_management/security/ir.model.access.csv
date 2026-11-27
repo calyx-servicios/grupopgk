@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_hour_type_internal_user,timesheet.hour.type.internal.user,model_timesheet_hour_type,base.group_user,1,0,0,0
+access_hour_type_viewer,timesheet.hour.type.viewer,model_timesheet_hour_type,group_timesheet_activity_viewer,1,0,0,0
+access_hour_type_admin,timesheet.hour.type.admin,model_timesheet_hour_type,group_timesheet_activity_admin,1,1,1,1
+access_management_report_viewer,timesheet.management.report.viewer,model_timesheet_management_report,group_timesheet_activity_viewer,1,0,0,0
+access_management_config_admin,timesheet.management.config.admin,model_timesheet_management_report_config,group_timesheet_activity_admin,1,1,1,1
+access_management_weekly_run_admin,timesheet.management.weekly.run.admin,model_timesheet_management_weekly_run,group_timesheet_activity_admin,1,0,0,0
+access_management_weekly_wizard_admin,timesheet.management.weekly.run.wizard.admin,model_timesheet_management_weekly_run_wizard,group_timesheet_activity_admin,1,1,1,1

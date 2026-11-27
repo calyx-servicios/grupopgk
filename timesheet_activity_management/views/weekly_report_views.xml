@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_management_report_tree" model="ir.ui.view">
+        <field name="name">timesheet.management.report.tree</field>
+        <field name="model">timesheet.management.report</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false">
+                <field name="activity_date"/>
+                <field name="company_id" optional="hide"/>
+                <field name="employee_id"/>
+                <field name="client_id"/>
+                <field name="project_id"/>
+                <field name="task_id"/>
+                <field name="hour_type_id"/>
+                <field name="unit_amount" sum="Total horas"/>
+                <field name="name"/>
+                <field name="project_manager_id"/>
+                <field name="technical_leader_id"/>
+                <field name="functional_user_ids" widget="many2many_tags"/>
+                <field name="timesheet_state"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_management_report_pivot" model="ir.ui.view">
+        <field name="name">timesheet.management.report.pivot</field>
+        <field name="model">timesheet.management.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Horas de gestión">
+                <field name="activity_date" interval="week" type="row"/>
+                <field name="hour_type_id" type="row"/>
+                <field name="client_id" type="col"/>
+                <field name="unit_amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="view_management_report_graph" model="ir.ui.view">
+        <field name="name">timesheet.management.report.graph</field>
+        <field name="model">timesheet.management.report</field>
+        <field name="arch" type="xml">
+            <graph string="Horas de gestión" type="bar">
+                <field name="activity_date" interval="week"/>
+                <field name="unit_amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="view_management_report_search" model="ir.ui.view">
+        <field name="name">timesheet.management.report.search</field>
+        <field name="model">timesheet.management.report</field>
+        <field name="arch" type="xml">
+            <search string="Horas de gestión">
+                <field name="activity_date"/>
+                <field name="employee_id"/>
+                <field name="client_id"/>
+                <field name="project_id"/>
+                <field name="task_id"/>
+                <field name="hour_type_id"/>
+                <field name="project_manager_id"/>
+                <field name="technical_leader_id"/>
+                <field name="functional_user_ids"/>
+                <filter name="management_only"
+                        string="Gestión y reuniones internas"
+                        domain="[('hour_type_id.include_in_management_report', '=', True), ('activity_date', '!=', False)]"/>
+                <filter name="missing_classification"
+                        string="Pendientes de completar"
+                        domain="['|', ('hour_type_id', '=', False), ('activity_date', '=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_week" string="Semana"
+                            context="{'group_by': 'activity_date:week'}"/>
+                    <filter name="group_client" string="Cliente"
+                            context="{'group_by': 'client_id'}"/>
+                    <filter name="group_project" string="Proyecto"
+                            context="{'group_by': 'project_id'}"/>
+                    <filter name="group_task" string="Tema"
+                            context="{'group_by': 'task_id'}"/>
+                    <filter name="group_type" string="Tipo de hora"
+                            context="{'group_by': 'hour_type_id'}"/>
+                    <filter name="group_pm" string="PM"
+                            context="{'group_by': 'project_manager_id'}"/>
+                    <filter name="group_leader" string="Líder técnica"
+                            context="{'group_by': 'technical_leader_id'}"/>
+                    <filter name="group_employee" string="Empleado"
+                            context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_company" string="Compañía"
+                            context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_management_hours_report" model="ir.actions.act_window">
+        <field name="name">Horas de gestión</field>
+        <field name="res_model">timesheet.management.report</field>
+        <field name="view_mode">tree,pivot,graph</field>
+        <field name="search_view_id" ref="view_management_report_search"/>
+        <field name="context">{'search_default_management_only': 1}</field>
+    </record>
+    <record id="action_management_hours_pending" model="ir.actions.act_window">
+        <field name="name">Pendientes de completar</field>
+        <field name="res_model">timesheet.management.report</field>
+        <field name="view_mode">tree</field>
+        <field name="search_view_id" ref="view_management_report_search"/>
+        <field name="domain">['|', ('hour_type_id', '=', False), ('activity_date', '=', False)]</field>
+    </record>
+    <record id="action_all_classified_hours" model="ir.actions.act_window">
+        <field name="name">Todas las horas clasificadas</field>
+        <field name="res_model">timesheet.management.report</field>
+        <field name="view_mode">tree,pivot,graph</field>
+        <field name="search_view_id" ref="view_management_report_search"/>
+        <field name="domain">[('hour_type_id', '!=', False), ('activity_date', '!=', False)]</field>
+    </record>
+    <record id="view_management_weekly_run_tree" model="ir.ui.view">
+        <field name="name">timesheet.management.weekly.run.tree</field>
+        <field name="model">timesheet.management.weekly.run</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false"
+                  decoration-danger="state == 'error'">
+                <field name="week_start"/>
+                <field name="week_end"/>
+                <field name="company_id"/>
+                <field name="state"/>
+                <field name="mail_id"/>
+                <field name="generated_at"/>
+                <field name="manual_resend_count"/>
+                <field name="error_message"/>
+            </tree>
+        </field>
+    </record>
+    <record id="action_management_weekly_runs" model="ir.actions.act_window">
+        <field name="name">Envíos semanales</field>
+        <field name="res_model">timesheet.management.weekly.run</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

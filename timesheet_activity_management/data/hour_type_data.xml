@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="hour_type_management" model="timesheet.hour.type">
+        <field name="name">Gestión</field>
+        <field name="sequence">10</field>
+        <field name="include_in_management_report" eval="True"/>
+    </record>
+    <record id="hour_type_internal_meeting" model="timesheet.hour.type">
+        <field name="name">Reunión interna</field>
+        <field name="sequence">20</field>
+        <field name="include_in_management_report" eval="True"/>
+    </record>
+    <record id="hour_type_support" model="timesheet.hour.type">
+        <field name="name">Soporte</field>
+        <field name="sequence">30</field>
+        <field name="include_in_management_report" eval="False"/>
+    </record>
+</odoo>

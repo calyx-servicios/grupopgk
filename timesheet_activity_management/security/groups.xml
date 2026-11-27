@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_timesheet_activity_viewer" model="res.groups">
+        <field name="name">Consulta de horas de gestión</field>
+        <field name="category_id" ref="base.module_category_services"/>
+    </record>
+    <record id="group_timesheet_activity_admin" model="res.groups">
+        <field name="name">Administración de horas de gestión</field>
+        <field name="category_id" ref="base.module_category_services"/>
+        <field name="implied_ids" eval="[
+            (4, ref('timesheet_activity_management.group_timesheet_activity_viewer')),
+            (4, ref('timesheet_odoo.group_timesheet_sige_admin'))
+        ]"/>
+    </record>
+</odoo>
